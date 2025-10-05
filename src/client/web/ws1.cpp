@@ -319,9 +319,9 @@ void awh::client::Websocket1::writeEvent(const char * buffer, const size_t size,
  * @brief Метод отлавливания событий контейнера функций обратного вызова
  *
  * @param event событие контейнера функций обратного вызова
- * @param fid   идентификатор функции обратного вызова
+ * @param id   идентификатор функции обратного вызова
  */
-void awh::client::Websocket1::callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t &) noexcept {
+void awh::client::Websocket1::callbackEvent(const callback_t::event_t event, const uint64_t id, const callback_t::fn_t &) noexcept {
 	/**
 	 * Определяем входящее событие контейнера функций обратного вызова
 	 */
@@ -329,7 +329,7 @@ void awh::client::Websocket1::callbackEvent(const callback_t::event_t event, con
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (callback_t::event_t::SET): {
 			// Если функция обратного вызова на перехват полученных чанков установлена
-			if(fid == web_t::_callback.fid("chunking"))
+			if(id == web_t::_callback.id("chunking"))
 				// Устанавливаем внешнюю функцию обратного вызова
 				this->_http.on <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", web_t::_callback.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
 		} break;

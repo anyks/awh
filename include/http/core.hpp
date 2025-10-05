@@ -135,7 +135,7 @@ namespace awh {
 			 * @brief Параметры запроса для Transfer-Encoding
 			 *
 			 */
-			typedef struct TransferEncoding {
+			typedef struct Transfer {
 				bool enabled;  // Флаг активирования передачи ответа Transfer-Encoding
 				bool trailers; // Флаг разрешающий передавать трейлеры
 				bool chunking; // Флаг разрешающий передавать тело чанками
@@ -143,9 +143,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				TransferEncoding() noexcept :
+				Transfer() noexcept :
 				 enabled(false), trailers(false), chunking(false) {}
-			} __attribute__((packed)) te_t;
+			} __attribute__((packed)) transfer_t;
 			/**
 			 * @brief Структура параметров компрессора
 			 *
@@ -183,14 +183,13 @@ namespace awh {
 		private:
 			// Объект работы с операционной системой
 			os_t _os;
+			// Объект Transfer-Encoding
+			transfer_t _transfer;
 		protected:
 			// Объект работы с URI
 			uri_t _uri;
 			// Хранилище функций обратного вызова
 			callback_t _callback;
-		private:
-			// Объект Transfer-Encoding
-			mutable te_t _te;
 		protected:
 			// Объект HTTP-парсера
 			mutable web_t _web;

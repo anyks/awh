@@ -1616,7 +1616,7 @@ bool awh::Web::isStandard(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty())
 		// Выполняем проверку заголовка
-		return (this->_standardHeaders.count(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) > 0);
+		return (this->_standards.count(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) > 0);
 	// Выводим результат
 	return false;
 }
@@ -1696,9 +1696,9 @@ std::set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept 
 	// Если ключ передан
 	if(!key.empty()){
 		// Выполняем поиск заголовка
-		auto i = this->_standardHeaders.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+		auto i = this->_standards.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 		// Если заголовок найден выводим результат
-		if(i != this->_standardHeaders.end())
+		if(i != this->_standards.end())
 			// Выводим результат
 			return i->second;
 	}
@@ -1854,7 +1854,7 @@ awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _hid(hid_t::NONE), _state(state_t::QUERY),
  _body(fmk, log), _upgrade{""}, _fmk(fmk), _log(log) {
 	// Выполняем заполнение списка стандартных заголовков
-	this->_standardHeaders.insert({
+	this->_standards.insert({
 		{"via", {proto_t::PROXY}},
 		{"date", {proto_t::HTTP1}},
 		{"link", {proto_t::HTTP1}},

@@ -119,9 +119,9 @@ bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, con
  * @brief Метод отлавливания событий контейнера функций обратного вызова
  *
  * @param event событие контейнера функций обратного вызова
- * @param fid   идентификатор функции обратного вызова
+ * @param id   идентификатор функции обратного вызова
  */
-void awh::server::Proxy::callbackEvents(const callback_t::event_t event, const uint64_t fid, [[maybe_unused]] const callback_t::fn_t &) noexcept {
+void awh::server::Proxy::callbackEvents(const callback_t::event_t event, const uint64_t id, [[maybe_unused]] const callback_t::fn_t &) noexcept {
 	/**
 	 * Определяем входящее событие контейнера функций обратного вызова
 	 */
@@ -129,11 +129,11 @@ void awh::server::Proxy::callbackEvents(const callback_t::event_t event, const u
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (callback_t::event_t::SET): {
 			// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
-			if(fid == this->_callback.fid("status"))
+			if(id == this->_callback.id("status"))
 				// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
 				this->_server.on <void (const awh::core_t::status_t)> ("status", this->_callback.get <void (const awh::core_t::status_t)> ("status"));
 			// Если функция установки обратного вызова на событие получении ошибки передана
-			else if(fid == this->_callback.fid("error"))
+			else if(id == this->_callback.id("error"))
 				// Выполняем установку функции обратного вызова на событие получения ошибки
 				this->_server.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4);
 		} break;

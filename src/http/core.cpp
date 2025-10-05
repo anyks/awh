@@ -760,7 +760,7 @@ void awh::Http::commit() noexcept {
 								// Если мы получили параметр передачи данных чанками
 								else if(this->_fmk->compare(compressor, "chunked"))
 									// Выполняем активацию передачу данных чанками
-									this->_te.chunking = true;
+									this->_transfer.chunking = true;
 								// Выводим результат
 								return result;
 							};
@@ -797,7 +797,7 @@ void awh::Http::commit() noexcept {
 							// Выполняем удаление заголовка
 							this->_web.delHeader("transfer-encoding");
 							// Если активирован режим чанкинга
-							if(this->_te.chunking)
+							if(this->_transfer.chunking)
 								// Выполняем корректировку значения заголовка
 								this->_web.header("Transfer-Encoding", "chunked");
 						}
@@ -955,13 +955,13 @@ void awh::Http::commit() noexcept {
 						}
 					}
 					// Если заголовок с параметрами передачи данных Transfer-Encoding существует
-					if((this->_te.enabled = this->_web.isHeader("te"))){
+					if((this->_transfer.enabled = this->_web.isHeader("te"))){
 						// Если версия протокола подключения выше чем HTTP/1.1
 						if(this->_web.request().version > 1.1){
 							// Выполняем активации получение трейлеров
-							this->_te.trailers = true;
+							this->_transfer.trailers = true;
 							// Выполняем активацию передачу данных чанками
-							this->_te.chunking = true;
+							this->_transfer.chunking = true;
 						// Если версия протокола подключения не выше HTTP/1.1
 						} else {
 							// Получаем список доступных заголовков
@@ -1027,11 +1027,11 @@ void awh::Http::commit() noexcept {
 														// Если получен параметр разрешающий использовать трейлеры
 														else if(this->_fmk->compare(first, "trailers"))
 															// Выполняем активации получение трейлеров
-															this->_te.trailers = true;
+															this->_transfer.trailers = true;
 														// Если получен параметр разрешающий обмениваться чанками
 														else if(this->_fmk->compare(first, "chunked"))
 															// Выполняем активацию передачу данных чанками
-															this->_te.chunking = true;
+															this->_transfer.chunking = true;
 													// Если вес компрессора указан не является числом
 													} else {
 														// Выводим сообщение об ошибке
@@ -1083,11 +1083,11 @@ void awh::Http::commit() noexcept {
 												// Если получен параметр разрешающий использовать трейлеры
 												else if(this->_fmk->compare(param, "trailers"))
 													// Выполняем активации получение трейлеров
-													this->_te.trailers = true;
+													this->_transfer.trailers = true;
 												// Если получен параметр разрешающий обмениваться чанками
 												else if(this->_fmk->compare(param, "chunked"))
 													// Выполняем активацию передачу данных чанками
-													this->_te.chunking = true;
+													this->_transfer.chunking = true;
 												// Выполняем уменьшение веса выбранного компрессора
 												weight -= .1f;
 											}
@@ -1191,7 +1191,7 @@ void awh::Http::clear() noexcept {
 	// Снимаем флаг зашифрованной полезной нагрузки
 	this->_crypted = false;
 	// Выполняем сброс флага формирования чанков
-	this->_te.chunking = false;
+	this->_transfer.chunking = false;
 	// Снимаем флаг сжатой полезной нагрузки
 	this->_compressors.current = compressor_t::NONE;
 }
@@ -1229,7 +1229,7 @@ void awh::Http::clear(const suite_t suite) noexcept {
 		// Если набор соответствует заголовку сообщения
 		case static_cast <uint8_t> (suite_t::HEADER): {
 			// Выполняем сброс флага формирования чанков
-			this->_te.chunking = false;
+			this->_transfer.chunking = false;
 			// Выполняем очистку списка заголовков
 			this->_web.clearHeaders();
 		} break;
@@ -1305,7 +1305,7 @@ awh::buffer_t awh::Http::payload() const noexcept {
 				break;
 			}
 			// Если нужно тело выводить в виде чанков
-			if((version > 1.) && this->_te.chunking){
+			if((version > 1.) && this->_transfer.chunking){
 				// Если версия протокола интернета выше 1.1
 				if(version > 1.1){
 					// Если тело сообщения больше размера чанка
@@ -1570,7 +1570,7 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 				// Если мы работаем с сервером
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Если разрешено добавление трейлеров
-					if(this->_te.trailers){
+					if(this->_transfer.trailers){
 						// Добавляем заголовок названия трейлера
 						this->_web.header("Trailer", key);
 						// Выполняем добавление заголовка в список трейлеров
@@ -1652,7 +1652,7 @@ void awh::Http::headers(const std::unordered_multimap <string, string> & headers
 	// Если мы работаем с клиентом
 	if(this->_web.hid() == web_t::hid_t::SERVER){
 		// Если список трейлеров установлен
-		if(this->_te.trailers && !this->_trailers.empty()){
+		if(this->_transfer.trailers && !this->_trailers.empty()){
 			// Название трейлера для добавления
 			string name = "";
 			// Выполняем перебор всех трейлеров
@@ -2107,8 +2107,6 @@ awh::buffer_t awh::Http::dump() const noexcept {
 	try {
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
-		// Устанавливаем флаг разрешающий параметры Transfer-Encoding
-		result.push(&this->_te, sizeof(this->_te));
 		// Устанавливаем размер одного чанка
 		result.push(&this->_chunk, sizeof(this->_chunk));
 		// Устанавливаем стейт текущего запроса
@@ -2119,6 +2117,8 @@ awh::buffer_t awh::Http::dump() const noexcept {
 		result.push(&this->_crypted, sizeof(this->_crypted));
 		// Устанавливаем флаг требования шифрования данных полезной нагрузки
 		result.push(&this->_encryption, sizeof(this->_encryption));
+		// Устанавливаем флаг разрешающий параметры Transfer-Encoding
+		result.push(&this->_transfer, sizeof(this->_transfer));
 		// Устанавливаем метод компрессии хранимых данных
 		result.push(&this->_compressors.current, sizeof(this->_compressors.current));
 		// Устанавливаем метод компрессии отправляемых данных
@@ -2233,10 +2233,6 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 		try {
 			// Длина строки, количество элементов и смещение в буфере
 			size_t length = 0, count = 0, offset = 0;
-			// Выполняем получение флага разрешающий параметры Transfer-Encoding
-			::memcpy(reinterpret_cast <void *> (&this->_te), buffer + offset, sizeof(this->_te));
-			// Выполняем смещение в буфере
-			offset += sizeof(this->_te);
 			// Выполняем получение размера одного чанка
 			::memcpy(reinterpret_cast <void *> (&this->_chunk), buffer + offset, sizeof(this->_chunk));
 			// Выполняем смещение в буфере
@@ -2257,6 +2253,10 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 			::memcpy(reinterpret_cast <void *> (&this->_encryption), buffer + offset, sizeof(this->_encryption));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_encryption);
+			// Выполняем получение флага разрешающий параметры Transfer-Encoding
+			::memcpy(reinterpret_cast <void *> (&this->_transfer), buffer + offset, sizeof(this->_transfer));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_transfer);
 			// Выполняем получение метода компрессии хранимых данных
 			::memcpy(reinterpret_cast <void *> (&this->_compressors.current), buffer + offset, sizeof(this->_compressors.current));
 			// Выполняем смещение в буфере
@@ -2524,7 +2524,7 @@ bool awh::Http::is(const state_t state) const noexcept {
 			// Если проверяется режим флага запраса трейлеров
 			case static_cast <uint8_t> (state_t::TRAILERS):
 				// Выводим проверку на установку флага запроса передачи трейлеров
-				return this->_te.trailers;
+				return this->_transfer.trailers;
 		}
 	/**
 	 * Если возникает ошибка
@@ -2740,14 +2740,14 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 		http.id(this->_web.id());
 		// Устанавливаем размер одного чанка
 		http.chunk(this->_chunk);
-		// Устанавливаем параметры Transfer-Encoding
-		http._te = this->_te;
 		// Устанавливаем активный стейт объекта
 		http._state = this->_state;
 		// Устанавливаем тип статуса авторизации
 		http._status = this->_status;
 		// Устанавливаем флаг зашифрованной полезной нагрузки
 		http._crypted = this->_crypted;
+		// Устанавливаем параметры Transfer-Encoding
+		http._transfer = this->_transfer;
 		// Устанавливаем флаг шифрования объекта
 		http._encryption = this->_encryption;
 		// Устанавливаем флаг компрессии полезной нагрузки
@@ -2853,7 +2853,7 @@ awh::buffer_t awh::Http::trailer() const noexcept {
 	// Результат работы функции
 	buffer_t result(this->_fmk, this->_log);
 	// Если разрешено добавление трейлеров
-	if(this->_te.trailers){
+	if(this->_transfer.trailers){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2912,7 +2912,7 @@ vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
 	// Результат работы функции
 	vector <std::pair <string, string>> result;
 	// Если разрешено добавление трейлеров
-	if(this->_te.trailers){
+	if(this->_transfer.trailers){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3757,9 +3757,9 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Выполняем шифрование полезной нагрузки
 									const_cast <http_t *> (this)->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
 									// Заменяем размер тела данных
-									if(!this->_te.chunking)
+									if(!this->_transfer.chunking)
 										// Устанавливаем размер тела сообщения
 										length = this->_web.body().size();
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
@@ -3807,7 +3807,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_te.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
+									if(this->_transfer.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
 										// Устанавливаем заголовок Transfer-Encoding
 										request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -3817,7 +3817,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 										// Устанавливаем X-AWH-Encryption
@@ -3866,7 +3866,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										}
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_te.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding") && this->_web.isHeader("Transfer-Encoding"))
+									if(this->_transfer.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding") && this->_web.isHeader("Transfer-Encoding"))
 										// Устанавливаем заголовок Transfer-Encoding
 										request.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -3877,7 +3877,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если запрос не содержит тела запроса
 							} else {
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if((this->_te.chunking = (this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))))
+								if((const_cast <http_t *> (this)->_transfer.chunking = (this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))))
 									// Устанавливаем X-AWH-Encryption
 									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_cipher)));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
@@ -3923,7 +3923,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_compressors.selected != compressor_t::NONE);
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_compressors.selected != compressor_t::NONE);
 								}
 								// Очищаем тела сообщения
 								const_cast <http_t *> (this)->clear(suite_t::BODY);
@@ -4166,13 +4166,13 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Выполняем шифрование полезной нагрузки
 									const_cast <http_t *> (this)->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_crypted || this->_te.trailers || (this->_compressors.current != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_crypted || this->_transfer.trailers || (this->_compressors.current != compressor_t::NONE));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->is(suite_t::BLACK, "Date"))
 										// Добавляем заголовок даты в ответ
 										response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 									// Заменяем размер тела данных
-									if(!this->_te.chunking)
+									if(!this->_transfer.chunking)
 										// Устанавливаем размер тела сообщения
 										length = this->_web.body().size();
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
@@ -4225,9 +4225,9 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										// Если компрессор получен
 										if(!compressor.empty()){
 											// Если активирован режим отправки через Transfer-Encoding
-											if(this->_te.enabled && !this->is(suite_t::BLACK, "Transfer-Encoding")){
+											if(this->_transfer.enabled && !this->is(suite_t::BLACK, "Transfer-Encoding")){
 												// Если активирован режим передачи чанками
-												if(this->_te.chunking)
+												if(this->_transfer.chunking)
 													// Устанавливаем Transfer-Encoding если не передан
 													response.append(this->_fmk->format("Transfer-Encoding: %s, chunked\r\n", compressor.c_str()));
 												// Устанавливаем Transfer-Encoding если не передан
@@ -4235,14 +4235,14 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 											// Устанавливаем Content-Encoding если не передан
 											} else response.append(this->_fmk->format("Content-Encoding: %s\r\n", compressor.c_str()));
 										// Если активирован режим передачи чанками
-										} else if(this->_te.enabled && this->_te.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
+										} else if(this->_transfer.enabled && this->_transfer.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding"))
 											// Устанавливаем заголовок Transfer-Encoding
 											response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_te.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding")){
+									if(this->_transfer.chunking && !this->is(suite_t::BLACK, "Transfer-Encoding")){
 										// Если режим отправки шифровани через Transfer-Encoding не активирован
-										if(!this->_te.enabled)
+										if(!this->_transfer.enabled)
 											// Устанавливаем заголовок Transfer-Encoding
 											response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -4252,7 +4252,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_encryption || this->_te.trailers || (this->_compressors.selected != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_encryption || this->_transfer.trailers || (this->_compressors.selected != compressor_t::NONE));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->is(suite_t::BLACK, "Date"))
 										// Добавляем заголовок даты в ответ
@@ -4307,9 +4307,9 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										// Если компрессор получен
 										if(!compressor.empty()){
 											// Если активирован режим отправки через Transfer-Encoding
-											if(this->_te.enabled && !this->is(suite_t::BLACK, "Transfer-Encoding")){
+											if(this->_transfer.enabled && !this->is(suite_t::BLACK, "Transfer-Encoding")){
 												// Если активирован режим передачи чанками
-												if(this->_te.chunking)
+												if(this->_transfer.chunking)
 													// Устанавливаем Transfer-Encoding если не передан
 													response.append(this->_fmk->format("Transfer-Encoding: %s, chunked\r\n", compressor.c_str()));
 												// Устанавливаем Transfer-Encoding если не передан
@@ -4319,14 +4319,14 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 												// Устанавливаем Content-Encoding если не передан
 												response.append(this->_fmk->format("Content-Encoding: %s\r\n", compressor.c_str()));
 										// Если активирован режим передачи чанками
-										} else if(this->_te.enabled && this->_te.chunking && available[8] && !this->is(suite_t::BLACK, "Transfer-Encoding"))
+										} else if(this->_transfer.enabled && this->_transfer.chunking && available[8] && !this->is(suite_t::BLACK, "Transfer-Encoding"))
 											// Устанавливаем заголовок Transfer-Encoding
 											response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_te.chunking && available[8] && !this->is(suite_t::BLACK, "Transfer-Encoding")){
+									if(this->_transfer.chunking && available[8] && !this->is(suite_t::BLACK, "Transfer-Encoding")){
 										// Если режим отправки шифровани через Transfer-Encoding не активирован
-										if(!this->_te.enabled)
+										if(!this->_transfer.enabled)
 											// Устанавливаем заголовок Transfer-Encoding
 											response.append(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -4788,7 +4788,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									// Выполняем шифрование полезной нагрузки
 									const_cast <http_t *> (this)->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_crypted)
 										// Устанавливаем X-AWH-Encryption
@@ -4836,7 +4836,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 										// Устанавливаем X-AWH-Encryption
@@ -4888,7 +4888,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							// Если запрос не содержит тела запроса
 							} else {
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if((this->_te.chunking = (this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))))
+								if((const_cast <http_t *> (this)->_transfer.chunking = (this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))))
 									// Устанавливаем X-AWH-Encryption
 									result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
@@ -4934,7 +4934,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 										break;
 									}
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_compressors.selected != compressor_t::NONE);
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_compressors.selected != compressor_t::NONE);
 								}
 								// Очищаем тела сообщения
 								const_cast <http_t *> (this)->clear(suite_t::BODY);
@@ -5124,7 +5124,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									// Выполняем шифрование полезной нагрузки
 									const_cast <http_t *> (this)->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->is(suite_t::BLACK, "date"))
 										// Добавляем заголовок даты в ответ
@@ -5176,7 +5176,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_te.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
+									const_cast <http_t *> (this)->_transfer.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->is(suite_t::BLACK, "date"))
 										// Добавляем заголовок даты в ответ

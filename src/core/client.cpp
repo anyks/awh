@@ -580,9 +580,19 @@ void awh::client::Core::launching(const bool mode, const bool status) noexcept {
 		// Переходим по всему списку схем сети
 		for(auto & scheme : this->_schemes){
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("open"))
+			if(this->_callback.is("open")){
+				
+				/*
+				auto open_fn = this->_callback.get<void(const uint16_t)>("open");
+				callback.on <void ()> (scheme.first, [open_fn, port = scheme.first]() {
+					open_fn(port);
+				});
+				*/
+				
 				// Устанавливаем полученную функцию обратного вызова
-				callback.on <void (const uint16_t)> (scheme.first, this->_callback.get <void (const uint16_t)> ("open"), scheme.first);
+				// callback.on <void (const uint16_t)> (scheme.first, this->_callback.get <void (const uint16_t)> ("open"), scheme.first);
+				callback.on <void ()> (scheme.first, this->_callback.get <void (const uint16_t)> ("open"), scheme.first);
+			}
 		}
 		// Выполняем все функции обратного вызова
 		callback.call();
@@ -882,9 +892,22 @@ void awh::client::Core::close() noexcept {
 							// Выполняем удаление записи используемой памяти полезной нагрузки
 							this->_available.erase(k);
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("disconnect"))
+						if(this->_callback.is("disconnect")){
 							// Устанавливаем полученную функцию обратного вызова
-							callback.on <void (const uint64_t, const uint16_t)> (i->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
+							// callback.on <void (const uint64_t, const uint16_t)> (i->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
+
+							/*
+							auto open_fn = this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect");
+					
+							callback.on<void()>(
+								i->first,
+								[open_fn, bid = i->first, port = item.first]() { open_fn(bid, port); }
+							);
+							*/
+							
+							callback.on <void ()> (i->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
+
+						}
 						// Удаляем блокировку брокера
 						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
@@ -1096,8 +1119,8 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				// Если прокси-сервер активирован но уже переключён на работу с сервером
 				if((shm->proxy.type != proxy_t::type_t::NONE) && !shm->isProxy())
 					/**
-					shm-> * Выполняем переключение обратно на прокси-сервер
-					shm-> */
+					 * Выполняем переключение обратно на прокси-сервер
+					 */
 					shm->switchConnect();
 				// Выполняем очистку контекста двигателя
 				broker->ectx.clear();
@@ -1108,9 +1131,21 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				// Устанавливаем статус сетевого ядра
 				shm->status.real = scheme_t::mode_t::DISCONNECT;
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("disconnect"))
+				if(this->_callback.is("disconnect")){
 					// Устанавливаем полученную функцию обратного вызова
-					callback.on <void (const uint64_t, const uint16_t)> ("disconnect", this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
+					// callback.on <void (const uint64_t, const uint16_t)> ("disconnect", this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
+					
+					callback.on <void ()> ("disconnect", this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
+
+					/*
+					auto open_fn = this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect");
+					
+					callback.on<void()>(
+						"disconnect",
+						[open_fn, bid, port = i->first]() { open_fn(bid, port); }
+					);
+					*/
+				}
 				// Если активированно постоянное подключение
 				if(shm->alive)
 					// Устанавливаем функцию обратного вызова

@@ -1,6 +1,6 @@
 /**
  * @file: callback.hpp
- * @date: 2025-06-25
+ * @date: 2025-10-05
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -20,11 +20,11 @@
  */
 #include <map>
 #include <mutex>
-#include <tuple>
 #include <memory>
 #include <string>
 #include <cstring>
 #include <functional>
+#include <type_traits>
 
 /**
  * Наши модули
@@ -45,7 +45,7 @@ namespace awh {
 	 * @brief Класс работы с функциями обратного вызова
 	 *
 	 */
-	typedef class Callback {
+	class Callback {
 		public:
 			/**
 			 * Основные события для функций обратного вызова
@@ -66,7 +66,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				virtual ~Function() noexcept {}
+				virtual ~Function() noexcept = default;
 			};
 			/**
 			 * @brief Шаблон базовой функции
@@ -88,19 +88,161 @@ namespace awh {
 				 *
 				 * @param fn функция обратного вызова для установки
 				 */
-				BasicFunction(function <A> fn) noexcept : fn(fn) {}
+				explicit BasicFunction(function <A> fn) noexcept : fn(std::move(fn)) {}
 			};
 		public:
 			/**
 			 * Создаём тип данных функции обратного вызова
 			 */
-			typedef std::shared_ptr <Function> fn_t;
+			using fn_t = std::shared_ptr <Function>;
+		public:
+			/**
+			 * @brief Итератор как вложенный класс
+			 * 
+			 */
+			typedef class Iterator {
+				public:
+					/**
+					 * Создаём необходимые нам типы данных
+					 */
+					using value_type        = fn_t;
+					using pointer           = fn_t *;
+					using reference         = fn_t &;
+					using difference_type   = std::ptrdiff_t;
+					using iterator_category = std::bidirectional_iterator_tag;
+				public:
+					/**
+					 * Создаём тип данных итератора
+					 */
+					using iterator = std::map <uint32_t, fn_t>::iterator;
+				private:
+					// Текущее значение итератора
+					iterator _it;
+				private:
+					// Объект работы с логами
+					const log_t * _log;
+				public:
+					/**
+					 * @brief Оператор извлечения указателя заголовка
+					 * 
+					 * @return указатель заголовка
+					 */
+					pointer operator -> () noexcept {
+						// Выводим результат
+						return &this->_it->second;
+					}
+					/**
+					 * @brief Оператор разыменования заголовка
+					 * 
+					 * @return значение заголовка
+					 */
+					reference operator * () const noexcept {
+						// Выводим результат
+						return this->_it->second;
+					}
+				public:
+					/**
+					 * @brief Оператор смещения вперед
+					 * 
+					 * @return значение текущего итератора
+					 */
+					Iterator & operator ++ () noexcept {
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Выполняем смещение итератора
+							++this->_it;
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						}
+						// Выводим результат
+						return (* this);
+					}
+					/**
+					 * @brief Оператор смещения назад
+					 * 
+					 * @return значение текущего итератора
+					 */
+					Iterator & operator -- () noexcept {
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Выполняем смещение итератора
+							--this->_it;
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						}
+						// Выводим результат
+						return (* this);
+					}
+				public:
+					/**
+					 * @brief Оператор сравнения соответствия итератора
+					 * 
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator == (const Iterator & other) const noexcept {
+						// Выводим результат
+						return (this->_it->first == other._it->first);
+					}
+					/**
+					 * @brief Оператора сравнения несоответствия итератора
+					 * 
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator != (const Iterator & other) const noexcept {
+						// Выводим результат
+						return (this->_it->first != other._it->first);
+					}
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param it  итератор для установки
+					 * @param log объект для работы с логами
+					 */
+					explicit Iterator(iterator it, const log_t * log) noexcept : _it(it), _log(log) {}
+			} iterator_t;
 		private:
 			// Мютекс для блокировки основного потока
-			std::mutex _mtx;
+			mutable std::recursive_mutex _mtx;
 		private:
 			// Хранилище распределения по названиям
-			std::map <uint64_t, fn_t> _callbacks;
+			std::map <uint32_t, fn_t> _callbacks;
 		private:
 			/**
 			 * Функция обратного вызова при получении события установки или удаления функции
@@ -108,7 +250,7 @@ namespace awh {
 			 * @param идентификатор функции
 			 * @param функция обратного вызова в чистом виде
 			 */
-			function <void (const event_t, const uint64_t, const fn_t &)> _callback;
+			function <void (const event_t, const uint32_t, const fn_t &)> _callback;
 		private:
 			// Объект работы с логами
 			const log_t * _log;
@@ -119,19 +261,22 @@ namespace awh {
 			 * @param name название функции для генерации идентификатора
 			 * @return     сгенерированный идентификатор функции
 			 */
-			uint64_t fid(const string & name) const noexcept {
+			uint32_t id(const string & name) const noexcept {
 				// Результат работы функции
-				uint64_t result = 0;
+				uint32_t result = 0;
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Если размер имени умещается в 8 байт
-					if(name.size() <= 8)
-						// Выполняем копирование данных имени
-						::memcpy(&result, name.data(), name.size());
-					// Получаем идентификатор обратного вызова
-					else return ::CityHash64(name.c_str(), name.size());
+					// Если название функции передано
+					if(!name.empty()){
+						// Если размер имени умещается в 4 байт
+						if(name.size() <= 4)
+							// Выполняем копирование данных имени
+							::memcpy(&result, name.data(), name.size());
+						// Получаем идентификатор обратного вызова
+						else return ::CityHash32(name.c_str(), name.size());
+					}
 				/**
 				 * Если возникает ошибка
 				 */
@@ -160,6 +305,8 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool empty() const noexcept {
+				// Выполняем блокировку потока
+				const lock_guard lock(this->_mtx);
 				// Выводим результат проверки
 				return this->_callbacks.empty();
 			}
@@ -169,7 +316,7 @@ namespace awh {
 			 *
 			 * @return выводим созданный блок дампа контейнера
 			 */
-			const std::map <uint64_t, fn_t> & dump() const noexcept {
+			const std::map <uint32_t, fn_t> & dump() const noexcept {
 				// Выводим дамп функций обратного вызова
 				return this->_callbacks;
 			}
@@ -178,13 +325,15 @@ namespace awh {
 			 *
 			 * @param callbacks дамп данных функций обратного вызова
 			 */
-			void dump(const std::map <uint64_t, fn_t> & callbacks) noexcept {
+			void dump(const std::map <uint32_t, fn_t> & callbacks) noexcept {
 				// Если данные функций обратного вызова переданы
 				if(!callbacks.empty()){
 					/**
 					 * Выполняем отлов ошибок
 					 */
 					try {
+						// Выполняем блокировку потока
+						const lock_guard lock(this->_mtx);
 						// Устанавливаем новые данные функциий обратного вызова
 						this->_callbacks = callbacks;
 					/**
@@ -218,11 +367,9 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем очистку списка функций обратного вызова
 					this->_callbacks.clear();
-					// Выполняем очистку выделенной памяти для списка функций обратного вызова
-					std::map <decltype(this->_callbacks)::key_type, decltype(this->_callbacks)::mapped_type> ().swap(this->_callbacks);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -244,13 +391,16 @@ namespace awh {
 			}
 		private:
 			/**
-			 * _is Метод проверки наличия функции обратного вызова
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    результат проверки
+			 * @brief Метод проверки наличия функции обратного вызова
+			 *
+			 * @param name название функции обратного вызова
+			 * @return     результат проверки
 			 */
-			bool _is(const uint64_t fid) const noexcept {
+			bool _is(const uint32_t id) const noexcept {
+				// Выполняем блокировку потока
+				const lock_guard lock(this->_mtx);
 				// Выводим результат проверки
-				return ((fid > 0) && !this->_callbacks.empty() && (this->_callbacks.find(fid) != this->_callbacks.end()));
+				return ((id > 0) && (this->_callbacks.find(id) != this->_callbacks.end()));
 			}
 		public:
 			/**
@@ -260,12 +410,8 @@ namespace awh {
 			 * @return     результат проверки
 			 */
 			bool is(const char * name) const noexcept {
-				// Если название передано
-				if(name != nullptr)
-					// Выполняем првоерку существования функции обратного вызова
-					return this->_is(this->fid(name));
-				// Выводим значение по умолчанию
-				return false;
+				// Выполняем првоерку существования функции обратного вызова
+				return (name != nullptr ? this->_is(this->id(name)) : false);
 			}
 			/**
 			 * @brief Метод проверки наличия функции обратного вызова
@@ -275,7 +421,7 @@ namespace awh {
 			 */
 			bool is(const string & name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
-				return this->_is(this->fid(name));
+				return this->_is(this->id(name));
 			}
 			/**
 			 * @brief Шаблон метода проверки наличия функции обратного вызова
@@ -286,60 +432,65 @@ namespace awh {
 			/**
 			 * @brief Метод проверки наличия функции обратного вызова
 			 *
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    результат проверки
+			 * @param id идентификатор функции обратного вызова
+			 * @return   результат проверки
 			 */
-			bool is(const T fid) const noexcept {
+			bool is(const T id) const noexcept {
 				// Если мы получили на вход число
-				if(is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>)
+				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем првоерку существования функции обратного вызова
-					return this->_is(static_cast <uint64_t> (fid));
+					return this->_is(static_cast <uint32_t> (id));
 				// Выводим результат по умолчанию
 				return false;
 			}
 		private:
 			/**
-			 * _erase Метод удаления функции обратного вызова
-			 * @param fid идентификатор функции обратного вызова
+			 * @brief Метод удаления функции обратного вызова
+			 *
+			 * @param id идентификатор функции обратного вызова
 			 */
-			void _erase(const uint64_t fid) noexcept {
-				// Если название функции обратного вызова передано
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
+			void _erase(const uint32_t id) noexcept {
+				/**
+				 * Если идентификатор функции не передан
+				 */
+				if(id == 0)
+					// Выходим из функции
+					return;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					{
+						// Выполняем блокировку потока
+						const lock_guard lock(this->_mtx);
 						// Выполняем поиск существующей функции обратного вызова
-						auto i = this->_callbacks.find(fid);
+						auto i = this->_callbacks.find(id);
 						// Если функция существует
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							const lock_guard <std::mutex> lock(this->_mtx);
+						if(i != this->_callbacks.end())
 							// Удаляем функцию обратного вызова
 							this->_callbacks.erase(i);
-						}
-						// Если функция обратного вызова установлена
-						if(this->_callback != nullptr)
-							// Выполняем функцию обратного вызова
-							std::apply(this->_callback, std::make_tuple(event_t::DEL, fid, nullptr));
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
 					}
+					// Если системная функция обратного вызова установлена
+					if(this->_callback != nullptr)
+						// Выполняем системную функцию обратного вызова
+						this->_callback(event_t::DEL, id, nullptr);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
 			}
 		public:
@@ -352,7 +503,7 @@ namespace awh {
 				// Если название функции обратного вызова передано
 				if(name != nullptr)
 					// Выполняем удаление функции обратного вызова
-					this->_erase(this->fid(name));
+					this->_erase(this->id(name));
 			}
 			/**
 			 * @brief Метод удаления функции обратного вызова
@@ -360,10 +511,8 @@ namespace awh {
 			 * @param name функция обратного вызова для удаления
 			 */
 			void erase(const string & name) noexcept {
-				// Если название функции обратного вызова передано
-				if(!name.empty())
-					// Выполняем удаление функции обратного вызова
-					this->_erase(this->fid(name));
+				// Выполняем удаление функции обратного вызова
+				this->_erase(this->id(name));
 			}
 			/**
 			 * @brief Шаблон метода удаления функции обратного вызова
@@ -374,13 +523,109 @@ namespace awh {
 			/**
 			 * @brief Метод удаления функции обратного вызова
 			 *
-			 * @param fid идентификатор функции обратного вызова
+			 * @param id идентификатор функции обратного вызова
 			 */
-			void erase(const T fid) noexcept {
+			void erase(const T id) noexcept {
 				// Если мы получили на вход число
-				if(is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>)
+				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем удаление функции обратного вызова
-					this->_erase(static_cast <uint64_t> (fid));
+					this->_erase(static_cast <uint32_t> (id));
+			}
+		private:
+			/**
+			 * @brief Метод обмена функциями
+			 *
+			 * @param id1 идентификатор первой функции
+			 * @param id2 идентификатор второй функции
+			 */
+			void _swap(const uint32_t id1, const uint32_t id2) noexcept {
+				/**
+				 * Если идентификаторы функций не переданы
+				 */
+				if((id1 == 0) || (id2 == 0))
+					// Выходим из функции
+					return;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск первой функции
+					auto i = this->_callbacks.find(id1);
+					// Выполняем поиск второй функции
+					auto j = this->_callbacks.find(id2);
+					// Если функции обратных вызовов получены
+					if((i != _callbacks.end()) && (j != _callbacks.end()))
+						// Выполняем обмен функциями
+						std::swap(i->second, j->second);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
+				}
+			}
+			/**
+			 * @brief Метод обмена функциями
+			 *
+			 * @param id1     идентификатор первой функции
+			 * @param id2     идентификатор второй функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void _swap(const uint32_t id1, const uint32_t id2, Callback & storage) noexcept {
+				/**
+				 * Если идентификаторы функций не переданы
+				 */
+				if((id1 == 0) || (id2 == 0) || storage.empty())
+					// Выходим из функции
+					return;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока для текущего контейнера
+					const lock_guard lock1(this->_mtx);
+					// Выполняем блокировку потока для стороннего контейнера
+					const lock_guard lock2(storage._mtx);
+					// Выполняем поиск первой функции
+					auto i = this->_callbacks.find(id1);
+					// Выполняем поиск второй функции
+					auto j = storage._callbacks.find(id2);
+					// Если функции обратных вызовов получены
+					if((i != this->_callbacks.end()) && (j != storage._callbacks.end()))
+						// Выполняем обмен функциями
+						std::swap(i->second, j->second);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
+				}
 			}
 		public:
 			/**
@@ -393,11 +638,11 @@ namespace awh {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока основным мютексом
-					const lock_guard <std::mutex> lock1(this->_mtx);
-					// Выполняем блокировку потока сторонним мютексом
-					const lock_guard <std::mutex> lock2(storage._mtx);
-					// Выполняем обмен функций названий
+					// Выполняем блокировку потока для текущего контейнера
+					const lock_guard lock1(this->_mtx);
+					// Выполняем блокировку потока для стороннего контейнера
+					const lock_guard lock2(storage._mtx);
+					// Выполняем обмен функциями
 					this->_callbacks.swap(storage._callbacks);
 				/**
 				 * Если возникает ошибка
@@ -418,58 +663,6 @@ namespace awh {
 					#endif
 				}
 			}
-		private:
-			/**
-			 * _swap Метод обмена функциями
-			 * @param fid1 идентификатор первой функции
-			 * @param fid2 идентификатор второй функции
-			 */
-			void _swap(const uint64_t fid1, const uint64_t fid2) noexcept {
-				// Если идентификаторы переданы
-				if((fid1 > 0) && (fid2 > 0)){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск первой функции
-						auto i = this->_callbacks.find(fid1);
-						// Если функция получена
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							const lock_guard <std::mutex> lock(this->_mtx);
-							// Получаем первую функцию обратного вызова
-							auto callback = std::move(i->second);
-							// Выполняем поиск второй функции
-							auto j = this->_callbacks.find(fid2);
-							// Если функция получена
-							if(j != this->_callbacks.end()){
-								// Выполняем замену первой функции
-								i->second = std::move(j->second);
-								// Выполняем замену второй функции
-								j->second = std::move(callback);
-							}
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-			}
-		public:
 			/**
 			 * @brief Метод обмена функциями
 			 *
@@ -480,7 +673,7 @@ namespace awh {
 				// Если названия переданы
 				if((name1 != nullptr) && (name2 != nullptr))
 					// Выполняем обмен функциями обратного вызова
-					this->_swap(this->fid(name1), this->fid(name2));
+					this->_swap(this->id(name1), this->id(name2));
 			}
 			/**
 			 * @brief Метод обмена функциями
@@ -489,10 +682,8 @@ namespace awh {
 			 * @param name2 название второй функции
 			 */
 			void swap(const string & name1, const string & name2) noexcept {
-				// Если названия переданы
-				if(!name1.empty() && !name2.empty())
-					// Выполняем обмен функциями обратного вызова
-					this->_swap(this->fid(name1), this->fid(name2));
+				// Выполняем обмен функциями обратного вызова
+				this->_swap(this->id(name1), this->id(name2));
 			}
 			/**
 			 * @brief Шаблон метода обмена функциями
@@ -503,68 +694,15 @@ namespace awh {
 			/**
 			 * @brief Метод обмена функциями
 			 *
-			 * @param fid1 идентификатор первой функции
-			 * @param fid2 идентификатор второй функции
+			 * @param id1 идентификатор первой функции
+			 * @param id2 идентификатор второй функции
 			 */
-			void swap(const T fid1, const T fid2) noexcept {
+			void swap(const T id1, const T id2) noexcept {
 				// Если мы получили на вход число
-				if(is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>)
+				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем обмен функциями обратного вызова
-					this->_swap(static_cast <uint64_t> (fid1), static_cast <uint64_t> (fid2));
+					this->_swap(static_cast <uint32_t> (id1), static_cast <uint32_t> (id2));
 			}
-		private:
-			/**
-			 * _swap Метод обмена функциями
-			 * @param fid1    идентификатор первой функции
-			 * @param fid2    идентификатор второй функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 */
-			void _swap(const uint64_t fid1, const uint64_t fid2, Callback & storage) noexcept {
-				// Если идентификаторы переданы
-				if((fid1 > 0) && (fid2 > 0) && !storage.empty()){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск первой функции
-						auto i = this->_callbacks.find(fid1);
-						// Если функция получена
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							const lock_guard <std::mutex> lock(this->_mtx);
-							// Получаем первую функцию обратного вызова
-							auto callback = std::move(i->second);
-							// Выполняем поиск второй функции
-							auto j = storage._callbacks.find(fid2);
-							// Если функция получена
-							if(j != storage._callbacks.end()){
-								// Выполняем замену первой функции
-								i->second = std::move(j->second);
-								// Выполняем замену второй функции
-								j->second = std::move(callback);
-							}
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-			}
-		public:
 			/**
 			 * @brief Метод обмена функциями
 			 *
@@ -576,7 +714,7 @@ namespace awh {
 				// Если названия переданы
 				if((name1 != nullptr) && (name2 != nullptr) && !storage.empty())
 					// Выполняем обмен функциями обратного вызова
-					this->_swap(this->fid(name1), this->fid(name2), storage);
+					this->_swap(this->id(name1), this->id(name2), storage);
 			}
 			/**
 			 * @brief Метод обмена функциями
@@ -586,10 +724,8 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
 			void swap(const string & name1, const string & name2, Callback & storage) noexcept {
-				// Если названия переданы
-				if(!name1.empty() && !name2.empty() && !storage.empty())
-					// Выполняем обмен функциями обратного вызова
-					this->_swap(this->fid(name1), this->fid(name2), storage);
+				// Выполняем обмен функциями обратного вызова
+				this->_swap(this->id(name1), this->id(name2), storage);
 			}
 			/**
 			 * @brief Шаблон метода обмена функциями
@@ -600,365 +736,301 @@ namespace awh {
 			/**
 			 * @brief Метод обмена функциями
 			 *
-			 * @param fid1    идентификатор первой функции
-			 * @param fid2    идентификатор второй функции
+			 * @param id1     идентификатор первой функции
+			 * @param id2     идентификатор второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
-			void swap(const T fid1, const T fid2, Callback & storage) noexcept {
+			void swap(const T id1, const T id2, Callback & storage) noexcept {
 				// Если мы получили на вход число
-				if(!storage.empty() && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
+				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем обмен функциями обратного вызова
-					this->_swap(static_cast <uint64_t> (fid1), static_cast <uint64_t> (fid2), storage);
+					this->_swap(static_cast <uint32_t> (id1), static_cast <uint32_t> (id2), storage);
 			}
 		private:
 			/**
-			 * _set Метод установки функции из одного хранилища в текущее
-			 * @param fid     идентификатор копируемой функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto _set(const uint64_t fid, const Callback & storage) noexcept -> uint64_t {
-				// Если указанная функция существует
-				if(!storage._callbacks.empty() && storage.is(fid)){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск указанной функции в переданном хранилище
-						auto i = storage._callbacks.find(fid);
-						// Если функция в хранилище получена
-						if(i != storage._callbacks.end()){
-							// Выполняем поиск существующей функции обратного вызова
-							auto j = this->_callbacks.find(fid);
-							// Если функция такая уже существует
-							if(j != this->_callbacks.end()){
-								// Выполняем блокировку потока
-								this->_mtx.lock();
-								// Устанавливаем новую функцию обратного вызова
-								j->second = i->second;
-								// Выполняем блокировку потока
-								this->_mtx.unlock();
-								// Если функция обратного вызова установлена
-								if(this->_callback != nullptr)
-									// Выполняем функцию обратного вызова
-									std::apply(this->_callback, std::make_tuple(event_t::SET, fid, j->second));
-								// Выводим идентификатор обратной функции
-								return i->first;
-							// Если функция ещё не существует
-							} else {
-								// Выполняем блокировку потока
-								this->_mtx.lock();
-								// Создаём новую функцию
-								auto ret = this->_callbacks.emplace(fid, i->second);
-								// Выполняем блокировку потока
-								this->_mtx.unlock();
-								// Если функция обратного вызова установлена
-								if(this->_callback != nullptr)
-									// Выполняем функцию обратного вызова
-									std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
-								// Выводим идентификатор обратной функции
-								return ret.first->first;
-							}
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		public:
-			/**
 			 * @brief Метод установки функции из одного хранилища в текущее
 			 *
-			 * @param name    название первой функции
+			 * @param id      идентификатор копируемой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const char * name, const Callback & storage) noexcept -> uint64_t {
-				// Если название функции обратного вызова передано
-				if((name != nullptr) && !storage.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_set(this->fid(name), storage);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Метод установки функции из одного хранилища в текущее
-			 *
-			 * @param name    название первой функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto set(const string & name, const Callback & storage) noexcept -> uint64_t {
-				// Если название функции обратного вызова передано
-				if(!name.empty() && !storage.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_set(this->fid(name), storage);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода установки функции из одного хранилища в текущее
-			 *
-			 * @tparam T тип идентификатора функции
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод установки функции из одного хранилища в текущее
-			 *
-			 * @param fid     идентификатор копируемой функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto set(const T fid, const Callback & storage) noexcept -> uint64_t {
-				// Если мы получили на вход число
-				if(!storage.empty() && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
-					// Выполняем установку функции обратного вызова
-					return this->_set(static_cast <uint64_t> (fid), storage);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		private:
-			/**
-			 * _set Метод установки функции из одного хранилища в текущее
-			 * @param fid1    идентификатор копируемой функции
-			 * @param fid2    новый идентификатор полученной функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto _set(const uint64_t fid1, const uint64_t fid2, const Callback & storage) noexcept -> uint64_t {
-				// Если указанная функция существует
-				if(!storage._callbacks.empty() && storage.is(fid1)){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск указанной функции в переданном хранилище
-						auto i = storage._callbacks.find(fid1);
-						// Если функция в хранилище получена
-						if(i != storage._callbacks.end()){
-							// Выполняем поиск существующей функции обратного вызова
-							auto j = this->_callbacks.find(fid2);
-							// Если функция такая уже существует
-							if(j != this->_callbacks.end()){
-								// Выполняем блокировку потока
-								this->_mtx.lock();
-								// Устанавливаем новую функцию обратного вызова
-								j->second = i->second;
-								// Выполняем блокировку потока
-								this->_mtx.unlock();
-								// Если функция обратного вызова установлена
-								if(this->_callback != nullptr)
-									// Выполняем функцию обратного вызова
-									std::apply(this->_callback, std::make_tuple(event_t::SET, fid2, j->second));
-								// Выводим идентификатор обратной функции
-								return i->first;
-							// Если функция ещё не существует
-							} else {
-								// Выполняем блокировку потока
-								this->_mtx.lock();
-								// Создаём новую функцию
-								auto ret = this->_callbacks.emplace(fid2, i->second);
-								// Выполняем блокировку потока
-								this->_mtx.unlock();
-								// Если функция обратного вызова установлена
-								if(this->_callback != nullptr)
-									// Выполняем функцию обратного вызова
-									std::apply(this->_callback, std::make_tuple(event_t::SET, fid2, ret.first->second));
-								// Выводим идентификатор обратной функции
-								return ret.first->first;
-							}
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		public:
-			/**
-			 * @brief Метод установки функции из одного хранилища в текущее
-			 *
-			 * @param name1   название копируемой функции
-			 * @param name2   новое название полученной функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto set(const char * name1, const char * name2, Callback & storage) noexcept -> uint64_t {
-				// Если названия переданы
-				if((name1 != nullptr) && (name2 != nullptr) && !storage.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_set(this->fid(name1), this->fid(name2), storage);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Метод установки функции из одного хранилища в текущее
-			 *
-			 * @param name1   название копируемой функции
-			 * @param name2   новое название полученной функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto set(const string & name1, const string & name2, Callback & storage) noexcept -> uint64_t {
-				// Если названия переданы
-				if(!name1.empty() && !name2.empty() && !storage.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_set(this->fid(name1), this->fid(name2), storage);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода установки функции из одного хранилища в текущее
-			 *
-			 * @tparam T тип идентификатора функции
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод установки функции из одного хранилища в текущее
-			 *
-			 * @param fid1    идентификатор копируемой функции
-			 * @param fid2    новый идентификатор полученной функции
-			 * @param storage хранилище функций откуда нужно получить функцию
-			 * @return        идентификатор добавленной функции обратного вызова
-			 */
-			auto set(const T fid1, const T fid2, const Callback & storage) noexcept -> uint64_t {
-				// Если мы получили на вход число
-				if(!storage.empty() && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
-					// Выполняем установку функции обратного вызова
-					return this->_set(static_cast <uint64_t> (fid1), static_cast <uint64_t> (fid2), storage);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		private:
-			/**
-			 * _set Метод установки функции обратного вызова в чистом виде
-			 * @param fid      идентификатор устанавливаемой функции
-			 * @param callback устанавливаемая функция обратного вызова
-			 * @return         идентификатор добавленной функции обратного вызова
-			 */
-			auto _set(const uint64_t fid, const fn_t & callback) noexcept -> uint64_t {
-				// Если параметры функции обратного вызова переданы
-				if((fid > 0) && (callback != nullptr)){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция найдена в списке
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем замену функции обратного вызова
-							i->second = callback;
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
+			uint32_t _set(const uint32_t id, const Callback & storage) noexcept {
+				/**
+				 * Если идентификатор функции не передан или внешний контейнер пустой
+				 */
+				if((id == 0) || storage.empty())
+					// Выходим из функции
+					return 0;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск функции обратного вызова
+					auto i = storage._callbacks.find(id);
+					// Если функция в внешнем хранилище найдена
+					if(i != storage._callbacks.end()){
+						// Выполняем поиск существующей функции обратного вызова
+						auto j = this->_callbacks.find(id);
+						// Если функция такая уже существует
+						if(j != this->_callbacks.end()){
+							// Устанавливаем новую функцию обратного вызова
+							j->second = i->second;
+							// Если системная функция обратного вызова установлена
 							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
-							// Выводим идентификатор обратной функции
-							return i->first;
-						// Если функция не найдена
+								// Выполняем системную функцию обратного вызова
+								this->_callback(event_t::SET, id, j->second);
+						// Если функция ещё не существует
 						} else {
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, callback);
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
+							// Создаём новую функцию
+							auto ret = this->_callbacks.emplace(id, i->second);
+							// Если системная функция обратного вызова установлена
 							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
-							// Выводим идентификатор обратной функции
-							return ret.first->first;
+								// Выполняем системную функцию обратного вызова
+								this->_callback(event_t::SET, id, ret.first->second);
 						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
+						// Выводим идентификатор обратной функции
+						return id;
 					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
-				// Выводим результат по умолчанию
+				// Выходим из функции
+				return 0;
+			}
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param id1     идентификатор копируемой функции
+			 * @param id2     новый идентификатор полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			uint32_t _set(const uint32_t id1, const uint32_t id2, const Callback & storage) noexcept {
+				/**
+				 * Если идентификаторы функций не передан или внешний контейнер пустой
+				 */
+				if((id1 == 0) || (id2 == 0) || storage.empty())
+					// Выходим из функции
+					return 0;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск указанной функции в переданном хранилище
+					auto i = storage._callbacks.find(id1);
+					// Если функция в хранилище получена
+					if(i != storage._callbacks.end()){
+						// Выполняем поиск существующей функции обратного вызова
+						auto j = this->_callbacks.find(id2);
+						// Если функция такая уже существует
+						if(j != this->_callbacks.end()){
+							// Устанавливаем новую функцию обратного вызова
+							j->second = i->second;
+							// Если системная функция обратного вызова установлена
+							if(this->_callback != nullptr)
+								// Выполняем системную функцию обратного вызова
+								this->_callback(event_t::SET, id2, j->second);
+						// Если функция ещё не существует
+						} else {
+							// Создаём новую функцию
+							auto ret = this->_callbacks.emplace(id2, i->second);
+							// Если системная функция обратного вызова установлена
+							if(this->_callback != nullptr)
+								// Выполняем системную функцию обратного вызова
+								this->_callback(event_t::SET, id2, ret.first->second);
+						}
+						// Выводим идентификатор обратной функции
+						return id2;
+					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
+				}
+				// Выходим из функции
+				return 0;
+			}
+			/**
+			 * @brief Метод установки функции обратного вызова в чистом виде
+			 *
+			 * @param id      идентификатор устанавливаемой функции
+			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
+			 */
+			uint32_t _set(const uint32_t id, const fn_t & callback) noexcept {
+				/**
+				 * Если идентификатор функции не передан или внешний контейнер пустой
+				 */
+				if((id == 0) || (callback == nullptr))
+					// Выходим из функции
+					return 0;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск функции обратного вызова
+					auto i = this->_callbacks.find(id);
+					// Если функция найдена в списке
+					if(i != this->_callbacks.end()){
+						// Выполняем замену функции обратного вызова
+						i->second = callback;
+						// Если системная функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем системную функцию обратного вызова
+							this->_callback(event_t::SET, id, i->second);
+					// Если функция не найдена
+					} else {
+						// Выполняем установку функции обратного вызова
+						auto ret = this->_callbacks.emplace(id, callback);
+						// Если системная функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем системную функцию обратного вызова
+							this->_callback(event_t::SET, id, ret.first->second);
+					}
+					// Выводим идентификатор обратной функции
+					return id;
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
+				}
+				// Выходим из функции
 				return 0;
 			}
 		public:
 			/**
-			 * @brief Метод установки функции обратного вызова в чистом виде
+			 * @brief Метод установки функции из одного хранилища в текущее
 			 *
-			 * @param name     название устанавливаемой функции
-			 * @param callback устанавливаемая функция обратного вызова
-			 * @return         идентификатор добавленной функции обратного вызова
+			 * @param name    название первой функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const char * name, const fn_t & callback) noexcept -> uint64_t {
-				// Если название функции обратного вызова передано
-				if((name != nullptr) && (callback != nullptr))
+			auto set(const char * name, const Callback & storage) noexcept -> uint32_t {
+				// Выполняем установку функции обратного вызова
+				return ((name != nullptr) ? this->_set(this->id(name), storage) : 0);
+			}
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param name    название первой функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const string & name, const Callback & storage) noexcept -> uint32_t {
+				// Выполняем установку функции обратного вызова
+				return (!name.empty() ? this->_set(this->id(name), storage) : 0);
+			}
+			/**
+			 * @brief Шаблон метода установки функции из одного хранилища в текущее
+			 *
+			 * @tparam T тип идентификатора функции
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param id      идентификатор копируемой функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const T id, const Callback & storage) noexcept -> uint32_t {
+				// Если мы получили на вход число
+				if constexpr (is_arithmetic_v <T> || is_enum_v<T>)
 					// Выполняем установку функции обратного вызова
-					return this->_set(this->fid(name), callback);
+					return this->_set(static_cast <uint32_t> (id), storage);
+				// Выводим результат по умолчанию
+				return 0;
+			}
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param name1   название копируемой функции
+			 * @param name2   новое название полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const char * name1, const char * name2, Callback & storage) noexcept -> uint32_t {
+				// Выполняем установку функции обратного вызова
+				return (((name1 != nullptr) && (name2 != nullptr)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+			}
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param name1   название копируемой функции
+			 * @param name2   новое название полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const string & name1, const string & name2, Callback & storage) noexcept -> uint32_t {
+				// Выполняем установку функции обратного вызова
+				return ((!name1.empty() && !name2.empty()) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+			}
+			/**
+			 * @brief Шаблон метода установки функции из одного хранилища в текущее
+			 *
+			 * @tparam T тип идентификатора функции
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param id1     идентификатор копируемой функции
+			 * @param id2     новый идентификатор полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const T id1, const T id2, const Callback & storage) noexcept -> uint32_t {
+				// Если мы получили на вход число
+				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+					// Выполняем установку функции обратного вызова
+					return this->_set(static_cast <uint32_t> (id1), static_cast <uint32_t> (id2), storage);
 				// Выводим результат по умолчанию
 				return 0;
 			}
@@ -969,13 +1041,20 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const string & name, const fn_t & callback) noexcept -> uint64_t {
-				// Если название функции обратного вызова передано
-				if(!name.empty() && (callback != nullptr))
-					// Выполняем установку функции обратного вызова
-					return this->_set(this->fid(name), callback);
-				// Выводим результат по умолчанию
-				return 0;
+			auto set(const char * name, const fn_t & callback) noexcept -> uint32_t {
+				// Выполняем установку функции обратного вызова
+				return ((name != nullptr) ? this->_set(this->id(name), callback) : 0);
+			}
+			/**
+			 * @brief Метод установки функции обратного вызова в чистом виде
+			 *
+			 * @param name     название устанавливаемой функции
+			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const string & name, const fn_t & callback) noexcept -> uint32_t {
+				// Выполняем установку функции обратного вызова
+				return (!name.empty() ? this->_set(this->id(name), callback) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции обратного вызова в чистом виде
@@ -986,871 +1065,479 @@ namespace awh {
 			/**
 			 * @brief Метод установки функции обратного вызова в чистом виде
 			 *
-			 * @param fid      идентификатор устанавливаемой функции
+			 * @param id       идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const T fid, const fn_t & callback) noexcept -> uint64_t {
+			auto set(const T id, const fn_t & callback) noexcept -> uint32_t {
 				// Если мы получили на вход число
-				if((callback != nullptr) && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
+				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем установку функции обратного вызова
-					return this->_set(static_cast <uint64_t> (fid), callback);
+					return this->_set(static_cast <uint32_t> (id), callback);
 				// Выводим результат по умолчанию
 				return 0;
 			}
 		private:
 			/**
-			 * _get Метод получения функции обратного вызова
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    функция обратного вызова если существует
-			 */
-			auto _get(const uint64_t fid) const noexcept -> const fn_t & {
-				// Если идентификатор функции передан
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция найдена в списке
-						if(i != this->_callbacks.end())
-							// Выводим найденную функцию обратного вызова
-							return i->second;
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return nullptr;
-			}
-		public:
-			/**
-			 * @brief Метод извлечения функции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @return     запрашиваемая функция обратного вызова
-			 */
-			auto get(const char * name) const noexcept -> const fn_t & {
-				// Выполняем получение функции обратного вызова
-				return this->_get(this->fid(name));
-			}
-			/**
-			 * @brief Метод извлечения функции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @return     запрашиваемая функция обратного вызова
-			 */
-			auto get(const string & name) const noexcept -> const fn_t & {
-				// Выполняем получение функции обратного вызова
-				return this->_get(this->fid(name));
-			}
-			/**
-			 * @brief Метод извлечения функции обратного вызова
-			 *
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    запрашиваемая функция обратного вызова
-			 */
-			auto get(const uint64_t fid) const noexcept -> const fn_t & {
-				// Выполняем получение функции обратного вызова
-				return this->_get(fid);
-			}
-			/**
-			 * @brief Шаблон метода извлечения функции обратного вызова
-			 *
-			 * @tparam T сигнатура функции
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод извлечения функции обратного вызова
-			 *
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    запрашиваемая функция обратного вызова
-			 */
-			auto get(const T fid) const noexcept -> const fn_t & {
-				// Выполняем получение функции обратного вызова
-				return this->_get(static_cast <uint64_t> (fid));
-			}
-		private:
-			/**
 			 * @brief Шаблон метода получения функции обратного вызова
 			 *
-			 * @tparam T сигнатура функции
-			 */
-			template <typename T>
-			/**
-			 * _get Метод получения функции обратного вызова
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    запрашиваемая функция обратного вызова
-			 */
-			auto _get(const uint64_t fid) const noexcept -> function <T> {
-				// Если идентификатор функции передан
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция обратного вызова найдена
-						if(i != this->_callbacks.end())
-							// Получаем функцию обратного вызова в нужном нам виде
-							return static_cast <const BasicFunction <T> &> (* i->second).fn;
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return nullptr;
-			}
-		public:
-			/**
-			 * @brief Шаблон метода получения функции обратного вызова
-			 *
-			 * @tparam T сигнатура функции
+			 * @tparam T тип сигнатуры функции
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получения функции обратного вызова
+			 *
+			 * @param id идентификатор функции обратного вызова
+			 * @return   функция обратного вызова если существует
+			 */
+			auto _get(const uint32_t id) const noexcept -> function <T> {
+				// Если идентификатор функции не передан
+				if(id == 0)
+					// Выводим пустое значение
+					return {};
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск фиункции обратного вызова
+					auto i = this->_callbacks.find(id);
+					// Если функция обратного вызова найдена
+					if(i != this->_callbacks.end()){
+						// Выполняем извлечение функции обратного вызова
+						auto * callback = dynamic_cast <const BasicFunction <T> *>(i->second.get());
+						// Если функция обратного вызова не содержит данных
+						if((callback == nullptr) || (callback->fn == nullptr))
+							// Выводим пустое значение
+							return {};
+						// Выводим запрашиваемую функции обратного вызова
+						return callback->fn;
+					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
+				}
+				// Выводим пустое значение
+				return {};
+			}
+		public:
+			/**
+			 * @brief Шаблон метода извлечения функции обратного вызова
+			 *
+			 * @tparam T тип сигнатуры функции
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод извлечения функции обратного вызова
 			 *
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
 			auto get(const char * name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
-				return this->_get <T> (this->fid(name));
+				return ((name != nullptr) ? this->_get <T> (this->id(name)) : function <T> {});
 			}
 			/**
-			 * @brief Шаблон метода получения функции обратного вызова
+			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
-			 * @tparam T сигнатура функции
+			 * @tparam T тип сигнатуры функции
 			 */
 			template <typename T>
 			/**
-			 * @brief Метод получения функции обратного вызова
+			 * @brief Метод извлечения функции обратного вызова
 			 *
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
 			auto get(const string & name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
-				return this->_get <T> (this->fid(name));
+				return this->_get <T> (this->id(name));
 			}
 			/**
-			 * @brief Шаблон метода получения функции обратного вызова
+			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
-			 * @tparam T сигнатура функции
+			 * @tparam T тип сигнатуры функции
 			 */
 			template <typename T>
 			/**
-			 * @brief Метод получения функции обратного вызова
+			 * @brief Метод извлечения функции обратного вызова
 			 *
-			 * @param fid идентификатор функции обратного вызова
+			 * @param id идентификатор функции обратного вызова
 			 * @return    запрашиваемая функция обратного вызова
 			 */
-			auto get(const uint64_t fid) const noexcept -> function <T> {
+			auto get(const uint32_t id) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
-				return this->_get <T> (fid);
+				return this->_get <T> (id);
 			}
 			/**
-			 * @brief Шаблон метода получения функции обратного вызова
+			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
 			 * @tparam A тип идентификатора функции
+			 * @tparam B тип сигнатуры функции
+			 */
+			template <typename A, typename B>
+			/**
+			 * @brief Метод извлечения функции обратного вызова
+			 *
+			 * @param id идентификатор функции обратного вызова
+			 * @return    запрашиваемая функция обратного вызова
+			 */
+			auto get(const A id) const noexcept -> function <B> {
+				// Если мы получили на вход число
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+					// Выполняем получение функции обратного вызова
+					return this->_get <B> (static_cast <uint32_t>(id));
+				// Выводим результат по умолчанию
+				return {};
+			}
+		private:
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T тип функции обратного вызова
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 *
+			 * @param id идентификатор функкции обратного вызова
+			 * @param fn функция обратного вызова для добавления
+			 * @return   идентификатор добавленной функции обратного вызова
+			 */
+			uint32_t _on(const uint32_t id, function <T> fn) noexcept {
+				// Если идентификатор функции или сама функция обратного вызова не переданы
+				if((id == 0) || (fn == nullptr))
+					// Выходим из функции
+					return 0;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск существующей функции обратного вызова
+					auto i = this->_callbacks.find(id);
+					// Если функция обратного вызова найдена
+					if(i != this->_callbacks.end()){
+						// Выполняем замену функции обратного вызова
+						i->second = std::make_shared <BasicFunction <T>> (std::move(fn));
+						// Если системная функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем системную функцию обратного вызова
+							this->_callback(event_t::SET, id, i->second);
+					// Если функция обратного вызова не найдена
+					} else {
+						// Выполняем установку новой функции обратного вызова
+						auto ret = this->_callbacks.emplace(id, std::make_shared <BasicFunction <T>> (std::move(fn)));
+						// Если системная функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем системную функцию обратного вызова
+							this->_callback(event_t::SET, id, ret.first->second);
+					}
+					// Выводим идентификатор обратной функции
+					return id;
+				/**
+				 * Если возникает ошибка выделения памяти
+				 */
+				} catch(const bad_alloc &) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, "Memory allocation error");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+					#endif
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
+				}
+				// Выходим из функции
+				return 0;
+			}
+		public:
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Func      функция обратного вызова для установки
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename Func, typename... Args>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 * 
+			 * @param name     название функции обратного вызова
+			 * @param callback функция обратного вызова для подключения
+			 * @param args     аргументы фукнции обратного вызова
+			 * @return         идентификатор подключённо функции обратного вызова
+			 */
+			uint32_t on(const char * name, Func && callback, Args &&... args) noexcept {
+				// Если название функции обратного вызова не передано
+				if(name == nullptr)
+					// Выходим из функции
+					return 0;
+				// Формируем функцию обратного вызова для подключения
+				function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+				// Выполняем подключение функции обратного вызова
+				return this->_on <Signature> (this->id(name), std::move(fn));
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Func      функция обратного вызова для установки
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename Func, typename... Args>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 * 
+			 * @param name     название функции обратного вызова
+			 * @param callback функция обратного вызова для подключения
+			 * @param args     аргументы фукнции обратного вызова
+			 * @return         идентификатор подключённо функции обратного вызова
+			 */
+			uint32_t on(const string & name, Func && callback, Args &&... args) noexcept {
+				// Выполняем подключение функции обратного вызова
+				return (!name.empty() ? this->on <Signature> (name.c_str(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Func      функция обратного вызова для установки
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename Func, typename... Args>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 * 
+			 * @param id       идентификатор функции обратного вызова
+			 * @param callback функция обратного вызова для подключения
+			 * @param args     аргументы фукнции обратного вызова
+			 * @return         идентификатор подключённо функции обратного вызова
+			 */
+			uint32_t on(const uint32_t id, Func && callback, Args &&... args) noexcept {
+				// Если идентификатор функции обратного вызова не передан
+				if(id == 0)
+					// Выходим из функции
+					return 0;
+				// Формируем функцию обратного вызова для подключения
+				function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+				// Выполняем подключение функции обратного вызова
+				return this->_on <Signature> (id, std::move(fn));
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A         тип идентификатора функции обратного вызова
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Func      функция обратного вызова для установки
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename A, typename Signature, typename Func, typename... Args>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 * 
+			 * @param id       идентификатор функции обратного вызова
+			 * @param callback функция обратного вызова для подключения
+			 * @param args     аргументы фукнции обратного вызова
+			 * @return         идентификатор подключённо функции обратного вызова
+			 */
+			uint32_t on(const A id, Func && callback, Args &&... args) noexcept {
+				// Если мы получили на вход число
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+					// Выполняем подключение функции обратного вызова
+					return this->on <Signature> (static_cast <uint32_t> (id), std::forward <Func> (callback), std::forward <Args> (args)...);
+				// Выводим результат по умолчанию
+				return 0;
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T тип функции обратного вызова
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 *
+			 * @param name название функкции обратного вызова
+			 * @param fn   функция обратного вызова для добавления
+			 * @return     идентификатор добавленной функции обратного вызова
+			 */
+			uint32_t on(const char * name, function <T> fn) noexcept {
+				// Выполняем подключение функции обратного вызова
+				return ((name != nullptr) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T тип функции обратного вызова
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 *
+			 * @param name название функкции обратного вызова
+			 * @param fn   функция обратного вызова для добавления
+			 * @return     идентификатор добавленной функции обратного вызова
+			 */
+			uint32_t on(const string & name, function <T> fn) noexcept {
+				// Выполняем подключение функции обратного вызова
+				return (!name.empty() ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T тип функции обратного вызова
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 *
+			 * @param id идентификатор функкции обратного вызова
+			 * @param fn функция обратного вызова для добавления
+			 * @return   идентификатор добавленной функции обратного вызова
+			 */
+			uint32_t on(const uint32_t id, function <T> fn) noexcept {
+				// Выполняем подключение функции обратного вызова
+				return this->_on <T> (id, std::move(fn));
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A тип идентификатора функции обратного вызова
 			 * @tparam B тип функции обратного вызова
 			 */
 			template <typename A, typename B>
 			/**
-			 * @brief Метод получения функции обратного вызова
-			 *
-			 * @param fid идентификатор функции обратного вызова
-			 * @return    запрашиваемая функция обратного вызова
-			 */
-			auto get(const A fid) const noexcept -> function <B> {
-				// Выполняем получение функции обратного вызова
-				return this->_get <B> (static_cast <uint64_t> (fid));
-			}
-		private:
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T тип функции обратного вызова
-			 */
-			template <typename T>
-			/**
 			 * @brief Метод подключения финкции обратного вызова
 			 *
-			 * @param fid идентификатор функкции обратного вызова
-			 * @param fn  функция обратного вызова для добавления
-			 * @return    идентификатор добавленной функции обратного вызова
+			 * @param id идентификатор функкции обратного вызова
+			 * @param fn функция обратного вызова для добавления
+			 * @return   идентификатор добавленной функции обратного вызова
 			 */
-			auto _on(const uint64_t fid, function <T> fn) noexcept -> uint64_t {
-				// Если идентификатор функции передан
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция найдена в списке
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем замену функции обратного вызова
-							i->second = std::unique_ptr <Function> (new BasicFunction <T> (fn));
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
-							// Выводим идентификатор обратной функции
-							return i->first;
-						// Если функция не найдена
-						} else {
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, std::unique_ptr <Function> (new BasicFunction <T> (fn)));
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
-							// Выводим идентификатор обратной функции
-							return ret.first->first;
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_alloc &) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		public:
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T тип функции обратного вызова
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const char * name, function <T> fn) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(name != nullptr)
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (this->fid(name), fn);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T тип функции обратного вызова
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const string & name, function <T> fn) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(!name.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (this->fid(name), fn);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T тип функции обратного вызова
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid идентификатор функкции обратного вызова
-			 * @param fn  функция обратного вызова для добавления
-			 * @return    идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const uint64_t fid, function <T> fn) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(fid > 0)
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (fid, fn);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam A тип идентификатора функции
-			 * @tparam B тип функции обратного вызова
-			 */
-			template <typename A, typename B>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid идентификатор функкции обратного вызова
-			 * @param fn  функция обратного вызова для добавления
-			 * @return    идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const A fid, function <B> fn) noexcept -> uint64_t {
+			uint32_t on(const A id, function <B> fn) noexcept {
 				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
-					// Выполняем установку функции обратного вызова
-					return this->_on <B> (static_cast <uint64_t> (fid), fn);
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+					// Выполняем подключение функции обратного вызова
+					return this->_on <B> (static_cast <uint32_t> (id), std::move(fn));
 				// Выводим результат по умолчанию
 				return 0;
 			}
-		private:
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto _on(const uint64_t fid, function <T> fn, Args... args) noexcept -> uint64_t {
-				// Если идентификатор функции передан
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция найдена в списке
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем замену функции обратного вызова
-							i->second = std::unique_ptr <Function> (new BasicFunction <T> (std::bind(fn, args...)));
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
-							// Выводим идентификатор обратной функции
-							return i->first;
-						// Если функция не найдена
-						} else {
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, std::unique_ptr <Function> (new BasicFunction <T> (std::bind(fn, args...))));
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
-							// Выводим идентификатор обратной функции
-							return ret.first->first;
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_alloc &) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		public:
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const char * name, function <T> fn, Args... args) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(name != nullptr)
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (this->fid(name), fn, args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const string & name, function <T> fn, Args... args) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(!name.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (this->fid(name), fn, args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const uint64_t fid, function <T> fn, Args... args) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(fid > 0)
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (fid, fn, args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam A    тип идентификатора функции
-			 * @tparam B    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename A, typename B, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param fn   функция обратного вызова для добавления
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const A fid, function <B> fn, Args... args) noexcept -> uint64_t {
-				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
-					// Выполняем установку функции обратного вызова
-					return this->_on <B> (static_cast <uint64_t> (fid), fn, args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		private:
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto _on(const uint64_t fid, Args... args) noexcept -> uint64_t {
-				// Если идентификатор функции передан
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция найдена в списке
-						if(i != this->_callbacks.end()){
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем замену функции обратного вызова
-							i->second = std::unique_ptr <Function> (new BasicFunction <T> (std::bind(args...)));
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
-							// Выводим идентификатор обратной функции
-							return i->first;
-						// Если функция не найдена
-						} else {
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, std::unique_ptr <Function> (new BasicFunction <T> (std::bind(args...))));
-							// Выполняем блокировку потока
-							this->_mtx.unlock();
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
-							// Выводим идентификатор обратной функции
-							return ret.first->first;
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_alloc &) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		public:
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param name  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const char * name, Args... args) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(name != nullptr)
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (this->fid(name), args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param name  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const string & name, Args... args) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(!name.empty())
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (this->fid(name), args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
-				// Если мы получили название функции обратного вызова
-				if(fid > 0)
-					// Выполняем установку функции обратного вызова
-					return this->_on <T> (fid, args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
-			 *
-			 * @tparam A    тип идентификатора функции
-			 * @tparam B    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename A, typename B, class... Args>
-			/**
-			 * @brief Метод подключения финкции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto on(const A fid, Args... args) noexcept -> uint64_t {
-				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
-					// Выполняем установку функции обратного вызова
-					return this->_on <B> (static_cast <uint64_t> (fid), args...);
-				// Выводим результат по умолчанию
-				return 0;
-			}
-		public:
 			/**
 			 * @brief Метод установки функции обратного события на получения событий модуля
 			 *
 			 * @param callback функция обратного вызова для установки
 			 */
-			void on(function <void (const event_t, const uint64_t, const fn_t &)> callback) noexcept {
+			void on(function <void (const event_t, const uint32_t, const fn_t &)> callback) noexcept {
+				// Выполняем блокировку потока
+				const lock_guard lock(this->_mtx);
+				// Выполняем установку функции обратного вызова
+				this->_callback = std::move(callback);
+			}
+		private:
+			/**
+			 * @brief Шаблон метода выполнения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename... Args>
+			/**
+			 * @brief Метод выполнения функции обратного вызова
+			 * 
+			 * @param id   идентификатор функции обратного вызова
+			 * @param args аргументы функции обратного вызова
+			 * @return     результат выполнения функции обратного вызова
+			 */
+			auto _call(const uint32_t id, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+				// Формируем тип данных результата выполнения функции обратного вызова
+				using Result = invoke_result_t <function <Signature>, Args...>;
+				// Если идентификатор функции обратного вызова не передан
+				if(id == 0){
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (is_void_v <Result>)
+						// Завершаем работу функции обратного вызова
+						return;
+					// Выводим пустое значение функции обратного вызова
+					else return Result{};
+				}
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
-					// Выполняем установку функции обратного вызова
-					this->_callback = callback;
+					const lock_guard lock(this->_mtx);
+					// Выполняем поиск функции обратного вызова
+					auto i = this->_callbacks.find(id);
+					// Если функция обратного вызова не найдена
+					if(i == this->_callbacks.end()){
+						// Если результат функции обратного вызова не возвращается
+						if constexpr (is_void_v <Result>)
+							// Завершаем работу функции обратного вызова
+							return;
+						// Выводим пустое значение функции обратного вызова
+						else return Result{};
+					}
+					// Выполняем извлечение функции обратного вызова
+					auto * callback = dynamic_cast <const BasicFunction <Signature> *> (i->second.get());
+					// Если функция обратного вызова не содержит данных
+					if((callback == nullptr) || (callback->fn == nullptr)){
+						// Если результат функции обратного вызова не возвращается
+						if constexpr (is_void_v <Result>)
+							// Завершаем работу функции обратного вызова
+							return;
+						// Выводим пустое значение функции обратного вызова
+						else return Result{};
+					}
+					// Если системная функция обратного вызова установлена
+					if(this->_callback != nullptr)
+						// Выполняем системную функцию обратного вызова
+						this->_callback(event_t::RUN, id, i->second);
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (is_void_v <Result>)
+						// Выполняем функцию обратного вызова
+						callback->fn(std::forward <Args> (args)...);
+					// Выполняем функцию обратного вызова с возвратом результата
+					else return callback->fn(std::forward <Args> (args)...);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -1860,7 +1547,7 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					* Если режим отладки не включён
 					*/
@@ -1868,109 +1555,182 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
+					// Выполняем блокировку потока
+					const lock_guard lock(this->_mtx);
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (is_void_v <Result>){
+						// Выполняем извлечение функции обратного вызова
+						auto * callback = dynamic_cast <const BasicFunction <void ()> *> (this->_callbacks.find(id)->second.get());
+						// Выполняем функцию обратного вызова
+						callback->fn();
+					// Если требуется вывод результата работы функции
+					} else {
+						// Выполняем извлечение функции обратного вызова
+						auto * callback = dynamic_cast <const BasicFunction <Result ()> *> (this->_callbacks.find(id)->second.get());
+						// Выполняем функцию обратного вызова с возвратом результата
+						return callback->fn();
+					}
 				}
 			}
 		public:
 			/**
-			 * @brief Метод вызова всех функций обратного вызова
-			 *
+			 * @brief Метод выполнения всех функций обратного вызова
+			 * 
 			 */
 			void call() const noexcept {
-				// Если функции обратного вызова существуют
-				if(!this->_callbacks.empty()){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем переход по всему списку обратных функций
-						for(auto & callback : this->_callbacks){
-							// Если функция обратного вызова установлена
+				// Выполняем блокировку потока
+				const lock_guard lock(this->_mtx);
+				// Выполняем перебор всех функций обратного вызова в контейнере
+				for(const auto & [id, cb] : this->_callbacks){
+					// Если мы извлекли функцию обратного вызова
+					if(auto * callback = dynamic_cast <const BasicFunction <void ()> *>(cb.get())){
+						// Если функция обратного вызова установлена
+						if(callback->fn != nullptr){
+							// Если системная функция обратного вызова установлена
 							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::RUN, callback.first, callback.second));
+								// Выполняем системную функцию обратного вызова
+								this->_callback(event_t::RUN, id, cb);
 							// Выполняем функцию обратного вызова
-							std::apply(static_cast <const BasicFunction <void (void)> &> (* callback.second.get()).fn, std::make_tuple());
+							callback->fn();
 						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
 					}
 				}
 			}
-		private:
+		public:
 			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
+			 * @brief Шаблон метода выполнения финкции обратного вызова
 			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Args      аргументы функции обратного вызова
 			 */
-			template <typename T, class... Args>
+			template <typename Signature, typename... Args>
 			/**
-			 * _call Метод выполнения функции обратного вызова
-			 * @param callback функция обратного вызова
-			 * @param fid      идентификатор функкции обратного вызова
-			 * @param args     аргументы функции обратного вызова
-			 * @return         результат выполнения функции
+			 * @brief Метод выполнения функции обратного вызова
+			 * 
+			 * @param name название функции обратного вызова
+			 * @param args аргументы функции обратного вызова
+			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto _call(const fn_t & callback, const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
+			auto call(const char * name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+				// Формируем тип данных результата выполнения функции обратного вызова
+				using Result = invoke_result_t <function <Signature>, Args...>;
+				// Если название функции обратного вызова не передано
+				if(name == nullptr){
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (is_void_v <Result>)
+						// Завершаем работу функции обратного вызова
+						return;
+					// Выводим пустое значение функции обратного вызова
+					else return Result{};
+				}
+				// Выполняем функцию обратного вызова
+				return this->_call <Signature> (this->id(name), std::forward <Args> (args)...);
+			}
+			/**
+			 * @brief Шаблон метода выполнения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename... Args>
+			/**
+			 * @brief Метод выполнения функции обратного вызова
+			 * 
+			 * @param name название функции обратного вызова
+			 * @param args аргументы функции обратного вызова
+			 * @return     результат выполнения функции обратного вызова
+			 */
+			auto call(const string & name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+				// Выполняем функцию обратного вызова
+				return this->call <Signature> (name.c_str(), std::forward <Args> (args)...);
+			}
+			/**
+			 * @brief Шаблон метода выполнения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename... Args>
+			/**
+			 * @brief Метод выполнения функции обратного вызова
+			 * 
+			 * @param id   идентификатор функции обратного вызова
+			 * @param args аргументы функции обратного вызова
+			 * @return     результат выполнения функции обратного вызова
+			 */
+			auto call(const uint32_t id, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+				// Выполняем функцию обратного вызова
+				return this->_call <Signature> (id, std::forward <Args> (args)...);
+			}
+			/**
+			 * @brief Шаблон метода выполнения финкции обратного вызова
+			 *
+			 * @tparam A         тип идентификатора функции
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename A, typename Signature, typename... Args>
+			/**
+			 * @brief Метод выполнения функции обратного вызова
+			 * 
+			 * @param id   идентификатор функции обратного вызова
+			 * @param args аргументы функции обратного вызова
+			 * @return     результат выполнения функции обратного вызова
+			 */
+			auto call(const A id, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+				// Если мы получили на вход число
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+					// Выполняем функцию обратного вызова
+					return this->_call <Signature> (static_cast <uint32_t> (id), std::forward <Args> (args)...);
+				// Если на вход мы получили какое-то другое значение
+				else {
+					// Формируем тип данных результата выполнения функции обратного вызова
+					using Result = invoke_result_t <function <Signature>, Args...>;
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (is_void_v <Result>)
+						// Завершаем работу функции обратного вызова
+						return;
+					// Выводим пустое значение функции обратного вызова
+					else return Result{};
+				}
+			}
+		public:
+			/**
+			 * @brief Метод получения конечного итератора
+			 * 
+			 * @return конечный итератор
+			 */
+			iterator_t end() noexcept {
+				// Выводим результат
+				return iterator_t(this->_callbacks.end(), this->_log);
+			}
+			/**
+			 * @brief Метод получение начального итератора
+			 * 
+			 * @return начальный итератор
+			 */
+			iterator_t begin() noexcept {
+				// Выводим результат
+				return iterator_t(this->_callbacks.begin(), this->_log);
+			}
+		public:
+			/**
+			 * @brief Оператор перемещения контейнера функций обратного вызова
+			 * 
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        текущее значение объекта
+			 */
+			Callback & operator = (Callback && storage) noexcept {
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Если функция обратного вызова установлена
-					if(this->_callback != nullptr)
-						// Выполняем функцию обратного вызова
-						std::apply(this->_callback, std::make_tuple(event_t::RUN, fid, callback));
-					// Выполняем функцию обратного вызова
-					return (typename function <T>::result_type) std::apply(static_cast <const BasicFunction <T> &> (* callback.get()).fn, std::make_tuple(args...));
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const bad_function_call & error) {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-					#endif
+					// Выполняем блокировку потока
+					const lock_guard lock1(this->_mtx);
+					// Выполняем блокировку потока для стороннего контейнера
+					const lock_guard lock2(storage._mtx);
+					// Выполняем копирование функций обратного вызова
+					this->_callbacks = std::move(storage._callbacks);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -1989,286 +1749,58 @@ namespace awh {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выводим результат по умолчанию
-				return (typename function <T>::result_type) typename function <T>::result_type();
-			}
-		public:
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param callback функция обратного вызова
-			 * @param args     аргументы функции обратного вызова
-			 * @return         результат выполнения функции
-			 */
-			auto call(const fn_t & callback, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (callback, 0, args...);
+				// Выводим значение текущего объекта
+				return (* this);
 			}
 			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param callback функция обратного вызова
-			 * @param name     название функкции обратного вызова
-			 * @param args     аргументы функции обратного вызова
-			 * @return         результат выполнения функции
-			 */
-			auto call(const fn_t & callback, const char * name, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (callback, this->fid(name), args...);
-			}
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param callback функция обратного вызова
-			 * @param name     название функкции обратного вызова
-			 * @param args     аргументы функции обратного вызова
-			 * @return         результат выполнения функции
-			 */
-			auto call(const fn_t & callback, const string & name, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (callback, this->fid(name), args...);
-			}
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param callback функция обратного вызова
-			 * @param fid      идентификатор функкции обратного вызова
-			 * @param args     аргументы функции обратного вызова
-			 * @return         результат выполнения функции
-			 */
-			auto call(const fn_t & callback, const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (callback, fid, args...);
-			}
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam A    тип идентификатора функции
-			 * @tparam B    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename A, typename B, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param callback функция обратного вызова
-			 * @param fid      идентификатор функкции обратного вызова
-			 * @param args     аргументы функции обратного вызова
-			 * @return         идентификатор добавленной функции обратного вызова
-			 */
-			auto call(const fn_t & callback, const A fid, Args... args) noexcept -> typename function <B>::result_type {
-				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
-					// Выполняем установку функции обратного вызова
-					return this->_call <B> (callback, static_cast <uint64_t> (fid), args...);
-				// Выводим результат по умолчанию
-				return (typename function <B>::result_type) typename function <B>::result_type();
-			}
-		private:
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * _call Метод выполнения функции обратного вызова
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     результат выполнения функции
-			 */
-			auto _call(const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
-				// Если идентификатор функции передан
-				if(fid > 0){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем поиск функции обратного вызова
-						auto i = this->_callbacks.find(fid);
-						// Если функция найдена в списке
-						if(i != this->_callbacks.end()){
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем функцию обратного вызова
-								std::apply(this->_callback, std::make_tuple(event_t::RUN, fid, i->second));
-							// Выполняем функцию обратного вызова
-							return (typename function <T>::result_type) std::apply(static_cast <const BasicFunction <T> &> (* i->second.get()).fn, std::make_tuple(args...));
-						}
-						// Выводим результат по умолчанию
-						return (typename function <T>::result_type) typename function <T>::result_type();
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const bad_function_call & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-						#endif
-					}
-				}
-				// Выводим результат по умолчанию
-				return (typename function <T>::result_type) typename function <T>::result_type();
-			}
-		public:
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     результат выполнения функции
-			 */
-			auto call(const char * name, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (this->fid(name), args...);
-			}
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param name название функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     результат выполнения функции
-			 */
-			auto call(const string & name, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (this->fid(name), args...);
-			}
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam T    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename T, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     результат выполнения функции
-			 */
-			auto call(const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
-				// Выполняем функцию обратного вызова
-				return this->_call <T> (fid, args...);
-			}
-			/**
-			 * @brief Шаблон метода выполнения функции обратного вызова
-			 *
-			 * @tparam A    тип идентификатора функции
-			 * @tparam B    тип функции обратного вызова
-			 * @tparam Args аргументы функции обратного вызова
-			 */
-			template <typename A, typename B, class... Args>
-			/**
-			 * @brief Метод выполнения функции обратного вызова
-			 *
-			 * @param fid  идентификатор функкции обратного вызова
-			 * @param args аргументы функции обратного вызова
-			 * @return     идентификатор добавленной функции обратного вызова
-			 */
-			auto call(const A fid, Args... args) noexcept -> typename function <B>::result_type {
-				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
-					// Выполняем установку функции обратного вызова
-					return this->_call <B> (static_cast <uint64_t> (fid), args...);
-				// Выводим результат по умолчанию
-				return (typename function <B>::result_type) typename function <B>::result_type();
-			}
-		public:
-			/**
-			 * @brief Оператор [=] присвоения функций обратного вызова
-			 *
-			 * @param storage хранилище функций откуда нужно получить функции
-			 * @return        текущий объект
+			 * @brief Оператор копирование контейнера функций обратного вызова
+			 * 
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        текущее значение объекта
 			 */
 			Callback & operator = (const Callback & storage) noexcept {
-				// Если функции обратного вызова установлены
-				if(!storage._callbacks.empty()){
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
-					// Выполням установку функций обратного вызова
+					const lock_guard lock(this->_mtx);
+					// Выполняем копирование функций обратного вызова
 					this->_callbacks = storage._callbacks;
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
-				// Выводим результат
+				// Выводим значение текущего объекта
 				return (* this);
 			}
 		public:
 			/**
 			 * @brief Конструктор
-			 *
+			 * 
 			 * @param log объект для работы с логами
 			 */
-			Callback(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
-	} callback_t;
+			explicit Callback(const log_t * log) noexcept : _log(log) {}
+	};
+	/**
+	 * @brief Создаём более осознанный тип данных контейнера функций обратного вызова
+	 * 
+	 */
+	using callback_t = Callback;
 };
 
 #endif // __AWH_CALLBACK__
