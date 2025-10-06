@@ -470,6 +470,8 @@ const string & awh::Headers::at(const string & name) const noexcept {
 			#endif
 		}
 	}
+	// Выполняем очистку результата по умолчанию
+	const_cast <headers_t *> (this)->_item.second.clear();
 	// Выводим результат
 	return this->_item.second;
 }

@@ -471,6 +471,12 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
+			 * @brief Метод инициализации модуля
+			 * 
+			 */
+			void init() noexcept;
+		private:
+			/**
 			 * @brief Метод извлечения полученных данных
 			 *
 			 * @param buffer буфер данных для чтения
@@ -801,6 +807,14 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Web(const fmk_t * fmk, const log_t * log) noexcept;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param hid тип используемого HTTP-модуля
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 */
+			Web(const hid_t hid, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
