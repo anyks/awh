@@ -345,20 +345,19 @@ namespace awh {
 			typedef struct Work {
 				// Сепаратор для детекции в буфере
 				int8_t delim;
-				// Массив позиций в буфере сепаратора
-				int32_t pos[2];
 				// Стейт текущего запроса
 				state_t state;
 				// Протокол на который выполняется переключение
 				proto_t upgrade;
+				// Массив позиций в буфере сепаратора
+				int32_t pos[2];
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				Work() noexcept :
-				 delim('\0'), pos{-1,-1},
-				 state(state_t::QUERY),
-				 upgrade(proto_t::NONE) {}
+				 delim(static_cast <int8_t> ('\0')),
+				 state(state_t::QUERY), upgrade(proto_t::NONE) {}
 			} __attribute__((packed)) work_t;
 		private:
 			/**
@@ -487,6 +486,69 @@ namespace awh {
 			size_t extraction(const char * buffer, const size_t size, const unit_t unit) noexcept;
 		public:
 			/**
+			 * @brief Метод фиксирования добавленных данных
+			 *
+			 */
+			void commit() noexcept;
+		public:
+			/**
+			 * @brief Метод сброса стейтов парсера
+			 *
+			 */
+			void reset() noexcept;
+		public:
+			/**
+			 * @brief Метод очистки собранных данных
+			 *
+			 */
+			void clear() noexcept;
+			/**
+			 * @brief Метод очистки данных HTTP-юнита
+			 *
+			 */
+			void clear(const unit_t unit) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки завершения обработки
+			 *
+			 * @return результат проверки
+			 */
+			bool finish() const noexcept;
+			/**
+			 * @brief Проверка заголовка является ли он стандартным
+			 *
+			 * @param key ключ заголовка для проверки
+			 * @return    результат проверки
+			 */
+			bool standard(const string key) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения идентификатора группы
+			 *
+			 * @return идентификатор группы
+			 */
+			uint32_t id() const noexcept;
+			/**
+			 * @brief Метод установки идентификатора группы
+			 *
+			 * @param id идентификатор группы
+			 */
+			void id(const uint32_t id) noexcept;
+		public:
+			/**
+			 * @brief Метод вывода идентификатора модуля
+			 *
+			 * @return тип используемого HTTP-модуля
+			 */
+			const hid_t hid() const noexcept;
+			/**
+			 * @brief Метод установки идентификатора модуля
+			 *
+			 * @param hid тип используемого HTTP-модуля
+			 */
+			void hid(const hid_t hid) noexcept;
+		public:
+			/**
 			 * @brief Метод получения бинарного дампа
 			 *
 			 * @return бинарный дамп данных
@@ -514,23 +576,6 @@ namespace awh {
 			 * @return       размер обработанных данных
 			 */
 			size_t parse(const char * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод очистки собранных данных
-			 *
-			 */
-			void clear() noexcept;
-			/**
-			 * @brief Метод сброса стейтов парсера
-			 *
-			 */
-			void reset() noexcept;
-		public:
-			/**
-			 * @brief Метод фиксирования добавленных данных
-			 *
-			 */
-			void commit() noexcept;
 		public:
 			/**
 			 * @brief Метод получения объекта запроса на сервер
@@ -569,52 +614,6 @@ namespace awh {
 			 * @param response объект ответа сервера
 			 */
 			void response(const res_t & response) noexcept;
-		public:
-			/**
-			 * @brief Метод проверки завершения обработки
-			 *
-			 * @return результат проверки
-			 */
-			bool finish() const noexcept;
-			/**
-			 * @brief Проверка заголовка является ли он стандартным
-			 *
-			 * @param key ключ заголовка для проверки
-			 * @return    результат проверки
-			 */
-			bool standard(const string key) const noexcept;
-		public:
-			/**
-			 * @brief Метод очистки данных HTTP-юнита
-			 *
-			 */
-			void clear(const unit_t unit) noexcept;
-		public:
-			/**
-			 * @brief Метод получения идентификатора группы
-			 *
-			 * @return идентификатор группы
-			 */
-			uint32_t id() const noexcept;
-			/**
-			 * @brief Метод установки идентификатора группы
-			 *
-			 * @param id идентификатор группы
-			 */
-			void id(const uint32_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод вывода идентификатора модуля
-			 *
-			 * @return тип используемого HTTP-модуля
-			 */
-			const hid_t hid() const noexcept;
-			/**
-			 * @brief Метод установки идентификатора модуля
-			 *
-			 * @param hid тип используемого HTTP-модуля
-			 */
-			void hid(const hid_t hid) noexcept;
 		public:
 			/**
 			 * @brief Метод получения данных тела HTTP-протокола
