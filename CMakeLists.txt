@@ -329,6 +329,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/http/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/web2.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/core.cpp"
+    "${CMAKE_SOURCE_DIR}/src/http/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/server.cpp"

@@ -23,6 +23,7 @@
 #include <vector>
 #include <cstring>
 #include <unordered_set>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -505,6 +506,7 @@ namespace awh {
 			/**
 			 * @brief Метод очистки данных HTTP-юнита
 			 *
+			 * @param unit HTTP-юнит данные которого очищаются
 			 */
 			void clear(const unit_t unit) noexcept;
 		public:
@@ -515,23 +517,23 @@ namespace awh {
 			 */
 			bool finish() const noexcept;
 			/**
-			 * @brief Проверка заголовка является ли он стандартным
+			 * @brief Проверка заголовка HTTP-протокола является ли он стандартным
 			 *
-			 * @param key ключ заголовка для проверки
-			 * @return    результат проверки
+			 * @param name название заголовка HTTP-протокола для проверки
+			 * @return     результат проверки
 			 */
 			bool standard(const string key) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения идентификатора группы
+			 * @brief Метод получения идентификатора объекта
 			 *
-			 * @return идентификатор группы
+			 * @return идентификатор объекта
 			 */
 			uint32_t id() const noexcept;
 			/**
-			 * @brief Метод установки идентификатора группы
+			 * @brief Метод установки идентификатора объекта
 			 *
-			 * @param id идентификатор группы
+			 * @param id идентификатор объекта
 			 */
 			void id(const uint32_t id) noexcept;
 		public:
@@ -633,6 +635,12 @@ namespace awh {
 			 * @param body буфер тела HTTP-протокола для установки
 			 */
 			void body(const buffer_t & body) noexcept;
+			/**
+			 * @brief Метод перемещения данных тела HTTP-протокола
+			 *
+			 * @param body буфер тела HTTP-протокола для установки
+			 */
+			void body(vector <char> && body) noexcept;
 			/**
 			 * @brief Метод установки данных тела HTTP-протокола
 			 *
