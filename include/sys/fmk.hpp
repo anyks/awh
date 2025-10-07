@@ -38,21 +38,6 @@
 #include "../net/nwt.hpp"
 
 /**
- * Для операционной системы не являющейся MS Windows
- */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Если используется модуль IDN
-	 */
-	#if AWH_IDN
-		/**
-		 * Модуль iconv
-		 */
-		#include <iconv/iconv.h>
-	#endif
-#endif
-
-/**
  * @brief основное пространство имён
  *
  */
@@ -216,7 +201,7 @@ namespace awh {
 							Check(const B & value, const Framework * fmk) noexcept : _value(value), _fmk(fmk) {}
 					} callback(val, this);
 					// Выполняем поиск искомого значения в контейнере map
-					return find_if_not(map.cbegin(), map.cend(), callback);
+					return std::find_if_not(map.cbegin(), map.cend(), callback);
 				// Если нам необходимо выполнить поиск по статическому типу данных
 				} else {
 					/**
@@ -246,7 +231,7 @@ namespace awh {
 							Check(const B & value) noexcept : _value(value) {}
 					};
 					// Выполняем поиск искомого значения в контейнере map
-					return find_if_not(map.cbegin(), map.cend(), Check(val));
+					return std::find_if_not(map.cbegin(), map.cend(), Check(val));
 				}
 			}
 		public:
