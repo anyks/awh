@@ -410,7 +410,7 @@ awh::Web::Body::~Body() noexcept {}
  */
 void awh::Web::init() noexcept {
 	// Формируем идентификатор объекта
-	this->_id = const_cast <fmk_t *> (this->_fmk)->id();
+	this->_id = const_cast <fmk_t *> (this->_fmk)->identifier();
 	// Выполняем заполнение списка стандартных заголовков
 	this->_standards.insert({
 		{"via", {proto_t::PROXY}},

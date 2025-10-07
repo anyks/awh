@@ -719,13 +719,13 @@ static class Symbols {
 } symbols;
 
 /**
- * @brief id Метод генерации уникального идентификатора
+ * @brief Метод генерации уникального идентификатора
  * 
  * @return уникальный идентификатор
  */
-uint32_t awh::Framework::id() noexcept {
+uint32_t awh::Framework::identifier() const noexcept {
 	// Начинаем с 1 (0 можно оставить как "invalid")
-	static std::atomic <uint32_t> id{1};
+	static std::atomic_uint32_t id{1};
 	// Выводим новое значение идентификатора
     return id.fetch_add(1, std::memory_order_relaxed);
 }

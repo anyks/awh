@@ -251,11 +251,11 @@ namespace awh {
 			}
 		public:
 			/**
-			 * @brief id Метод генерации уникального идентификатора
+			 * @brief Метод генерации уникального идентификатора
 			 * 
 			 * @return уникальный идентификатор
 			 */
-			uint32_t id() noexcept;
+			uint32_t identifier() const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки текста на соответствие флагу
