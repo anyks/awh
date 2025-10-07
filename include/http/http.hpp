@@ -101,26 +101,6 @@ namespace awh {
 			};
 		protected:
 			/**
-			 * @brief Структура идентификации сервиса
-			 *
-			 */
-			typedef struct Ident {
-				// Идентификатор сервиса
-				string id;
-				// Название сервиса
-				string name;
-				// Версия модуля приложения
-				string version;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				Ident() noexcept :
-				 id{AWH_SHORT_NAME},
-				 name{AWH_NAME},
-				 version{AWH_VERSION} {}
-			} ident_t;
-			/**
 			 * @brief Параметры запроса для Transfer-Encoding
 			 *
 			 */
@@ -189,26 +169,21 @@ namespace awh {
 			 * @brief Структура трансформера данных
 			 *
 			 */
-			typedef struct Transformer {
-				// Объект хэширования
-				hash_t hash;
+			typedef struct Encryption {
 				// Флаг зашифрованной полезной нагрузки
 				bool crypted;
-				// Флаг требования шифрования данных
-				bool encryption;
+				// Флаг активации шифрования данных
+				bool enabled;
 				// Формат шифрования
 				hash_t::cipher_t cipher;
-				// Компрессор для жатия данных
-				compressors_t compressors;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param log объект для работы с логами
 				 */
-				Transformer(const log_t * log) noexcept :
-				 hash(log), crypted(false), encryption(false),
+				Encryption() noexcept :
+				 crypted(false), enabled(false),
 				 cipher(hash_t::cipher_t::AES128) {}
-			} transform_t;
+			} __attribute__((packed)) encrypt_t;
 			/**
 			 * @brief Структура авторизации агента
 			 *
@@ -232,38 +207,44 @@ namespace awh {
 			 *
 			 */
 			typedef struct Agent {
-				// Объект работы с URI
-				uri_t uri;
-				// Объект HTTP-парсера
-				web_t web;
-				// Объект авторизации
-				auth_t auth;
-				// Идентификация сервиса
-				ident_t ident;
+				// Идентификатор сервиса
+				string id;
+				// Название сервиса
+				string name;
 				// User-Agent для HTTP-запроса
-				string userAgent;
-				// Объект Transfer-Encoding
-				transfer_t transfer;
-				// Объект трансформера данных
-				transform_t transform;
+				string user;
+				// Версия модуля приложения
+				string version;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
 				 */
-				Agent(const fmk_t * fmk, const log_t * log) noexcept :
-				 uri(fmk, log), web(fmk, log), auth(fmk, log),
-				 userAgent{HTTP_HEADER_AGENT}, transform(log) {}
+				Agent() noexcept :
+				 id{AWH_SHORT_NAME}, name{AWH_NAME},
+				 user{HTTP_HEADER_AGENT}, version{AWH_VERSION} {}
 			} agent_t;
 		private:
 			// Объект работы с операционной системой
 			os_t _os;
 		protected:
+			// Объект работы с URI
+			uri_t _uri;
+			// Объект HTTP-парсера
+			web_t _web;
+			// Объект авторизации
+			auth_t _auth;
+			// Объект хэширования
+			hash_t _hash;
 			// Объект агента подключения
 			agent_t _agent;
+			// Параметры шифрования
+			encrypt_t _encrypt;
 			// Объект работы сессии
 			session_t _session;
+			// Объект Transfer-Encoding
+			transfer_t _transfer;
+			// Компрессор для жатия данных
+			compressors_t _compressors;
 		protected:
 			// Хранилище функций обратного вызова
 			callback_t _callback;
@@ -404,13 +385,6 @@ namespace awh {
 			 * @param size размер чанка для установки
 			 */
 			void chunkSize(const size_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод установки пользовательского агента для HTTP-запроса
-			 *
-			 * @param userAgent пользовательский агент для HTTP-запроса
-			 */
-			void userAgent(const string & userAgent) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки существования данных в чёрном списке
@@ -670,20 +644,26 @@ namespace awh {
 			void compressors(const vector <compressor_t> & compressors) noexcept;
 		public:
 			/**
-			 * @brief Метод получения идентификации сервера
+			 * @brief Метод получения агента сервера для HTTP-протокола
 			 *
 			 * @param flag флаг выполняемого процесса
 			 * @return     сформированный агент
 			 */
-			string ident(const process_t flag) const noexcept;
+			string agent(const process_t flag) const noexcept;
 			/**
-			 * @brief Метод установки идентификации сервера
+			 * @brief Метод установки пользовательского агента для HTTP-протокола
+			 *
+			 * @param agent пользовательский агент для HTTP-протокола
+			 */
+			void agent(const string & agent) noexcept;
+			/**
+			 * @brief Метод установки агента сервера для HTTP-протокола
 			 *
 			 * @param id   идентификатор сервиса
 			 * @param name название сервиса
 			 * @param ver  версия сервиса
 			 */
-			void ident(const string & id, const string & name, const string & ver) noexcept;
+			void agent(const string & id, const string & name, const string & ver) noexcept;
 		public:
 			/**
 			 * @brief Метод получения количества установленных трейлеров
@@ -731,14 +711,14 @@ namespace awh {
 			/**
 			 * @brief Метод создания запроса для авторизации на прокси-сервере
 			 *
-			 * @param req объект параметров REST-запроса
+			 * @param req объект параметров HTTP-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
 			virtual buffer_t proxy(const web_t::req_t & req) noexcept;
 			/**
 			 * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
 			 *
-			 * @param req объект параметров REST-запроса
+			 * @param req объект параметров HTTP-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
 			virtual vector <std::pair <string, string>> proxy2(const web_t::req_t & req) noexcept;
@@ -746,14 +726,14 @@ namespace awh {
 			/**
 			 * @brief Метод создания отрицательного ответа
 			 *
-			 * @param req объект параметров REST-ответа
+			 * @param res объект параметров HTTP-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
 			virtual buffer_t reject(const web_t::res_t & res) noexcept;
 			/**
 			 * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
 			 *
-			 * @param req объект параметров REST-ответа
+			 * @param res объект параметров HTTP-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
 			virtual vector <std::pair <string, string>> reject2(const web_t::res_t & res) noexcept;

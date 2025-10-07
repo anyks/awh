@@ -367,6 +367,20 @@ namespace awh {
 			 * @param buffer бинарный буфер для добавления
 			 * @return       результат добавления данных
 			 */
+			bool push(Buffer && buffer) noexcept;
+			/**
+			 * @brief Метод добавления бинарного буфера данных в буфер
+			 *
+			 * @param buffer бинарный буфер для добавления
+			 * @return       результат добавления данных
+			 */
+			bool push(const Buffer & buffer) noexcept;
+			/**
+			 * @brief Метод добавления бинарного буфера данных в буфер
+			 *
+			 * @param buffer бинарный буфер для добавления
+			 * @return       результат добавления данных
+			 */
 			bool push(const vector <char> & buffer) noexcept;
 			/**
 			 * @brief Метод добавления бинарного буфера данных в буфер

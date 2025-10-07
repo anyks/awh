@@ -109,13 +109,13 @@ namespace awh {
 				 *
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */
-				void extractPassCallback(function <string (const string &)> callback) noexcept;
+				void callback(function <string (const string &)> && callback) noexcept;
 				/**
 				 * @brief Метод добавления функции обработки авторизации
 				 *
 				 * @param callback функция обратного вызова для обработки авторизации
 				 */
-				void authCallback(function <bool (const string &, const string &)> callback) noexcept;
+				void callback(function <bool (const string &, const string &)> && callback) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров авторизации из заголовков

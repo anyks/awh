@@ -1433,84 +1433,56 @@ awh::buffer_t awh::Web::dump() const noexcept {
 	// Результат работы функции
 	buffer_t result(this->_fmk, this->_log);
 	{
-		// Длина строки, количество элементов
-		size_t length = 0, count = 0;
 		// Устанавливаем идентификатор HTTP-модуля
-		result.push(&this->_id, sizeof(this->_id));
+		result.push(this->_id);
 		// Устанавливаем тип используемого HTTP-модуля
-		result.push(&this->_hid, sizeof(this->_hid));
-		// Устанавливаем массив позиций в буфере сепаратора
-		result.push(&this->_work.pos, sizeof(this->_work.pos));
-		// Устанавливаем стейт текущего запроса
-		result.push(&this->_work.state, sizeof(this->_work.state));
-		// Устанавливаем сепаратор для детекции в буфере
-		result.push(&this->_work.delim, sizeof(this->_work.delim));
+		result.push(static_cast <uint8_t> (this->_hid));
+		// Устанавливаем объект рабочих параметров
+		result.push(&this->_work, sizeof(this->_work));
 		// Устанавливаем код ответа на HTTP-ответа
-		result.push(&this->_response.code, sizeof(this->_response.code));
+		result.push(this->_response.code);
 		// Устанавливаем версию протокола HTTP-ответа
-		result.push(&this->_response.version, sizeof(this->_response.version));
+		result.push(this->_response.version);
 		// Устанавливаем метод HTTP-запроса
-		result.push(&this->_request.method, sizeof(this->_request.method));
+		result.push(static_cast <uint8_t> (this->_request.method));
 		// Устанавливаем версию протокола HTTP-запроса
-		result.push(&this->_request.version, sizeof(this->_request.version));
+		result.push(this->_request.version);
 		// Если URL-адрес запроса установлен
 		if(!this->_request.url.empty()){
 			// Получаем адрес URL-запроса
 			const string & url = this->_uri.url(this->_request.url);
-			// Получаем размер записи параметров HTTP-запроса
-			length = url.size();
 			// Устанавливаем размер записи параметров HTTP-запроса
-			result.push(&length, sizeof(length));
+			result.push(url.size());
 			// Устанавливаем параметры HTTP-запроса
 			result.push(url.data(), url.size());
-		// Если URL-адрес запроса не установлен
-		} else {
-			// Получаем размер записи параметров HTTP-запроса
-			length = 0;
-			// Устанавливаем размер записи параметров HTTP-запроса
-			result.push(&length, sizeof(length));
-		}
+		// Устанавливаем размер записи параметров HTTP-запроса
+		} else result.push(static_cast <size_t> (0));
 		// Если текст ответа установлен
 		if(!this->_response.message.empty()){
-			// Получаем размер сообщения HTTP-ответа
-			length = this->_response.message.size();
 			// Устанавливаем размер сообщения HTTP-ответа
-			result.push(&length, sizeof(length));
+			result.push(this->_response.message.length());
 			// Устанавливаем данные сообщения HTTP-ответа
-			result.push(this->_response.message.data(), this->_response.message.size());
-		// Если текст ответа не установлен
-		} else {
-			// Получаем размер записи параметров HTTP-запроса
-			length = 0;
-			// Устанавливаем размер записи параметров HTTP-запроса
-			result.push(&length, sizeof(length));
-		}
+			result.push(this->_response.message);
+		// Устанавливаем размер записи параметров HTTP-запроса
+		} else result.push(static_cast <size_t> (0));
 		// Устанавливаем размер тела сообщения
-		result.push(&this->_body.size, sizeof(this->_body.size));
-		// Получаем размер тела сообщения
-		length = this->_body.data.size();
+		result.push(this->_body.size);
 		// Устанавливаем размер тела сообщения
-		result.push(&length, sizeof(length));
+		result.push(this->_body.data.size());
 		// Устанавливаем данные тела сообщения
-		result.push(static_cast <const char *> (this->_body.data), static_cast <size_t> (this->_body.data));
-		// Получаем количество HTTP-заголовков
-		count = this->_headers.count();
+		result.push(this->_body.data);
 		// Устанавливаем количество HTTP-заголовков
-		result.push(&count, sizeof(count));
+		result.push(this->_headers.count());
 		// Выполняем перебор всех HTTP-заголовков
 		for(auto & header : const_cast <web_t *> (this)->_headers){
-			// Получаем размер названия HTTP заголовка
-			length = header.first.size();
 			// Устанавливаем размер названия HTTP заголовка
-			result.push(&length, sizeof(length));
+			result.push(header.first.size());
 			// Устанавливаем данные названия HTTP заголовка
-			result.push(header.first.data(), header.first.size());
-			// Получаем размер значения HTTP заголовка
-			length = header.second.size();
+			result.push(header.first);
 			// Устанавливаем размер значения HTTP заголовка
-			result.push(&length, sizeof(length));
+			result.push(header.second.size());
 			// Устанавливаем данные значения HTTP заголовка
-			result.push(header.second.data(), header.second.size());
+			result.push(header.second);
 		}
 	}
 	// Выводим результат
@@ -1543,43 +1515,43 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 			// Длина строки, количество элементов и смещение в буфере
 			size_t length = 0, count = 0, offset = 0;
 			// Выполняем получение идентификатора HTTP-модуля
-			::memcpy(reinterpret_cast <void *> (&this->_id), buffer + offset, sizeof(this->_id));
+			::memcpy(&this->_id, buffer + offset, sizeof(this->_id));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_id);
 			// Выполняем получение типа используемого HTTP-модуля
-			::memcpy(reinterpret_cast <void *> (&this->_hid), buffer + offset, sizeof(this->_hid));
+			::memcpy(&this->_hid, buffer + offset, sizeof(this->_hid));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_hid);
 			// Выполняем получение массива позиций в буфере сепаратора
-			::memcpy(reinterpret_cast <void *> (&this->_work.pos), buffer + offset, sizeof(this->_work.pos));
+			::memcpy(&this->_work.pos, buffer + offset, sizeof(this->_work.pos));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_work.pos);
 			// Выполняем получение стейта текущего запроса
-			::memcpy(reinterpret_cast <void *> (&this->_work.state), buffer + offset, sizeof(this->_work.state));
+			::memcpy(&this->_work.state, buffer + offset, sizeof(this->_work.state));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_work.state);
 			// Выполняем получение сепаратора для детекции в буфере
-			::memcpy(reinterpret_cast <void *> (&this->_work.delim), buffer + offset, sizeof(this->_work.delim));
+			::memcpy(&this->_work.delim, buffer + offset, sizeof(this->_work.delim));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_work.delim);
 			// Выполняем получение кода ответа на HTTP-запрос
-			::memcpy(reinterpret_cast <void *> (&this->_response.code), buffer + offset, sizeof(this->_response.code));
+			::memcpy(&this->_response.code, buffer + offset, sizeof(this->_response.code));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_response.code);
 			// Выполняем получение версии протокола HTTP ответа
-			::memcpy(reinterpret_cast <void *> (&this->_response.version), buffer + offset, sizeof(this->_response.version));
+			::memcpy(&this->_response.version, buffer + offset, sizeof(this->_response.version));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_response.version);
 			// Выполняем получение метода HTTP-запроса
-			::memcpy(reinterpret_cast <void *> (&this->_request.method), buffer + offset, sizeof(this->_request.method));
+			::memcpy(&this->_request.method, buffer + offset, sizeof(this->_request.method));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_request.method);
 			// Выполняем получение версии протокола HTTP-запроса
-			::memcpy(reinterpret_cast <void *> (&this->_request.version), buffer + offset, sizeof(this->_request.version));
+			::memcpy(&this->_request.version, buffer + offset, sizeof(this->_request.version));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_request.version);
 			// Выполняем получение размера записи параметров HTTP-запроса
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если URL-адрес запроса установлен
@@ -1587,14 +1559,14 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 				// Создаём URL-адрес запроса
 				string url(length, 0);
 				// Выполняем получение параметров HTTP-запроса
-				::memcpy(reinterpret_cast <void *> (url.data()), buffer + offset, length);
+				::memcpy(url.data(), buffer + offset, length);
 				// Устанавливаем URL-адрес запроса
 				this->_request.url = this->_uri.parse(url);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера сообщения HTTP ответа
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если сообщение ответа установлено
@@ -1602,16 +1574,16 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 				// Выделяем память для сообщения HTTP ответа
 				this->_response.message.resize(length, 0);
 				// Выполняем получение сообщения HTTP ответа
-				::memcpy(reinterpret_cast <void *> (this->_response.message.data()), buffer + offset, length);
+				::memcpy(this->_response.message.data(), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера тела сообщения
-			::memcpy(reinterpret_cast <void *> (&this->_body.size), buffer + offset, sizeof(this->_body.size));
+			::memcpy(&this->_body.size, buffer + offset, sizeof(this->_body.size));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_body.size);
 			// Выполняем получение размера тела сообщения
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если сообщение ответа установлено
@@ -1622,7 +1594,7 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 				offset += length;
 			}
 			// Выполняем получение количества HTTP заголовков
-			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
+			::memcpy(&count, buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем сброс заголовков
@@ -1632,7 +1604,7 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 				// Выполняем последовательную загрузку всех заголовков
 				for(size_t i = 0; i < count; i++){
 					// Выполняем получение размера названия HTTP заголовка
-					::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+					::memcpy(&length, buffer + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Если размер получен
@@ -1640,11 +1612,11 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 						// Выпделяем память для названия заголовка HTTP-протокола
 						string name(length, 0);
 						// Выполняем получение ключа заголовка
-						::memcpy(reinterpret_cast <void *> (name.data()), buffer + offset, length);
+						::memcpy(name.data(), buffer + offset, length);
 						// Выполняем смещение в буфере
 						offset += length;
 						// Выполняем получение размера значения HTTP заголовка
-						::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+						::memcpy(&length, buffer + offset, sizeof(length));
 						// Выполняем смещение в буфере
 						offset += sizeof(length);
 						// Если размер получен
@@ -1652,7 +1624,7 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 							// Выпделяем память для значения заголовка
 							string value(length, 0);
 							// Выполняем получение значения заголовка
-							::memcpy(reinterpret_cast <void *> (value.data()), buffer + offset, length);
+							::memcpy(value.data(), buffer + offset, length);
 							// Выполняем смещение в буфере
 							offset += length;
 							// Если и ключ и значение заголовка получены

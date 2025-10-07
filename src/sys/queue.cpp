@@ -127,7 +127,7 @@ void awh::Queue::pop() noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Размер верхней записи в очереди
 			size_t size = 0;
 			// Извлекаем текущее значение размера записи
@@ -199,7 +199,7 @@ void awh::Queue::clear() noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Выполняем сброс конца очереди
 			this->_range.end = 0;
 			// Выполняем сброс начала очереди
@@ -244,7 +244,7 @@ void awh::Queue::reset() noexcept {
 			// Выполняем очистку буфера данных
 			this->clear();
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Выполняем освобождение памяти
 			vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 		/**
@@ -383,7 +383,7 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 			// Если таймаут ожидания установлен
 			if(timeout > 0){
 				// Выполняем блокировку потока
-				std::unique_lock lock(this->_mtx);
+				unique_lock lock(this->_mtx);
 				// Выполняем ожидание на поступление данных
 				this->_cv.read.wait_for(lock, std::chrono::duration(std::chrono::milliseconds(timeout)), [this]() noexcept -> bool {
 					// Если в очереди появились данные
@@ -429,7 +429,7 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Если очередь завершила работу
 			if(this->_terminate)
 				// Выводим текущий размер очереди
@@ -509,7 +509,7 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 		 */
 		try {
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Если очередь завершила работу
 			if(this->_terminate)
 				// Выводим текущий размер очереди
@@ -590,7 +590,7 @@ void awh::Queue::setMaxMemory(const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Выполняем установку максимального размера потребляемой памяти
 			this->_max.memory = size;
 		/**
@@ -626,7 +626,7 @@ void awh::Queue::setMaxRecords(const size_t count) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
+			unique_lock lock(this->_mtx);
 			// Выполняем установку максимального количества сообщений очереди
 			this->_max.records = count;
 		/**
@@ -672,9 +672,9 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 		// Разблокируем очередь на запись сторонней очереди
 		queue._cv.write.notify_all();
 		// Выполняем блокировку потока текущей очереди
-		std::unique_lock lock1(this->_mtx);
+		unique_lock lock1(this->_mtx);
 		// Выполняем блокировку потока сторонней очереди
-		std::unique_lock lock2(queue._mtx);
+		unique_lock lock2(queue._mtx);
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(queue._buffer);
 		// Выполняем обмен последними итераторами
@@ -752,9 +752,9 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		// Разблокируем очередь на запись сторонней очереди
 		queue._cv.write.notify_all();
 		// Выполняем блокировку потока текущей очереди
-		std::unique_lock lock1(this->_mtx);
+		unique_lock lock1(this->_mtx);
 		// Выполняем блокировку потока сторонней очереди
-		std::unique_lock lock2(queue._mtx);
+		unique_lock lock2(queue._mtx);
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
@@ -816,7 +816,7 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		// Разблокируем очередь на запись текущей очереди
 		this->_cv.write.notify_all();
 		// Выполняем блокировку потока текущей очереди
-		std::unique_lock lock(this->_mtx);
+		unique_lock lock(this->_mtx);
 		// Выполняем копирование последнего итератора
 		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
@@ -917,9 +917,9 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 		// Разблокируем очередь на запись сторонней очереди
 		queue._cv.write.notify_all();
 		// Выполняем блокировку потока текущей очереди
-		std::unique_lock lock1(this->_mtx);
+		unique_lock lock1(this->_mtx);
 		// Выполняем блокировку потока сторонней очереди
-		std::unique_lock lock2(queue._mtx);
+		unique_lock lock2(queue._mtx);
 		// Выполняем перемен буферами данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
@@ -978,7 +978,7 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 		// Разблокируем очередь на запись текущей очереди
 		this->_cv.write.notify_all();
 		// Выполняем блокировку потока текущей очереди
-		std::unique_lock lock(this->_mtx);
+		unique_lock lock(this->_mtx);
 		// Выполняем перемен буферами данных
 		this->_buffer = queue._buffer;
 		// Выполняем копирование последнего итератора

@@ -143,18 +143,18 @@ void awh::server::Auth::opaque(const string & opaque) noexcept {
  *
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Auth::extractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::server::Auth::callback(function <string (const string &)> && callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.on <string (const string &)> ("extract", callback);
+	this->_callback.on <string (const string &)> ("extract", ::move(callback));
 }
 /**
  * @brief Метод добавления функции обработки авторизации
  *
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Auth::authCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::Auth::callback(function <bool (const string &, const string &)> && callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.on <bool (const string &, const string &)> ("auth", callback);
+	this->_callback.on <bool (const string &, const string &)> ("auth", ::move(callback));
 }
 /**
  * @brief Метод установки параметров авторизации из заголовков

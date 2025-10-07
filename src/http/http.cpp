@@ -98,7 +98,7 @@ void awh::Http::init() noexcept {
 		{505, "HTTP Version Not Supported"}
 	};
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->_agent.web.on <void (const uint32_t, const buffer_t &, const web_t *)> ("binary", &awh::Http::chunking, this, _1, _2, _3);
+	this->_web.on <void (const uint32_t, const buffer_t &, const web_t *)> ("binary", &awh::Http::chunking, this, _1, _2, _3);
 }
 /**
  * @brief Функция выбора типа компрессора
@@ -108,35 +108,35 @@ void awh::Http::init() noexcept {
  */
 bool awh::Http::matchingCompressor(const string & compressor) noexcept {
 	// Отключаем сжатие тела сообщения
-	this->_agent.transform.compressors.current = compressor_t::NONE;
+	this->_compressors.current = compressor_t::NONE;
 	// Если данные пришли сжатые методом LZ4
 	if(this->_fmk->compare("lz4", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::LZ4);
+		return static_cast <bool> (this->_compressors.current = compressor_t::LZ4);
 	// Если данные пришли сжатые методом Zstandard
 	else if(this->_fmk->compare("zstd", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::ZSTD);
+		return static_cast <bool> (this->_compressors.current = compressor_t::ZSTD);
 	// Если данные пришли сжатые методом LZma
 	else if(this->_fmk->compare("xz", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::LZMA);
+		return static_cast <bool> (this->_compressors.current = compressor_t::LZMA);
 	// Если данные пришли сжатые методом Brotli
 	else if(this->_fmk->compare("br", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::BROTLI);
+		return static_cast <bool> (this->_compressors.current = compressor_t::BROTLI);
 	// Если данные пришли сжатые методом BZip2
 	else if(this->_fmk->compare("bzip2", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::BZIP2);
+		return static_cast <bool> (this->_compressors.current = compressor_t::BZIP2);
 	// Если данные пришли сжатые методом GZip
 	else if(this->_fmk->compare("gzip", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::GZIP);
+		return static_cast <bool> (this->_compressors.current = compressor_t::GZIP);
 	// Если данные пришли сжатые методом Deflate
 	else if(this->_fmk->compare("deflate", compressor))
 		// Устанавливаем тип компрессии полезной нагрузки
-		return static_cast <bool> (this->_agent.transform.compressors.current = compressor_t::DEFLATE);
+		return static_cast <bool> (this->_compressors.current = compressor_t::DEFLATE);
 	// Выводим результат
 	return false;
 }
@@ -159,23 +159,23 @@ void awh::Http::chunking(const uint32_t id, const buffer_t & buffer, const web_t
  */
 void awh::Http::encrypt() noexcept {
 	// Если полезная нагрузка не зашифрована
-	if(!this->_agent.transform.crypted && this->_agent.transform.encryption){
+	if(!this->_encrypt.crypted && this->_encrypt.enabled){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Получаем данные тела
-			buffer_t & body = this->_agent.web.body();
+			buffer_t & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
 				// Выполняем шифрование полезной нагрузки
-				auto result = this->_agent.transform.hash.encode <vector <char>> (
+				auto result = this->_hash.encode <vector <char>> (
 					static_cast <const char *> (body),
 					static_cast <size_t> (body),
-					this->_agent.transform.cipher
+					this->_encrypt.cipher
 				);
 				// Если шифрование выполнено
-				if((this->_agent.transform.crypted = !result.empty()))
+				if((this->_encrypt.crypted = !result.empty()))
 					// Формируем новое тело сообщения
 					body = ::move(result);
 				// Если шифрование не выполнено
@@ -185,7 +185,7 @@ void awh::Http::encrypt() noexcept {
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Encryption module has failed");
+						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Encryption module has failed");
 				}
 			}
 		/**
@@ -195,7 +195,7 @@ void awh::Http::encrypt() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -218,23 +218,23 @@ void awh::Http::encrypt() noexcept {
  */
 void awh::Http::decrypt() noexcept {
 	// Если полезная нагрузка зашифрованна
-	if(this->_agent.transform.crypted){
+	if(this->_encrypt.crypted){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Получаем данные тела
-			buffer_t & body = this->_agent.web.body();
+			buffer_t & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
 				// Выполняем дешифрование полезной нагрузки
-				auto result = this->_agent.transform.hash.decode <vector <char>> (
+				auto result = this->_hash.decode <vector <char>> (
 					static_cast <const char *> (body),
 					static_cast <size_t> (body),
-					this->_agent.transform.cipher
+					this->_encrypt.cipher
 				);
 				// Если дешифрование выполнено
-				if(!(this->_agent.transform.crypted = result.empty()))
+				if(!(this->_encrypt.crypted = result.empty()))
 					// Формируем новое тело сообщения
 					body = ::move(result);
 				// Если дешифрование не выполнено
@@ -244,7 +244,7 @@ void awh::Http::decrypt() noexcept {
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Decryption module has failed");
+						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Decryption module has failed");
 				}
 			}
 		/**
@@ -254,7 +254,7 @@ void awh::Http::decrypt() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -277,23 +277,23 @@ void awh::Http::decrypt() noexcept {
  */
 void awh::Http::compress() noexcept {
 	// Если полезную нагрузку необходимо сжать
-	if(this->_agent.transform.compressors.current == compressor_t::NONE){
+	if(this->_compressors.current == compressor_t::NONE){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Получаем данные тела
-			buffer_t & body = this->_agent.web.body();
+			buffer_t & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
 				/**
 				 * Определяем метод компрессии полезной нагрузки
 				 */
-				switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+				switch(static_cast <uint8_t> (this->_compressors.selected)){
 					// Если полезную нагрузку необходимо сжать методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::LZ4
@@ -303,7 +303,7 @@ void awh::Http::compress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::LZ4;
+							this->_compressors.current = compressor_t::LZ4;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -311,13 +311,13 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZ4 compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZ4 compression module has failed");
 						}
 					} break;
 					// Если полезную нагрузку необходимо сжать методом Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::ZSTD
@@ -327,7 +327,7 @@ void awh::Http::compress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::ZSTD;
+							this->_compressors.current = compressor_t::ZSTD;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -335,13 +335,13 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Zstandard compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Zstandard compression module has failed");
 						}
 					} break;
 					// Если полезную нагрузку необходимо сжать методом LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::LZMA
@@ -351,7 +351,7 @@ void awh::Http::compress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::LZMA;
+							this->_compressors.current = compressor_t::LZMA;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -359,13 +359,13 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZma compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZma compression module has failed");
 						}
 					} break;
 					// Если полезную нагрузку необходимо сжать методом Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::BROTLI
@@ -375,7 +375,7 @@ void awh::Http::compress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::BROTLI;
+							this->_compressors.current = compressor_t::BROTLI;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -383,13 +383,13 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Brotli compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Brotli compression module has failed");
 						}
 					} break;
 					// Если полезную нагрузку необходимо сжать методом BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::BZIP2
@@ -399,7 +399,7 @@ void awh::Http::compress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::BZIP2;
+							this->_compressors.current = compressor_t::BZIP2;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -407,13 +407,13 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BZip2 compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BZip2 compression module has failed");
 						}
 					} break;
 					// Если полезную нагрузку необходимо сжать методом GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::GZIP
@@ -423,7 +423,7 @@ void awh::Http::compress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::GZIP;
+							this->_compressors.current = compressor_t::GZIP;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -431,13 +431,13 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZip compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZip compression module has failed");
 						}
 					} break;
 					// Если полезную нагрузку необходимо сжать методом Deflate
 					case static_cast <uint8_t> (compressor_t::DEFLATE): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.compress <vector <char>> (
+						auto result = this->_hash.compress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::DEFLATE
@@ -445,11 +445,11 @@ void awh::Http::compress() noexcept {
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Удаляем хвост в полученных данных
-							this->_agent.transform.hash.rmTail(result);
+							this->_hash.rmTail(result);
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Устанавливаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::DEFLATE;
+							this->_compressors.current = compressor_t::DEFLATE;
 						// Если компрессия не выполнена
 						} else {
 							// Выводим сообщение об ошибке
@@ -457,7 +457,7 @@ void awh::Http::compress() noexcept {
 							// Если функция обратного вызова на на вывод ошибок установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Deflate compression module has failed");
+								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Deflate compression module has failed");
 						}
 					} break;
 				}
@@ -469,7 +469,7 @@ void awh::Http::compress() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -492,23 +492,23 @@ void awh::Http::compress() noexcept {
  */
 void awh::Http::decompress() noexcept {
 	// Если полезную нагрузку необходимо извлечь
-	if(this->_agent.transform.compressors.current != compressor_t::NONE){
+	if(this->_compressors.current != compressor_t::NONE){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Получаем данные тела
-			buffer_t & body = this->_agent.web.body();
+			buffer_t & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
 				/**
 				 * Определяем метод компрессии полезной нагрузки
 				 */
-				switch(static_cast <uint8_t> (this->_agent.transform.compressors.current)){
+				switch(static_cast <uint8_t> (this->_compressors.current)){
 					// Если полезную нагрузку нужно извлечь методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Выполняем декомпрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.decompress <vector <char>> (
+						auto result = this->_hash.decompress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::LZ4
@@ -518,13 +518,13 @@ void awh::Http::decompress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 					// Если полезную нагрузку нужно извлечь методом Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
 						// Выполняем декомпрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.decompress <vector <char>> (
+						auto result = this->_hash.decompress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::ZSTD
@@ -534,13 +534,13 @@ void awh::Http::decompress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 					// Если полезную нагрузку нужно извлечь методом LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
 						// Выполняем декомпрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.decompress <vector <char>> (
+						auto result = this->_hash.decompress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::LZMA
@@ -550,13 +550,13 @@ void awh::Http::decompress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 					// Если полезную нагрузку нужно извлечь методом Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
 						// Выполняем декомпрессию данных
-						auto result = this->_agent.transform.hash.decompress <vector <char>> (
+						auto result = this->_hash.decompress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::BROTLI
@@ -566,13 +566,13 @@ void awh::Http::decompress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 					// Если полезную нагрузку нужно извлечь методом BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
 						// Выполняем декомпрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.decompress <vector <char>> (
+						auto result = this->_hash.decompress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::BZIP2
@@ -582,13 +582,13 @@ void awh::Http::decompress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 					// Если полезную нагрузку нужно извлечь методом GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
 						// Выполняем декомпрессию полезной нагрузки
-						auto result = this->_agent.transform.hash.decompress <vector <char>> (
+						auto result = this->_hash.decompress <vector <char>> (
 							static_cast <const char *> (body),
 							static_cast <size_t> (body),
 							hash_t::method_t::GZIP
@@ -598,7 +598,7 @@ void awh::Http::decompress() noexcept {
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 					// Если полезную нагрузку нужно извлечь методом Deflate
@@ -606,22 +606,22 @@ void awh::Http::decompress() noexcept {
 						// Получаем данные тела в бинарном виде
 						vector <char> buffer = ::move(const_cast <vector <char> &> (static_cast <const vector <char> &> (body)));
 						// Добавляем хвост в полученные данные
-						this->_agent.transform.hash.setTail(buffer);
+						this->_hash.setTail(buffer);
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_agent.transform.hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+						const auto & result = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Формируем новое тело сообщения
 							body = ::move(result);
 							// Снимаем флаг компрессии
-							this->_agent.transform.compressors.current = compressor_t::NONE;
+							this->_compressors.current = compressor_t::NONE;
 						}
 					} break;
 				}
 				/**
 				 * Определяем метод компрессии полезной нагрузки
 				 */
-				switch(static_cast <uint8_t> (this->_agent.transform.compressors.current)){
+				switch(static_cast <uint8_t> (this->_compressors.current)){
 					// Если метод компрессии не изменился и остался LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Сообщаем, что переданное тело содержит ошибки
@@ -629,7 +629,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZ4 decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZ4 decompression module has failed");
 					} break;
 					// Если метод компрессии не изменился и остался Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
@@ -638,7 +638,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Zstandard decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Zstandard decompression module has failed");
 					} break;
 					// Если метод компрессии не изменился и остался LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
@@ -647,7 +647,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZma decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "LZma decompression module has failed");
 					} break;
 					// Если метод компрессии не изменился и остался Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
@@ -656,7 +656,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Brotli decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Brotli decompression module has failed");
 					} break;
 					// Если метод компрессии не изменился и остался BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
@@ -665,7 +665,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BZip2 decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "BZip2 decompression module has failed");
 					} break;
 					// Если метод компрессии не изменился и остался GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
@@ -674,7 +674,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZip decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "GZip decompression module has failed");
 					} break;
 					// Если метод компрессии не изменился и остался Deflate
 					case static_cast <uint8_t> (compressor_t::DEFLATE): {
@@ -683,7 +683,7 @@ void awh::Http::decompress() noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Deflate decompression module has failed");
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Deflate decompression module has failed");
 					} break;
 				}
 			}
@@ -694,7 +694,7 @@ void awh::Http::decompress() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -731,9 +731,9 @@ void awh::Http::commit() noexcept {
 			// Устанавливаем режим бракованных данных
 			else this->_session.state = state_t::BROKEN;
 			// Получаем заголовок шифрования
-			const string & encrypt = this->_agent.web.header("X-AWH-Encryption");
+			const string & encrypt = this->_web.header("X-AWH-Encryption");
 			// Если заголовок найден
-			if((this->_agent.transform.crypted = !encrypt.empty())){
+			if((this->_encrypt.crypted = !encrypt.empty())){
 				/**
 				 * Выполняем отлов ошибок
 				 */
@@ -743,24 +743,24 @@ void awh::Http::commit() noexcept {
 					 */
 					switch(static_cast <uint16_t> (::stoi(encrypt))){
 						// Если шифрование произведено 128 битным ключём
-						case 128: this->_agent.transform.cipher = hash_t::cipher_t::AES128; break;
+						case 128: this->_encrypt.cipher = hash_t::cipher_t::AES128; break;
 						// Если шифрование произведено 192 битным ключём
-						case 192: this->_agent.transform.cipher = hash_t::cipher_t::AES192; break;
+						case 192: this->_encrypt.cipher = hash_t::cipher_t::AES192; break;
 						// Если шифрование произведено 256 битным ключём
-						case 256: this->_agent.transform.cipher = hash_t::cipher_t::AES256; break;
+						case 256: this->_encrypt.cipher = hash_t::cipher_t::AES256; break;
 					}
 				/**
 				 * Если возникает ошибка
 				 */
 				} catch(const exception &) {
 					// Если шифрование произведено 128 битным ключём
-					this->_agent.transform.cipher = hash_t::cipher_t::AES128;
+					this->_encrypt.cipher = hash_t::cipher_t::AES128;
 				}
 			}
 			// Отключаем сжатие тела сообщения
-			this->_agent.transform.compressors.current = compressor_t::NONE;
+			this->_compressors.current = compressor_t::NONE;
 			// Выполняем извлечение заголовков HTTP-протокола
-			headers_t & headers = this->_agent.web.headers();
+			headers_t & headers = this->_web.headers();
 			// Если заголовок с параметрами контента получен
 			if(!headers.empty() && headers.has("Content-Encoding")){
 				// Список компрессоров которым выполненно сжатие
@@ -793,7 +793,7 @@ void awh::Http::commit() noexcept {
 			/**
 			 * Определяем к какому сервису относится модуль
 			 */
-			switch(static_cast <uint8_t> (this->_agent.web.hid())){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если модуль соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 					// Если заголовок с параметрами передачи контента получен и контент не зашифрован
@@ -822,7 +822,7 @@ void awh::Http::commit() noexcept {
 									// Если мы получили параметр передачи данных чанками
 									else if(this->_fmk->compare("chunked", * i))
 										// Выполняем активацию передачу данных чанками
-										this->_agent.transfer.chunking = true;
+										this->_transfer.chunking = true;
 								}
 							}
 							// Выполняем определение типа компрессора
@@ -830,27 +830,27 @@ void awh::Http::commit() noexcept {
 								// Если мы получили параметр передачи данных чанками
 								if(this->_fmk->compare("chunked", compressors.front()))
 									// Выполняем активацию передачу данных чанками
-									this->_agent.transfer.chunking = true;
+									this->_transfer.chunking = true;
 							}
 						}
 						// Выполняем удаление заголовка
 						headers.erase("Transfer-Encoding");
 						// Если активирован режим чанкинга
-						if(this->_agent.transfer.chunking)
+						if(this->_transfer.chunking)
 							// Выполняем корректировку значения заголовка
 							headers.emplace("Transfer-Encoding", "chunked");
 					}
 					// Если тело полезной нагрузки получено в сжатом виде
-					if(this->_agent.transform.compressors.current != compressor_t::NONE)
+					if(this->_compressors.current != compressor_t::NONE)
 						// Устанавливаем флаг метода компрессии
-						this->_agent.transform.compressors.selected = this->_agent.transform.compressors.current;
+						this->_compressors.selected = this->_compressors.current;
 				} break;
 				// Если модуль соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Отключаем сжатие тела сообщения
-					this->_agent.transform.compressors.selected = compressor_t::NONE;
+					this->_compressors.selected = compressor_t::NONE;
 					// Если список поддерживаемых протоколов установлен
-					if(!this->_agent.transform.compressors.supports.empty()){
+					if(!this->_compressors.supports.empty()){
 						// Если заголовок с запрашиваемым контентом существует
 						if(headers.has("Accept-Encoding")){
 							// Список компрессоров которым выполненно сжатие
@@ -862,7 +862,7 @@ void awh::Http::commit() noexcept {
 								// Если конкретный метод сжатия запрашивается любой
 								if(this->_fmk->compare("*", header)){
 									// Выполняем перебор всего списка доступных компрессоров
-									for(auto & compressor : this->_agent.transform.compressors.supports)
+									for(auto & compressor : this->_compressors.supports)
 										// Добавляем в список запрашиваемых компрессоров
 										requested.emplace(compressor.first, compressor.second);
 								// Если указан конкретный метод компрессии
@@ -922,7 +922,7 @@ void awh::Http::commit() noexcept {
 														// Если функция обратного вызова на на вывод ошибок установлена
 														if(this->_callback.is("error"))
 															// Выполняем функцию обратного вызова
-															this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
+															this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
 													}
 												// Если мы получили данные в неверном формате
 												} else {
@@ -931,7 +931,7 @@ void awh::Http::commit() noexcept {
 													// Если функция обратного вызова на на вывод ошибок установлена
 													if(this->_callback.is("error"))
 														// Выполняем функцию обратного вызова
-														this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
+														this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
 												}
 											// Если вес компрессора не установлен
 											} else {
@@ -975,9 +975,9 @@ void awh::Http::commit() noexcept {
 								// Выполняем перебор списка запрашиваемых компрессоров
 								for(auto i = requested.rbegin(); i != requested.rend(); ++i){
 									// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-									if(this->_fmk->findInMap(i->second, this->_agent.transform.compressors.supports) != this->_agent.transform.compressors.supports.end()){
+									if(this->_fmk->findInMap(i->second, this->_compressors.supports) != this->_compressors.supports.end()){
 										// Устанавливаем флаг метода компрессии
-										this->_agent.transform.compressors.selected = i->second;
+										this->_compressors.selected = i->second;
 										// Выходим из цикла
 										break;
 									}
@@ -986,13 +986,13 @@ void awh::Http::commit() noexcept {
 						}
 					}
 					// Если заголовок с параметрами передачи данных Transfer-Encoding существует
-					if((this->_agent.transfer.enabled = headers.has("te"))){
+					if((this->_transfer.enabled = headers.has("te"))){
 						// Если версия протокола подключения выше чем HTTP/1.1
-						if(this->_agent.web.request().version > 1.1){
+						if(this->_web.request().version > 1.1){
 							// Выполняем активации получение трейлеров
-							this->_agent.transfer.trailers = true;
+							this->_transfer.trailers = true;
 							// Выполняем активацию передачу данных чанками
-							this->_agent.transfer.chunking = true;
+							this->_transfer.chunking = true;
 						// Если версия протокола подключения не выше HTTP/1.1
 						} else {
 							// Список компрессоров запроса для Transfer-Encoding
@@ -1052,11 +1052,11 @@ void awh::Http::commit() noexcept {
 													// Если получен параметр разрешающий использовать трейлеры
 													else if(this->_fmk->compare("trailers", first))
 														// Выполняем активации получение трейлеров
-														this->_agent.transfer.trailers = true;
+														this->_transfer.trailers = true;
 													// Если получен параметр разрешающий обмениваться чанками
 													else if(this->_fmk->compare("chunked", first))
 														// Выполняем активацию передачу данных чанками
-														this->_agent.transfer.chunking = true;
+														this->_transfer.chunking = true;
 												// Если вес компрессора указан не является числом
 												} else {
 													// Выводим сообщение об ошибке
@@ -1064,7 +1064,7 @@ void awh::Http::commit() noexcept {
 													// Если функция обратного вызова на на вывод ошибок установлена
 													if(this->_callback.is("error"))
 														// Выполняем функцию обратного вызова
-														this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
+														this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Weight of the requested %s compressor is not a number [%s]", compressor.substr(0, pos).c_str(), second.c_str()));
 												}
 											// Если мы получили данные в неверном формате
 											} else {
@@ -1073,7 +1073,7 @@ void awh::Http::commit() noexcept {
 												// Если функция обратного вызова на на вывод ошибок установлена
 												if(this->_callback.is("error"))
 													// Выполняем функцию обратного вызова
-													this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
+													this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("We received data in the wrong format [%s]", compressor.c_str()));
 											}
 										// Если вес компрессора не установлен
 										} else {
@@ -1108,11 +1108,11 @@ void awh::Http::commit() noexcept {
 											// Если получен параметр разрешающий использовать трейлеры
 											else if(this->_fmk->compare("trailers", compressor))
 												// Выполняем активации получение трейлеров
-												this->_agent.transfer.trailers = true;
+												this->_transfer.trailers = true;
 											// Если получен параметр разрешающий обмениваться чанками
 											else if(this->_fmk->compare("chunked", compressor))
 												// Выполняем активацию передачу данных чанками
-												this->_agent.transfer.chunking = true;
+												this->_transfer.chunking = true;
 											// Выполняем уменьшение веса выбранного компрессора
 											weight -= .1f;
 										}
@@ -1120,13 +1120,13 @@ void awh::Http::commit() noexcept {
 								}
 							}
 							// Если список запрашиваемых компрессоров получен
-							if(!requested.empty() && !this->_agent.transform.compressors.supports.empty()){
+							if(!requested.empty() && !this->_compressors.supports.empty()){
 								// Выполняем перебор списка запрашиваемых компрессоров
 								for(auto i = requested.rbegin(); i != requested.rend(); ++i){
 									// Выполняем поиск в списке доступных компрессоров запрашиваемый компрессор
-									if(this->_fmk->findInMap(i->second, this->_agent.transform.compressors.supports) != this->_agent.transform.compressors.supports.end()){
+									if(this->_fmk->findInMap(i->second, this->_compressors.supports) != this->_compressors.supports.end()){
 										// Устанавливаем флаг метода компрессии
-										this->_agent.transform.compressors.selected = i->second;
+										this->_compressors.selected = i->second;
 										// Выходим из цикла
 										break;
 									}
@@ -1167,7 +1167,7 @@ void awh::Http::commit() noexcept {
 				} break;
 			}
 			// Выполняем фиксацию полученных данных
-			this->_agent.web.commit();
+			this->_web.commit();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1175,7 +1175,7 @@ void awh::Http::commit() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1208,7 +1208,7 @@ awh::Http::handshake_t awh::Http::status() const noexcept {
  */
 uint32_t awh::Http::id() const noexcept {
 	// Выводим идентификатор объекта
-	return this->_agent.web.id();
+	return this->_web.id();
 }
 /**
  * @brief Метод установки идентификатора объекта
@@ -1217,7 +1217,7 @@ uint32_t awh::Http::id() const noexcept {
  */
 void awh::Http::id(const uint32_t id) noexcept {
 	// Выполняем установку идентификатора объекта
-	this->_agent.web.id(id);
+	this->_web.id(id);
 }
 /**
  * @brief Метод извлечения идентичности протокола модуля
@@ -1243,7 +1243,7 @@ void awh::Http::identity(const identity_t identity) noexcept {
  */
 void awh::Http::reset() noexcept {
 	// Выполняем сброс данных парсера
-	this->_agent.web.reset();
+	this->_web.reset();
 	// Выполняем сброс стейта текущего запроса
 	this->_session.state = state_t::NONE;
 	// Выполняем сброс статуса рукопожатия
@@ -1255,17 +1255,17 @@ void awh::Http::reset() noexcept {
  */
 void awh::Http::clear() noexcept {
 	// Выполняем очистку данных парсера
-	this->_agent.web.clear();
+	this->_web.clear();
 	// Очищаем список установленных трейлеров
 	this->_trailers.clear();
-	// Выполняем сброс чёрного списка HTTP заголовков
+	// Выполняем сброс чёрного списка HTTP-заголовков
 	this->_blacklist.clear();
 	// Выполняем сброс флага формирования чанков
-	this->_agent.transfer.chunking = false;
+	this->_transfer.chunking = false;
 	// Снимаем флаг зашифрованной полезной нагрузки
-	this->_agent.transform.crypted = false;
+	this->_encrypt.crypted = false;
 	// Снимаем флаг сжатой полезной нагрузки
-	this->_agent.transform.compressors.current = compressor_t::NONE;
+	this->_compressors.current = compressor_t::NONE;
 }
 /**
  * @brief Метод очистки данных HTTP-юнита
@@ -1280,18 +1280,18 @@ void awh::Http::clear(const web_t::unit_t unit) noexcept {
 		// Если производится работы с HTTP-телом
 		case static_cast <uint8_t> (web_t::unit_t::BODY): {
 			// Снимаем флаг зашифрованной полезной нагрузки
-			this->_agent.transform.crypted = false;
+			this->_encrypt.crypted = false;
 			// Снимаем флаг сжатой полезной нагрузки
-			this->_agent.transform.compressors.current = compressor_t::NONE;
+			this->_compressors.current = compressor_t::NONE;
 		} break;
 		// Если производится работа с HTTP-заголовками
 		case static_cast <uint8_t> (web_t::unit_t::HEADERS):
 			// Выполняем сброс флага формирования чанков
-			this->_agent.transfer.chunking = false;
+			this->_transfer.chunking = false;
 		break;
 	}
 	// Выполняем очистку данных тела
-	this->_agent.web.clear(unit);
+	this->_web.clear(unit);
 }
 /**
  * @brief Метод установки флага точной установки хоста
@@ -1312,17 +1312,6 @@ void awh::Http::chunkSize(const size_t size) noexcept {
 	if(size >= 100)
 		// Выполняем установку размера чанка
 		this->_session.chunkSize = size;
-}
-/**
- * @brief Метод установки пользовательского агента для HTTP-запроса
- *
- * @param userAgent пользовательский агент для HTTP-запроса
- */
-void awh::Http::userAgent(const string & userAgent) noexcept {
-	// Устанавливаем UserAgent
-	if(!userAgent.empty())
-		// Выполняем установку User-Agent
-		this->_agent.userAgent = userAgent;
 }
 /**
  * @brief Метод проверки существования данных в чёрном списке
@@ -1417,7 +1406,7 @@ bool awh::Http::state(const state_t state) const noexcept {
 					// Если сервер соответствует HTTP-серверу
 					case static_cast <uint8_t> (identity_t::HTTP): {
 						// Запрашиваем заголовок подключения
-						const string & header = this->_agent.web.header("Connection");
+						const string & header = this->_web.header("Connection");
 						// Если заголовок подключения найден
 						if(!header.empty())
 							// Выполняем проверку является ли соединение закрытым
@@ -1425,7 +1414,7 @@ bool awh::Http::state(const state_t state) const noexcept {
 						// Если заголовок подключения не найден
 						else {
 							// Переходим по всему списку заголовков
-							for(auto & header : const_cast <http_t *> (this)->_agent.web.headers()){
+							for(auto & header : const_cast <http_t *> (this)->_web.headers()){
 								// Если заголовок найден
 								if(this->_fmk->compare("Connection", header.first))
 									// Выполняем проверку является ли соединение закрытым
@@ -1436,7 +1425,7 @@ bool awh::Http::state(const state_t state) const noexcept {
 					// Если сервер соответствует PROXY-серверу
 					case static_cast <uint8_t> (identity_t::PROXY): {
 						// Запрашиваем заголовок подключения
-						const string & header = this->_agent.web.header("Proxy-Connection");
+						const string & header = this->_web.header("Proxy-Connection");
 						// Если заголовок подключения найден
 						if(!header.empty())
 							// Выполняем проверку является ли соединение закрытым
@@ -1444,7 +1433,7 @@ bool awh::Http::state(const state_t state) const noexcept {
 						// Если заголовок подключения не найден
 						else {
 							// Переходим по всему списку заголовков
-							for(auto & header : const_cast <http_t *> (this)->_agent.web.headers()){
+							for(auto & header : const_cast <http_t *> (this)->_web.headers()){
 								// Если заголовок найден
 								if(this->_fmk->compare("Proxy-Connection", header.first))
 									// Выполняем проверку является ли соединение закрытым
@@ -1467,7 +1456,7 @@ bool awh::Http::state(const state_t state) const noexcept {
 			// Если проверяется режим флага запраса трейлеров
 			case static_cast <uint8_t> (state_t::TRAILERS):
 				// Выводим проверку на установку флага запроса передачи трейлеров
-				return this->_agent.transfer.trailers;
+				return this->_transfer.trailers;
 		}
 	/**
 	 * Если возникает ошибка
@@ -1476,7 +1465,7 @@ bool awh::Http::state(const state_t state) const noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1502,7 +1491,7 @@ bool awh::Http::state(const state_t state) const noexcept {
  */
 bool awh::Http::standard(const string & name) const noexcept {
 	// Выводим результат проверки
-	return this->_agent.web.standard(name);
+	return this->_web.standard(name);
 }
 /**
  * @brief Метод извлечения параметров запроса
@@ -1511,7 +1500,7 @@ bool awh::Http::standard(const string & name) const noexcept {
  */
 const awh::uri_t::url_t & awh::Http::url() const noexcept {
 	// Выводим параметры запроса
-	return this->_agent.web.request().url;
+	return this->_web.request().url;
 }
 /**
  * @brief Метод получения объекта запроса на сервер
@@ -1520,7 +1509,7 @@ const awh::uri_t::url_t & awh::Http::url() const noexcept {
  */
 const awh::web_t::req_t & awh::Http::request() const noexcept {
 	// Выводим объект запроса на сервер
-	return this->_agent.web.request();
+	return this->_web.request();
 }
 /**
  * @brief Метод добавления объекта запроса на сервер
@@ -1529,7 +1518,7 @@ const awh::web_t::req_t & awh::Http::request() const noexcept {
  */
 void awh::Http::request(const web_t::req_t & req) noexcept {
 	// Устанавливаем объект запроса на сервер
-	this->_agent.web.request(req);
+	this->_web.request(req);
 }
 /**
  * @brief Метод получения объекта ответа сервера
@@ -1538,7 +1527,7 @@ void awh::Http::request(const web_t::req_t & req) noexcept {
  */
 const awh::web_t::res_t & awh::Http::response() const noexcept {
 	// Выводим объект ответа сервера
-	return this->_agent.web.response();
+	return this->_web.response();
 }
 /**
  * @brief Метод добавления объекта ответа сервера
@@ -1547,7 +1536,7 @@ const awh::web_t::res_t & awh::Http::response() const noexcept {
  */
 void awh::Http::response(const web_t::res_t & res) noexcept {
 	// Устанавливаем объект ответа сервера
-	this->_agent.web.response(res);
+	this->_web.response(res);
 }
 /**
  * @brief Метод получения текущей даты для заголовка HTTP-протокола
@@ -1642,7 +1631,7 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 		// Выполняем очистку списка заголовков
 		http.clear(web_t::unit_t::HEADERS);
 		// Устанавливаем идентификатор объекта
-		http.id(this->_agent.web.id());
+		http.id(this->_web.id());
 		// Устанавливаем активный стейт объекта
 		http._session.state = this->_session.state;
 		// Устанавливаем размер одного чанка
@@ -1650,37 +1639,37 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 		// Устанавливаем статус рукопожатия
 		http._session.handshake = this->_session.handshake;
 		// Устанавливаем параметры Transfer-Encoding
-		http._agent.transfer = this->_agent.transfer;
+		http._transfer = this->_transfer;
 		// Устанавливаем флаг зашифрованной полезной нагрузки
-		http._agent.transform.crypted = this->_agent.transform.crypted;
+		http._encrypt.crypted = this->_encrypt.crypted;
 		// Устанавливаем флаг шифрования объекта
-		http._agent.transform.encryption = this->_agent.transform.encryption;
+		http._encrypt.enabled = this->_encrypt.enabled;
 		// Устанавливаем флаг компрессии полезной нагрузки
-		http._agent.transform.compressors.current = this->_agent.transform.compressors.current;
+		http._compressors.current = this->_compressors.current;
 		// Устанавливаем выбранный метод компрессии
-		http._agent.transform.compressors.selected = this->_agent.transform.compressors.selected;
+		http._compressors.selected = this->_compressors.selected;
 		// Выполняем установку списка поддерживаемых компрессоров
-		http._agent.transform.compressors.supports = this->_agent.transform.compressors.supports;
+		http._compressors.supports = this->_compressors.supports;
 		// Извлекаем список заголовков
-		headers_t & headers = this->_agent.web.headers();
+		headers_t & headers = this->_web.headers();
 		// Если заголовки получены, выполняем установку
 		if(!headers.empty())
 			// Выполняем установку заголовков
 			http.headers(headers);
 		// Устанавливаем параметры идентификации сервиса
-		http.ident(
-			this->_agent.ident.id,
-			this->_agent.ident.name,
-			this->_agent.ident.version
+		http.agent(
+			this->_agent.id,
+			this->_agent.name,
+			this->_agent.version
 		);
 		// Если нужно сформировать данные запроса
 		if(flag == process_t::REQUEST){
 			// Устанавливаем User-Agent, если он установлен
-			http._agent.userAgent = this->_agent.userAgent;
+			http._agent.user = this->_agent.user;
 			// Получаем ответ с удалённого сервера
-			const web_t::res_t & response = this->_agent.web.response();
+			const web_t::res_t & response = this->_web.response();
 			// Если авторизация установлена как Digest
-			if(this->_agent.auth.client.type() == awh::auth_t::type_t::DIGEST){
+			if(this->_auth.client.type() == awh::auth_t::type_t::DIGEST){
 				/**
 				 * Проверяем код ответа
 				 */
@@ -1688,20 +1677,20 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 					// Если требуется авторизация для сервера
 					case 401: {
 						// Получаем параметры авторизации
-						const string & auth = this->_agent.web.header("WWW-Authenticate");
+						const string & auth = this->_web.header("WWW-Authenticate");
 						// Если параметры авторизации найдены
 						if(!auth.empty())
-							// Устанавливаем заголовок HTTP в параметры авторизации
-							http._agent.auth.client.header(auth);
+							// Устанавливаем HTTP-заголовок в параметры авторизации
+							http._auth.client.header(auth);
 					} break;
 					// Если требуется авторизация для прокси-сервера
 					case 407: {
 						// Получаем параметры авторизации
-						const string & auth = this->_agent.web.header("Proxy-Authenticate");
+						const string & auth = this->_web.header("Proxy-Authenticate");
 						// Если параметры авторизации найдены
 						if(!auth.empty())
-							// Устанавливаем заголовок HTTP в параметры авторизации
-							http._agent.auth.client.header(auth);
+							// Устанавливаем HTTP-заголовок в параметры авторизации
+							http._auth.client.header(auth);
 					} break;
 				}
 			}
@@ -1717,15 +1706,15 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 				case 307:
 				case 308: {
 					// Получаем параметры переадресации
-					const string & location = this->_agent.web.header("Location");
+					const string & location = this->_web.header("Location");
 					// Если адрес перенаправления найден
 					if(!location.empty()){
 						// Получаем объект параметров запроса
-						web_t::req_t request = this->_agent.web.request();
+						web_t::req_t request = this->_web.request();
 						// Выполняем парсинг полученного URL-адреса
-						request.url = this->_agent.uri.parse(location);
+						request.url = this->_uri.parse(location);
 						// Выполняем установку параметров запроса
-						http._agent.web.request(::move(request));
+						http._web.request(::move(request));
 					}
 				} break;
 			}
@@ -1737,7 +1726,7 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1766,9 +1755,9 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	// Если мы ещё не зафиксировали изменения и парсинг данных необходим
 	if(!this->state(state_t::END)){
 		// Выполняем парсинг сырых данных
-		result = this->_agent.web.parse(buffer, size);
+		result = this->_web.parse(buffer, size);
 		// Если парсинг выполнен
-		if(this->_agent.web.finish())
+		if(this->_web.finish())
 			// Выполняем коммит полученного результата
 			this->commit();
 	}
@@ -1787,81 +1776,59 @@ awh::buffer_t awh::Http::dump() const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Длина строки, количество элементов
-		size_t length = 0, count = 0;
 		// Устанавливаем параметры активной сессии
 		result.push(&this->_session, sizeof(this->_session));
+		// Устанавливаем активные параметры шифрования
+		result.push(&this->_encrypt, sizeof(this->_encrypt));
 		// Устанавливаем параметры Transfer-Encoding
-		result.push(&this->_agent.transfer, sizeof(this->_agent.transfer));
-		// Устанавливаем установленный размер шифрования
-		result.push(&this->_agent.transform.cipher, sizeof(this->_agent.transform.cipher));
-		// Устанавливаем флаг зашифрованных данных полузной нагрузки
-		result.push(&this->_agent.transform.crypted, sizeof(this->_agent.transform.crypted));
-		// Устанавливаем флаг требования шифрования данных полезной нагрузки
-		result.push(&this->_agent.transform.encryption, sizeof(this->_agent.transform.encryption));
+		result.push(&this->_transfer, sizeof(this->_transfer));
 		// Устанавливаем метод компрессии хранимых данных
-		result.push(&this->_agent.transform.compressors.current, sizeof(this->_agent.transform.compressors.current));
+		result.push(&this->_compressors.current, sizeof(this->_compressors.current));
 		// Устанавливаем метод компрессии отправляемых данных
-		result.push(&this->_agent.transform.compressors.selected, sizeof(this->_agent.transform.compressors.selected));
-		// Получаем количество поддерживаемых компрессоров
-		count = this->_agent.transform.compressors.supports.size();
+		result.push(&this->_compressors.selected, sizeof(this->_compressors.selected));
 		// Устанавливаем количество поддерживаемых компрессоров
-		result.push(count);
+		result.push(this->_compressors.supports.size());
 		// Если список поддерживаемых компрессоров не пустой
-		if(!this->_agent.transform.compressors.supports.empty()){
+		if(!this->_compressors.supports.empty()){
 			// Выполняем перебор всех поддерживаемых компрессоров
-			for(auto & compressor : this->_agent.transform.compressors.supports){
+			for(auto & compressor : this->_compressors.supports){
 				// Выполняем установку веса компрессора
 				result.push(compressor.first);
 				// Выполняем установку идентификатора компрессора
 				result.push(&compressor.second, sizeof(compressor.second));
 			}
 		}
-		// Получаем размер идентификатора сервиса
-		length = this->_agent.ident.id.size();
 		// Устанавливаем размер идентификатора сервиса
-		result.push(length);
+		result.push(this->_agent.id.length());
 		// Устанавливаем данные идентификатора сервиса
-		result.push(this->_agent.ident.id);
-		// Получаем размер версии модуля приложения
-		length = this->_agent.ident.version.size();
+		result.push(this->_agent.id);
 		// Устанавливаем размер версии модуля приложения
-		result.push(length);
+		result.push(this->_agent.version.length());
 		// Устанавливаем данные версии модуля приложения
-		result.push(this->_agent.ident.version);
-		// Получаем размер названия сервиса
-		length = this->_agent.ident.name.size();
+		result.push(this->_agent.version);
 		// Устанавливаем размер названия сервиса
-		result.push(length);
+		result.push(this->_agent.name.length());
 		// Устанавливаем данные названия сервиса
-		result.push(this->_agent.ident.name);
-		// Получаем размер User-Agent для HTTP-запроса
-		length = this->_agent.userAgent.size();
+		result.push(this->_agent.name);
 		// Устанавливаем размер User-Agent для HTTP-запроса
-		result.push(length);
+		result.push(this->_agent.user.length());
 		// Устанавливаем данные User-Agent для HTTP-запроса
-		result.push(this->_agent.userAgent);
-		// Получаем количество записей чёрного списка
-		count = this->_blacklist.size();
+		result.push(this->_agent.user);
 		// Устанавливаем количество записей чёрного списка
-		result.push(count);
+		result.push(this->_blacklist.size());
 		// Выполняем переход по всему чёрному списку
 		for(auto & header : this->_blacklist){
-			// Получаем размер заголовка из чёрного списка
-			length = header.size();
 			// Устанавливаем размер заголовка из чёрного списка
-			result.push(length);
+			result.push(header.length());
 			// Устанавливаем данные заголовка из чёрного списка
 			result.push(header);
 		}
 		// Получаем дамп данных модуля WEB
-		const buffer_t & dump = this->_agent.web.dump();
-		// Получаем размер дампа данных модуля WEB
-		length = dump.size();
+		buffer_t dump = this->_web.dump();
 		// Устанавливаем размер буфера WEB данных
-		result.push(length);
+		result.push(dump.size());
 		// Устанавливаем данные буфера WEB данных
-		result.push(static_cast <const char *> (dump), static_cast <size_t> (dump));
+		result.push(dump);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1869,7 +1836,7 @@ awh::buffer_t awh::Http::dump() const noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1914,39 +1881,31 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 			// Длина строки, количество элементов и смещение в буфере
 			size_t length = 0, count = 0, offset = 0;
 			// Извлекаем параметры активной сессии
-			::memcpy(reinterpret_cast <void *> (&this->_session), buffer + offset, sizeof(this->_session));
+			::memcpy(&this->_session, buffer + offset, sizeof(this->_session));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_session);
+			// Извлекаем активные параметры шифрования
+			::memcpy(&this->_encrypt, buffer + offset, sizeof(this->_encrypt));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_encrypt);
 			// Извлекаем параметры Transfer-Encoding
-			::memcpy(reinterpret_cast <void *> (&this->_agent.transfer), buffer + offset, sizeof(this->_agent.transfer));
+			::memcpy(&this->_transfer, buffer + offset, sizeof(this->_transfer));
 			// Выполняем смещение в буфере
-			offset += sizeof(this->_agent.transfer);
-			// Извлекаем установленный размер шифрования
-			::memcpy(reinterpret_cast <void *> (&this->_agent.transform.cipher), buffer + offset, sizeof(this->_agent.transform.cipher));
-			// Выполняем смещение в буфере
-			offset += sizeof(this->_agent.transform.cipher);
-			// Извлекаем флаг зашифрованных данных полузной нагрузки
-			::memcpy(reinterpret_cast <void *> (&this->_agent.transform.crypted), buffer + offset, sizeof(this->_agent.transform.crypted));
-			// Выполняем смещение в буфере
-			offset += sizeof(this->_agent.transform.crypted);
-			// Извлекаем флаг требования шифрования данных полезной нагрузки
-			::memcpy(reinterpret_cast <void *> (&this->_agent.transform.encryption), buffer + offset, sizeof(this->_agent.transform.encryption));
-			// Выполняем смещение в буфере
-			offset += sizeof(this->_agent.transform.encryption);
+			offset += sizeof(this->_transfer);
 			// Извлекаем метод компрессии хранимых данных
-			::memcpy(reinterpret_cast <void *> (&this->_agent.transform.compressors.current), buffer + offset, sizeof(this->_agent.transform.compressors.current));
+			::memcpy(&this->_compressors.current, buffer + offset, sizeof(this->_compressors.current));
 			// Выполняем смещение в буфере
-			offset += sizeof(this->_agent.transform.compressors.current);
+			offset += sizeof(this->_compressors.current);
 			// Извлекаем метод компрессии отправляемых данных
-			::memcpy(reinterpret_cast <void *> (&this->_agent.transform.compressors.selected), buffer + offset, sizeof(this->_agent.transform.compressors.selected));
+			::memcpy(&this->_compressors.selected, buffer + offset, sizeof(this->_compressors.selected));
 			// Выполняем смещение в буфере
-			offset += sizeof(this->_agent.transform.compressors.selected);
+			offset += sizeof(this->_compressors.selected);
 			// Выполняем получение количества поддерживаемых компрессоров
-			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
+			::memcpy(&count, buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем очистку списку поддерживаемых компрессоров
-			this->_agent.transform.compressors.supports.clear();
+			this->_compressors.supports.clear();
 			// Если количество компрессоров больше нуля
 			if(count > 0){
 				// Вес компрессора
@@ -1956,71 +1915,71 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 				// Выполняем последовательную установку всех компрессоров
 				for(size_t i = 0; i < count; i++){
 					// Выполняем получение веса компрессора
-					::memcpy(reinterpret_cast <void *> (&weight), buffer + offset, sizeof(weight));
+					::memcpy(&weight, buffer + offset, sizeof(weight));
 					// Выполняем смещение в буфере
 					offset += sizeof(weight);
 					// Выполняем получение идентификатора компрессора
-					::memcpy(reinterpret_cast <void *> (&compressor), buffer + offset, sizeof(compressor));
+					::memcpy(&compressor, buffer + offset, sizeof(compressor));
 					// Выполняем смещение в буфере
 					offset += sizeof(compressor);
 					// Выполняем установку метода компрессора
-					this->_agent.transform.compressors.supports.emplace(weight, compressor);
+					this->_compressors.supports.emplace(weight, compressor);
 				}
 			}
 			// Выполняем получение размера идентификатора сервиса
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
 				// Выделяем память для данных идентификатора сервиса
-				this->_agent.ident.id.resize(length, 0);
+				this->_agent.id.resize(length, 0);
 				// Выполняем получение данных идентификатора сервиса
-				::memcpy(reinterpret_cast <void *> (this->_agent.ident.id.data()), buffer + offset, length);
+				::memcpy(this->_agent.id.data(), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера версии модуля приложения
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
 				// Выделяем память для данных версии модуля приложения
-				this->_agent.ident.version.resize(length, 0);
+				this->_agent.version.resize(length, 0);
 				// Выполняем получение данных версии модуля приложения
-				::memcpy(reinterpret_cast <void *> (this->_agent.ident.version.data()), buffer + offset, length);
+				::memcpy(this->_agent.version.data(), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера названия сервиса
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
 				// Выделяем память для данных названия сервиса
-				this->_agent.ident.name.resize(length, 0);
+				this->_agent.name.resize(length, 0);
 				// Выполняем получение данных названия сервиса
-				::memcpy(reinterpret_cast <void *> (this->_agent.ident.name.data()), buffer + offset, length);
+				::memcpy(this->_agent.name.data(), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера User-Agent для HTTP-запроса
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
 				// Выделяем память для данных User-Agent для HTTP-запроса
-				this->_agent.userAgent.resize(length, 0);
+				this->_agent.user.resize(length, 0);
 				// Выполняем получение данных User-Agent для HTTP-запроса
-				::memcpy(reinterpret_cast <void *> (this->_agent.userAgent.data()), buffer + offset, length);
+				::memcpy(this->_agent.user.data(), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение количества записей чёрного списка
-			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
+			::memcpy(&count, buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем сброс заголовков чёрного списка
@@ -2030,7 +1989,7 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 				// Выполняем последовательную загрузку всех заголовков
 				for(size_t i = 0; i < count; i++){
 					// Выполняем получение размера заголовка из чёрного списка
-					::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+					::memcpy(&length, buffer + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Если размер получен
@@ -2038,7 +1997,7 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 						// Выделяем память для заголовка чёрного списка
 						string header(length, 0);
 						// Выполняем получение заголовка чёрного списка
-						::memcpy(reinterpret_cast <void *> (header.data()), buffer + offset, length);
+						::memcpy(header.data(), buffer + offset, length);
 						// Выполняем смещение в буфере
 						offset += length;
 						// Если заголовок чёрного списка получен
@@ -2049,13 +2008,13 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 				}
 			}
 			// Выполняем получение размера дампа WEB данных
-			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			::memcpy(&length, buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
 				// Выполняем установку буфера модуля Web
-				this->_agent.web.dump(buffer + offset, length);
+				this->_web.dump(buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
@@ -2066,7 +2025,7 @@ void awh::Http::dump(const char * buffer, const size_t size) noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2094,7 +2053,7 @@ awh::buffer_t & awh::Http::body() noexcept {
 	// Выполняем декомпрессию полезной нагрузки
 	this->decompress();
 	// Выводим данные тела
-	return this->_agent.web.body();
+	return this->_web.body();
 }
 /**
  * @brief Метод переноса данных тела HTTP-протокола
@@ -2109,7 +2068,7 @@ void awh::Http::body(buffer_t && body) noexcept {
 		// Выполняем декомпрессию полезной нагрузки
 		this->decompress();
 		// Добавляем данные телал сообщения
-		this->_agent.web.body(::move(body));
+		this->_web.body(::move(body));
 	}
 }
 /**
@@ -2136,7 +2095,7 @@ void awh::Http::body(vector <char> && body) noexcept {
 		// Выполняем декомпрессию полезной нагрузки
 		this->decompress();
 		// Добавляем данные телал сообщения
-		this->_agent.web.body(::move(body));
+		this->_web.body(::move(body));
 	}
 }
 /**
@@ -2164,7 +2123,7 @@ void awh::Http::body(const char * buffer, const size_t size) noexcept {
 		// Выполняем декомпрессию полезной нагрузки
 		this->decompress();
 		// Добавляем данные телал сообщения
-		this->_agent.web.body(buffer, size);
+		this->_web.body(buffer, size);
 	}
 }
 /**
@@ -2184,7 +2143,7 @@ awh::buffer_t awh::Http::chunk() noexcept {
 		// Выполняем шифрование полезной нагрузки
 		this->encrypt();
 		// Получаем собранные данные тела
-		buffer_t & body = const_cast <buffer_t &> (this->_agent.web.body());
+		buffer_t & body = const_cast <buffer_t &> (this->_web.body());
 		// Если данные тела ещё существуют
 		if(!body.empty()){
 			// Версия протокола HTTP
@@ -2192,20 +2151,20 @@ awh::buffer_t awh::Http::chunk() noexcept {
 			/**
 			 * Определяем тип HTTP-модуля
 			 */
-			switch(static_cast <uint8_t> (this->_agent.web.hid())){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если мы работаем с клиентом
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Выполняем получение версии HTTP-протокола
-					version = this->_agent.web.request().version;
+					version = this->_web.request().version;
 				break;
 				// Если мы работаем с сервером
 				case static_cast <uint8_t> (web_t::hid_t::SERVER):
 					// Выполняем получение версии HTTP-протокола
-					version = this->_agent.web.response().version;
+					version = this->_web.response().version;
 				break;
 			}
 			// Если нужно тело выводить в виде чанков
-			if((version > 1.) && this->_agent.transfer.chunking){
+			if((version > 1.) && this->_transfer.chunking){
 				// Если версия протокола интернета выше 1.1
 				if(version > 1.1){
 					// Если тело сообщения больше размера чанка
@@ -2237,13 +2196,13 @@ awh::buffer_t awh::Http::chunk() noexcept {
 						// Добавляем разделитель
 						result.push("\r\n");
 						// Формируем тело чанка
-						result.push(static_cast <const char *> (body), static_cast <size_t> (body));
+						result.push(body);
 						// Очищаем данные тела
 						body.clear();
 						/**
 						 * Определяем тип HTTP-модуля
 						 */
-						switch(static_cast <uint8_t> (this->_agent.web.hid())){
+						switch(static_cast <uint8_t> (this->_web.hid())){
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 								// Добавляем конец запроса
@@ -2276,9 +2235,9 @@ awh::buffer_t awh::Http::chunk() noexcept {
 		// Если тело передаваемых данных уже пустое
 		if(body.empty()){
 			// Снимаем флаг зашифрованной полезной нагрузки
-			this->_agent.transform.crypted = false;
+			this->_encrypt.crypted = false;
 			// Снимаем флаг сжатой полезной нагрузки
-			this->_agent.transform.compressors.current = compressor_t::NONE;
+			this->_compressors.current = compressor_t::NONE;
 		}
 	/**
 	 * Если возникает ошибка
@@ -2287,7 +2246,7 @@ awh::buffer_t awh::Http::chunk() noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2337,7 +2296,7 @@ void awh::Http::chunk(const char * buffer, const size_t size) noexcept {
 	// Если буфер чанка полезной нагрузки передан
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем добавление буфера чанка полезной нагрузки
-		this->_agent.web.body(buffer, size);
+		this->_web.body(buffer, size);
 }
 /**
  * @brief Метод получения списка заголовков HTTP-протокола
@@ -2346,7 +2305,7 @@ void awh::Http::chunk(const char * buffer, const size_t size) noexcept {
  */
 awh::headers_t & awh::Http::headers() noexcept {
 	// Выводим список доступных заголовков
-	return this->_agent.web.headers();
+	return this->_web.headers();
 }
 /**
  * @brief Метод переноса списка заголовков HTTP-протокола
@@ -2357,11 +2316,11 @@ void awh::Http::headers(headers_t && headers) noexcept {
 	// Если заголовки HTTP-протокола переданы
 	if(!headers.empty()){
 		// Выполняем установку HTTP-протокола
-		this->_agent.web.headers(::move(headers));
+		this->_web.headers(::move(headers));
 		// Если мы работаем с клиентом
-		if(this->_agent.web.hid() == web_t::hid_t::SERVER){
+		if(this->_web.hid() == web_t::hid_t::SERVER){
 			// Если список трейлеров установлен
-			if(this->_agent.transfer.trailers && !this->_trailers.empty()){
+			if(this->_transfer.trailers && !this->_trailers.empty()){
 				// Название трейлера для добавления
 				string name = "";
 				// Выполняем перебор всех трейлеров
@@ -2369,7 +2328,7 @@ void awh::Http::headers(headers_t && headers) noexcept {
 					// Выполняем получение названия трейлера
 					name = trailer.first;
 					// Добавляем заголовок названия трейлера
-					this->_agent.web.header("Trailer", this->_fmk->transform(name, fmk_t::transform_t::SMART));
+					this->_web.header("Trailer", this->_fmk->transform(name, fmk_t::transform_t::SMART));
 				}
 			}
 		}
@@ -2384,11 +2343,11 @@ void awh::Http::headers(const headers_t & headers) noexcept {
 	// Если заголовки HTTP-протокола переданы
 	if(!headers.empty()){
 		// Выполняем установку HTTP-протокола
-		this->_agent.web.headers(headers);
+		this->_web.headers(headers);
 		// Если мы работаем с клиентом
-		if(this->_agent.web.hid() == web_t::hid_t::SERVER){
+		if(this->_web.hid() == web_t::hid_t::SERVER){
 			// Если список трейлеров установлен
-			if(this->_agent.transfer.trailers && !this->_trailers.empty()){
+			if(this->_transfer.trailers && !this->_trailers.empty()){
 				// Название трейлера для добавления
 				string name = "";
 				// Выполняем перебор всех трейлеров
@@ -2396,7 +2355,7 @@ void awh::Http::headers(const headers_t & headers) noexcept {
 					// Выполняем получение названия трейлера
 					name = trailer.first;
 					// Добавляем заголовок названия трейлера
-					this->_agent.web.header("Trailer", this->_fmk->transform(name, fmk_t::transform_t::SMART));
+					this->_web.header("Trailer", this->_fmk->transform(name, fmk_t::transform_t::SMART));
 				}
 			}
 		}
@@ -2410,7 +2369,7 @@ void awh::Http::headers(const headers_t & headers) noexcept {
  */
 const string & awh::Http::header(const string & name) const noexcept {
 	// Выполняем вывод запрашиваемого заголовка HTTP-протокола
-	return this->_agent.web.header(name);
+	return this->_web.header(name);
 }
 /**
  * @brief Метод добавления заголовка HTTP-протокола
@@ -2430,9 +2389,9 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 				// Определяем соответствует ли ключ методу запроса
 				if(this->_fmk->compare(":method", name)){
 					// Получаем объект параметров запроса
-					web_t::req_t request = this->_agent.web.request();
+					web_t::req_t request = this->_web.request();
 					// Устанавливаем версию протокола
-					request.version = 2.f;
+					request.version = 2.;
 					// Если метод является GET запросом
 					if(this->_fmk->compare("GET", content))
 						// Выполняем установку метода запроса GET
@@ -2470,17 +2429,17 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 						// Выполняем установку метода запроса CONNECT
 						request.method = web_t::method_t::CONNECT;
 					// Выполняем сохранение параметров запроса
-					this->_agent.web.request(::move(request));
+					this->_web.request(::move(request));
 					// Выходим из функции
 					return;
 				// Если ключ запроса соответствует пути запроса
 				} else if(this->_fmk->compare(":path", name)) {
 					// Получаем объект параметров запроса
-					web_t::req_t request = this->_agent.web.request();
+					web_t::req_t request = this->_web.request();
 					// Выполняем установку пути запроса
-					this->_agent.uri.create(request.url, this->_agent.uri.parse(content));
+					this->_uri.create(request.url, this->_uri.parse(content));
 					// Выполняем сохранение параметров запроса
-					this->_agent.web.request(::move(request));
+					this->_web.request(::move(request));
 					// Выходим из функции
 					return;
 				// Если ключ заголовка соответствует протоколу подключения
@@ -2488,7 +2447,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 					/**
 					 * Определяем тип HTTP-модуля
 					 */
-					switch(static_cast <uint8_t> (this->_agent.web.hid())){
+					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 							// Выводим сообщение о невозможности установки трейлера
@@ -2499,15 +2458,15 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 							// Если протокол принадлежит Websocket
 							if(this->_fmk->compare("websocket", content))
 								// Выполняем установку типа протокола для переключению на Websocket
-								this->_agent.web.upgrade(web_t::proto_t::WEBSOCKET);
+								this->_web.upgrade(web_t::proto_t::WEBSOCKET);
 							// Если протокол принадлежит HTTP/2
 							else if(this->_fmk->compare("HTTP/2.0", content) || this->_fmk->compare("h2c", content))
 								// Выполняем установку типа протокола для переключению на HTTP/2
-								this->_agent.web.upgrade(web_t::proto_t::HTTP2);
+								this->_web.upgrade(web_t::proto_t::HTTP2);
 							// Устанавливаем тип протокола как неизвестный
-							else this->_agent.web.upgrade(web_t::proto_t::UNKNOWN);
+							else this->_web.upgrade(web_t::proto_t::UNKNOWN);
 							// Если сервер является Web-сервером и протокол соответствует Websocket-у
-							if((this->_session.identity == identity_t::HTTP) && (this->_agent.web.upgrade() == web_t::proto_t::WEBSOCKET))
+							if((this->_session.identity == identity_t::HTTP) && (this->_web.upgrade() == web_t::proto_t::WEBSOCKET))
 								// Выполняем установку идентичность протоколу Websocket
 								this->_session.identity = identity_t::WS;
 						} break;
@@ -2517,7 +2476,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 				// Если ключ заголовка соответствует схеме протокола
 				} else if(this->_fmk->compare(":scheme", name)) {
 					// Получаем объект параметров запроса
-					web_t::req_t request = this->_agent.web.request();
+					web_t::req_t request = this->_web.request();
 					// Выполняем установку схемы запроса
 					request.url.schema = content;
 					// Если протокол подключения защищённый а порт установлен неправильный
@@ -2528,14 +2487,14 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 						switch(request.url.port){
 							// Если порт не установлен
 							case 0:
-							// Если порт HTTP установлен незащищённый то исправляем его
+							// Если HTTP-порт установлен незащищённый то исправляем его
 							case SERVER_PORT: request.url.port = SERVER_SEC_PORT; break;
-							// Если порт PROXY установлен незащищённый то исправляем его
+							// Если PROXY-порт установлен незащищённый то исправляем его
 							case SERVER_PROXY_PORT: request.url.port = SERVER_PROXY_SEC_PORT; break;
 						}
 					}
 					// Выполняем сохранение параметров запроса
-					this->_agent.web.request(::move(request));
+					this->_web.request(::move(request));
 					// Выходим из функции
 					return;
 				// Если ключ соответствует доменному имени
@@ -2543,9 +2502,9 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 					// Создаём объект работы с IP-адресами
 					net_t net(this->_log);
 					// Устанавливаем хост
-					this->_agent.web.header("Host", content);
+					this->_web.header("Host", content);
 					// Получаем объект параметров запроса
-					web_t::req_t request = this->_agent.web.request();
+					web_t::req_t request = this->_web.request();
 					// Получаем хост запрашиваемого сервера
 					request.url.host = content;
 					// Если данные хоста ещё не установлены
@@ -2609,7 +2568,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 						break;
 					}
 					// Выполняем сохранение параметров запроса
-					this->_agent.web.request(::move(request));
+					this->_web.request(::move(request));
 					// Выходим из функции
 					return;
 				// Если ключ соответствует статусу ответа
@@ -2619,36 +2578,36 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 					 */
 					try {
 						// Получаем объект параметров ответа
-						web_t::res_t response = this->_agent.web.response();
+						web_t::res_t response = this->_web.response();
 						// Устанавливаем версию протокола
-						response.version = 2.f;
+						response.version = 2.;
 						// Выполняем установку статуса ответа
 						response.code = static_cast <uint32_t> (::stoi(content));
 						// Выполняем формирование текста ответа
 						response.message = this->message(response.code);
 						// Выполняем сохранение параметров ответа
-						this->_agent.web.response(::move(response));
+						this->_web.response(::move(response));
 					/**
 					 * Если возникает ошибка
 					 */
 					} catch(const exception &) {
 						// Получаем объект параметров ответа
-						web_t::res_t response = this->_agent.web.response();
+						web_t::res_t response = this->_web.response();
 						// Выполняем установку статуса ответа
 						response.code = 500;
 						// Устанавливаем версию протокола
-						response.version = 2.f;
+						response.version = 2.;
 						// Выполняем формирование текста ответа
 						response.message = this->message(response.code);
 						// Выполняем сохранение параметров ответа
-						this->_agent.web.response(::move(response));
+						this->_web.response(::move(response));
 					}
 					// Выходим из функции
 					return;
 				}
 			}
 			// Устанавливаем заголовок HTTP-протокола
-			this->_agent.web.header(name, content);
+			this->_web.header(name, content);
 		}
 	/**
 	 * Если возникает ошибка
@@ -2657,7 +2616,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2680,7 +2639,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
  */
 const awh::web_t::proto_t awh::Http::upgrade() const noexcept {
 	// Выводим название протокола для переключения
-	return this->_agent.web.upgrade();
+	return this->_web.upgrade();
 }
 /**
  * @brief Метод установки типа протокола для переключения
@@ -2689,7 +2648,7 @@ const awh::web_t::proto_t awh::Http::upgrade() const noexcept {
  */
 void awh::Http::upgrade(const web_t::proto_t upgrade) noexcept {
 	// Выполняем установку название протокола для переключения
-	this->_agent.web.upgrade(upgrade);
+	this->_web.upgrade(upgrade);
 }
 /**
  * @brief Метод извлечения выбранного метода компрессии
@@ -2698,7 +2657,7 @@ void awh::Http::upgrade(const web_t::proto_t upgrade) noexcept {
  */
 awh::Http::compressor_t awh::Http::compression() const noexcept {
 	// Выполняем извлечение выбранного метода компрессии
-	return this->_agent.transform.compressors.selected;
+	return this->_compressors.selected;
 }
 /**
  * @brief Метод установки выбранного метода компрессии
@@ -2707,7 +2666,7 @@ awh::Http::compressor_t awh::Http::compression() const noexcept {
  */
 void awh::Http::compression(const compressor_t compressor) noexcept {
 	// Выполняем установку выбранного метода компрессии
-	this->_agent.transform.compressors.selected = compressor;
+	this->_compressors.selected = compressor;
 }
 /**
  * @brief Метод установки списка поддерживаемых компрессоров
@@ -2724,14 +2683,16 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 			// Вес запрашиваемого компрессора
 			float weight = 1.f;
 			// Выполняем очистку списка доступных компрессоров
-			this->_agent.transform.compressors.supports.clear();
+			this->_compressors.supports.clear();
 			// Выполняем перебор списка запрашиваемых компрессоров
 			for(auto & compressor : compressors){
 				// Выполняем установку полученного компрессера
-				this->_agent.transform.compressors.supports.emplace(weight, compressor);
+				this->_compressors.supports.emplace(weight, compressor);
 				// Выполняем уменьшение веса компрессора
 				weight -= .1f;
 			}
+			// Устанавливаем флаг метода компрессии
+			this->_compressors.selected = this->_compressors.supports.rbegin()->second;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2739,7 +2700,7 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2757,12 +2718,12 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 	}
 }
 /**
- * @brief Метод получения идентификации сервера
+ * @brief Метод получения агента сервера для HTTP-протокола
  *
  * @param flag флаг выполняемого процесса
  * @return     сформированный агент
  */
-string awh::Http::ident(const process_t flag) const noexcept {
+string awh::Http::agent(const process_t flag) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2831,9 +2792,9 @@ string awh::Http::ident(const process_t flag) const noexcept {
 				// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 				result = this->_fmk->format(
 					"%s (%s; %s/%s)",
-					this->_agent.ident.name.c_str(), os,
-					this->_agent.ident.id.c_str(),
-					this->_agent.ident.version.c_str()
+					this->_agent.name.c_str(), os,
+					this->_agent.id.c_str(),
+					this->_agent.version.c_str()
 				);
 			} break;
 			// Если нужно сформировать данные ответа
@@ -2841,8 +2802,8 @@ string awh::Http::ident(const process_t flag) const noexcept {
 				// Выполняем установку агента парсера
 				result = this->_fmk->format(
 					"%s/%s",
-					this->_agent.ident.id.c_str(),
-					this->_agent.ident.version.c_str()
+					this->_agent.id.c_str(),
+					this->_agent.version.c_str()
 				);
 			break;
 		}
@@ -2853,7 +2814,7 @@ string awh::Http::ident(const process_t flag) const noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2872,13 +2833,24 @@ string awh::Http::ident(const process_t flag) const noexcept {
 	return result;
 }
 /**
- * @brief Метод установки идентификации сервера
+ * @brief Метод установки пользовательского агента для HTTP-протокола
+ *
+ * @param agent пользовательский агент для HTTP-протокола
+ */
+void awh::Http::agent(const string & agent) noexcept {
+	// Устанавливаем User-Agent
+	if(!agent.empty())
+		// Выполняем установку User-Agent
+		this->_agent.user = agent;
+}
+/**
+ * @brief Метод установки агента сервера для HTTP-протокола
  *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::Http::ident(const string & id, const string & name, const string & ver) noexcept {
+void awh::Http::agent(const string & id, const string & name, const string & ver) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2886,15 +2858,15 @@ void awh::Http::ident(const string & id, const string & name, const string & ver
 		// Если идентификатор сервиса передан
 		if(!id.empty())
 			// Устанавливаем идентификатор сервиса
-			this->_agent.ident.id = id;
+			this->_agent.id = id;
 		// Если название сервиса передано
 		if(!name.empty())
 			// Устанавливаем название сервиса
-			this->_agent.ident.name = name;
+			this->_agent.name = name;
 		// Если версия сервиса передана
 		if(!ver.empty())
 			// Устанавливаем версию сервиса
-			this->_agent.ident.version = ver;
+			this->_agent.version = ver;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2902,7 +2874,7 @@ void awh::Http::ident(const string & id, const string & name, const string & ver
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2936,7 +2908,7 @@ awh::buffer_t awh::Http::trailers() const noexcept {
 	// Результат работы функции
 	buffer_t result(this->_fmk, this->_log);
 	// Если разрешено добавление трейлеров
-	if(this->_agent.transfer.trailers){
+	if(this->_transfer.trailers){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2967,7 +2939,7 @@ awh::buffer_t awh::Http::trailers() const noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2995,7 +2967,7 @@ vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
 	// Результат работы функции
 	vector <std::pair <string, string>> result;
 	// Если разрешено добавление трейлеров
-	if(this->_agent.transfer.trailers){
+	if(this->_transfer.trailers){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3017,7 +2989,7 @@ vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3052,7 +3024,7 @@ void awh::Http::trailer(const string & name, const string & content) noexcept {
 			/**
 			 * Определяем тип HTTP-модуля
 			 */
-			switch(static_cast <uint8_t> (this->_agent.web.hid())){
+			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если мы работаем с клиентом
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 					// Выводим сообщение, что клиент не может отправлять трейлеры
@@ -3060,14 +3032,14 @@ void awh::Http::trailer(const string & name, const string & content) noexcept {
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Add trailer [%s=%s] failed because the client cannot send trailers", name.c_str(), content.c_str()));
+						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Add trailer [%s=%s] failed because the client cannot send trailers", name.c_str(), content.c_str()));
 				} break;
 				// Если мы работаем с сервером
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Если разрешено добавление трейлеров
-					if(this->_agent.transfer.trailers){
+					if(this->_transfer.trailers){
 						// Добавляем заголовок названия трейлера
-						this->_agent.web.header("Trailer", name);
+						this->_web.header("Trailer", name);
 						// Выполняем добавление заголовка в список трейлеров
 						this->_trailers.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), content);
 					// Если добавление трейлеров не запрашивалось клиентом
@@ -3077,7 +3049,7 @@ void awh::Http::trailer(const string & name, const string & content) noexcept {
 						// Если функция обратного вызова на на вывод ошибок установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", name.c_str(), content.c_str()));
+							this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("It is impossible to add a [%s=%s] trailer because the client did not request the transfer of trailers", name.c_str(), content.c_str()));
 					}
 				} break;
 			}
@@ -3088,7 +3060,7 @@ void awh::Http::trailer(const string & name, const string & content) noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3125,10 +3097,10 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) noe
 			case static_cast <uint8_t> (process_t::REQUEST): {
 				// Получаем объект ответа клиенту
 				const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
-				// Если параметры REST-запроса переданы
+				// Если параметры HTTP-запроса переданы
 				if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-					// Устанавливаем параметры REST-запроса
-					this->_agent.auth.client.uri(this->_agent.uri.url(req.url));
+					// Устанавливаем параметры HTTP-запроса
+					this->_auth.client.uri(this->_uri.url(req.url));
 					/**
 					 * Определяем метод запроса
 					 */
@@ -3136,46 +3108,46 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) noe
 						// Если метод запроса указан как GET
 						case static_cast <uint8_t> (web_t::method_t::GET):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("get");
+							return this->_auth.client.auth("get");
 						// Если метод запроса указан как PUT
 						case static_cast <uint8_t> (web_t::method_t::PUT):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("put");
+							return this->_auth.client.auth("put");
 						// Если метод запроса указан как POST
 						case static_cast <uint8_t> (web_t::method_t::POST):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("post");
+							return this->_auth.client.auth("post");
 						// Если метод запроса указан как HEAD
 						case static_cast <uint8_t> (web_t::method_t::HEAD):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("head");
+							return this->_auth.client.auth("head");
 						// Если метод запроса указан как DELETE
 						case static_cast <uint8_t> (web_t::method_t::DEL):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("delete");
+							return this->_auth.client.auth("delete");
 						// Если метод запроса указан как PATCH
 						case static_cast <uint8_t> (web_t::method_t::PATCH):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("patch");
+							return this->_auth.client.auth("patch");
 						// Если метод запроса указан как TRACE
 						case static_cast <uint8_t> (web_t::method_t::TRACE):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("trace");
+							return this->_auth.client.auth("trace");
 						// Если метод запроса указан как OPTIONS
 						case static_cast <uint8_t> (web_t::method_t::OPTIONS):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("options");
+							return this->_auth.client.auth("options");
 						// Если метод запроса указан как CONNECT
 						case static_cast <uint8_t> (web_t::method_t::CONNECT):
 							// Получаем параметры авторизации
-							return this->_agent.auth.client.auth("connect");
+							return this->_auth.client.auth("connect");
 					}
 				}
 			} break;
 			// Если нужно сформировать данные ответа
 			case static_cast <uint8_t> (process_t::RESPONSE):
 				// Получаем параметры авторизации
-				return this->_agent.auth.server;
+				return this->_auth.server;
 		}
 	/**
 	 * Если возникает ошибка
@@ -3184,7 +3156,7 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) noe
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -3210,12 +3182,12 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) noe
  */
 const std::set <awh::web_t::proto_t> & awh::Http::proto(const string & name) const noexcept {
 	// Выполняем извлечение списка протоколов к которому принадлежит заголовок
-	return this->_agent.web.proto(name);
+	return this->_web.proto(name);
 }
 /**
  * @brief Метод создания запроса для авторизации на прокси-сервере
  *
- * @param req объект параметров REST-запроса
+ * @param req объект параметров HTTP-запроса
  * @return    буфер данных запроса в бинарном виде
  */
 awh::buffer_t awh::Http::proxy(const web_t::req_t & req) noexcept {
@@ -3234,7 +3206,7 @@ awh::buffer_t awh::Http::proxy(const web_t::req_t & req) noexcept {
 			// Добавляем в чёрный список заголовок Accept-Encoding
 			this->addToBlacklist("Accept-Encoding");
 			// Извлекаем заголовки HTTP-протокола
-			headers_t & headers = this->_agent.web.headers();
+			headers_t & headers = this->_web.headers();
 			// Если заголовок подключения ещё не существует
 			if(!headers.has("Connection"))
 				// Добавляем поддержку постоянного подключения
@@ -3243,10 +3215,10 @@ awh::buffer_t awh::Http::proxy(const web_t::req_t & req) noexcept {
 			if(!headers.has("Proxy-Connection"))
 				// Добавляем поддержку постоянного подключения для прокси-сервера
 				headers.emplace("Proxy-Connection", "keep-alive");
-			// Устанавливаем параметры REST-запроса
-			this->_agent.auth.client.uri(this->_agent.uri.url(req.url));
+			// Устанавливаем параметры HTTP-запроса
+			this->_auth.client.uri(this->_uri.url(req.url));
 			// Устанавливаем парарметр запроса
-			this->_agent.web.request(req);
+			this->_web.request(req);
 			// Выполняем создание запроса
 			result = ::move(this->process(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req)));
 		/**
@@ -3256,7 +3228,7 @@ awh::buffer_t awh::Http::proxy(const web_t::req_t & req) noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3278,7 +3250,7 @@ awh::buffer_t awh::Http::proxy(const web_t::req_t & req) noexcept {
 /**
  * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
  *
- * @param req объект параметров REST-запроса
+ * @param req объект параметров HTTP-запроса
  * @return    буфер данных запроса в бинарном виде
  */
 vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) noexcept {
@@ -3292,10 +3264,10 @@ vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) 
 		this->addToBlacklist("Accept-Encoding");
 		// Добавляем заголовок протокола подключения
 		this->header(":protocol", "proxy");
-		// Устанавливаем параметры REST-запроса
-		this->_agent.auth.client.uri(this->_agent.uri.url(req.url));
+		// Устанавливаем параметры HTTP-запроса
+		this->_auth.client.uri(this->_uri.url(req.url));
 		// Устанавливаем парарметр запроса
-		this->_agent.web.request(req);
+		this->_web.request(req);
 		// Выполняем создание запроса
 		return this->process2(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req));
 	}
@@ -3305,7 +3277,7 @@ vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) 
 /**
  * @brief Метод создания отрицательного ответа
  *
- * @param req объект параметров REST-ответа
+ * @param res объект параметров HTTP-ответа
  * @return    буфер данных ответа в бинарном виде
  */
 awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
@@ -3322,7 +3294,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
 		// Если сообщение получено
 		if(!res.message.empty()){
 			// Извлекаем заголовки HTTP-протокола
-			headers_t & headers = this->_agent.web.headers();
+			headers_t & headers = this->_web.headers();
 			// Выполняем очистку заголовков HTTP-протокола
 			headers.clear();
 			/**
@@ -3381,7 +3353,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
 			// Если запрос должен содержать тело сообщения
 			if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 				// Получаем данные тела
-				buffer_t & body = this->_agent.web.body();
+				buffer_t & body = this->_web.body();
 				// Если тело ответа не установлено, устанавливаем своё
 				if(body.empty()){
 					// Формируем тело ответа
@@ -3396,7 +3368,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
 				headers.emplace("Content-Length", body.size());
 			}
 			// Устанавливаем парарметр ответа
-			this->_agent.web.response(res);
+			this->_web.response(res);
 			// Выводим результат
 			result = ::move(this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res)));
 		}
@@ -3407,7 +3379,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -3428,7 +3400,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
 /**
  * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
  *
- * @param req объект параметров REST-ответа
+ * @param res объект параметров HTTP-ответа
  * @return    буфер данных ответа в бинарном виде
  */
 vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res) noexcept {
@@ -3443,7 +3415,7 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
 		// Если сообщение получено
 		if(!res.message.empty()){
 			// Извлекаем заголовки HTTP-протокола
-			headers_t & headers = this->_agent.web.headers();
+			headers_t & headers = this->_web.headers();
 			// Выполняем очистку заголовков HTTP-протокола
 			headers.clear();
 			/**
@@ -3490,7 +3462,7 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
 			// Если запрос должен содержать тело сообщения
 			if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 				// Получаем данные тела
-				buffer_t & body = this->_agent.web.body();
+				buffer_t & body = this->_web.body();
 				// Если тело ответа не установлено, устанавливаем своё
 				if(body.empty()){
 					// Формируем тело ответа
@@ -3505,7 +3477,7 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
 				headers.emplace("Content-Length", body.size());
 			}
 			// Устанавливаем парарметр ответа
-			this->_agent.web.response(res);
+			this->_web.response(res);
 			// Выводим результат
 			return this->process2(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 		}
@@ -3516,7 +3488,7 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -3556,7 +3528,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 			case static_cast <uint8_t> (process_t::REQUEST): {
 				// Получаем объект ответа клиенту
 				const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
-				// Если параметры REST-запроса переданы
+				// Если параметры HTTP-запроса переданы
 				if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
 					/**
 					 * Определяем метод запроса
@@ -3565,42 +3537,42 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Если метод запроса указан как GET
 						case static_cast <uint8_t> (web_t::method_t::GET):
 							// Формируем GET запрос
-							result.push(this->_fmk->format("GET %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("GET %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как PUT
 						case static_cast <uint8_t> (web_t::method_t::PUT):
 							// Формируем PUT запрос
-							result.push(this->_fmk->format("PUT %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("PUT %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как POST
 						case static_cast <uint8_t> (web_t::method_t::POST):
 							// Формируем POST запрос
-							result.push(this->_fmk->format("POST %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("POST %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как HEAD
 						case static_cast <uint8_t> (web_t::method_t::HEAD):
 							// Формируем HEAD запрос
-							result.push(this->_fmk->format("HEAD %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("HEAD %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как PATCH
 						case static_cast <uint8_t> (web_t::method_t::PATCH):
 							// Формируем PATCH запрос
-							result.push(this->_fmk->format("PATCH %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("PATCH %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как TRACE
 						case static_cast <uint8_t> (web_t::method_t::TRACE):
 							// Формируем TRACE запрос
-							result.push(this->_fmk->format("TRACE %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("TRACE %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как DELETE
 						case static_cast <uint8_t> (web_t::method_t::DEL):
 							// Формируем DELETE запрос
-							result.push(this->_fmk->format("DELETE %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("DELETE %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как OPTIONS
 						case static_cast <uint8_t> (web_t::method_t::OPTIONS):
 							// Формируем OPTIONS запрос
-							result.push(this->_fmk->format("OPTIONS %s HTTP/%s\r\n", this->_agent.uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
+							result.push(this->_fmk->format("OPTIONS %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str()));
 						break;
 						// Если метод запроса указан как CONNECT
 						case static_cast <uint8_t> (web_t::method_t::CONNECT): {
@@ -3611,7 +3583,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 					/**
 					 * Определяем тип HTTP-модуля
 					 */
-					switch(static_cast <uint8_t> (this->_agent.web.hid())){
+					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 							/**
@@ -3637,13 +3609,13 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Размер тела сообщения
 							size_t length = 0;
 							// Устанавливаем парарметры запроса
-							this->_agent.web.request(req);
-							// Устанавливаем параметры REST-запроса
-							this->_agent.auth.client.uri(this->_agent.uri.url(req.url));
+							this->_web.request(req);
+							// Устанавливаем параметры HTTP-запроса
+							this->_auth.client.uri(this->_uri.url(req.url));
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
 							// Получаем список доступных заголовков
-							headers_t & headers = this->_agent.web.headers();
+							headers_t & headers = this->_web.headers();
 							// Переходим по всему списку заголовков
 							for(auto & header : headers){
 								// Если заголовок не находится в чёрном списке и не является системным
@@ -3773,15 +3745,15 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если нужно запросить компрессию в удобном нам виде
 							if(!available[9] &&
 							  (req.method != web_t::method_t::CONNECT) &&
-							  (!this->_agent.transform.compressors.supports.empty() ||
-							  (this->_agent.transform.compressors.selected != compressor_t::NONE)) &&
+							  (!this->_compressors.supports.empty() ||
+							  (this->_compressors.selected != compressor_t::NONE)) &&
 							  !this->isInBlacklist("Accept-Encoding")){
 								// Если компрессор уже выбран
-								if(this->_agent.transform.compressors.selected != compressor_t::NONE){
+								if(this->_compressors.selected != compressor_t::NONE){
 									/**
 									 * Определяем метод сжатия который поддерживает клиент
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если клиент поддерживает методот сжатия LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Добавляем заголовок в запрос
@@ -3819,11 +3791,11 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 								// Если список компрессоров установлен
-								} else if(!this->_agent.transform.compressors.supports.empty()) {
+								} else if(!this->_compressors.supports.empty()) {
 									// Строка со списком компрессоров
 									string compressors = "";
 									// Выполняем перебор всего списка компрессоров
-									for(auto i = this->_agent.transform.compressors.supports.rbegin(); i != this->_agent.transform.compressors.supports.rend(); ++i){
+									for(auto i = this->_compressors.supports.rbegin(); i != this->_compressors.supports.rend(); ++i){
 										// Если список компрессоров уже не пустой
 										if(!compressors.empty())
 											// Выполняем добавление разделителя
@@ -3878,70 +3850,11 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Устанавливаем User-Agent если не передан
 							if(!available[4] && !this->isInBlacklist("User-Agent")){
 								// Если User-Agent установлен стандартный
-								if(this->_fmk->compare(this->_agent.userAgent, HTTP_HEADER_AGENT)){
-									// Название операционной системы
-									const char * os = nullptr;
-									/**
-									 * Определяем название операционной системы
-									 */
-									switch(static_cast <uint8_t> (this->_os.family())){
-										// Если операционной системой является Unix
-										case static_cast <uint8_t> (os_t::family_t::UNIX):
-											// Устанавливаем название операционной системы
-											os = "Unix";
-										break;
-										// Если операционной системой является Linux
-										case static_cast <uint8_t> (os_t::family_t::LINUX):
-											// Устанавливаем название операционной системы
-											os = "Linux";
-										break;
-										// Если операционной системой является неизвестной
-										case static_cast <uint8_t> (os_t::family_t::NONE):
-											// Устанавливаем название операционной системы
-											os = "Unknown";
-										break;
-										// Если операционной системой является Windows
-										case static_cast <uint8_t> (os_t::family_t::WIND32):
-										case static_cast <uint8_t> (os_t::family_t::WIND64):
-											// Устанавливаем название операционной системы
-											os = "Windows";
-										break;
-										// Если операционной системой является MacOS X
-										case static_cast <uint8_t> (os_t::family_t::MACOSX):
-											// Устанавливаем название операционной системы
-											os = "MacOS X";
-										break;
-										// Если операционной системой является FreeBSD
-										case static_cast <uint8_t> (os_t::family_t::FREEBSD):
-											// Устанавливаем название операционной системы
-											os = "FreeBSD";
-										break;
-										// Если операционной системой является NetBSD
-										case static_cast <uint8_t> (os_t::family_t::NETBSD):
-											// Устанавливаем название операционной системы
-											os = "NetBSD";
-										break;
-										// Если операционной системой является OpenBSD
-										case static_cast <uint8_t> (os_t::family_t::OPENBSD):
-											// Устанавливаем название операционной системы
-											os = "OpenBSD";
-										break;
-										// Если операционной системой является Sun Solaris
-										case static_cast <uint8_t> (os_t::family_t::SOLARIS):
-											// Устанавливаем название операционной системы
-											os = "Solaris";
-										break;
-									}
+								if(this->_fmk->compare(this->_agent.user, HTTP_HEADER_AGENT))
 									// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
-									this->_agent.userAgent = this->_fmk->format(
-										"%s (%s; %s/%s)",
-										this->_agent.ident.name.c_str(), os,
-										this->_agent.ident.id.c_str(),
-										this->_agent.ident.version.c_str()
-									);
-								}
+									this->_agent.user = this->agent(flag);
 								// Добавляем заголовок в запрос
-								result.push(this->_fmk->format("User-Agent: %s\r\n", this->_agent.userAgent.c_str()));
+								result.push(this->_fmk->format("User-Agent: %s\r\n", this->_agent.user.c_str()));
 							}
 							// Если заголовок авторизации не передан
 							if(!available[13] && (this->_session.identity != identity_t::PROXY)){
@@ -4000,7 +3913,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок авторизации на прокси-сервере не запрещён
 								if(!this->isInBlacklist("Authorization")){
 									// Получаем параметры авторизации
-									const string & auth = this->_agent.auth.client.auth(method);
+									const string & auth = this->_auth.client.auth(method);
 									// Если данные авторизации получены
 									if(!auth.empty())
 										// Выполняем установку параметров авторизации
@@ -4064,7 +3977,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок авторизации на прокси-сервере не запрещён
 								if(!this->isInBlacklist("Proxy-Authorization")){
 									// Получаем параметры авторизации
-									const string & auth = this->_agent.auth.client.auth(method);
+									const string & auth = this->_auth.client.auth(method);
 									// Если данные авторизации получены
 									if(!auth.empty())
 										// Выполняем установку параметров авторизации
@@ -4095,7 +4008,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если запрос является PUT, POST, PATCH
 							if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
 								// Получаем тело HTTP-протокола
-								buffer_t & body = this->_agent.web.body();
+								buffer_t & body = this->_web.body();
 								// Если заголовок не запрещён
 								if(!this->isInBlacklist("Date"))
 									// Добавляем заголовок даты в запрос
@@ -4107,22 +4020,22 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Выполняем шифрование полезной нагрузки
 									this->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (
-										this->_agent.transform.crypted ||
-										(this->_agent.transform.compressors.current != compressor_t::NONE)
+									this->_transfer.chunking = (
+										this->_encrypt.crypted ||
+										(this->_compressors.current != compressor_t::NONE)
 									);
 									// Заменяем размер тела данных
-									if(!this->_agent.transfer.chunking)
+									if(!this->_transfer.chunking)
 										// Устанавливаем размер тела сообщения
 										length = body.size();
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.crypted)
+									if(this->_encrypt.crypted)
 										// Устанавливаем X-AWH-Encryption
-										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_agent.transform.cipher)));
+										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_encrypt.cipher)));
 									/**
 									 * Определяем метод компрессии полезной нагрузки
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.current)){
+									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если нужно сжать тело методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
@@ -4160,7 +4073,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_agent.transfer.chunking && !this->isInBlacklist("Transfer-Encoding"))
+									if(this->_transfer.chunking && !this->isInBlacklist("Transfer-Encoding"))
 										// Устанавливаем заголовок Transfer-Encoding
 										result.push(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -4170,20 +4083,20 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (
-										this->_agent.transform.encryption ||
-										(this->_agent.transform.compressors.selected != compressor_t::NONE)
+									this->_transfer.chunking = (
+										this->_encrypt.enabled ||
+										(this->_compressors.selected != compressor_t::NONE)
 									);
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.encryption && !this->isInBlacklist("X-AWH-Encryption"))
+									if(this->_encrypt.enabled && !this->isInBlacklist("X-AWH-Encryption"))
 										// Устанавливаем X-AWH-Encryption
-										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_agent.transform.cipher)));
+										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_encrypt.cipher)));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->isInBlacklist("Content-Encoding")){
 										/**
 										 * Определяем метод компрессии полезной нагрузки
 										 */
-										switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
 												// Устанавливаем Content-Encoding если не передан
@@ -4222,7 +4135,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										}
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_agent.transfer.chunking && !this->isInBlacklist("Transfer-Encoding") && headers.has("Transfer-Encoding"))
+									if(this->_transfer.chunking && !this->isInBlacklist("Transfer-Encoding") && headers.has("Transfer-Encoding"))
 										// Устанавливаем заголовок Transfer-Encoding
 										result.push(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -4233,15 +4146,15 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если запрос не содержит тела запроса
 							} else {
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if((this->_agent.transfer.chunking = (this->_agent.transform.encryption && !this->isInBlacklist("X-AWH-Encryption"))))
+								if((this->_transfer.chunking = (this->_encrypt.enabled && !this->isInBlacklist("X-AWH-Encryption"))))
 									// Устанавливаем X-AWH-Encryption
-									result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_agent.transform.cipher)));
+									result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_encrypt.cipher)));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
 								if(available[10] && !this->isInBlacklist("Content-Encoding")){
 									/**
 									 * Определяем метод компрессии полезной нагрузки
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
@@ -4279,7 +4192,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										break;
 									}
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (this->_agent.transform.compressors.selected != compressor_t::NONE);
+									this->_transfer.chunking = (this->_compressors.selected != compressor_t::NONE);
 								}
 								// Очищаем тела сообщения
 								this->clear(web_t::unit_t::BODY);
@@ -4290,7 +4203,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Название заголовка
 							string name = "";
 							// Переходим по всему списку заголовков
-							for(auto & header : this->_agent.web.headers()){
+							for(auto & header : this->_web.headers()){
 								// Если метод не является CONNECT или заголовок Host не установлен
 								if((req.method != web_t::method_t::CONNECT) || !this->_fmk->compare("host", header.first)){
 									// Устанавливаем название заголовка
@@ -4317,18 +4230,18 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 					const_cast <web_t::res_t &> (res).message = this->message(res.code);
 				// Если сообщение получено
 				if(!res.message.empty()){
-					// Данные REST-ответа
+					// Данные HTTP-ответа
 					result.push(this->_fmk->format("HTTP/%s %u %s\r\n", this->_fmk->noexp(res.version, true).c_str(), res.code, res.message.c_str()));
 					/**
 					 * Определяем тип HTTP-модуля
 					 */
-					switch(static_cast <uint8_t> (this->_agent.web.hid())){
+					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 							// Название заголовка
 							string name = "";
 							// Переходим по всему списку заголовков
-							for(auto & header : this->_agent.web.headers()){
+							for(auto & header : this->_web.headers()){
 								// Устанавливаем название заголовка
 								name = header.first;
 								// Переводим заголовок в нормальный режим
@@ -4359,11 +4272,11 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Размер тела сообщения
 							size_t length = 0;
 							// Устанавливаем парарметры ответа
-							this->_agent.web.response(res);
+							this->_web.response(res);
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
 							// Получаем список доступных заголовков
-							headers_t & headers = this->_agent.web.headers();
+							headers_t & headers = this->_web.headers();
 							// Переходим по всему списку заголовков
 							for(auto & header : headers){
 								// Если заголовок не находится в чёрном списке и не является системным
@@ -4456,7 +4369,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если заголовок не запрещён
 							if(!available[1] && !this->isInBlacklist("Server"))
 								// Добавляем название сервера в ответ
-								result.push(this->_fmk->format("Server: %s\r\n", this->_agent.ident.name.c_str()));
+								result.push(this->_fmk->format("Server: %s\r\n", this->_agent.name.c_str()));
 							// Устанавливаем Connection если не передан
 							if(!available[2] && !this->isInBlacklist("Connection"))
 								// Добавляем заголовок в ответ
@@ -4471,11 +4384,11 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если заголовок не запрещён
 							if(!available[4] && !this->isInBlacklist("X-Powered-By"))
 								// Добавляем название рабочей системы в ответ
-								result.push(this->_fmk->format("X-Powered-By: %s/%s\r\n", this->_agent.ident.id.c_str(), this->_agent.ident.version.c_str()));
+								result.push(this->_fmk->format("X-Powered-By: %s\r\n", this->agent(flag).c_str()));
 							// Если заголовок авторизации не передан
 							if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
 								// Получаем параметры авторизации
-								const string & auth = this->_agent.auth.server;
+								const string & auth = this->_auth.server;
 								// Если параметры авторизации получены
 								if(!auth.empty()){
 									/**
@@ -4516,7 +4429,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Добавляем заголовок в ответ
 									result.push(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
 								// Извлекаем тело HTTP-протокола
-								buffer_t body = this->_agent.web.body();
+								buffer_t body = this->_web.body();
 								// Если тело запроса существует
 								if(!body.empty()){
 									// Выполняем компрессию полезной нагрузки
@@ -4524,30 +4437,30 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 									// Выполняем шифрование полезной нагрузки
 									this->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (
-										this->_agent.transform.crypted ||
-										this->_agent.transfer.trailers ||
-										(this->_agent.transform.compressors.current != compressor_t::NONE)
+									this->_transfer.chunking = (
+										this->_encrypt.crypted ||
+										this->_transfer.trailers ||
+										(this->_compressors.current != compressor_t::NONE)
 									);
 									// Если заголовок не запрещён
 									if(!available[0] && !this->isInBlacklist("Date"))
 										// Добавляем заголовок даты в ответ
 										result.push(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 									// Заменяем размер тела данных
-									if(!this->_agent.transfer.chunking)
+									if(!this->_transfer.chunking)
 										// Устанавливаем размер тела сообщения
 										length = body.size();
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.crypted)
+									if(this->_encrypt.crypted)
 										// Устанавливаем X-AWH-Encryption
-										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_agent.transform.cipher)));
+										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_encrypt.cipher)));
 									{
 										// Название компрессора
 										string compressor = "";
 										/**
 										 * Определяем метод компрессии полезной нагрузки
 										 */
-										switch(static_cast <uint8_t> (this->_agent.transform.compressors.current)){
+										switch(static_cast <uint8_t> (this->_compressors.current)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
 												// Устанавливаем название компрессора lz4
@@ -4587,9 +4500,9 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										// Если компрессор получен
 										if(!compressor.empty()){
 											// Если активирован режим отправки через Transfer-Encoding
-											if(this->_agent.transfer.enabled && !this->isInBlacklist("Transfer-Encoding")){
+											if(this->_transfer.enabled && !this->isInBlacklist("Transfer-Encoding")){
 												// Если активирован режим передачи чанками
-												if(this->_agent.transfer.chunking)
+												if(this->_transfer.chunking)
 													// Устанавливаем Transfer-Encoding если не передан
 													result.push(this->_fmk->format("Transfer-Encoding: %s, chunked\r\n", compressor.c_str()));
 												// Устанавливаем Transfer-Encoding если не передан
@@ -4597,14 +4510,14 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 											// Устанавливаем Content-Encoding если не передан
 											} else result.push(this->_fmk->format("Content-Encoding: %s\r\n", compressor.c_str()));
 										// Если активирован режим передачи чанками
-										} else if(this->_agent.transfer.enabled && this->_agent.transfer.chunking && !this->isInBlacklist("Transfer-Encoding"))
+										} else if(this->_transfer.enabled && this->_transfer.chunking && !this->isInBlacklist("Transfer-Encoding"))
 											// Устанавливаем заголовок Transfer-Encoding
 											result.push(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_agent.transfer.chunking && !this->isInBlacklist("Transfer-Encoding")){
+									if(this->_transfer.chunking && !this->isInBlacklist("Transfer-Encoding")){
 										// Если режим отправки шифровани через Transfer-Encoding не активирован
-										if(!this->_agent.transfer.enabled)
+										if(!this->_transfer.enabled)
 											// Устанавливаем заголовок Transfer-Encoding
 											result.push(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -4614,26 +4527,26 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (
-										this->_agent.transform.encryption ||
-										this->_agent.transfer.trailers ||
-										(this->_agent.transform.compressors.selected != compressor_t::NONE)
+									this->_transfer.chunking = (
+										this->_encrypt.enabled ||
+										this->_transfer.trailers ||
+										(this->_compressors.selected != compressor_t::NONE)
 									);
 									// Если заголовок не запрещён
 									if(!available[0] && !this->isInBlacklist("Date"))
 										// Добавляем заголовок даты в ответ
 										result.push(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.encryption && !this->isInBlacklist("X-AWH-Encryption"))
+									if(this->_encrypt.enabled && !this->isInBlacklist("X-AWH-Encryption"))
 										// Устанавливаем X-AWH-Encryption
-										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_agent.transform.cipher)));
+										result.push(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_encrypt.cipher)));
 									{
 										// Название компрессора
 										string compressor = "";
 										/**
 										 * Определяем метод компрессии полезной нагрузки
 										 */
-										switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
 												// Устанавливаем название компрессора lz4
@@ -4673,9 +4586,9 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										// Если компрессор получен
 										if(!compressor.empty()){
 											// Если активирован режим отправки через Transfer-Encoding
-											if(this->_agent.transfer.enabled && !this->isInBlacklist("Transfer-Encoding")){
+											if(this->_transfer.enabled && !this->isInBlacklist("Transfer-Encoding")){
 												// Если активирован режим передачи чанками
-												if(this->_agent.transfer.chunking)
+												if(this->_transfer.chunking)
 													// Устанавливаем Transfer-Encoding если не передан
 													result.push(this->_fmk->format("Transfer-Encoding: %s, chunked\r\n", compressor.c_str()));
 												// Устанавливаем Transfer-Encoding если не передан
@@ -4685,14 +4598,14 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 												// Устанавливаем Content-Encoding если не передан
 												result.push(this->_fmk->format("Content-Encoding: %s\r\n", compressor.c_str()));
 										// Если активирован режим передачи чанками
-										} else if(this->_agent.transfer.enabled && this->_agent.transfer.chunking && available[8] && !this->isInBlacklist("Transfer-Encoding"))
+										} else if(this->_transfer.enabled && this->_transfer.chunking && available[8] && !this->isInBlacklist("Transfer-Encoding"))
 											// Устанавливаем заголовок Transfer-Encoding
 											result.push(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									}
 									// Если данные необходимо разбивать на чанки
-									if(this->_agent.transfer.chunking && available[8] && !this->isInBlacklist("Transfer-Encoding")){
+									if(this->_transfer.chunking && available[8] && !this->isInBlacklist("Transfer-Encoding")){
 										// Если режим отправки шифровани через Transfer-Encoding не активирован
-										if(!this->_agent.transfer.enabled)
+										if(!this->_transfer.enabled)
 											// Устанавливаем заголовок Transfer-Encoding
 											result.push(this->_fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
 									// Если заголовок размера передаваемого тела, не запрещён
@@ -4716,7 +4629,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -4817,9 +4730,9 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 					// Если метод подключения не является методом CONNECT, выполняем установку хоста сервера
 					else result.push_back(std::make_pair(":authority", req.url.host));
 					// Выполняем установку пути запроса
-					result.push_back(std::make_pair(":path", this->_agent.uri.query(req.url)));
+					result.push_back(std::make_pair(":path", this->_uri.query(req.url)));
 					// Получаем список доступных заголовков
-					headers_t & headers = this->_agent.web.headers();
+					headers_t & headers = this->_web.headers();
 					// Переходим по всему списку заголовков
 					for(auto & header : headers){
 						// Если заголовок является системным
@@ -4830,7 +4743,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 					/**
 					 * Определяем тип HTTP-модуля
 					 */
-					switch(static_cast <uint8_t> (this->_agent.web.hid())){
+					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 							/**
@@ -4854,9 +4767,9 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								false  // Proxy-Authorization
 							};
 							// Устанавливаем парарметры запроса
-							this->_agent.web.request(req);
-							// Устанавливаем параметры REST-запроса
-							this->_agent.auth.client.uri(this->_agent.uri.url(req.url));
+							this->_web.request(req);
+							// Устанавливаем параметры HTTP-запроса
+							this->_auth.client.uri(this->_uri.url(req.url));
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
@@ -4928,14 +4841,14 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								result.push_back(std::make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
 							// Если нужно запросить компрессию в удобном нам виде
 							if(!available[9] && (req.method != web_t::method_t::CONNECT) &&
-							  (!this->_agent.transform.compressors.supports.empty() ||
-							  (this->_agent.transform.compressors.selected != compressor_t::NONE)) && !this->isInBlacklist("accept-encoding")){
+							  (!this->_compressors.supports.empty() ||
+							  (this->_compressors.selected != compressor_t::NONE)) && !this->isInBlacklist("accept-encoding")){
 								// Если компрессор уже выбран
-								if(this->_agent.transform.compressors.selected != compressor_t::NONE){
+								if(this->_compressors.selected != compressor_t::NONE){
 									/**
 									 * Определяем метод сжатия который поддерживает клиент
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если клиент поддерживает методот сжатия LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Добавляем заголовок в запрос
@@ -4973,11 +4886,11 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 										break;
 									}
 								// Если список компрессоров установлен
-								} else if(!this->_agent.transform.compressors.supports.empty()) {
+								} else if(!this->_compressors.supports.empty()) {
 									// Строка со списком компрессоров
 									string compressors = "";
 									// Выполняем перебор всего списка компрессоров
-									for(auto i = this->_agent.transform.compressors.supports.rbegin(); i != this->_agent.transform.compressors.supports.rend(); ++i){
+									for(auto i = this->_compressors.supports.rbegin(); i != this->_compressors.supports.rend(); ++i){
 										// Если список компрессоров уже не пустой
 										if(!compressors.empty())
 											// Выполняем добавление разделителя
@@ -5032,70 +4945,11 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							// Устанавливаем User-Agent если не передан
 							if(!available[4] && !this->isInBlacklist("user-agent")){
 								// Если User-Agent установлен стандартный
-								if(this->_fmk->compare(this->_agent.userAgent, HTTP_HEADER_AGENT)){
-									// Название операционной системы
-									const char * os = nullptr;
-									/**
-									 * Определяем название операционной системы
-									 */
-									switch(static_cast <uint8_t> (this->_os.family())){
-										// Если операционной системой является Unix
-										case static_cast <uint8_t> (os_t::family_t::UNIX):
-											// Устанавливаем название операционной системы
-											os = "Unix";
-										break;
-										// Если операционной системой является Linux
-										case static_cast <uint8_t> (os_t::family_t::LINUX):
-											// Устанавливаем название операционной системы
-											os = "Linux";
-										break;
-										// Если операционной системой является неизвестной
-										case static_cast <uint8_t> (os_t::family_t::NONE):
-											// Устанавливаем название операционной системы
-											os = "Unknown";
-										break;
-										// Если операционной системой является Windows
-										case static_cast <uint8_t> (os_t::family_t::WIND32):
-										case static_cast <uint8_t> (os_t::family_t::WIND64):
-											// Устанавливаем название операционной системы
-											os = "Windows";
-										break;
-										// Если операционной системой является MacOS X
-										case static_cast <uint8_t> (os_t::family_t::MACOSX):
-											// Устанавливаем название операционной системы
-											os = "MacOS X";
-										break;
-										// Если операционной системой является FreeBSD
-										case static_cast <uint8_t> (os_t::family_t::FREEBSD):
-											// Устанавливаем название операционной системы
-											os = "FreeBSD";
-										break;
-										// Если операционной системой является NetBSD
-										case static_cast <uint8_t> (os_t::family_t::NETBSD):
-											// Устанавливаем название операционной системы
-											os = "NetBSD";
-										break;
-										// Если операционной системой является OpenBSD
-										case static_cast <uint8_t> (os_t::family_t::OPENBSD):
-											// Устанавливаем название операционной системы
-											os = "OpenBSD";
-										break;
-										// Если операционной системой является Sun Solaris
-										case static_cast <uint8_t> (os_t::family_t::SOLARIS):
-											// Устанавливаем название операционной системы
-											os = "Solaris";
-										break;
-									}
+								if(this->_fmk->compare(this->_agent.user, HTTP_HEADER_AGENT))
 									// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
-									this->_agent.userAgent = this->_fmk->format(
-										"%s (%s; %s/%s)",
-										this->_agent.ident.name.c_str(), os,
-										this->_agent.ident.id.c_str(),
-										this->_agent.ident.version.c_str()
-									);
-								}
+									this->_agent.user = this->agent(flag);
 								// Добавляем заголовок в запрос
-								result.push_back(std::make_pair("user-agent", this->_agent.userAgent));
+								result.push_back(std::make_pair("user-agent", this->_agent.user));
 							}
 							// Если заголовок авторизации не передан
 							if(!available[13] && (this->_session.identity != identity_t::PROXY)){
@@ -5154,7 +5008,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								// Если заголовок авторизации на прокси-сервере не запрещён
 								if(!this->isInBlacklist("authorization")){
 									// Получаем параметры авторизации
-									const string & auth = this->_agent.auth.client.auth(method);
+									const string & auth = this->_auth.client.auth(method);
 									// Если данные авторизации получены
 									if(!auth.empty())
 										// Выполняем установку заголовка
@@ -5218,7 +5072,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								// Если заголовок авторизации на прокси-сервере не запрещён
 								if(!this->isInBlacklist("proxy-authorization")){
 									// Получаем параметры авторизации
-									const string & auth = this->_agent.auth.client.auth(method);
+									const string & auth = this->_auth.client.auth(method);
 									// Если данные авторизации получены
 									if(!auth.empty())
 										// Выполняем установку заголовка
@@ -5236,21 +5090,21 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									// Добавляем заголовок даты в запрос
 									result.push_back(std::make_pair("date", this->date()));
 								// Если тело запроса существует
-								if(!this->_agent.web.body().empty()){
+								if(!this->_web.body().empty()){
 									// Выполняем компрессию полезной нагрузки
 									this->compress();
 									// Выполняем шифрование полезной нагрузки
 									this->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (this->_agent.transform.crypted || (this->_agent.transform.compressors.current != compressor_t::NONE));
+									this->_transfer.chunking = (this->_encrypt.crypted || (this->_compressors.current != compressor_t::NONE));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.crypted)
+									if(this->_encrypt.crypted)
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_agent.transform.cipher))));
+										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_encrypt.cipher))));
 									/**
 									 * Определяем метод компрессии полезной нагрузки
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.current)){
+									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если нужно сжать тело методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
@@ -5290,17 +5144,17 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (this->_agent.transform.encryption || (this->_agent.transform.compressors.selected != compressor_t::NONE));
+									this->_transfer.chunking = (this->_encrypt.enabled || (this->_compressors.selected != compressor_t::NONE));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.encryption && !this->isInBlacklist("x-awh-encryption"))
+									if(this->_encrypt.enabled && !this->isInBlacklist("x-awh-encryption"))
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_agent.transform.cipher))));
+										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_encrypt.cipher))));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->isInBlacklist("content-encoding")){
 										/**
 										 * Определяем метод компрессии полезной нагрузки
 										 */
-										switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
 												// Устанавливаем Content-Encoding если не передан
@@ -5342,15 +5196,15 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							// Если запрос не содержит тела запроса
 							} else {
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
-								if((this->_agent.transfer.chunking = (this->_agent.transform.encryption && !this->isInBlacklist("x-awh-encryption"))))
+								if((this->_transfer.chunking = (this->_encrypt.enabled && !this->isInBlacklist("x-awh-encryption"))))
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_agent.transform.cipher))));
+									result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_encrypt.cipher))));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
 								if(available[10] && !this->isInBlacklist("content-encoding")){
 									/**
 									 * Определяем метод компрессии полезной нагрузки
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
@@ -5388,7 +5242,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 										break;
 									}
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (this->_agent.transform.compressors.selected != compressor_t::NONE);
+									this->_transfer.chunking = (this->_compressors.selected != compressor_t::NONE);
 								}
 								// Очищаем тела сообщения
 								this->clear(web_t::unit_t::BODY);
@@ -5397,7 +5251,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 							// Переходим по всему списку заголовков
-							for(auto & header : this->_agent.web.headers()){
+							for(auto & header : this->_web.headers()){
 								// Если заголовок не является системным
 								if(header.first.front() != ':')
 									// Формируем строку запроса
@@ -5417,16 +5271,16 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 					const_cast <web_t::res_t &> (res).message = this->message(res.code);
 				// Если сообщение получено
 				if(!res.message.empty()){
-					// Данные REST ответа
+					// Данные HTTP-ответа
 					result.push_back(std::make_pair(":status", std::to_string(res.code)));
 					/**
 					 * Определяем тип HTTP-модуля
 					 */
-					switch(static_cast <uint8_t> (this->_agent.web.hid())){
+					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 							// Переходим по всему списку заголовков
-							for(auto & header : this->_agent.web.headers())
+							for(auto & header : this->_web.headers())
 								// Формируем строку ответа
 								result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						} break;
@@ -5450,11 +5304,11 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								false  // Proxy-Authenticate
 							};
 							// Устанавливаем параметры ответа
-							this->_agent.web.response(res);
+							this->_web.response(res);
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
 							// Получаем список доступных заголовков
-							headers_t & headers = this->_agent.web.headers();
+							headers_t & headers = this->_web.headers();
 							// Переходим по всему списку заголовков
 							for(auto & header : headers){
 								// Если заголовок не находится в чёрном списке и не является системным
@@ -5525,15 +5379,15 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							// Если заголовок не запрещён
 							if(!available[1] && !this->isInBlacklist("server"))
 								// Добавляем название сервера в ответ
-								result.push_back(std::make_pair("server", this->_agent.ident.name));
+								result.push_back(std::make_pair("server", this->_agent.name));
 							// Если заголовок не запрещён
 							if(!available[4] && !this->isInBlacklist("x-powered-by"))
 								// Добавляем название рабочей системы в ответ
-								result.push_back(std::make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_agent.ident.id.c_str(), this->_agent.ident.version.c_str())));
+								result.push_back(std::make_pair("x-powered-by", this->agent(flag)));
 							// Если заголовок авторизации не передан
 							if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
 								// Получаем параметры авторизации
-								const string & auth = this->_agent.auth.server;
+								const string & auth = this->_auth.server;
 								// Если параметры авторизации получены
 								if(!auth.empty()){
 									/**
@@ -5574,25 +5428,25 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									// Добавляем заголовок в ответ
 									result.push_back(std::make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 								// Если тело запроса существует
-								if(!this->_agent.web.body().empty()){
+								if(!this->_web.body().empty()){
 									// Выполняем компрессию полезной нагрузки
 									this->compress();
 									// Выполняем шифрование полезной нагрузки
 									this->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (this->_agent.transform.crypted || (this->_agent.transform.compressors.current != compressor_t::NONE));
+									this->_transfer.chunking = (this->_encrypt.crypted || (this->_compressors.current != compressor_t::NONE));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->isInBlacklist("date"))
 										// Добавляем заголовок даты в ответ
 										result.push_back(std::make_pair("date", this->date()));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.crypted)
+									if(this->_encrypt.crypted)
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_agent.transform.cipher))));
+										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_encrypt.cipher))));
 									/**
 									 * Определяем метод компрессии полезной нагрузки
 									 */
-									switch(static_cast <uint8_t> (this->_agent.transform.compressors.current)){
+									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
@@ -5632,21 +5486,21 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								// Если тело запроса не существует
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
-									this->_agent.transfer.chunking = (this->_agent.transform.encryption || (this->_agent.transform.compressors.selected != compressor_t::NONE));
+									this->_transfer.chunking = (this->_encrypt.enabled || (this->_compressors.selected != compressor_t::NONE));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->isInBlacklist("date"))
 										// Добавляем заголовок даты в ответ
 										result.push_back(std::make_pair("date", this->date()));
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
-									if(this->_agent.transform.encryption && !this->isInBlacklist("x-awh-encryption"))
+									if(this->_encrypt.enabled && !this->isInBlacklist("x-awh-encryption"))
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_agent.transform.cipher))));
+										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_encrypt.cipher))));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->isInBlacklist("content-encoding")){
 										/**
 										 * Определяем метод компрессии полезной нагрузки
 										 */
-										switch(static_cast <uint8_t> (this->_agent.transform.compressors.selected)){
+										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
 												// Устанавливаем Content-Encoding если не передан
@@ -5699,7 +5553,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_agent.web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
@@ -5726,7 +5580,7 @@ void awh::Http::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на событие получения ошибки
 	this->_callback.set("error", callback);
 	// Устанавливаем функции обратного вызова
-	this->_agent.web.callback(callback);
+	this->_web.callback(callback);
 }
 /**
  * @brief Метод проверки на зашифрованные данные
@@ -5735,7 +5589,7 @@ void awh::Http::callback(const callback_t & callback) noexcept {
  */
 bool awh::Http::crypted() const noexcept {
 	// Выводим результат проверки
-	return this->_agent.transform.crypted;
+	return this->_encrypt.crypted;
 }
 /**
  * @brief Метод активации шифрования
@@ -5744,7 +5598,7 @@ bool awh::Http::crypted() const noexcept {
  */
 void awh::Http::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
-	this->_agent.transform.encryption = mode;
+	this->_encrypt.enabled = mode;
 }
 /**
  * @brief Метод установки параметров шифрования
@@ -5756,12 +5610,12 @@ void awh::Http::encryption(const bool mode) noexcept {
 void awh::Http::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Если пароль шифрования передан
 	if(!pass.empty()){
-		// Устанавливаем размер шифрования
-		this->_agent.transform.cipher = cipher;
 		// Устанавливаем соль шифрования
-		this->_agent.transform.hash.salt(salt);
+		this->_hash.salt(salt);
 		// Устанавливаем пароль шифрования
-		this->_agent.transform.hash.password(pass);
+		this->_hash.password(pass);
+		// Устанавливаем размер шифрования
+		this->_encrypt.cipher = cipher;
 	}
 }
 /**
@@ -5771,7 +5625,8 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
  * @param log объект для работы с логами
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
- _agent(fmk, log), _callback(log), _fmk(fmk), _log(log) {
+ _uri(fmk, log), _web(fmk, log), _auth(fmk, log),
+ _hash(log), _callback(log), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 }
@@ -5783,7 +5638,8 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log      объект для работы с логами
  */
 awh::Http::Http(const identity_t identity, const fmk_t * fmk, const log_t * log) noexcept :
- _agent(fmk, log), _callback(log), _fmk(fmk), _log(log) {
+ _uri(fmk, log), _web(fmk, log), _auth(fmk, log),
+ _hash(log), _callback(log), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Устанавливаем идентичность протокола модуля

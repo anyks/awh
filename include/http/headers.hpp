@@ -273,9 +273,10 @@ namespace awh {
 			/**
 			 * @brief Шаблон добавления нового заголовка
 			 *
-			 * @tparam T тип добавляемого контента
+			 * @tparam Name    тип названия добавляемого заголовка
+			 * @tparam Content тип содержимого добавляемого заголовка
 			 */
-			template <typename T>
+			template <typename Name, typename Content>
 			/**
 			 * @brief Метод добавления нового заголовка
 			 *
@@ -283,7 +284,23 @@ namespace awh {
 			 * @param content содержимое заголовка
 			 * @return        общее количество заголовков
 			 */
-			size_t emplace(const string & name, const T content) noexcept;
+			size_t emplace(Name && name, Content && content) noexcept;
+			/**
+			 * @brief Метод добавления нового заголовка
+			 *
+			 * @param name    название заголовка
+			 * @param content содержимое заголовка
+			 * @return        общее количество заголовков
+			 */
+			size_t emplace(const char * name, const char * content) noexcept;
+			/**
+			 * @brief Метод добавления нового заголовка
+			 *
+			 * @param name    название заголовка
+			 * @param content содержимое заголовка
+			 * @return        общее количество заголовков
+			 */
+			size_t emplace(const char * name, const string & content) noexcept;
 			/**
 			 * @brief Метод добавления нового заголовка
 			 *
@@ -292,14 +309,6 @@ namespace awh {
 			 * @return        общее количество заголовков
 			 */
 			size_t emplace(const string & name, const char * content) noexcept;
-			/**
-			 * @brief Метод добавления нового заголовка
-			 *
-			 * @param name    название заголовка
-			 * @param content содержимое заголовка
-			 * @return        общее количество заголовков
-			 */
-			size_t emplace(const string & name, const string & content) noexcept;
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти

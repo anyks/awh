@@ -147,7 +147,7 @@ void awh::Buffer::clear() noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем сброс конца буфера
 			this->_range.end = 0;
 			// Выполняем сброс начала буфера
@@ -188,7 +188,7 @@ void awh::Buffer::reset() noexcept {
 			// Выполняем очистку буфера данных
 			this->clear();
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем очистку буфера данных
 			this->_buffer.clear();
 			// Выполняем освобождение памяти
@@ -256,7 +256,7 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Если буфер не соответствует итераторам
 			if((this->_range.begin > 0) || (this->_range.end < this->_buffer.size())){
 				// Выполняем усечение буфера
@@ -290,7 +290,7 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 	// Если буфер пустой
 	} else {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем сброс нижнего итератора
 		const_cast <buffer_t *> (this)->_range.end = 0;
 		// Выполняем сброс верхнего итератора
@@ -655,7 +655,7 @@ template <typename T>
  */
 void awh::Buffer::set(const T value, const size_t index) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Если контейнер не пустой
 	if(!this->empty() && (index < this->count <T> ())){
 		// Получаем размер данных
@@ -734,7 +734,7 @@ void awh::Buffer::erase(const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Если размер удаляемых данных не выше максимального буфера
 			if((this->_range.end - this->_range.begin) >= size)
 				// Выполняем удаление указанного количества данных
@@ -772,7 +772,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выделяем нужное количество памяти буферу данных
 		this->_buffer.reserve(size);
 	/**
@@ -870,6 +870,70 @@ bool awh::Buffer::push(const string & text) noexcept {
  * @param buffer бинарный буфер для добавления
  * @return       результат добавления данных
  */
+bool awh::Buffer::push(buffer_t && buffer) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока текущего буфера
+		const lock_guard lock1(this->_mtx);
+		// Выполняем блокировку потока стороннего буфера
+		const lock_guard lock2(buffer._mtx);
+		// Выполняем перемещение буфера данных
+		this->_buffer = ::move(buffer._buffer);
+		// Выполняем копирование последнего итератора
+		this->_range.end = buffer._range.end;
+		// Выполняем копирование начального итератора
+		this->_range.begin = buffer._range.begin;
+		// Выполняем копирование максимального размера памяти
+		this->_maxMemory = buffer._maxMemory;
+		// Выполняем сброс последнего итератора стороннего буфера
+		buffer._range.end = 0;
+		// Выполняем сброс начального итератора стороннего буфера
+		buffer._range.begin = 0;
+		// Выводим положительный результат
+		return true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод добавления бинарного буфера данных в буфер
+ *
+ * @param buffer бинарный буфер для добавления
+ * @return       результат добавления данных
+ */
+bool awh::Buffer::push(const buffer_t & buffer) noexcept {
+	// Если буфер данных передан не пустой
+	if(!buffer.empty())
+		// Выполняем добавление бинарного буфера данных
+		return this->push(static_cast <const char *> (buffer), static_cast <size_t> (buffer));
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод добавления бинарного буфера данных в буфер
+ *
+ * @param buffer бинарный буфер для добавления
+ * @return       результат добавления данных
+ */
 bool awh::Buffer::push(const vector <char> & buffer) noexcept {
 	// Если буфер данных передан не пустой
 	if(!buffer.empty())
@@ -897,7 +961,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 			// Определяем помещаются ли данные в буфер
 			if((this->size() + size) <= this->_maxMemory){
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
+				const lock_guard lock(this->_mtx);
 				// Выполняем выделение памяти
 				if((result = this->rss(size))){
 					// Выполняем добавление самих данных полезной нагрузки
@@ -951,7 +1015,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 					);
 				#endif
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
+				const lock_guard lock(this->_mtx);
 				// Выполняем сброс конца буфера
 				this->_range.end = 0;
 				// Выполняем сброс начала буфера
@@ -994,7 +1058,7 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем установку максимального размера потребляемой памяти
 			this->_maxMemory = size;
 		/**
@@ -1028,9 +1092,9 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
-		const lock_guard <std::mutex> lock2(buffer._mtx);
+		const lock_guard lock2(buffer._mtx);
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(buffer._buffer);
 		// Выполняем обмен последними итераторами
@@ -1097,7 +1161,7 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1137,7 +1201,7 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1177,9 +1241,9 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
-		const lock_guard <std::mutex> lock2(buffer._mtx);
+		const lock_guard lock2(buffer._mtx);
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
@@ -1225,9 +1289,9 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
-		const lock_guard <std::mutex> lock2(buffer._mtx);
+		const lock_guard lock2(buffer._mtx);
 		// Выполняем копирование последнего итератора
 		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
@@ -1309,9 +1373,9 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
-		const lock_guard <std::mutex> lock2(buffer._mtx);
+		const lock_guard lock2(buffer._mtx);
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
@@ -1354,9 +1418,9 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего буфера
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
-		const lock_guard <std::mutex> lock2(buffer._mtx);
+		const lock_guard lock2(buffer._mtx);
 		// Выполняем копирование последнего итератора
 		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора

@@ -198,7 +198,7 @@ void awh::Headers::clear() noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем сброс индекса
 			this->_items.clear();
 		/**
@@ -233,7 +233,7 @@ void awh::Headers::reset() noexcept {
 		// Выполняем очистку буфера данных
 		this->clear();
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем освобождение памяти индекса
 		std::multimap <decltype(this->_items)::key_type, decltype(this->_items)::mapped_type> ().swap(this->_items);
 	/**
@@ -372,7 +372,7 @@ void awh::Headers::erase(const string & name) noexcept {
 			// Получаем идентификатор названия заголовка
 			const uint32_t id = this->id(name);
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем поиск нужного нам заголовка
 			auto i = this->_items.find(id);
 			// Выполняем переход по всем оставшимся загловкам
@@ -563,9 +563,10 @@ vector <string> awh::Headers::range(const string & name) const noexcept {
 /**
  * @brief Шаблон добавления нового заголовка
  *
- * @tparam T тип добавляемого контента
+ * @tparam Name    тип названия добавляемого заголовка
+ * @tparam Content тип содержимого добавляемого заголовка
  */
-template <typename T>
+template <typename Name, typename Content>
 /**
  * @brief Метод добавления нового заголовка
  *
@@ -573,49 +574,7 @@ template <typename T>
  * @param content содержимое заголовка
  * @return        общее количество заголовков
  */
-size_t awh::Headers::emplace(const string & name, const T content) noexcept {
-	// Выполняем добавление записи
-	return this->emplace(name, std::to_string(content));
-}
-/**
- * Объявляем прототипы для метода добавления нового заголовка
- */
-template size_t awh::Headers::emplace <int8_t> (const string &, const int8_t) noexcept;
-template size_t awh::Headers::emplace <uint8_t> (const string &, const uint8_t) noexcept;
-template size_t awh::Headers::emplace <int16_t> (const string &, const int16_t) noexcept;
-template size_t awh::Headers::emplace <uint16_t> (const string &, const uint16_t) noexcept;
-template size_t awh::Headers::emplace <int32_t> (const string &, const int32_t) noexcept;
-template size_t awh::Headers::emplace <uint32_t> (const string &, const uint32_t) noexcept;
-template size_t awh::Headers::emplace <int64_t> (const string &, const int64_t) noexcept;
-template size_t awh::Headers::emplace <uint64_t> (const string &, const uint64_t) noexcept;
-template size_t awh::Headers::emplace <float> (const string &, const float) noexcept;
-template size_t awh::Headers::emplace <double> (const string &, const double) noexcept;
-/**
- * Если операционной системой является MacOS X или Linux
- */
-#if __APPLE__ || __MACH__ || __Linux__
-	template size_t awh::Headers::emplace <size_t> (const string &, const size_t) noexcept;
-	template size_t awh::Headers::emplace <ssize_t> (const string &, const ssize_t) noexcept;
-#endif
-/**
- * @brief Метод добавления нового заголовка
- *
- * @param name    название заголовка
- * @param content содержимое заголовка
- * @return        общее количество заголовков
- */
-size_t awh::Headers::emplace(const string & name, const char * content) noexcept {
-	// Выполняем добавление записи
-	return this->emplace(name, string{content});
-}
-/**
- * @brief Метод добавления нового заголовка
- *
- * @param name    название заголовка
- * @param content содержимое заголовка
- * @return        общее количество заголовков
- */
-size_t awh::Headers::emplace(const string & name, const string & content) noexcept {
+size_t awh::Headers::emplace(Name && name, Content && content) noexcept {
 	// Если данные переданы верные
 	if(!name.empty() && !content.empty()){
 		/**
@@ -629,9 +588,15 @@ size_t awh::Headers::emplace(const string & name, const string & content) noexce
 				// Если по количеству записей мы проходим
 				if(this->_items.size() < this->_max.records){
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем добавление нового заголовка
-					this->_items.emplace(this->id(name), std::make_pair(name, content));
+					this->_items.emplace(
+						this->id(name),
+						std::make_pair(
+							std::forward <Name> (name),
+							std::forward <Content> (content)
+						)
+					);
 				// Если мы достигли максимального количества записей
 				} else {
 					/**
@@ -705,6 +670,46 @@ size_t awh::Headers::emplace(const string & name, const string & content) noexce
 	return this->_items.size();
 }
 /**
+ * Объявляем прототипы для метода добавления нового заголовка
+ */
+template size_t awh::Headers::emplace <string &&, string &&> (string &&, string &&) noexcept;
+template size_t awh::Headers::emplace <string &&, const string &> (string &&, const string &) noexcept;
+template size_t awh::Headers::emplace <const string &, string &&> (const string &, string &&) noexcept;
+template size_t awh::Headers::emplace <const string &, const string &> (const string &, const string &) noexcept;
+/**
+ * @brief Метод добавления нового заголовка
+ *
+ * @param name    название заголовка
+ * @param content содержимое заголовка
+ * @return        общее количество заголовков
+ */
+size_t awh::Headers::emplace(const char * name, const char * content) noexcept {
+	// Выполняем добавление записи
+	return this->emplace(::move(string{name}), ::move(string{content}));
+}
+/**
+ * @brief Метод добавления нового заголовка
+ *
+ * @param name    название заголовка
+ * @param content содержимое заголовка
+ * @return        общее количество заголовков
+ */
+size_t awh::Headers::emplace(const char * name, const string & content) noexcept {
+	// Выполняем добавление записи
+	return this->emplace(::move(string{name}), content);
+}
+/**
+ * @brief Метод добавления нового заголовка
+ *
+ * @param name    название заголовка
+ * @param content содержимое заголовка
+ * @return        общее количество заголовков
+ */
+size_t awh::Headers::emplace(const string & name, const char * content) noexcept {
+	// Выполняем добавление записи
+	return this->emplace(name, ::move(string{content}));
+}
+/**
  * @brief Метод установки максимального размера потребления памяти
  *
  * @param size максимальный размер потребления памяти
@@ -717,7 +722,7 @@ void awh::Headers::setMaxMemory(const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем установку максимального размера потребляемой памяти
 			this->_max.memory = size;
 		/**
@@ -753,7 +758,7 @@ void awh::Headers::setMaxRecords(const size_t count) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем установку максимального количества сообщений очереди
 			this->_max.records = count;
 		/**
@@ -787,9 +792,9 @@ void awh::Headers::swap(headers_t & headers) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего контейнера заголовков
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего контейнера заголовков
-		const lock_guard <std::mutex> lock2(headers._mtx);
+		const lock_guard lock2(headers._mtx);
 		// Выполняем обмен индексами заголовков
 		this->_items.swap(headers._items);
 		// Выполняем обмен максимальными размерами памяти
@@ -1063,9 +1068,9 @@ awh::Headers & awh::Headers::operator = (headers_t && headers) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего контейнера заголовков
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего контейнера заголовков
-		const lock_guard <std::mutex> lock2(headers._mtx);
+		const lock_guard lock2(headers._mtx);
 		// Выполняем перенос заголовков контейнера
 		this->_items = ::move(headers._items);
 		// Выполняем установку максимальными размерами памяти
@@ -1105,9 +1110,9 @@ awh::Headers & awh::Headers::operator = (const headers_t & headers) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего контейнера заголовков
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего контейнера заголовков
-		const lock_guard <std::mutex> lock2(headers._mtx);
+		const lock_guard lock2(headers._mtx);
 		// Выполняем копирование заголовков контейнера
 		this->_items = headers._items;
 		// Выполняем установку максимальными размерами памяти
@@ -1323,9 +1328,9 @@ awh::Headers::Headers(headers_t && headers) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего контейнера заголовков
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего контейнера заголовков
-		const lock_guard <std::mutex> lock2(headers._mtx);
+		const lock_guard lock2(headers._mtx);
 		// Выполняем перенос заголовков контейнера
 		this->_items = ::move(headers._items);
 		// Выполняем установку максимальными размерами памяти
@@ -1362,9 +1367,9 @@ awh::Headers::Headers(const headers_t & headers) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока текущего контейнера заголовков
-		const lock_guard <std::mutex> lock1(this->_mtx);
+		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего контейнера заголовков
-		const lock_guard <std::mutex> lock2(headers._mtx);
+		const lock_guard lock2(headers._mtx);
 		// Выполняем копирование заголовков контейнера
 		this->_items = headers._items;
 		// Выполняем установку максимальными размерами памяти
