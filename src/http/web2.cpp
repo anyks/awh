@@ -409,10 +409,8 @@ awh::Web::Body::~Body() noexcept {}
  * 
  */
 void awh::Web::init() noexcept {
-	// Получаем текущее значение даты
-	const string & date = this->_fmk->timestamp <string> (fmk_t::chrono_t::NANOSECONDS);
 	// Формируем идентификатор объекта
-	this->_id = ::CityHash32(date.c_str(), date.size());
+	this->_id = const_cast <fmk_t *> (this->_fmk)->id();
 	// Выполняем заполнение списка стандартных заголовков
 	this->_standards.insert({
 		{"via", {proto_t::PROXY}},
