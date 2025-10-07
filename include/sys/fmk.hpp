@@ -20,27 +20,16 @@
  */
 #include <set>
 #include <map>
-#include <list>
-#include <cmath>
-#include <bitset>
-#include <chrono>
 #include <locale>
 #include <string>
 #include <vector>
-#include <limits>
 #include <cctype>
+#include <cstdint>
 #include <cwctype>
 #include <cstdarg>
-#include <sstream>
-#include <cstring>
-#include <iomanip>
 #include <cstdlib>
-#include <codecvt>
-#include <iostream>
-#include <algorithm>
 #include <type_traits>
 #include <unordered_map>
-#include <sys/types.h>
 
 /**
  * Наши модули
@@ -260,6 +249,13 @@ namespace awh {
 					return find_if_not(map.cbegin(), map.cend(), Check(val));
 				}
 			}
+		public:
+			/**
+			 * @brief id Метод генерации уникального идентификатора
+			 * 
+			 * @return уникальный идентификатор
+			 */
+			uint32_t id() noexcept;
 		public:
 			/**
 			 * @brief Метод проверки текста на соответствие флагу

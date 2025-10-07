@@ -13,6 +13,23 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <cmath>
+#include <atomic>
+#include <bitset>
+#include <chrono>
+#include <limits>
+#include <sstream>
+#include <cstring>
+#include <iomanip>
+#include <cstdlib>
+#include <codecvt>
+#include <iostream>
+#include <algorithm>
+#include <sys/types.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/fmk.hpp>
@@ -701,6 +718,17 @@ static class Symbols {
 		}
 } symbols;
 
+/**
+ * @brief id Метод генерации уникального идентификатора
+ * 
+ * @return уникальный идентификатор
+ */
+uint32_t awh::Framework::id() noexcept {
+	// Начинаем с 1 (0 можно оставить как "invalid")
+	static std::atomic <uint32_t> id{1};
+	// Выводим новое значение идентификатора
+    return id.fetch_add(1, std::memory_order_relaxed);
+}
 /**
  * @brief Метод проверки текста на соответствие флагу
  *
