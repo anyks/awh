@@ -19,11 +19,8 @@
  * Стандартные модули
  */
 #include <string>
-#include <thread>
 #include <cstdlib>
 #include <csignal>
-#include <cstring>
-#include <iostream>
 #include <functional>
 
 /**

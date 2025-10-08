@@ -19,14 +19,10 @@
  * Стандартные модули
  */
 #include <mutex>
-#include <thread>
-#include <cstdio>
 #include <string>
 #include <vector>
 #include <random>
-#include <cstring>
-#include <cstdlib>
-#include <algorithm>
+#include <cinttypes>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -34,34 +30,22 @@
  * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
-	#define SOCKET int32_t
-	#define INVALID_SOCKET -1
-#endif
-
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <arpa/inet.h>
+	#include <sys/socket.h>
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
-	#include <winsock2.h>
-	#include <ws2tcpip.h>
-/**
- * Для операционной системы не являющейся MS Windows
- */
 #else
-	#include <netdb.h>
-	#include <unistd.h>
-	#include <sys/types.h>
-	#include <arpa/inet.h>
-	#include <sys/socket.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
-#endif
-
-/**
- * Если используется модуль IDN и операционная система не MS Windows
- */
-#if AWH_IDN && !_WIN32 && !_WIN64
-	#include <idn2.h>
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <winsock2.h>
+	#include <iphlpapi.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
 #endif
 
 /**
@@ -343,7 +327,7 @@ namespace awh {
 					vector <string> _network;
 				private:
 					// Объект DNS-резолвера
-					const DNS * _self;
+					const DNS * _dns;
 				private:
 					/**
 					 * @brief Метод извлечения хоста компьютера
@@ -419,11 +403,11 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param family тип протокола интернета AF_INET или AF_INET6
-					 * @param self   объект DNS-резолвера
+					 * @param dns    объект DNS-резолвера
 					 */
-					Worker(const int32_t family, const DNS * self) noexcept :
+					Worker(const int32_t family, const DNS * dns) noexcept :
 					 _sock(INVALID_SOCKET), _mode(false), _family(family),
-					 _qtype(q_type_t::IP), _socket(self->_fmk, self->_log), _self(self) {}
+					 _qtype(q_type_t::IP), _socket(dns->_fmk, dns->_log), _dns(dns) {}
 					/**
 					 * @brief Деструктор
 					 *

@@ -18,12 +18,10 @@
 /**
  * Стандартные модули
  */
-#include <memory>
 #include <vector>
 #include <string>
-#include <cstring>
+#include <cstdint>
 #include <unistd.h>
-#include <stdint.h>
 
 // Если используется BOOST
 #ifdef USE_BOOST_CONVERT

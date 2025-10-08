@@ -13,6 +13,73 @@
  */
 
 /**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <objbase.h>
+	#include <shlobj.h>
+	#include <tchar.h>
+	#include <strsafe.h>
+#endif
+
+/**
+ * Стандартные модули
+ */
+#include <fstream>
+#include <codecvt>
+#include <sstream>
+#include <cstdlib>
+#include <fcntl.h>
+#include <dirent.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+/**
+ * Если это clang v10 или выше
+ */
+#if __AWH_EXPERIMENTAL__
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <filesystem>
+#endif
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <sddl.h>
+	#include <conio.h>
+	#include <aclapi.h>
+	#include <direct.h>
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <sys/mman.h>
+#endif
+
+/**
+ * Если операционной системой является MacOS X
+ */
+#if __APPLE__ || __MACH__
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <Carbon/Carbon.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/fs.hpp>
@@ -2123,7 +2190,7 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
-void awh::FS::readFile(const string & filename, function <void (const string &)> callback) const noexcept {
+void awh::FS::readFile(const string & filename, const function <void (const string &)> & callback) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -2202,7 +2269,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 										// Выполняем компенсацию размера строки
 										length++;
 									// Если длина слова получена, выводим полученную строку
-									std::apply(callback, std::make_tuple(string(reinterpret_cast <char *> (buffer) + offset, length)));
+									callback(string(reinterpret_cast <char *> (buffer) + offset, length));
 									// Выполняем смещение
 									offset = (i + 1);
 								}
@@ -2212,7 +2279,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 							// Если данные не все прочитаны, выводим как есть
 							if((offset == 0) && (size > 0))
 								// Выводим полученную строку
-								std::apply(callback, std::make_tuple(string(reinterpret_cast <char *> (buffer), size)));
+								callback(string(reinterpret_cast <char *> (buffer), size));
 						}
 						// Выполняем удаление сопоставления для указанного диапазона адресов
 						::munmap(buffer, (length + offset - paOffset));
@@ -2267,7 +2334,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
-void awh::FS::readFile2(const string & filename, function <void (const string &)> callback) const noexcept {
+void awh::FS::readFile2(const string & filename, const function <void (const string &)> & callback) const noexcept {
 	// Если адрес файла передан
 	if(!filename.empty() && this->isFile(filename)){
 		/**
@@ -2307,7 +2374,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 								// Выполняем компенсацию размера строки
 								length++;
 							// Если длина слова получена, выводим полученную строку
-							std::apply(callback, std::make_tuple(string(data + offset, length)));
+							callback(string(data + offset, length));
 							// Выполняем смещение
 							offset = (i + 1);
 						}
@@ -2317,7 +2384,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					// Если данные не все прочитаны, выводим как есть
 					if((offset == 0) && (size > 0))
 						// Выводим полученную строку
-						std::apply(callback, std::make_tuple(string(data, size)));
+						callback(string(data, size));
 					// Очищаем буфер данных
 					buffer.clear();
 					// Освобождаем выделенную память
@@ -2425,7 +2492,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
-void awh::FS::readFile3(const string & filename, function <void (const string &)> callback) const noexcept {
+void awh::FS::readFile3(const string & filename, const function <void (const string &)> & callback) const noexcept {
 	// Если адрес файла передан
 	if(!filename.empty() && this->isFile(filename)){
 		/**
@@ -2451,7 +2518,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 						 */
 						while(::getline(file, result))
 							// Выводим полученный результат
-							std::apply(callback, std::make_tuple(result));
+							callback(result);
 						// Закрываем файл
 						file.close();
 					}
@@ -2470,7 +2537,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 						 */
 						while(getline(file, result))
 							// Выводим полученный результат
-							std::apply(callback, std::make_tuple(result));
+							callback(result);
 						// Закрываем файл
 						file.close();
 					}
@@ -2523,7 +2590,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
  * @param callback функция обратного вызова
  * @param actual   флаг формирования актуальных адресов
  */
-void awh::FS::readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual) const noexcept {
+void awh::FS::readDir(const string & path, const string & ext, const bool rec, const function <void (const string &)> & callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		/**
@@ -2627,7 +2694,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 												// Выполняем функцию обратного вызова
 												readFn(address, ext, rec);
 											// Выводим данные каталога как он есть
-											else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
+											else callback(this->realPath(address, actual));
 										// Если дочерний элемент является файлом и расширение файла указано то выводим его
 										} else if(!ext.empty()) {
 											// Получаем расширение файла
@@ -2639,10 +2706,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 												// Если расширение файла найдено
 												if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 													// Выводим полный путь файла
-													std::apply(callback, std::make_tuple(this->realPath(address, actual)));
+													callback(this->realPath(address, actual));
 											}
 										// Если дочерний элемент является файлом то выводим его
-										} else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
+										} else callback(this->realPath(address, actual));
 									// Если статистика не извлечена
 									} else {
 										/**
@@ -2662,10 +2729,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 														// Если расширение файла найдено
 														if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 															// Выводим полный путь файла
-															std::apply(callback, std::make_tuple(this->realPath(address, actual)));
+															callback(this->realPath(address, actual));
 													}
 												// Если дочерний элемент является файлом то выводим его
-												} else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
+												} else callback(this->realPath(address, actual));
 											}
 										#endif
 									}
@@ -2738,7 +2805,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
  * @param callback функция обратного вызова
  * @param actual   флаг формирования актуальных адресов
  */
-void awh::FS::readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual) const noexcept {
+void awh::FS::readPath(const string & path, const string & ext, const bool rec, const function <void (const string &, const string &)> & callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		// Выполняем извлечение актуального значения адреса
@@ -2752,14 +2819,14 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 					// Если текст получен
 					if(!text.empty())
 						// Выводим функцию обратного вызова
-						std::apply(callback, std::make_tuple(text, filename));
+						callback(text, filename);
 				});
 			}, actual);
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
 /**
- * @brief конструктор
+ * @brief Конструктор
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами

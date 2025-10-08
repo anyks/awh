@@ -13,6 +13,12 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <cmath>
+#include <iostream>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <http/http2.hpp>

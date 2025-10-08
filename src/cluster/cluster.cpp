@@ -13,6 +13,13 @@
  */
 
 /**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	#include <sys/un.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <cluster/cluster.hpp>

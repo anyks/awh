@@ -24,6 +24,7 @@
 #include <string>
 #include <cstring>
 #include <csignal>
+#include <cinttypes>
 #include <sys/types.h>
 
 /**

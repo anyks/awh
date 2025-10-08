@@ -21,11 +21,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <cctype>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
-#include <iostream>
+#include <cinttypes>
 #include <functional>
 
 /**
@@ -33,12 +29,11 @@
  */
 #if _WIN32 || _WIN64
 	#include <winsock2.h>
-	#include <ws2tcpip.h>
+	#include <ws2def.h>
 /**
  * Для операционной системы не являющейся MS Windows
  */
 #else
-	#include <sys/socket.h>
 	#include <netinet/in.h>
 #endif
 
@@ -92,7 +87,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Params() noexcept : host{""}, user{""}, pass{""}, port(0) {}
+				Params() noexcept :
+				 host{""}, user{""},
+				 pass{""}, port(0) {}
 			} params_t;
 			/**
 			 * @brief Класс URL-адреса

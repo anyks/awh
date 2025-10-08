@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <memory>
+#include <cstring>
+#include <iostream>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/reg.hpp>
@@ -97,7 +104,7 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 	// Результат работы функции
 	bool result = false;
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.match);
+	const lock_guard lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -171,7 +178,7 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 	// Результат работы функции
 	vector <string> result;
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.match);
+	const lock_guard lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -274,7 +281,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 	// Результат работы функции
 	vector <std::pair <size_t, size_t>> result;
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.match);
+	const lock_guard lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -427,7 +434,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				// Если регулярное выражение уже устарело и удалено
 				if(result == nullptr){
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx.cache);
+					const lock_guard lock(this->_mtx.cache);
 					// Удаляем запись
 					this->_cache.erase(key);
 				}
@@ -457,7 +464,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				// Если регулярное выражение удачно созданно
 				} else {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx.cache);
+					const lock_guard lock(this->_mtx.cache);
 					// Добавляем регулярное выражение в список
 					this->_cache.emplace(key, result);
 				}

@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <cinttypes>
 #include <unordered_set>
 #include <unordered_map>
 

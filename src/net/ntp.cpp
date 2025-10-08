@@ -13,6 +13,39 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <thread>
+#include <cstdio>
+#include <string>
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	#include <ws2tcpip.h>
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	#include <netdb.h>
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
+#endif
+
+/**
+ * Если используется модуль IDN и операционная система не MS Windows
+ */
+#if AWH_IDN && !_WIN32 && !_WIN64
+	#include <idn2.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/ntp.hpp>
@@ -44,7 +77,7 @@ string awh::NTP::Worker::host() const noexcept {
 			// Если количество элементов больше 1
 			if(this->_network.size() > 1){
 				// Подключаем устройство генератора
-				mt19937 generator(const_cast <ntp_t *> (this->_self)->_randev());
+				mt19937 generator(const_cast <ntp_t *> (this->_ntp)->_randev());
 				// Выполняем генерирование случайного числа
 				uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
 				// Получаем ip адрес
@@ -60,13 +93,13 @@ string awh::NTP::Worker::host() const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_self->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+				this->_ntp->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_self->_log->print("%s", log_t::flag_t::WARNING, error.what());
+				this->_ntp->_log->print("%s", log_t::flag_t::WARNING, error.what());
 			#endif
 			// Выводим только первый элемент
 			result = this->_network.front();
@@ -135,7 +168,7 @@ uint64_t awh::NTP::Worker::request() noexcept {
 	// Получаем хост текущего компьютера
 	const string & host = this->host();
 	// Выполняем пересортировку серверов NTP
-	const_cast <ntp_t *> (this->_self)->shuffle(this->_family);
+	const_cast <ntp_t *> (this->_ntp)->shuffle(this->_family);
 	/**
 	 * Определяем тип подключения
 	 */
@@ -143,7 +176,7 @@ uint64_t awh::NTP::Worker::request() noexcept {
 		// Для протокола IPv4
 		case AF_INET: {
 			// Если список серверов существует
-			if((this->_mode = !this->_self->_serversIPv4.empty())){
+			if((this->_mode = !this->_ntp->_serversIPv4.empty())){
 				// Создаём объект клиента
 				struct sockaddr_in client;
 				// Создаём объект сервера
@@ -151,7 +184,7 @@ uint64_t awh::NTP::Worker::request() noexcept {
 				// Запоминаем размер структуры
 				this->_peer.size = sizeof(client);
 				// Переходим по всему списку NTP-серверов
-				for(auto & addr : this->_self->_serversIPv4){
+				for(auto & addr : this->_ntp->_serversIPv4){
 					// Очищаем всю структуру для клиента
 					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
@@ -190,7 +223,7 @@ uint64_t awh::NTP::Worker::request() noexcept {
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Если список серверов существует
-			if((this->_mode = !this->_self->_serversIPv6.empty())){
+			if((this->_mode = !this->_ntp->_serversIPv6.empty())){
 				// Создаём объект клиента
 				struct sockaddr_in6 client;
 				// Создаём объект сервера
@@ -198,7 +231,7 @@ uint64_t awh::NTP::Worker::request() noexcept {
 				// Запоминаем размер структуры
 				this->_peer.size = sizeof(client);
 				// Переходим по всему списку NTP-серверов
-				for(auto & addr : this->_self->_serversIPv6){
+				for(auto & addr : this->_ntp->_serversIPv6){
 					// Очищаем всю структуру для клиента
 					::memset(&client, 0, sizeof(client));
 					// Очищаем всю структуру для сервера
@@ -256,7 +289,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_sock == INVALID_SOCKET)){
 			// Выводим в лог сообщение
-			this->_self->_log->print("File descriptor needed for the NTP request could not be allocated", log_t::flag_t::WARNING);
+			this->_ntp->_log->print("File descriptor needed for the NTP request could not be allocated", log_t::flag_t::WARNING);
 			// Выполняем закрытие подключения
 			this->close();
 			// Выходим из приложения
@@ -272,13 +305,13 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 			// Устанавливаем размер буфера передачи данных на запись
 			// this->_socket.bufferSize(this->_sock, sizeof(packet) * 2, 1, socket_t::mode_t::WRITE);
 			// Устанавливаем таймаут на получение данных из сокета
-			this->_socket.timeout(this->_sock, this->_self->_timeout * 1000, socket_t::mode_t::READ);
+			this->_socket.timeout(this->_sock, this->_ntp->_timeout * 1000, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
-			this->_socket.timeout(this->_sock, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
+			this->_socket.timeout(this->_sock, this->_ntp->_timeout * 1000, socket_t::mode_t::WRITE);
 			// Выполняем бинд на сокет
 			if(::bind(this->_sock, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
-				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
+				this->_ntp->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выполняем закрытие подключения
 				this->close();
 				// Выходим из функции
@@ -289,7 +322,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 			// Если запрос на NTP-сервер успешно отправлен
 			if((bytes = static_cast <int64_t> (::sendto(this->_sock, reinterpret_cast <const char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 				// Получаем объект NTP-клиента
-				ntp_t * self = const_cast <ntp_t *> (this->_self);
+				ntp_t * ntp = const_cast <ntp_t *> (this->_ntp);
 				// Выполняем чтение ответа сервера
 				bytes = static_cast <int64_t> (::recvfrom(this->_sock, reinterpret_cast <char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 				// Выполняем закрытие подключения
@@ -311,12 +344,12 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 								// Если произведена неудачная запись в PIPE
 								case EPIPE:
 									// Выводим в лог сообщение
-									self->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
+									ntp->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
 								break;
 								// Если произведён сброс подключения
 								case ECONNRESET:
 									// Выводим в лог сообщение
-									self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
+									ntp->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 								break;
 							/**
 							 * Для операционной системы MS Windows
@@ -325,13 +358,13 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 								// Если произведён сброс подключения
 								case WSAECONNRESET:
 									// Выводим в лог сообщение
-									self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
+									ntp->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 								break;
 							#endif
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str());
+								ntp->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -382,12 +415,12 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
-								this->_self->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
+								this->_ntp->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 							// Если произведён сброс подключения
 							case ECONNRESET:
 								// Выводим в лог сообщение
-								this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
+								this->_ntp->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 						/**
 						 * Для операционной системы MS Windows
@@ -396,13 +429,13 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 							// Если произведён сброс подключения
 							case WSAECONNRESET:
 								// Выводим в лог сообщение
-								this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
+								this->_ntp->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 						#endif
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str());
+							this->_ntp->_log->print("%s [server = %s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str());
 					}
 				}
 			}
@@ -450,7 +483,7 @@ bool awh::NTP::clear() noexcept {
  */
 void awh::NTP::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	/**
 	 * Определяем тип протокола подключения
 	 */
@@ -478,7 +511,7 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выбираем стаднарт рандомайзера
 		mt19937 generator(this->_randev());
 		/**
@@ -522,7 +555,7 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
  */
 void awh::NTP::timeout(const uint8_t sec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку таймаута ожидания выполнения запроса
 	this->_timeout = sec;
 }
@@ -535,7 +568,7 @@ void awh::NTP::ns(const vector <string> & servers) noexcept {
 	// Если DNS-сервера получены
 	if(!servers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем установку списка DNS-серверов
 		this->_dns.servers(servers);
 	}
@@ -554,7 +587,7 @@ string awh::NTP::server(const int32_t family) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Подключаем устройство генератора
 		mt19937 generator(this->_randev());
 		/**
@@ -660,7 +693,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 			// Хост переданного сервера
 			string host = "";
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			/**
 			 * Определяем тип передаваемого сервера
 			 */
@@ -863,7 +896,7 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
 		// Если статус работы NTP-клиента соответствует
 		if(hold.access({status_t::NTSS_REP}, status_t::NTSS_SET)){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers){
 				/**
@@ -933,7 +966,7 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
 		// Список серверов IPv4
 		vector <string> ipv4, ipv6;
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : servers){
 			/**
@@ -985,7 +1018,7 @@ void awh::NTP::replace(const int32_t family, const vector <string> & servers) no
 	// Если статус работы NTP-клиента соответствует
 	if(hold.access({status_t::REQUEST}, status_t::NTSS_REP)){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		/**
 		 * Определяем тип подключения
 		 */
@@ -1042,7 +1075,7 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем добавление полученных сетей в DNS-резолвер
 			this->_dns.network(network);
 			// Переходим по всему списку полученных адресов
@@ -1108,7 +1141,7 @@ void awh::NTP::network(const int32_t family, const vector <string> & network) no
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем добавление полученных сетей в DNS-резолвер
 			this->_dns.network(family, network);
 			// Переходим по всему списку полученных адресов
@@ -1159,7 +1192,7 @@ uint64_t awh::NTP::request(const int32_t family) noexcept {
 	// Если статус работы NTP-клиента соответствует
 	if(hold.access({}, status_t::REQUEST)){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		/**
 		 * Определяем тип протокола подключения
 		 */

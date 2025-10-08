@@ -13,6 +13,16 @@
  */
 
 /**
+ * Подключаем зависимые заголовки
+ */
+#include <cmath>
+#include <ctime>
+#include <chrono>
+#include <cstdarg>
+#include <iostream>
+#include <pcre2/pcre2posix.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/chrono.hpp>

@@ -439,6 +439,8 @@ size_t awh::Headers::count(const string & name) const noexcept {
  * @return     содержимое заголовка
  */
 const string & awh::Headers::at(const string & name) const noexcept {
+	// Результат работы функции
+	static const string result = "";
 	// Если название заголовка передано
 	if(!name.empty()){
 		/**
@@ -470,10 +472,8 @@ const string & awh::Headers::at(const string & name) const noexcept {
 			#endif
 		}
 	}
-	// Выполняем очистку результата по умолчанию
-	const_cast <headers_t *> (this)->_item.second.clear();
 	// Выводим результат
-	return this->_item.second;
+	return result;
 }
 /**
  * @brief Метод извлечения названий заголовков

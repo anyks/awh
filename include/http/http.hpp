@@ -29,8 +29,8 @@
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
 #include "../sys/hash.hpp"
-#include "../auth/client.hpp"
-#include "../auth/server.hpp"
+#include "../auth/client2.hpp"
+#include "../auth/server2.hpp"
 
 /**
  * @brief основное пространство имён

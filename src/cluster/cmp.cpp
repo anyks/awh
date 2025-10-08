@@ -13,6 +13,11 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <limits>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <cluster/cmp.hpp>
@@ -149,7 +154,7 @@ void awh::cmp::Encoder::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем очистку очереди данных
 		this->_buffer.clear();
 	/**
@@ -191,7 +196,7 @@ void awh::cmp::Encoder::erase(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем удаление данных в буфере
 		this->_buffer.erase(size);
 	/**
@@ -233,7 +238,7 @@ void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем установку размера чанка
 		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
 	/**
@@ -262,7 +267,7 @@ void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
  */
 void awh::cmp::Encoder::salt(const string & salt) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку соли шифрования
 	this->_hash.salt(salt);
 }
@@ -273,7 +278,7 @@ void awh::cmp::Encoder::salt(const string & salt) noexcept {
  */
 void awh::cmp::Encoder::password(const string & password) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку пароля шифрвоания
 	this->_hash.password(password);
 }
@@ -284,7 +289,7 @@ void awh::cmp::Encoder::password(const string & password) noexcept {
  */
 void awh::cmp::Encoder::cipher(const hash_t::cipher_t cipher) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем размера шифрования
 	this->_cipher = cipher;
 }
@@ -295,7 +300,7 @@ void awh::cmp::Encoder::cipher(const hash_t::cipher_t cipher) noexcept {
  */
 void awh::cmp::Encoder::method(const hash_t::method_t method) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку метода компрессии
 	this->_method = method;
 	// Если метод установлен актуальный
@@ -318,7 +323,7 @@ void awh::cmp::Encoder::push(const uint8_t mid, const void * buffer, const size_
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Устанавливаем идентификатор сообщения
 			this->_header.mid = mid;
 			// Снимаем флаг зашифрованных данных
@@ -494,7 +499,7 @@ void awh::cmp::Decoder::pop() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Если очередь записей не пустая
 		if(!this->_queue.empty())
 			// Выполняем удаление первой записи
@@ -528,7 +533,7 @@ void awh::cmp::Decoder::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем сброс идентификатора процесса
 		this->_pid = 0;
 		// Выполняем очистку очереди данных
@@ -621,7 +626,7 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Если данные в бинарном буфере существуют
 			if(!this->_buffer.empty()){
 				// Добавляем полученные данные в бинарный буфер
@@ -975,7 +980,7 @@ void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем установку размера чанка
 		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
 	/**
@@ -1004,7 +1009,7 @@ void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
  */
 void awh::cmp::Decoder::salt(const string & salt) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку соли шифрования
 	this->_hash.salt(salt);
 }
@@ -1015,7 +1020,7 @@ void awh::cmp::Decoder::salt(const string & salt) noexcept {
  */
 void awh::cmp::Decoder::password(const string & password) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку пароля шифрвоания
 	this->_hash.password(password);
 }

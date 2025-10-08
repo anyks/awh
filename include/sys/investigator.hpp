@@ -19,50 +19,7 @@
  * Стандартные модули
  */
 #include <string>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
 #include <unistd.h>
-#include <sys/types.h>
-
-/**
- * Для операционной системы Linux
- */
-#ifdef __linux__
-	#include <sys/file.h>
-	#include <sys/stat.h>
-/**
- * Для операционной системы FreeBSD
- */
-#elif __FreeBSD__
-	#include <libutil.h>
-	#include <sys/user.h>
-/**
- * Для операционной системы MacOS X
- */
-#elif __APPLE__ || __MACH__
-	#include <libproc.h>
-/**
- * Для операционной системы NetBSD или OpenBSD
- */
-#elif __NetBSD__ || __OpenBSD__
-	#include <fstream>
-	#include <sstream>
-/**
- * Реализация под Sun Solaris
- */
-#elif __sun__
-	#include <fstream>
-	#include <sstream>
-	#include <procfs.h>
-/**
- * Для операционной системы Windows
- */
-#elif _WIN32 || _WIN64
-	#include <windows.h>
-	#include <psapi.h>
-	#include <cstdint>
-#endif
 
 /**
  * Разрешаем сборку под Windows

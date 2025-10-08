@@ -87,22 +87,22 @@ awh::Http::handshake_t awh::client::Http::handshake() noexcept {
 	return result;
 }
 /**
- * @brief Метод извлечения данных авторизации
+ * @brief Метод извлечения параметров авторизации
  *
- * @return данные модуля авторизации
+ * @return параметры модуля авторизации
  */
-awh::client::auth_t::data_t awh::client::Http::authorization() const noexcept {
-	// Выполняем извлечение данных авторизации
-	return this->_auth.client.data();
+awh::client::auth_t::settings_t awh::client::Http::authorization() const noexcept {
+	// Выполняем извлечение параметров авторизации
+	return this->_auth.client.settings();
 }
 /**
- * @brief Метод установки данных авторизации
+ * @brief Метод установки параметров авторизации
  *
- * @param data данные авторизации для установки
+ * @param settings параметры авторизации для установки
  */
-void awh::client::Http::authorization(const client::auth_t::data_t & data) noexcept {
-	// Выполняем установку данных авторизации
-	this->_auth.client.data(data);
+void awh::client::Http::authorization(const client::auth_t::settings_t & settings) noexcept {
+	// Выполняем установку параметров авторизации
+	this->_auth.client.settings(settings);
 }
 /**
  * @brief Метод установки параметров авторизации

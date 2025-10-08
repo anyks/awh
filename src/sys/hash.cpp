@@ -13,6 +13,15 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <cstdio>
+#include <cstring>
+#include <csignal>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/hash.hpp>

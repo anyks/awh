@@ -13,6 +13,42 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <thread>
+#include <cstdio>
+#include <random>
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+
+/**
+ * Если используется модуль IDN и операционная система не MS Windows
+ */
+#if AWH_IDN && !_WIN32 && !_WIN64
+	#include <idn2.h>
+#endif
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	#include <netdb.h>
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <arpa/inet.h>
+	#include <sys/socket.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/dns.hpp>
@@ -126,7 +162,7 @@ string awh::DNS::Worker::host() const noexcept {
 			// Если количество элементов больше 1
 			if(this->_network.size() > 1){
 				// Подключаем устройство генератора
-				mt19937 generator(const_cast <dns_t *> (this->_self)->_randev());
+				mt19937 generator(const_cast <dns_t *> (this->_dns)->_randev());
 				// Выполняем генерирование случайного числа
 				uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
 				// Получаем ip адрес
@@ -142,13 +178,13 @@ string awh::DNS::Worker::host() const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_self->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+				this->_dns->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_self->_log->print("%s", log_t::flag_t::WARNING, error.what());
+				this->_dns->_log->print("%s", log_t::flag_t::WARNING, error.what());
 			#endif
 			// Выводим только первый элемент
 			result = this->_network.front();
@@ -183,7 +219,7 @@ vector <uint8_t> awh::DNS::Worker::split(const string & domain) const noexcept {
 		// Секции доменного имени
 		vector <string> sections;
 		// Выполняем сплит доменного имени
-		this->_self->_fmk->split(domain, ".", sections);
+		this->_dns->_fmk->split(domain, ".", sections);
 		// Если секции доменного имени получены
 		if(!sections.empty()){
 			// Переходим по всему списку секций
@@ -375,13 +411,13 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 		// Получаем хост текущего компьютера
 		const string & host = this->host();
 		// Получаем объект DNS-сервера
-		dns_t * self = const_cast <dns_t *> (this->_self);
+		dns_t * dns = const_cast <dns_t *> (this->_dns);
 		// Выполняем пересортировку серверов DNS
-		self->shuffle(this->_family);
+		dns->shuffle(this->_family);
 		// Выполняем очистку буфера данных
-		self->_buffer.clear(buffer_t::type_t::ADDR, this->_family);
+		dns->_buffer.clear(buffer_t::type_t::ADDR, this->_family);
 		// Получаем размер буфера данных
-		const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, this->_family);
+		const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, this->_family);
 		/**
 		 * Определяем тип подключения
 		 */
@@ -389,7 +425,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 			// Для протокола IPv4
 			case AF_INET: {
 				// Если список серверов существует
-				if((this->_mode = !this->_self->_serversIPv4.empty())){
+				if((this->_mode = !this->_dns->_serversIPv4.empty())){
 					// Создаём объект клиента
 					struct sockaddr_in client;
 					// Создаём объект сервера
@@ -397,7 +433,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Переходим по всему списку DNS-серверов
-					for(auto & addr : this->_self->_serversIPv4){
+					for(auto & addr : this->_dns->_serversIPv4){
 						// Очищаем всю структуру для клиента
 						::memset(&client, 0, sizeof(client));
 						// Очищаем всю структуру для сервера
@@ -422,7 +458,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 						{
 							// Выполняем запрос на удалённый DNS-сервер
-							result = this->send(domain, host, ::inet_ntop(this->_family, &addr.ip, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size));
+							result = this->send(domain, host, ::inet_ntop(this->_family, &addr.ip, reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size));
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -434,7 +470,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 			// Для протокола IPv6
 			case AF_INET6: {
 				// Если список серверов существует
-				if((this->_mode = !this->_self->_serversIPv6.empty())){
+				if((this->_mode = !this->_dns->_serversIPv6.empty())){
 					// Создаём объект клиента
 					struct sockaddr_in6 client;
 					// Создаём объект сервера
@@ -442,7 +478,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 					// Запоминаем размер структуры
 					this->_peer.size = sizeof(client);
 					// Переходим по всему списку DNS-серверов
-					for(auto & addr : this->_self->_serversIPv6){
+					for(auto & addr : this->_dns->_serversIPv6){
 						// Очищаем всю структуру для клиента
 						::memset(&client, 0, sizeof(client));
 						// Очищаем всю структуру для сервера
@@ -465,7 +501,7 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						::memcpy(&this->_peer.server, &server, this->_peer.size);
 						{
 							// Выполняем запрос на удалённый DNS-сервер
-							result = this->send(domain, host, ::inet_ntop(this->_family, &addr.ip, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size));
+							result = this->send(domain, host, ::inet_ntop(this->_family, &addr.ip, reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size));
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -492,11 +528,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 	// Если доменное имя установлено
 	if(this->_mode && !fqdn.empty() && !from.empty() && !to.empty()){
 		// Получаем объект DNS-сервера
-		dns_t * self = const_cast <dns_t *> (this->_self);
+		dns_t * dns = const_cast <dns_t *> (this->_dns);
 		// Выполняем очистку буфера данных
-		self->_buffer.clear(buffer_t::type_t::DATA);
+		dns->_buffer.clear(buffer_t::type_t::DATA);
 		// Получаем объект заголовка
-		head_t * header = reinterpret_cast <head_t *> (self->_buffer.get(buffer_t::type_t::DATA));
+		head_t * header = reinterpret_cast <head_t *> (dns->_buffer.get(buffer_t::type_t::DATA));
 		// Устанавливаем идентификатор заголовка
 		header->id = static_cast <uint16_t> (htons(::getpid()));
 		// Заполняем оставшуюся структуру пакетов
@@ -517,11 +553,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 		// Получаем доменное имя в нужном формате
 		const auto & domain = this->split(fqdn);
 		// Выполняем копирование домена
-		::memcpy(&self->_buffer.get(buffer_t::type_t::DATA)[size], domain.data(), domain.size());
+		::memcpy(&dns->_buffer.get(buffer_t::type_t::DATA)[size], domain.data(), domain.size());
 		// Увеличиваем размер запроса
 		size += (domain.size() + 1);
 		// Создаём части флагов вопроса пакета запроса
-		q_flags_t * qflags = reinterpret_cast <q_flags_t *> (&self->_buffer.get(buffer_t::type_t::DATA)[size]);
+		q_flags_t * qflags = reinterpret_cast <q_flags_t *> (&dns->_buffer.get(buffer_t::type_t::DATA)[size]);
 		/**
 		 * Определяем тип DNS-запроса
 		 */
@@ -559,7 +595,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_sock == INVALID_SOCKET)){
 			// Выводим в лог сообщение
-			this->_self->_log->print("File descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
+			this->_dns->_log->print("File descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
 			// Выполняем закрытие подключения
 			this->close();
 			// Выходим из приложения
@@ -575,13 +611,13 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			// Устанавливаем размер буфера передачи данных на запись
 			// this->_socket.bufferSize(this->_sock, AWH_BUFFER_SIZE_SND, 1, socket_t::mode_t::WRITE);
 			// Устанавливаем таймаут на получение данных из сокета
-			this->_socket.timeout(this->_sock, this->_self->_timeout * 1000, socket_t::mode_t::READ);
+			this->_socket.timeout(this->_sock, this->_dns->_timeout * 1000, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
-			this->_socket.timeout(this->_sock, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
+			this->_socket.timeout(this->_sock, this->_dns->_timeout * 1000, socket_t::mode_t::WRITE);
 			// Выполняем бинд на сокет
 			if(::bind(this->_sock, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
-				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
+				this->_dns->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выполняем закрытие подключения
 				this->close();
 				// Выходим из функции
@@ -590,11 +626,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			// Количество отправленных или полученных байт
 			int64_t bytes = 0;
 			// Если запрос на сервер DNS успешно отправлен
-			if((bytes = static_cast <int64_t> (::sendto(this->_sock, reinterpret_cast <const char *> (self->_buffer.get(buffer_t::type_t::DATA)), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
+			if((bytes = static_cast <int64_t> (::sendto(this->_sock, reinterpret_cast <const char *> (dns->_buffer.get(buffer_t::type_t::DATA)), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 				// Выполняем очистку буфера данных
-				self->_buffer.clear(buffer_t::type_t::DATA);
+				dns->_buffer.clear(buffer_t::type_t::DATA);
 				// Выполняем чтение ответа сервера
-				bytes = static_cast <int64_t> (::recvfrom(this->_sock, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::DATA)), self->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
+				bytes = static_cast <int64_t> (::recvfrom(this->_sock, reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::DATA)), dns->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Выполняем закрытие подключения
@@ -614,12 +650,12 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Если произведена неудачная запись в PIPE
 								case EPIPE:
 									// Выводим в лог сообщение
-									self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+									dns->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 								break;
 								// Если произведён сброс подключения
 								case ECONNRESET:
 									// Выводим в лог сообщение
-									self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+									dns->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 								break;
 							/**
 							 * Для операционной системы MS Windows
@@ -628,13 +664,13 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Если произведён сброс подключения
 								case WSAECONNRESET:
 									// Выводим в лог сообщение
-									self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+									dns->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 								break;
 							#endif
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str(), fqdn.c_str());
+								dns->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str(), fqdn.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -648,7 +684,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 					// Выполняем закрытие подключения
 					this->close();
 					// Получаем объект заголовка
-					head_t * header = reinterpret_cast <head_t *> (self->_buffer.get(buffer_t::type_t::DATA));
+					head_t * header = reinterpret_cast <head_t *> (dns->_buffer.get(buffer_t::type_t::DATA));
 					/**
 					 * Определяем код выполнения операции
 					 */
@@ -668,7 +704,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Выполняем перебор всех полученных элементов в разделе ответов
 							for(uint16_t i = 0; i < ntohs(header->qdcount); ++i){
 								// Выполняем извлечение списка сотава доменного имени
-								const auto & items = this->items(self->_buffer.get(buffer_t::type_t::DATA) + offset, static_cast <size_t> (bytes) - offset);
+								const auto & items = this->items(dns->_buffer.get(buffer_t::type_t::DATA) + offset, static_cast <size_t> (bytes) - offset);
 								// Выполняем добавление в общий список запрашиваемых доменных имён
 								qnames.push_back(items);
 								// Выполняем перебор всего списка записей
@@ -685,9 +721,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Создаём новый объект полученного ответа
 								answer.push_back(item_t());
 								// Если в буфере присутствуют ещё данные
-								if(self->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0){
+								if(dns->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0){
 									// Выполняем извлечение списка сотава доменного имени
-									answer.back().items = this->items(self->_buffer.get(buffer_t::type_t::DATA) + offset, static_cast <size_t> (bytes) - offset);
+									answer.back().items = this->items(dns->_buffer.get(buffer_t::type_t::DATA) + offset, static_cast <size_t> (bytes) - offset);
 									// Выполняем перебор всего списка записей
 									for(auto & domain : answer.back().items)
 										// Считаем смещение в бинарном буфере
@@ -702,18 +738,18 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Если в списке данные не присутствуют
 								} else {
 									// Извлекаем значение полученной записи
-									const auto & record = this->extract(self->_buffer.get(buffer_t::type_t::DATA), offset);
+									const auto & record = this->extract(dns->_buffer.get(buffer_t::type_t::DATA), offset);
 									// Выполняем извлечение списка сотава доменного имени
 									answer.back().items = this->items(reinterpret_cast <const uint8_t *> (record.data()), record.size());
 								}
 								// Если в буфере присутствуют ещё данные
-								if(self->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0)
+								if(dns->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0)
 									// Увеличиваем размер буфера полученных данных на один байт
 									offset += 1;
 								// Увеличиваем размер буфера полученных данных на два байта
 								else offset += 2;
 								// Создаём части флагов вопроса пакета ответа
-								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&self->_buffer.get(buffer_t::type_t::DATA)[offset]);
+								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&dns->_buffer.get(buffer_t::type_t::DATA)[offset]);
 								// Увеличиваем смещение в буфере
 								offset += (sizeof(rr_flags_t) - 2);
 								// Устанавливаем время жизни записи
@@ -731,7 +767,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор полученных октетов для парсинга IP-адреса
 										for(int32_t j = 0; j < ntohs(rrflags->length); ++j)
 											// Выполняем парсинг IP-адреса
-											answer.back().record[j] = static_cast <uint8_t> (self->_buffer.get(buffer_t::type_t::DATA)[offset++]);
+											answer.back().record[j] = static_cast <uint8_t> (dns->_buffer.get(buffer_t::type_t::DATA)[offset++]);
 										// Устанавливаем тип полученных данных
 										answer.back().type = ntohs(rrflags->type);
 									} break;
@@ -740,7 +776,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									// Если запись является PTR
 									case 12: {
 										// Извлекаем значение полученной записи
-										const auto & record = this->extract(self->_buffer.get(buffer_t::type_t::DATA), offset);
+										const auto & record = this->extract(dns->_buffer.get(buffer_t::type_t::DATA), offset);
 										// Выполняем извлечение значение записи
 										answer.back().record = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
 										// Устанавливаем тип полученных данных
@@ -755,17 +791,17 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Создаём новый объект полученного ответа
 								authority.push_back(item_t());
 								// Извлекаем значение полученной записи
-								const auto & record = this->extract(self->_buffer.get(buffer_t::type_t::DATA), offset);
+								const auto & record = this->extract(dns->_buffer.get(buffer_t::type_t::DATA), offset);
 								// Выполняем извлечение списка сотава доменного имени
 								authority.back().items = this->items(reinterpret_cast <const uint8_t *> (record.data()), record.size());
 								// Если в списке присутствуют ещё данные
-								if(self->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0)
+								if(dns->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0)
 									// Увеличиваем размер буфера полученных данных на один байт
 									offset += 1;
 								// Увеличиваем размер буфера полученных данных на два байта
 								else offset += 2;
 								// Создаём части флагов вопроса пакета ответа
-								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&self->_buffer.get(buffer_t::type_t::DATA)[offset]);
+								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&dns->_buffer.get(buffer_t::type_t::DATA)[offset]);
 								// Увеличиваем смещение в буфере
 								offset += (sizeof(rr_flags_t) - 2);
 								// Устанавливаем время жизни записи
@@ -777,7 +813,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									// Если мы получили сервер имён
 									case 2: {
 										// Извлекаем значение полученной записи
-										const auto & record = this->extract(self->_buffer.get(buffer_t::type_t::DATA), offset);
+										const auto & record = this->extract(dns->_buffer.get(buffer_t::type_t::DATA), offset);
 										// Выполняем извлечение значение записи
 										authority.back().record = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
 										// Устанавливаем тип полученных данных
@@ -792,17 +828,17 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Создаём новый объект полученного ответа
 								additional.push_back(item_t());
 								// Извлекаем значение полученной записи
-								const auto & record = this->extract(self->_buffer.get(buffer_t::type_t::DATA), offset);
+								const auto & record = this->extract(dns->_buffer.get(buffer_t::type_t::DATA), offset);
 								// Выполняем извлечение списка сотава доменного имени
 								additional.back().items = this->items(reinterpret_cast <const uint8_t *> (record.data()), record.size());
 								// Если в списке присутствуют ещё данные
-								if(self->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0)
+								if(dns->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0)
 									// Увеличиваем размер буфера полученных данных на один байт
 									offset += 1;
 								// Увеличиваем размер буфера полученных данных на два байта
 								else offset += 2;
 								// Создаём части флагов вопроса пакета ответа
-								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&self->_buffer.get(buffer_t::type_t::DATA)[offset]);
+								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&dns->_buffer.get(buffer_t::type_t::DATA)[offset]);
 								// Увеличиваем смещение в буфере
 								offset += (sizeof(rr_flags_t) - 2);
 								// Устанавливаем время жизни записи
@@ -820,7 +856,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор полученных октетов для парсинга IP-адреса
 										for(int32_t j = 0; j < ntohs(rrflags->length); ++j)
 											// Выполняем парсинг IP-адреса
-											additional.back().record[j] = static_cast <uint8_t> (self->_buffer.get(buffer_t::type_t::DATA)[offset++]);
+											additional.back().record[j] = static_cast <uint8_t> (dns->_buffer.get(buffer_t::type_t::DATA)[offset++]);
 										// Устанавливаем тип полученных данных
 										additional.back().type = ntohs(rrflags->type);
 									} break;
@@ -829,7 +865,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									// Если запись является PTR
 									case 12: {
 										// Извлекаем значение полученной записи
-										const auto & record = this->extract(self->_buffer.get(buffer_t::type_t::DATA), offset);
+										const auto & record = this->extract(dns->_buffer.get(buffer_t::type_t::DATA), offset);
 										// Выполняем извлечение значение записи
 										additional.back().record = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
 										// Устанавливаем тип полученных данных
@@ -854,7 +890,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									// Выполняем перебор списка каннонических имён
 									for(auto & qname : qnames)
 										// Выводим название доменного имени
-										printf("QNAME: %s\n", self->_fmk->join(qname, ".").c_str());
+										printf("QNAME: %s\n", dns->_fmk->join(qname, ".").c_str());
 									// Если список ответов сервера получен
 									if(!answer.empty()){
 										// Доменное имя полученное из запроса
@@ -862,7 +898,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор всего списка ответов
 										for(auto & item : answer){
 											// Получаем название записи
-											name = self->_fmk->join(item.items, ".");
+											name = dns->_fmk->join(item.items, ".");
 											// Выводим название записи
 											printf("\nNAME: %s\n", name.c_str());
 											/**
@@ -876,11 +912,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Выводим информацию в консоль
 													printf("PTR: %s\n", item.record.c_str());
 													// Выполняем установку ARPA-адреса
-													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn)){
+													if(const_cast <dns_t *> (this->_dns)->_net.arpa(fqdn)){
 														// Выполняем извлечение PTR-записи
 														items.push_back(item.record);
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
+														dns->setToCache(this->_family, item.record, this->_dns->_net.get(), item.ttl);
 													}
 												} break;
 												// Если тип полученной записи IPv4
@@ -900,32 +936,32 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 														// Если тип полученной записи IPv6
 														case 28: {
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET6;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 													}
 													// Если IP-адрес получен
 													if(!ip.empty()){
 														// Если IP-адрес не находится в чёрном списке
-														if(!self->isInBlackList(family, name, ip)){
+														if(!dns->isInBlackList(family, name, ip)){
 															// Добавляем IP-адрес в список адресов
 															items.push_back(ip);
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, item.ttl);
+															dns->setToCache(family, name, ip, item.ttl);
 														}
 														/**
 														 * Определяем тип записи
@@ -948,7 +984,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор всего списка ответов
 										for(auto & item : authority){
 											// Получаем название записи
-											name = self->_fmk->join(item.items, ".");
+											name = dns->_fmk->join(item.items, ".");
 											// Выводим название записи
 											printf("\nNAME: %s\n", name.c_str());
 											/**
@@ -967,7 +1003,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор всего списка ответов
 										for(auto & item : additional){
 											// Получаем название записи
-											name = self->_fmk->join(item.items, ".");
+											name = dns->_fmk->join(item.items, ".");
 											// Выводим название записи
 											printf("\nNAME: %s\n", name.c_str());
 											/**
@@ -981,9 +1017,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Выводим информацию в консоль
 													printf("PTR: %s\n", item.record.c_str());
 													// Выполняем установку ARPA-адреса
-													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
+													if(const_cast <dns_t *> (this->_dns)->_net.arpa(fqdn))
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
+														dns->setToCache(this->_family, item.record, this->_dns->_net.get(), item.ttl);
 												} break;
 												// Если тип полученной записи IPv4
 												case 1:
@@ -1002,30 +1038,30 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 														// Если тип полученной записи IPv6
 														case 28: {
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET6;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 													}
 													// Если IP-адрес получен
 													if(!ip.empty()){
 														// Если IP-адрес не находится в чёрном списке
-														if(!self->isInBlackList(family, name, ip))
+														if(!dns->isInBlackList(family, name, ip))
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, item.ttl);
+															dns->setToCache(family, name, ip, item.ttl);
 														/**
 														 * Определяем тип записи
 														 */
@@ -1056,7 +1092,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор всего списка ответов
 										for(auto & item : answer){
 											// Получаем название записи
-											name = self->_fmk->join(item.items, ".");
+											name = dns->_fmk->join(item.items, ".");
 											/**
 											 * Определяем тип записи
 											 */
@@ -1064,11 +1100,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 												// Если тип получения записи PTR
 												case 12: {
 													// Выполняем установку ARPA-адреса
-													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn)){
+													if(const_cast <dns_t *> (this->_dns)->_net.arpa(fqdn)){
 														// Выполняем извлечение PTR-записи
 														items.push_back(item.record);
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
+														dns->setToCache(this->_family, item.record, this->_dns->_net.get(), item.ttl);
 													}
 												} break;
 												// Если тип полученной записи IPv4
@@ -1088,22 +1124,22 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 														// Если тип полученной записи IPv6
 														case 28: {
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET6;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 													}
 													// Если IP-адрес получен
@@ -1115,11 +1151,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 														 */
 														result = ip;
 														// Если IP-адрес не находится в чёрном списке
-														if(!self->isInBlackList(family, name, ip)){
+														if(!dns->isInBlackList(family, name, ip)){
 															// Добавляем IP-адрес в список адресов
 															items.push_back(ip);
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, item.ttl);
+															dns->setToCache(family, name, ip, item.ttl);
 														}
 													}
 												} break;
@@ -1133,7 +1169,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Выполняем перебор всего списка ответов
 										for(auto & item : additional){
 											// Получаем название записи
-											name = self->_fmk->join(item.items, ".");
+											name = dns->_fmk->join(item.items, ".");
 											/**
 											 * Определяем тип записи
 											 */
@@ -1141,9 +1177,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 												// Если тип получения записи PTR
 												case 12: {
 													// Выполняем установку ARPA-адреса
-													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
+													if(const_cast <dns_t *> (this->_dns)->_net.arpa(fqdn))
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
+														dns->setToCache(this->_family, item.record, this->_dns->_net.get(), item.ttl);
 												} break;
 												// Если тип полученной записи IPv4
 												case 1:
@@ -1162,30 +1198,30 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 														// Если тип полученной записи IPv6
 														case 28: {
 															// Устанавливаем тип интернет-протокола
 															family = AF_INET6;
 															// Выполняем очистку буфера данных
-															self->_buffer.clear(buffer_t::type_t::ADDR, family);
+															dns->_buffer.clear(buffer_t::type_t::ADDR, family);
 															// Получаем размер буфера данных
-															const size_t size = self->_buffer.size(buffer_t::type_t::ADDR, family);
+															const size_t size = dns->_buffer.size(buffer_t::type_t::ADDR, family);
 															// Получаем IP-адрес принадлежащий доменному имени
-															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::ADDR)), size);
+															ip = ::inet_ntop(family, item.record.c_str(), reinterpret_cast <char *> (dns->_buffer.get(buffer_t::type_t::ADDR)), size);
 														} break;
 													}
 													// Если IP-адрес получен
 													if(!ip.empty()){
 														// Если IP-адрес не находится в чёрном списке
-														if(!self->isInBlackList(family, name, ip))
+														if(!dns->isInBlackList(family, name, ip))
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, item.ttl);
+															dns->setToCache(family, name, ip, item.ttl);
 													}
 												} break;
 											}
@@ -1200,7 +1236,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									// Переходим по всему списку полученных записей
 									for(auto & addr : items){
 										// Если запись не найдена в списке
-										if(self->_using.find(addr) == self->_using.end()){
+										if(dns->_using.find(addr) == dns->_using.end()){
 											// Выполняем установку записи
 											result.assign(addr.begin(), addr.end());
 											// Выходим из цикла
@@ -1221,39 +1257,39 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Переходим по всему списку полученных записей
 										for(; i != items.end(); ++i)
 											// Очищаем список используемых записей
-											self->_using.erase(* i);
+											dns->_using.erase(* i);
 									}
 								// Если запись получена, то запоминаем полученную запись
-								} else self->_using.emplace(result);
+								} else dns->_using.emplace(result);
 							// Если IP-адрес получен всего один и он в чёрном списке
 							} else if(!result.empty())
 								// Выполняем удаления IP-адреса из чёрного списка
-								self->delInBlackList(this->_family, fqdn, result);
+								dns->delInBlackList(this->_family, fqdn, result);
 						} break;
 						// Если сервер DNS не смог интерпретировать запрос
 						case 1:
 							// Выводим в лог сообщение
-							self->_log->print("DNS query format error to nameserver %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+							dns->_log->print("DNS query format error to nameserver %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 						break;
 						// Если проблемы возникли на DNS-сервера
 						case 2:
 							// Выводим в лог сообщение
-							self->_log->print("DNS server failure %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+							dns->_log->print("DNS server failure %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 						break;
 						// Если доменное имя указанное в запросе не существует
 						case 3:
 							// Выводим в лог сообщение
-							self->_log->print("Domain name %s referenced in the query for nameserver %s does not exist", log_t::flag_t::WARNING, fqdn.c_str(), to.c_str());
+							dns->_log->print("Domain name %s referenced in the query for nameserver %s does not exist", log_t::flag_t::WARNING, fqdn.c_str(), to.c_str());
 						break;
 						// Если DNS-сервер не поддерживает подобный тип запросов
 						case 4:
 							// Выводим в лог сообщение
-							self->_log->print("DNS server is not implemented at %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+							dns->_log->print("DNS server is not implemented at %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 						break;
 						// Если DNS-сервер отказался выполнять наш запрос (например по политическим причинам)
 						case 5:
 							// Выводим в лог сообщение
-							self->_log->print("DNS request is refused to nameserver %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+							dns->_log->print("DNS request is refused to nameserver %s for domain %s", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 						break;
 					}
 				}
@@ -1280,12 +1316,12 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
-								this->_self->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+								this->_dns->_log->print("EPIPE [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 							break;
 							// Если произведён сброс подключения
 							case ECONNRESET:
 								// Выводим в лог сообщение
-								this->_self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+								this->_dns->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 							break;
 						/**
 						 * Для операционной системы MS Windows
@@ -1294,13 +1330,13 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Если произведён сброс подключения
 							case WSAECONNRESET:
 								// Выводим в лог сообщение
-								this->_self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+								this->_dns->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 							break;
 						#endif
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str(), fqdn.c_str());
+							this->_dns->_log->print("%s [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str(), to.c_str(), fqdn.c_str());
 					}
 				}
 			}
@@ -1458,7 +1494,7 @@ bool awh::DNS::flush() noexcept {
 	// Если статус работы DNS-резолвера соответствует
 	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем сброс кэша полученных IPv4-адресов
 		this->_cacheIPv4.clear();
 		// Выполняем сброс кэша полученных IPv6-адресов
@@ -1474,7 +1510,7 @@ bool awh::DNS::flush() noexcept {
  */
 void awh::DNS::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	/**
 	 * Определяем тип протокола подключения
 	 */
@@ -1502,7 +1538,7 @@ void awh::DNS::shuffle(const int32_t family) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выбираем стаднарт рандомайзера
 		mt19937 generator(this->_randev());
 		/**
@@ -1546,7 +1582,7 @@ void awh::DNS::shuffle(const int32_t family) noexcept {
  */
 void awh::DNS::timeout(const uint8_t sec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку таймаута ожидания выполнения запроса
 	this->_timeout = sec;
 }
@@ -1593,7 +1629,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 							// Если время жизни кэша уже вышло
 							} else {
 								// Выполняем блокировку потока
-								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								const lock_guard lock(this->_mtx);
 								// Выполняем удаление записи из кэша
 								i = this->_cacheIPv4.erase(i);
 							}
@@ -1625,7 +1661,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 							// Если время жизни кэша уже вышло
 							} else {
 								// Выполняем блокировку потока
-								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								const lock_guard lock(this->_mtx);
 								// Выполняем удаление записи из кэша
 								i = this->_cacheIPv6.erase(i);
 							}
@@ -1696,7 +1732,7 @@ void awh::DNS::clearCache(const int32_t family, const string & domain) noexcept 
 	// Если доменное имя передано
 	if(!domain.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		/**
@@ -1753,7 +1789,7 @@ void awh::DNS::clearCache(const bool localhost) noexcept {
  */
 void awh::DNS::clearCache(const int32_t family, const bool localhost) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	/**
 	 * Определяем тип протокола подключения
 	 */
@@ -1827,7 +1863,7 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 		// Результат проверки наличия IP-адреса в кэше
 		bool result = false;
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		/**
@@ -1927,7 +1963,7 @@ void awh::DNS::clearBlackList(const int32_t family, const string & domain) noexc
 	// Если доменное имя передано
 	if(!domain.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		/**
@@ -1998,7 +2034,7 @@ void awh::DNS::delInBlackList(const int32_t family, const string & domain, const
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		/**
@@ -2083,7 +2119,7 @@ void awh::DNS::setToBlackList(const int32_t family, const string & domain, const
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		/**
@@ -2274,7 +2310,7 @@ string awh::DNS::server(const int32_t family) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Подключаем устройство генератора
 		mt19937 generator(this->_randev());
 		/**
@@ -2384,7 +2420,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 			// Порт переданного сервера
 			uint32_t port = 53;
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			/**
 			 * Определяем тип передаваемого сервера
 			 */
@@ -2589,7 +2625,7 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
 		// Если статус работы DNS-резолвера соответствует
 		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers){
 				/**
@@ -2659,7 +2695,7 @@ void awh::DNS::replace(const vector <string> & servers) noexcept {
 		// Список серверов IPv4
 		vector <string> ipv4, ipv6;
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : servers){
 			/**
@@ -2711,7 +2747,7 @@ void awh::DNS::replace(const int32_t family, const vector <string> & servers) no
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::RESOLVE, status_t::NSS_REP}, status_t::NSS_REP)){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		/**
 		 * Определяем тип подключения
 		 */
@@ -2768,7 +2804,7 @@ void awh::DNS::network(const vector <string> & network) noexcept {
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				/**
@@ -2832,7 +2868,7 @@ void awh::DNS::network(const int32_t family, const vector <string> & network) no
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				/**
@@ -2872,7 +2908,7 @@ void awh::DNS::hosts(const string & filename) noexcept {
 	// Если адрес файла получен
 	if(!filename.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Создаём объект для работы с файловой системой
 		fs_t fs(this->_fmk, this->_log);
 		// Выполняем установку адреса файла hosts
@@ -2985,7 +3021,7 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 			// Если доменное имя является локальным
 			if(this->_fmk->is(name, fmk_t::check_t::LATIAN)){
 				// Выполняем блокировку потока
-				const lock_guard <std::recursive_mutex> lock(this->_mtx);
+				const lock_guard lock(this->_mtx);
 				// Переводим доменное имя в нижний регистр
 				this->_fmk->transform(name, fmk_t::transform_t::LOWER);
 				{

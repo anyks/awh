@@ -36,21 +36,30 @@
 /**
  * Стандартные модули
  */
-#include <random>
-#include <thread>
-#include <cstdio>
 #include <string>
 #include <vector>
-#include <cstdlib>
-#include <iostream>
-#include <algorithm>
+#include <random>
 #include <sys/types.h>
 
 /**
  * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
-	#include <sys/un.h>
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <sys/socket.h>
+/**
+ * Для операционной системы MS Windows
+ */
+#else
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <winsock2.h>
+	#include <iphlpapi.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
 #endif
 
 /**

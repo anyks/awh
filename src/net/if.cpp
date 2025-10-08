@@ -13,6 +13,117 @@
  */
 
 /**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	#define SOCKET int32_t
+	#define INVALID_SOCKET -1
+#endif
+
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <unistd.h>
+	#include <net/if.h>
+	#include <arpa/inet.h>
+	#include <sys/types.h>
+	#include <sys/ioctl.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	/**
+	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+	 */
+	#if __APPLE__ || __MACH__ || __FreeBSD__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <net/ethernet.h>
+	#endif
+	/**
+	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+	 */
+	#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <netdb.h>
+		#include <net/if_dl.h>
+		#include <netinet/if_ether.h>
+		#include <sys/sockio.h>
+		#include <sys/sysctl.h>
+		#include <net/route.h>
+		// Создаём функцию округления
+		#define ROUNDUP(a) \
+			((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+	/**
+	 * Для операционной системы Linux
+	 */
+	#elif __linux__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <cstddef>
+		#include <ifaddrs.h>
+		#include <stdbool.h>
+		#include <net/if_arp.h>
+	/**
+	 * Реализация под Sun Solaris
+	 */
+	#elif __sun__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <netdb.h>
+		#include <ifaddrs.h>
+		#include <net/if_dl.h>
+		#include <netinet/if_ether.h>
+		#include <sys/sockio.h>
+		#include <net/route.h>
+	#endif
+/**
+ * Для операционной системы MS Windows
+ */
+#else
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <ws2tcpip.h>
+	#include <winsock2.h>
+	#include <iphlpapi.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
+	/**
+	 * Создаём привычные нам функции выделения памяти
+	 */
+	#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+	#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+#endif
+
+/**
+ * Для систем Apple выполняем фиксацию ошибки переопределения макроса ошибки события
+ */
+#ifdef __APPLE__
+	// Если макрос пределён
+	#ifdef EV_ERROR
+		// Снимаем определение макроса
+		#undef EV_ERROR
+	#endif
+#endif
+
+/**
+ * Стандартные библиотеки
+ */
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <algorithm>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/if.hpp>
@@ -1791,3 +1902,10 @@ const string & awh::IfNet::ip(const string & eth, const int32_t family) const no
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::IfNet::IfNet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}

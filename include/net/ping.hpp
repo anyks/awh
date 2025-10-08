@@ -19,41 +19,30 @@
  * Стандартные модули
  */
 #include <mutex>
-#include <chrono>
-#include <thread>
-#include <cstdio>
+#include <atomic>
 #include <string>
 #include <vector>
-#include <limits>
-#include <cstdlib>
-#include <algorithm>
 #include <functional>
 
 /**
  * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
-	#define SOCKET int32_t
-	#define INVALID_SOCKET -1
-#endif
-
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <sys/socket.h>
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
-	#include <winsock2.h>
-	#include <ws2tcpip.h>
-/**
- * Для операционной системы не являющейся MS Windows
- */
 #else
-	#include <netdb.h>
-	#include <unistd.h>
-	#include <sys/types.h>
-	#include <arpa/inet.h>
-	#include <sys/socket.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <winsock2.h>
+	#include <iphlpapi.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
 #endif
 
 /**
@@ -158,11 +147,6 @@ namespace awh {
 			// Сетевой сокет
 			SOCKET _sock;
 		private:
-			// Флаг запуска работы
-			bool _mode;
-			// Флаг разрешающий вывод информации
-			bool _verb;
-		private:
 			// Объект IP-адресов
 			net_t _net;
 			// Объект DNS-резолвера
@@ -173,6 +157,11 @@ namespace awh {
 			socket_t _socket;
 			// Объект работы с датой и временем
 			chrono_t _chrono;
+		private:
+			// Флаг запуска работы
+			std::atomic_bool _mode;
+			// Флаг разрешающий вывод информации
+			std::atomic_bool _verb;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
@@ -311,7 +300,7 @@ namespace awh {
 			 *
 			 * @param msec сдвиг по времени в миллисекундах
 			 */
-			void shifting(const uint64_t msec) noexcept;
+			void shifting(const uint32_t msec) noexcept;
 		public:
 			/**
 			 * @brief Метод добавления серверов DNS
@@ -355,11 +344,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Ping(const fmk_t * fmk, const log_t * log) noexcept :
-			 _sock(INVALID_SOCKET), _mode(false), _verb(true),
-			 _net(log), _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
-			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
-			 _fmk(fmk), _log(log), _callback(nullptr) {}
+			Ping(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

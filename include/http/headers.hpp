@@ -169,9 +169,6 @@ namespace awh {
 			// Размеры максимальныйх ограничений
 			max_t _max;
 		private:
-			// Текущее значение записи
-			item_t _item;
-		private:
 			// Мютекс для блокировки потока
 			mutable std::mutex _mtx;
 		private:

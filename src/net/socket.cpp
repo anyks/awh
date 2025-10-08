@@ -23,6 +23,52 @@
 #endif
 
 /**
+ * Стандартные модули
+ */
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <getopt.h>
+	#include <mswsock.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	#include <vector>
+	#include <csignal>
+	#include <fcntl.h>
+	#include <unistd.h>
+	#include <sys/ioctl.h>
+	#include <sys/types.h>
+	#include <arpa/inet.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <sys/resource.h>
+#endif
+
+/**
+ * Если операционной системой является Linux или FreeBSD
+ */
+#if __linux__ || __FreeBSD__
+	#include <netinet/sctp.h>
+/**
+ * Для операционной системы Sun Solaris
+ */
+#elif __sun__
+	#include <sys/termios.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/socket.hpp>
@@ -1284,3 +1330,10 @@ bool awh::Socket::bufferSize(const SOCKET sock, const int32_t size, const mode_t
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}

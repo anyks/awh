@@ -45,9 +45,7 @@
  * Стандартные модули
  */
 #include <map>
-#include <cmath>
 #include <mutex>
-#include <thread>
 #include <vector>
 #include <string>
 #include <atomic>

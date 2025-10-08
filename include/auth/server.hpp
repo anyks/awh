@@ -47,17 +47,18 @@ namespace awh {
 				 */
 				typedef struct Data {
 					const type_t * type;     // Тип авторизации
-					const digest_t * digest; // Параметры Digest авторизации
-					const digest_t * locale; // Параметры Digest авторизации пользователя
 					const string * user;     // Логин пользователя
 					const string * pass;     // Пароль пользователя
+					const digest_t * digest; // Параметры Digest авторизации
+					const digest_t * locale; // Параметры Digest авторизации пользователя
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					Data() noexcept :
-					 type(nullptr), digest(nullptr),
-					 locale(nullptr), user(nullptr), pass(nullptr) {}
+					 type(nullptr),
+					 user(nullptr), pass(nullptr),
+					 digest(nullptr), locale(nullptr) {}
 				} data_t;
 			private:
 				// Логин пользователя

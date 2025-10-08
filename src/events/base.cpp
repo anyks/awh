@@ -36,6 +36,13 @@
 #endif
 
 /**
+ * Стандартные модули
+ */
+#include <cmath>
+#include <thread>
+#include <fcntl.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <events/base.hpp>

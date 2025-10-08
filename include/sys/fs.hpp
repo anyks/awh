@@ -16,81 +16,18 @@
 #define __AWH_FS__
 
 /**
+ * Стандартные модули
+ */
+#include <string>
+#include <cinttypes>
+#include <functional>
+
+/**
  * Наши модули
  */
 #include "os.hpp"
 #include "fmk.hpp"
 #include "log.hpp"
-
-/**
- * Для операционной системы MS Windows
- */
-#if _WIN32 || _WIN64
-	/**
-	 * Подключаем стандартные модули
-	 */
-	#include <objbase.h>
-	#include <shlobj.h>
-	#include <tchar.h>
-	#include <strsafe.h>
-#endif
-
-/**
- * Стандартные модули
- */
-#include <string>
-#include <fstream>
-#include <codecvt>
-#include <sstream>
-#include <cstdlib>
-#include <functional>
-#include <fcntl.h>
-#include <dirent.h>
-#include <unistd.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-/**
- * Если это clang v10 или выше
- */
-#if __AWH_EXPERIMENTAL__
-	/**
-	 * Подключаем стандартные модули
-	 */
-	#include <filesystem>
-#endif
-
-/**
- * Для операционной системы MS Windows
- */
-#if _WIN32 || _WIN64
-	/**
-	 * Подключаем стандартные модули
-	 */
-	#include <sddl.h>
-	#include <conio.h>
-	#include <aclapi.h>
-	#include <direct.h>
-/**
- * Для операционной системы не являющейся MS Windows
- */
-#else
-	/**
-	 * Подключаем стандартные модули
-	 */
-	#include <sys/mman.h>
-#endif
-
-/**
- * Если операционной системой является MacOS X
- */
-#if __APPLE__ || __MACH__
-	/**
-	 * Подключаем стандартные модули
-	 */
-	#include <Carbon/Carbon.h>
-#endif
 
 /**
  * @brief основное пространство имён
@@ -319,21 +256,21 @@ namespace awh {
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
-			void readFile(const string & filename, function <void (const string &)> callback) const noexcept;
+			void readFile(const string & filename, const function <void (const string &)> & callback) const noexcept;
 			/**
 			 * @brief Метод рекурсивного получения всех строк файла (стандартным способом)
 			 *
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
-			void readFile2(const string & filename, function <void (const string &)> callback) const noexcept;
+			void readFile2(const string & filename, const function <void (const string &)> & callback) const noexcept;
 			/**
 			 * @brief Метод рекурсивного получения всех строк файла (построчным методом)
 			 *
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
-			void readFile3(const string & filename, function <void (const string &)> callback) const noexcept;
+			void readFile3(const string & filename, const function <void (const string &)> & callback) const noexcept;
 		public:
 			/**
 			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
@@ -344,7 +281,7 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param actual   флаг формирования актуальных адресов
 			 */
-			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual = true) const noexcept;
+			void readDir(const string & path, const string & ext, const bool rec, const function <void (const string &)> & callback, const bool actual = true) const noexcept;
 			/**
 			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах
 			 *
@@ -354,17 +291,17 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param actual   флаг формирования актуальных адресов
 			 */
-			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual = true) const noexcept;
+			void readPath(const string & path, const string & ext, const bool rec, const function <void (const string &, const string &)> & callback, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * @brief конструктор
+			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			FS(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * @brief деструктор
+			 * @brief Деструктор
 			 *
 			 */
 			~FS() noexcept {}

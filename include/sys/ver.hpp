@@ -19,10 +19,7 @@
  * Стандартная библиотека
  */
 #include <string>
-#include <cstring>
 #include <cstdint>
-#include <iostream>
-#include <sys/types.h>
 
 /**
  * Разрешаем сборку под Windows

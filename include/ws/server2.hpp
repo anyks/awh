@@ -19,7 +19,6 @@
  * Наши модули
  */
 #include "ws.hpp"
-#include "../auth/server.hpp"
 
 /**
  * @brief основное пространство имён
@@ -76,17 +75,17 @@ namespace awh {
 				void opaque(const string & opaque) noexcept;
 			public:
 				/**
-				 * @brief Метод извлечения данных авторизации
+				 * @brief Метод извлечения параметров авторизации
 				 *
-				 * @return данные модуля авторизации
+				 * @return параметры модуля авторизации
 				 */
-				server::auth_t::data_t authorization() const noexcept;
+				server::auth_t::settings_t authorization() const noexcept;
 				/**
-				 * @brief Метод установки данных авторизации
+				 * @brief Метод установки параметров авторизации
 				 *
-				 * @param data данные авторизации для установки
+				 * @param settings параметры авторизации для установки
 				 */
-				void authorization(const server::auth_t::data_t & data) noexcept;
+				void authorization(const server::auth_t::settings_t & settings) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления функции извлечения пароля

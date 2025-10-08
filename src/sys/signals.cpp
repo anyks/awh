@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <thread>
+#include <cstring>
+#include <iostream>
+
+/**
  * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
@@ -270,7 +277,7 @@ void awh::Signals::start() noexcept {
  */
 void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	// Выполняем установку функцию обратного вызова
-	this->_callback = callback;
+	this->_callback = ::move(callback);
 	// Выполняем установки функции обратного вызова
 	self.callback = std::bind(&sig_t::callback, this, _1);
 }

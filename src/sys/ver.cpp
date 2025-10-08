@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартная библиотека
+ */
+#include <cstring>
+#include <iostream>
+#include <sys/types.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/os.hpp>

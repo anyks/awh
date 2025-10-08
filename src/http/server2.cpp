@@ -140,22 +140,22 @@ void awh::server::Http::opaque(const string & opaque) noexcept {
 		this->_auth.server.opaque(opaque);
 }
 /**
- * @brief Метод извлечения данных авторизации
+ * @brief Метод извлечения параметров авторизации
  *
- * @return данные модуля авторизации
+ * @return параметры модуля авторизации
  */
-awh::server::auth_t::data_t awh::server::Http::authorization() const noexcept {
-	// Выполняем извлечение данных авторизации
-	return this->_auth.server.data();
+awh::server::auth_t::settings_t awh::server::Http::authorization() const noexcept {
+	// Выполняем извлечение параметров авторизации
+	return this->_auth.server.settings();
 }
 /**
- * @brief Метод установки данных авторизации
+ * @brief Метод установки параметров авторизации
  *
- * @param data данные авторизации для установки
+ * @param settings параметры авторизации для установки
  */
-void awh::server::Http::authorization(const server::auth_t::data_t & data) noexcept {
-	// Выполняем установку данных авторизации
-	this->_auth.server.data(data);
+void awh::server::Http::authorization(const server::auth_t::settings_t & settings) noexcept {
+	// Выполняем установку параметров авторизации
+	this->_auth.server.settings(settings);
 }
 /**
  * @brief Метод добавления функции извлечения пароля

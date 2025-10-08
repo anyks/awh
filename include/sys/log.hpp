@@ -38,15 +38,7 @@
 #include <tuple>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <fstream>
-#include <cstring>
-#include <cstdarg>
 #include <functional>
-#include <zlib.h>
-#include <unistd.h>
-#include <sys/file.h>
-#include <sys/stat.h>
 
 /**
  * Наши модули

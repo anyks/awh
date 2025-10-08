@@ -22,7 +22,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
-#include <limits>
+#include <cinttypes>
 
 /**
  * Наши модули

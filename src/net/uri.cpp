@@ -13,6 +13,15 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <cctype>
+#include <iomanip>
+#include <sstream>
+#include <cstdlib>
+#include <iostream>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/uri.hpp>
@@ -154,7 +163,7 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 		// Выполняем удаление параметров
 		else this->params.clear();
 		// Выполняем копирование функции обратного вызова
-		this->callback = url.callback;
+		this->callback = ::move(url.callback);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -425,7 +434,7 @@ awh::URI::URL::URL(url_t && url) noexcept {
 		// Выполняем удаление параметров
 		else this->params.clear();
 		// Выполняем копирование функции обратного вызова
-		this->callback = url.callback;
+		this->callback = ::move(url.callback);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1028,7 +1037,7 @@ string awh::URI::query(const url_t & url) const noexcept {
 			// Выполняем сборку якоря запроса
 			const string & anchor = (!url.anchor.empty() ? this->_fmk->format("#%s", this->encode(url.anchor).c_str()) : "");
 			// Выполняем генерацию URL адреса
-			const string & uri = ((url.callback != nullptr) ? this->_fmk->format("&%s", std::apply(url.callback, std::make_tuple(&url, this)).c_str()) : "");
+			const string & uri = ((url.callback != nullptr) ? this->_fmk->format("&%s", url.callback(&url, this).c_str()) : "");
 			// Иначе порт не устанавливаем
 			result = this->_fmk->format("%s%s%s%s", path.c_str(), params.c_str(), uri.c_str(), anchor.c_str());
 		/**

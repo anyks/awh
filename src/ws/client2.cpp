@@ -386,22 +386,22 @@ bool awh::client::Websocket::step(const step_t step) noexcept {
 	return false;
 }
 /**
- * @brief Метод извлечения данных авторизации
+ * @brief Метод извлечения параметров авторизации
  *
- * @return данные модуля авторизации
+ * @return параметры модуля авторизации
  */
-awh::client::auth_t::data_t awh::client::Websocket::authorization() const noexcept {
-	// Выполняем извлечение данных авторизации
-	return this->_auth.client.data();
+awh::client::auth_t::settings_t awh::client::Websocket::authorization() const noexcept {
+	// Выполняем извлечение параметров авторизации
+	return this->_auth.client.settings();
 }
 /**
- * @brief Метод установки данных авторизации
+ * @brief Метод установки параметров авторизации
  *
- * @param data данные авторизации для установки
+ * @param settings параметры авторизации для установки
  */
-void awh::client::Websocket::authorization(const client::auth_t::data_t & data) noexcept {
-	// Выполняем установку данных авторизации
-	this->_auth.client.data(data);
+void awh::client::Websocket::authorization(const client::auth_t::settings_t & settings) noexcept {
+	// Выполняем установку параметров авторизации
+	this->_auth.client.settings(settings);
 }
 /**
  * @brief Метод установки параметров авторизации

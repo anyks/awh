@@ -25,6 +25,37 @@
 #endif
 
 /**
+ * Стандартные модули
+ */
+#include <thread>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <algorithm>
+
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	#include <sys/un.h>
+#endif
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	#include <arpa/inet.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/engine.hpp>

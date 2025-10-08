@@ -32,7 +32,7 @@ void awh::Net::initLocalNet() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx.main);
+		const lock_guard lock(this->_mtx.main);
 		// Если список локальных адресов пустой
 		if(this->_localsNet.empty()){
 			{
@@ -772,7 +772,7 @@ awh::Net::type_t awh::Net::type() const noexcept {
  */
 void awh::Net::type(const type_t type) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.main);
+	const lock_guard lock(this->_mtx.main);
 	// Выполняем установку типа IP-адреса
 	this->_type = type;
 }
@@ -792,7 +792,7 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.match);
+			const lock_guard lock(this->_mtx.match);
 			// Выполняем проверку хоста
 			const auto & match = this->_regexp.exec(host, this->_exp);
 			// Если результат получен
@@ -920,7 +920,7 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.main);
+			const lock_guard lock(this->_mtx.main);
 			// Выполняем выделение памяти для MAC адреса
 			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
@@ -1046,7 +1046,7 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.main);
+			const lock_guard lock(this->_mtx.main);
 			// Выполняем выделение памяти для IPv4 адреса
 			this->_buffer.resize(4);
 			// Устанавливаем тип IP-адреса
@@ -1103,9 +1103,9 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv6 в чистом виде
  */
-array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
+std::array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 	// Результат работы функции
-	array <uint64_t, 2> result;
+	std::array <uint64_t, 2> result;
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 16){
 		/**
@@ -1166,7 +1166,7 @@ array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
  * @param addr   адрес IPv6 в чистом виде
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexcept {
+void awh::Net::v6(const std::array <uint64_t, 2> & addr, const endian_t endian) noexcept {
 	// Если IPv6 адрес передан
 	if(!addr.empty()){
 		/**
@@ -1174,7 +1174,7 @@ void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexc
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.main);
+			const lock_guard lock(this->_mtx.main);
 			// Выполняем выделение памяти для IPv6 адреса
 			this->_buffer.resize(16);
 			// Устанавливаем тип IP-адреса
@@ -1278,7 +1278,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.main);
+			const lock_guard lock(this->_mtx.main);
 			/**
 			 * Определяем тип IP-адреса
 			 */
@@ -1477,7 +1477,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 					// Если IP-адрес определён как IPv6
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Получаем значение маски в виде адреса
-						const array <uint64_t, 2> num = net.v6();
+						const std::array <uint64_t, 2> num = net.v6();
 						// Выполняем перебор всего значения буфера
 						for(uint8_t i = 0; i < 16; i++){
 							// Переводим хексет в бинарный вид
@@ -1873,7 +1873,7 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
 							// Буфер данных текущего адреса
-							array <uint8_t, 4> nwk, addr;
+							std::array <uint8_t, 4> nwk, addr;
 							// Получаем значение адреса сети
 							const uint32_t ip1 = net.v4();
 							// Получаем значение текущего адреса
@@ -1895,11 +1895,11 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 						// Если IP-адрес определён как IPv6
 						case static_cast <uint8_t> (type_t::IPV6): {
 							// Буфер данных текущего адреса
-							array <uint16_t, 8> nwk, addr;
+							std::array <uint16_t, 8> nwk, addr;
 							// Получаем значение адреса сети
-							const array <uint64_t, 2> & ip1 = net.v6();
+							const std::array <uint64_t, 2> & ip1 = net.v6();
 							// Получаем значение текущего адреса
-							const array <uint64_t, 2> & ip2 = this->v6();
+							const std::array <uint64_t, 2> & ip2 = this->v6();
 							// Выполняем копирование данных текущего адреса в буфер
 							::memcpy(nwk.data(), ip1.data(), sizeof(ip1));
 							// Выполняем копирование данных текущего адреса в буфер
@@ -2031,11 +2031,11 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 							// Накладываем префикс сети
 							net.impose(prefix, addr);
 							// Получаем данные IPv6 текущего адреса
-							const array <uint64_t, 2> addr = net.v6();
+							const std::array <uint64_t, 2> addr = net.v6();
 							// Устанавливаем данные сети
 							net = network;
 							// Выполняем получение данных IPv6 сетевого адреса
-							const array <uint64_t, 2> nwk = net.v6();
+							const std::array <uint64_t, 2> nwk = net.v6();
 							// Выводим результат проверки
 							return (::memcmp(addr.data(), nwk.data(), sizeof(addr)) == 0);
 						} break;
@@ -2267,7 +2267,7 @@ bool awh::Net::arpa(const string & addr) noexcept {
 	// Если запись передана
 	if(!addr.empty() && (addr.length() > 13)){
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx.main);
+		const lock_guard lock(this->_mtx.main);
 		// Если адрес является адресом IPv4
 		if((result = (addr.substr(addr.length() - 13).compare(".in-addr.arpa") == 0))){
 			/**
@@ -2422,7 +2422,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.main);
+			const lock_guard lock(this->_mtx.main);
 			// Устанавливаем тип адреса
 			this->_type = type;
 			/**
@@ -3265,7 +3265,7 @@ awh::Net & awh::Net::operator = (const uint64_t addr) noexcept {
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
-awh::Net & awh::Net::operator = (const array <uint64_t, 2> & addr) noexcept {
+awh::Net & awh::Net::operator = (const std::array <uint64_t, 2> & addr) noexcept {
 	// Устанавливаем IPv4
 	this->v6(addr);
 	// Выводим текущий объект

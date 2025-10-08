@@ -18,115 +18,8 @@
 /**
  * Стандартные библиотеки
  */
-#include <cmath>
 #include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <algorithm>
 #include <unordered_map>
-
-/**
- * Для операционной системы не являющейся MS Windows
- */
-#if !_WIN32 && !_WIN64
-	#define SOCKET int32_t
-	#define INVALID_SOCKET -1
-#endif
-
-/**
- * Для операционной системы не являющейся MS Windows
- */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Стандартные библиотеки
-	 */
-	#include <unistd.h>
-	#include <net/if.h>
-	#include <arpa/inet.h>
-	#include <sys/types.h>
-	#include <sys/ioctl.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
-	/**
-	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
-	 */
-	#if __APPLE__ || __MACH__ || __FreeBSD__
-		/**
-		 * Стандартные библиотеки
-		 */
-		#include <net/ethernet.h>
-	#endif
-	/**
-	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
-	 */
-	#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-		/**
-		 * Стандартные библиотеки
-		 */
-		#include <netdb.h>
-		#include <net/if_dl.h>
-		#include <netinet/if_ether.h>
-		#include <sys/sockio.h>
-		#include <sys/sysctl.h>
-		#include <net/route.h>
-		// Создаём функцию округления
-		#define ROUNDUP(a) \
-			((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-	/**
-	 * Для операционной системы Linux
-	 */
-	#elif __linux__
-		/**
-		 * Стандартные библиотеки
-		 */
-		#include <cstddef>
-		#include <ifaddrs.h>
-		#include <stdbool.h>
-		#include <net/if_arp.h>
-	/**
-	 * Реализация под Sun Solaris
-	 */
-	#elif __sun__
-		/**
-		 * Стандартные библиотеки
-		 */
-		#include <netdb.h>
-		#include <ifaddrs.h>
-		#include <net/if_dl.h>
-		#include <netinet/if_ether.h>
-		#include <sys/sockio.h>
-		#include <net/route.h>
-	#endif
-/**
- * Для операционной системы MS Windows
- */
-#else
-	/**
-	 * Стандартные библиотеки
-	 */
-	#include <ws2tcpip.h>
-	#include <winsock2.h>
-	#include <iphlpapi.h>
-	// Используем библиотеку ws2_32.lib
-	#pragma comment(lib, "Ws2_32.lib")
-	/**
-	 * Создаём привычные нам функции выделения памяти
-	 */
-	#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
-	#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-#endif
-
-/**
- * Для систем Apple выполняем фиксацию ошибки переопределения макроса ошибки события
- */
-#ifdef __APPLE__
-	// Если макрос пределён
-	#ifdef EV_ERROR
-		// Снимаем определение макроса
-		#undef EV_ERROR
-	#endif
-#endif
 
 /**
  * Наши модули
@@ -171,13 +64,13 @@ namespace awh {
 			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			void getIPAddresses(const int32_t family = AF_INET) noexcept;
+			void getIPAddresses(const int32_t family) noexcept;
 			/**
 			 * @brief Метод извлечения MAC-адресов
 			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			void getHWAddresses(const int32_t family = AF_INET) noexcept;
+			void getHWAddresses(const int32_t family) noexcept;
 		private:
 			/**
 			 * Метод закрытие подключения
@@ -217,7 +110,7 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       аппаратный адрес сетевого интерфейса клиента
 			 */
-			string mac(const string & ip, const int32_t family = AF_INET) const noexcept;
+			string mac(const string & ip, const int32_t family) const noexcept;
 			/**
 			 * @brief Метод определения мак адреса клиента
 			 *
@@ -225,14 +118,14 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       данные мак адреса
 			 */
-			string mac(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
+			string mac(struct sockaddr * sin, const int32_t family) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения основного IP-адреса на сервере
 			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			string ip(const int32_t family = AF_INET) const noexcept;
+			string ip(const int32_t family) const noexcept;
 			/**
 			 * @brief Метод получения IP-адреса из подключения
 			 *
@@ -240,7 +133,7 @@ namespace awh {
 			 * @param family тип интернет протокола
 			 * @return       данные ip адреса
 			 */
-			string ip(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
+			string ip(struct sockaddr * sin, const int32_t family) const noexcept;
 			/**
 			 * @brief Метод вывода IP-адреса соответствующего сетевому интерфейсу
 			 *
@@ -248,7 +141,7 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       IP-адрес соответствующий сетевому интерфейсу
 			 */
-			const string & ip(const string & eth, const int32_t family = AF_INET) const noexcept;
+			const string & ip(const string & eth, const int32_t family) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
@@ -256,7 +149,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			IfNet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			IfNet(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

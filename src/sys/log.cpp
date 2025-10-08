@@ -13,6 +13,19 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <sstream>
+#include <fstream>
+#include <cstring>
+#include <cstdarg>
+#include <iostream>
+#include <zlib.h>
+#include <unistd.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/log.hpp>

@@ -20,16 +20,10 @@
  */
 #include <map>
 #include <mutex>
-#include <cmath>
-#include <ctime>
-#include <chrono>
 #include <string>
 #include <vector>
-#include <cstdarg>
-#include <iostream>
 #include <type_traits>
 #include <unordered_map>
-#include <pcre2/pcre2posix.h>
 
 /**
  * Наши модули

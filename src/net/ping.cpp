@@ -26,6 +26,40 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <chrono>
+#include <thread>
+#include <cstdio>
+#include <limits>
+#include <cstdlib>
+#include <algorithm>
+
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	#define SOCKET int32_t
+	#define INVALID_SOCKET -1
+#endif
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	#include <ws2tcpip.h>
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	#include <netdb.h>
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/ping.hpp>
@@ -342,7 +376,7 @@ void awh::Ping::close() noexcept {
 	// Если сетевой сокет не закрыт
 	if(this->_sock != INVALID_SOCKET){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -366,7 +400,7 @@ void awh::Ping::close() noexcept {
  */
 void awh::Ping::cancel() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Если режим работы пинга активирован
 	if(this->_mode){
 		// Выполняем остановку работы резолвера
@@ -393,7 +427,7 @@ void awh::Ping::ping(const string & host) noexcept {
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Формируем сообщение для вывода в лог
@@ -460,7 +494,7 @@ void awh::Ping::ping(const int32_t family, const string & host) noexcept {
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Формируем сообщение для вывода в лог
@@ -517,7 +551,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 		// Если IP-адрес передан и пинг ещё не активирован
 		if((this->_mode = !ip.empty())){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Получаем хост текущего компьютера
 			const string & host = this->host(family);
 			/**
@@ -632,7 +666,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 			// Если сокет создан удачно и работа резолвера не остановлена
 			} else if(this->_mode) {
 				// Индекс текущей итерации
-				uint64_t index = 0;
+				uint32_t index = 0;
 				// Если операционная система не принадлежит к Sun Solaris
 				#if !__sun__
 					// Устанавливаем разрешение на повторное использование сокета
@@ -760,7 +794,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Формируем сообщение для вывода в лог
@@ -833,7 +867,7 @@ double awh::Ping::ping(const int32_t family, const string & host, const uint16_t
 	// Если хост передан и пинг ещё не активирован
 	if(!host.empty() && !this->_mode){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Формируем сообщение для вывода в лог
@@ -896,7 +930,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 		// Если IP-адрес передан и пинг ещё не активирован
 		if((this->_mode = !ip.empty())){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Получаем хост текущего компьютера
 			const string & host = this->host(family);
 			/**
@@ -1181,7 +1215,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
  */
 void awh::Ping::verbose(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку флага запрещающего выводить информацию пинга в лог
 	this->_verb = mode;
 }
@@ -1190,9 +1224,9 @@ void awh::Ping::verbose(const bool mode) noexcept {
  *
  * @param msec сдвиг по времени в миллисекундах
  */
-void awh::Ping::shifting(const uint64_t msec) noexcept {
+void awh::Ping::shifting(const uint32_t msec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку сдвига по времени выполнения пинга
 	this->_shifting = msec;
 }
@@ -1205,7 +1239,7 @@ void awh::Ping::ns(const vector <string> & servers) noexcept {
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем установку полученных DNS-серверов
 		this->_dns.servers(servers);
 	}
@@ -1223,7 +1257,7 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				/**
@@ -1289,7 +1323,7 @@ void awh::Ping::network(const int32_t family, const vector <string> & network) n
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				/**
@@ -1319,7 +1353,7 @@ void awh::Ping::network(const int32_t family, const vector <string> & network) n
  */
 void awh::Ping::timeout(const uint32_t read, const uint32_t write) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем установку таймаута на чтение
 	this->_timeoutRead = read;
 	// Выполняем установку таймаута на запись
@@ -1330,9 +1364,19 @@ void awh::Ping::timeout(const uint32_t read, const uint32_t write) noexcept {
  *
  * @param callback функция обратного вызова
  */
-void awh::Ping::on(function <void (const uint64_t, const string &, Ping *)> callback) noexcept {
+void awh::Ping::on(function <void (const uint64_t, const string &, ping_t *)> callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Выполняем функцию обратного вызова
-	this->_callback = callback;
+	this->_callback = ::move(callback);
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Ping::Ping(const fmk_t * fmk, const log_t * log) noexcept :
+ _sock(INVALID_SOCKET), _net(log), _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
+ _mode(false), _verb(true), _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
+ _fmk(fmk), _log(log), _callback(nullptr) {}

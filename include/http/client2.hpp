@@ -19,7 +19,6 @@
  * Наши модули
  */
 #include "http.hpp"
-#include "../auth/client.hpp"
 
 /**
  * @brief основное пространство имён
@@ -49,17 +48,17 @@ namespace awh {
 				handshake_t handshake() noexcept;
 			public:
 				/**
-				 * @brief Метод извлечения данных авторизации
+				 * @brief Метод извлечения параметров авторизации
 				 *
-				 * @return данные модуля авторизации
+				 * @return параметры модуля авторизации
 				 */
-				client::auth_t::data_t authorization() const noexcept;
+				client::auth_t::settings_t authorization() const noexcept;
 				/**
-				 * @brief Метод установки данных авторизации
+				 * @brief Метод установки параметров авторизации
 				 *
-				 * @param data данные авторизации для установки
+				 * @param settings параметры авторизации для установки
 				 */
-				void authorization(const client::auth_t::data_t & data) noexcept;
+				void authorization(const client::auth_t::settings_t & settings) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров авторизации

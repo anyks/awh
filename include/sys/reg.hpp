@@ -20,12 +20,9 @@
  */
 #include <map>
 #include <mutex>
-#include <memory>
 #include <string>
 #include <vector>
-#include <cstring>
 #include <cstdint>
-#include <iostream>
 #include <sys/types.h>
 #include <pcre2/pcre2posix.h>
 

@@ -21,9 +21,7 @@
 #include <map>
 #include <vector>
 #include <string>
-#include <random>
-#include <cstring>
-#include <algorithm>
+#include <limits>
 
 /**
  * Наши модули

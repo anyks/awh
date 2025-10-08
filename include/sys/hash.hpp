@@ -20,11 +20,6 @@
  */
 #include <string>
 #include <vector>
-#include <cstdio>
-#include <csignal>
-#include <cstring>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 /**
  * Подключаем LZ4

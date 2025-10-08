@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <random>
+#include <cstring>
+#include <algorithm>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <ws/frame.hpp>
