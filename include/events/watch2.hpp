@@ -1,6 +1,6 @@
 /**
  * @file: watch.hpp
- * @date: 2025-10-08
+ * @date: 2025-09-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -19,14 +19,18 @@
  * Стандартные модули
  */
 #include <map>
+#include <queue>
 #include <mutex>
-#include <cstdint>
+#include <chrono>
+#include <thread>
+#include <atomic>
+#include <cinttypes>
+#include <condition_variable>
 
 /**
  * Наши модули
  */
 #include "notifier.hpp"
-#include "../sys/screen.hpp"
 
 /**
  * @brief основное пространство имён
@@ -44,31 +48,33 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Watch {
 		private:
 			/**
-			 * @brief структура участника обмена данными
-			 *
+			 * Таймаут блокировки времени по умолчанию (100ms)
 			 */
-			typedef struct Unit {
-				// Файловый дескрипторв (сокет)
-				SOCKET sock;
-				// Время задержки работы таймера
-				uint64_t delay;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				Unit() noexcept : sock(INVALID_SOCKET), delay(0) {}
-			} __attribute__((packed)) unit_t;
+			static constexpr const uint64_t TIMEOUT = 0x5F5E100;
 		private:
 			// Мютекс для блокировки потока
 			std::mutex _mtx;
+			// Мютекс ожидания данных
+			std::mutex _locker;
 		private:
-			// Объект экрана для работы в дочернем потоке
-			screen_t <unit_t> _screen;
+			// Объект дочернего потока
+			std::thread _thr;
+			// Условная переменная, ожидания поступления данных
+			std::condition_variable _cv;
 		private:
-			// Список существующих уведомителей
-			std::map <SOCKET, std::unique_ptr <notifier_t>> _notifiers;
+			// Флаг работающего модуля
+			std::atomic_bool _working;
+		private:
+			// Таймаут ожидания блокировки базы событий
+			std::chrono::nanoseconds _delay;
+		private:
+			// Объект работы с уведомителем
+			notifier_t _notifier;
+		private:
 			// Список активных таймеров
-			std::multimap <std::pair <uint64_t, uint64_t>, SOCKET> _timers;
+			std::multimap <uint64_t, uint32_t> _timers;
+			// Очередь таймеров ожидающих активацию
+			std::queue <std::pair <uint32_t, uint64_t>> _items;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -81,22 +87,23 @@ namespace awh {
 			 */
 			void trigger() noexcept;
 			/**
-			 * @brief Метод обработки процесса добавления таймеров
+			 * @brief Метод получения данных
 			 *
-			 * @param unit параметры участника
 			 */
-			void process(const unit_t unit) noexcept;
+			void receiving() noexcept;
 		public:
 			/**
 			 * @brief Метод остановки работы таймера
 			 *
+			 * @return результат работы функции
 			 */
-			void stop() noexcept;
+			bool stop() noexcept;
 			/**
 			 * @brief Метод запуска работы таймера
 			 *
+			 * @return результат работы функции
 			 */
-			void start() noexcept;
+			bool start() noexcept;
 		public:
 			/**
 			 * @brief Метод создания нового таймера
@@ -108,24 +115,23 @@ namespace awh {
 			/**
 			 * @brief Метод извлечения идентификатора события
 			 *
-			 * @param sock файловый дескриптор таймера
-			 * @return     идентификатор события
+			 * @return идентификатор события
 			 */
-			uint32_t event(const SOCKET sock) noexcept;
+			uint32_t event() noexcept;
 		public:
 			/**
 			 * @brief Метод убрать таймер из отслеживания
 			 *
-			 * @param sock файловый дескриптор таймера
+			 * @param id идентификатор таймера
 			 */
-			void away(const SOCKET sock) noexcept;
+			void away(const uint32_t id) noexcept;
 			/**
 			 * @brief Метод ожидания указанного промежутка времени
 			 *
-			 * @param sock  файловый дескриптор таймера
+			 * @param id    идентификатор таймера
 			 * @param delay задержка времени в миллисекундах
 			 */
-			void wait(const SOCKET sock, const uint32_t delay) noexcept;
+			void wait(const uint32_t id, const uint32_t delay) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

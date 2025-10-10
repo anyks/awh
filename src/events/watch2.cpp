@@ -1,6 +1,6 @@
 /**
  * @file: watch.cpp
- * @date: 2025-09-16
+ * @date: 2025-09-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -23,187 +23,184 @@
 using namespace std;
 
 /**
- * Подписываемся на пространство имён заполнителя
- */
-using namespace placeholders;
-
-/**
  * @brief Метод обработки событий триггера
- *
+ * 
  */
 void awh::Watch::trigger() noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем блокировку потока
-		this->_mtx.lock();
-		// Получаем текущее значение даты
-		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
-		// Выполняем перебор всего списка таймеров
-		for(auto i = this->_timers.begin(); i != this->_timers.end();){
-			// Если время вышло
-			if(date >= i->first.first){
-				// Выполняем поиск файловый дескриптор
-				auto j = this->_notifiers.find(i->second);
-				// Если файловый дескриптор найден в списке
-				if(j != this->_notifiers.end())
-					// Выполняем отправку сообщения
-					j->second->notify((date - i->first.second) / 1000000);
-				// Выполняем удаление значение таймера
-				i = this->_timers.erase(i);
-			// Продолжаем перебор дальше
-			} else ++i;
-		}
-		// Выполняем разблокировку потока
-		this->_mtx.unlock();
-		// Если список таймеров не пустой
-		if(!this->_timers.empty()){
-			// Получаем наименьшее значение даты в списке
-			const uint64_t smallest = this->_timers.begin()->first.first;
-			// Если время задержки выше нуля
-			if((smallest > date ? (smallest - date) : 0) > 0){
-				// Выполняем смену времени таймера
-				this->_screen = static_cast <uint64_t> (smallest - date);
-				// Выходим из функции
-				return;
-			}
-		}
-		// Устанавливаем таймаут по умолчанию
-		this->_screen.timeout();
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
+	// Если не производится остановка
+	if(this->_working){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		try {
+			// Выполняем блокировку уникальным мютексом
+			const lock_guard lock(this->_mtx);
+			// Получаем текущее значение даты
+			const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+			// Если очередь таймеров ожидающих активации не пустая
+			if(!this->_items.empty()){
+				// Извлекаем таймер ожидающий активации
+				const auto & item = this->_items.front();
+				// Выполняем перебор всего списка таймеров
+				for(auto i = this->_timers.begin(); i != this->_timers.end();){
+					// Если мы нашли наш таймер
+					if(item.first == i->second)
+						// Выполняем удаление значение таймера
+						i = this->_timers.erase(i);
+					// Если это другие таймеры
+					else {
+						// Если время вышло
+						if(date >= i->first){
+							// Выполняем отправку сообщения
+							this->_notifier.notify(i->second);
+							// Выполняем удаление значение таймера
+							i = this->_timers.erase(i);
+						// Продолжаем перебор дальше
+						} else ++i;
+					}
+				}
+				// Выполняем добавления нового таймера
+				this->_timers.emplace(item.second + date, item.first);
+				// Удаляем таймер ожидающий активации из очереди
+				this->_items.pop();
+				// Получаем наименьшее значение даты в списке
+				const uint64_t smallest = this->_timers.begin()->first;
+				// Если время задержки выше нуля
+				if((smallest > date ? (smallest - date) : 0) > 0){
+					// Выполняем смену времени таймера
+					this->_delay = std::chrono::nanoseconds(smallest - date);
+					// Выходим из функции
+					return;
+				}
+			// Если очередь пустая
+			} else {
+				// Выполняем перебор всего списка таймеров
+				for(auto i = this->_timers.begin(); i != this->_timers.end();){
+					// Если время вышло
+					if(date >= i->first){
+						// Выполняем отправку сообщения
+						this->_notifier.notify(i->second);
+						// Выполняем удаление значение таймера
+						i = this->_timers.erase(i);
+					// Продолжаем перебор дальше
+					} else ++i;
+				}
+				// Если список таймеров не пустой
+				if(!this->_timers.empty()){
+					// Получаем наименьшее значение даты в списке
+					const uint64_t smallest = this->_timers.begin()->first;
+					// Если время задержки выше нуля
+					if((smallest > date ? (smallest - date) : 0) > 0){
+						// Выполняем смену времени таймера
+						this->_delay = std::chrono::nanoseconds(smallest - date);
+						// Выходим из функции
+						return;
+					}
+				}
+			}
+			// Устанавливаем таймаут по умолчанию
+			this->_delay = std::chrono::nanoseconds(TIMEOUT);
 		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
 	}
 }
 /**
- * @brief Метод обработки процесса добавления таймеров
+ * @brief Метод получения данных
  *
- * @param unit параметры участника
  */
-void awh::Watch::process(const unit_t unit) noexcept {
+void awh::Watch::receiving() noexcept {
 	/**
-	 * Выполняем перехват ошибок
+	 * Запускаем бесконечный цикл
 	 */
-	try {
-		// Выполняем блокировку потока
-		this->_mtx.lock();
-		// Получаем текущее значение даты
-		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
-		// Выполняем перебор всего списка таймеров
-		for(auto i = this->_timers.begin(); i != this->_timers.end();){
-			// Если мы нашли наш таймер
-			if(unit.sock == i->second)
-				// Выполняем удаление значение таймера
-				i = this->_timers.erase(i);
-			// Если это другие таймеры
-			else {
-				// Если время вышло
-				if(date >= i->first.first){
-					// Выполняем поиск файловый дескриптор
-					auto j = this->_notifiers.find(i->second);
-					// Если файловый дескриптор найден в списке
-					if(j != this->_notifiers.end())
-						// Выполняем отправку сообщения
-						j->second->notify((date - i->first.second) / 1000000);
-					// Выполняем удаление значение таймера
-					i = this->_timers.erase(i);
-				// Продолжаем перебор дальше
-				} else ++i;
-			}
-		}
-		// Выполняем добавления нового таймера
-		this->_timers.emplace(std::make_pair(unit.delay + date, date), unit.sock);
-		// Получаем наименьшее значение даты в списке
-		const uint64_t smallest = this->_timers.begin()->first.first;
-		// Выполняем разблокировку потока
-		this->_mtx.unlock();
-		// Если время задержки выше нуля
-		if((smallest > date ? (smallest - date) : 0) > 0){
-			// Выполняем смену времени таймера
-			this->_screen = static_cast <uint64_t> (smallest - date);
-			// Выходим из функции
-			return;
-		}
-		// Устанавливаем таймаут по умолчанию
-		this->_screen.timeout();
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
+	while(this->_working){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unit.sock, unit.delay), log_t::flag_t::CRITICAL, error.what());
+		try {
+			// Выполняем блокировку уникальным мютексом
+			unique_lock lock(this->_locker);
+			// Выполняем ожидание на поступление новых заданий
+			this->_cv.wait_for(lock, this->_delay, [this]() noexcept -> bool {
+				// Если произведена остановка выходим
+				if(!this->_working)
+					// Выходим из функции
+					return true;
+				// Выполняем проверку на пустоту очереди
+				return !this->_items.empty();
+			});
+			// Триггерим событие
+			this->trigger();
+			// Если произведена остановка
+			if(!this->_working)
+				// Выходим из цикла
+				break;
 		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		 * Если возникает ошибка
+		 */
+		} catch(const exception &) {
+			// Триггерим событие
+			this->trigger();
+			// Если произведена остановка
+			if(!this->_working)
+				// Выходим из цикла
+				break;
+		}
 	}
 }
 /**
  * @brief Метод остановки работы таймера
  *
+ * @return результат работы функции
  */
-void awh::Watch::stop() noexcept {
-	// Выполняем остановку работы экрана
-	this->_screen.stop();
+bool awh::Watch::stop() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если работа модуля уже запущена
+	if((result = this->_working)){
+		// Снимаем флаг запуска работы модуля
+		this->_working = !this->_working;
+		// Отправляем сообщение, что данные записаны
+		this->_cv.notify_all();
+	}
+	// Выводим полученный результат
+	return result;
 }
 /**
  * @brief Метод запуска работы таймера
  *
+ * @return результат работы функции
  */
-void awh::Watch::start() noexcept {
-	// Выполняем запуск работы экрана
-	this->_screen.start();
-}
-/**
- * @brief Метод создания нового таймера
- *
- * @return файловый дескриптор для отслеживания
- */
-SOCKET awh::Watch::create() noexcept {
+bool awh::Watch::start() noexcept {
 	// Результат работы функции
-	SOCKET result = INVALID_SOCKET;
+	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем инициализацию нового уведомителя
-		std::unique_ptr <notifier_t> notifier = std::make_unique <notifier_t> (this->_fmk, this->_log);
-		// Выполняем инициализацию
-		result = notifier->init();
-		// Если уведомитель инициализирован правильно
-		if(result != INVALID_SOCKET){
-			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx);
-			// Выполняем поиск уже существующего уведомителя
-			auto i = this->_notifiers.find(result);
-			// Если такой уведомитель уже существует
-			if(i != this->_notifiers.end())
-				// Выполняем замену уведомителя
-				i->second = ::move(notifier);
-			// Выполняем перенос нашего уведомителя в список уведомителей
-			else this->_notifiers.emplace(result, ::move(notifier));
+		// Если работа модуля ещё не запущена
+		if((result = !this->_working)){
+			// Устанавливаем флаг запуска работы модуля
+			this->_working = !this->_working;
+			// Создаём дочерний поток для формирования лога
+			this->_thr = std::thread(&watch_t::receiving, this);
+			// Отсоединяемся от потока
+			this->_thr.detach();
 		}
 	/**
 	 * Если возникает ошибка
@@ -227,27 +224,29 @@ SOCKET awh::Watch::create() noexcept {
 	return result;
 }
 /**
+ * @brief Метод создания нового таймера
+ *
+ * @return файловый дескриптор для отслеживания
+ */
+SOCKET awh::Watch::create() noexcept {
+	// Выполняем создание таймера
+	return this->_notifier.init();
+}
+/**
  * @brief Метод извлечения идентификатора события
  *
- * @param sock файловый дескриптор таймера
- * @return     идентификатор события
+ * @return идентификатор события
  */
-uint32_t awh::Watch::event(const SOCKET sock) noexcept {
-	// Выполняем поиск нужного нам уведомителя
-	auto i = this->_notifiers.find(sock);
-	// Если уведомитель найден
-	if(i != this->_notifiers.end())
-		// Выполняем вывод полученного уведомления
-		return i->second->event();
-	// Выводим результат
-	return 0;
+uint32_t awh::Watch::event() noexcept {
+	// Выполняем вывод полученного уведомления
+	return this->_notifier.event();
 }
 /**
  * @brief Метод убрать таймер из отслеживания
  *
- * @param sock файловый дескриптор таймера
+ * @param id идентификатор таймера
  */
-void awh::Watch::away(const SOCKET sock) noexcept {
+void awh::Watch::away(const uint32_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -256,12 +255,10 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 		if(!this->_timers.empty()){
 			// Выполняем блокировку потока
 			const lock_guard lock(this->_mtx);
-			// Выполняем удаление уведомителя
-			this->_notifiers.erase(sock);
 			// Выполняем перебор всего списка таймеров
 			for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 				// Если мы нашли наш таймер
-				if(sock == i->second){
+				if(id == i->second){
 					// Выполняем удаление значение таймера
 					this->_timers.erase(i);
 					// Выходим из цикла
@@ -278,7 +275,7 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -291,27 +288,22 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 /**
  * @brief Метод ожидания указанного промежутка времени
  *
- * @param sock  файловый дескриптор таймера
+ * @param id    идентификатор таймера
  * @param delay задержка времени в миллисекундах
  */
-void awh::Watch::wait(const SOCKET sock, const uint32_t delay) noexcept {
+void awh::Watch::wait(const uint32_t id, const uint32_t delay) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск уведомитель
-		auto i = this->_notifiers.find(sock);
-		// Если уведомитель найден
-		if(i != this->_notifiers.end()){
-			// Создаём объект даты для передачи
-			unit_t unit;
-			// Устанавливаем идентификатор файлового дескриптора
-			unit.sock = sock;
-			// Устанавливаем задержку времени в наносекундах
-			unit.delay = (static_cast <uint64_t> (delay) * 1000000);
-			// Выполняем отправку события экрану
-			this->_screen = unit;
+		{
+			// Выполняем блокировку потока
+			const lock_guard lock(this->_mtx);
+			// Выполняем добавление данных в очередь
+			this->_items.push(std::make_pair(id, static_cast <uint64_t> (delay) * 1000000));
 		}
+		// Отправляем сообщение, что данные записаны
+		this->_cv.notify_one();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -321,7 +313,7 @@ void awh::Watch::wait(const SOCKET sock, const uint32_t delay) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, delay), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -338,17 +330,12 @@ void awh::Watch::wait(const SOCKET sock, const uint32_t delay) noexcept {
  * @param log объект для работы с логами
  */
 awh::Watch::Watch(const fmk_t * fmk, const log_t * log) noexcept :
- _screen(screen_t <unit_t>::health_t::DEAD), _fmk(fmk), _log(log) {
-	// Выполняем добавление функции обратного вызова триггера
-	this->_screen = static_cast <function <void (void)>> (std::bind(&watch_t::trigger, this));
-	// Выполняем добавление функции обратного вызова процесса обработки
-	this->_screen = static_cast <function <void (const unit_t)>> (std::bind(&watch_t::process, this, _1));
-}
+ _working(false), _delay(TIMEOUT), _notifier(fmk, log), _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *
  */
 awh::Watch::~Watch() noexcept {
-	// Выполняем остановку работы экрана
-	this->_screen.stop();
+	// Выполняем остановку работы модуля
+	this->stop();
 }

@@ -64,14 +64,14 @@ namespace awh {
 				ALIVE = 0x01  // Живой
 			};
 		private:
-			// Флаг остановки работы дочернего потока
-			bool _stop;
-		private:
 			// Идентификатор потока
 			uint64_t _id;
 		private:
 			// Состояние здоровья
 			health_t _health;
+		private:
+			// Флаг остановки работы дочернего потока
+			std::atomic_bool _stop;
 		private:
 			// Мютекс для блокировки потока
 			std::mutex _mtx;
@@ -85,12 +85,12 @@ namespace awh {
 			// Очередь полезной нагрузки
 			std::queue <T> _payload;
 			// Таймаут ожидания блокировки базы событий
-			std::chrono::nanoseconds _delay;
+			std::chrono::milliseconds _delay;
 		private:
 			/**
 			 * Таймаут блокировки времени по умолчанию (100ms)
 			 */
-			static constexpr const uint64_t TIMEOUT = 0x5F5E100;
+			static constexpr const uint64_t TIMEOUT = 0x64;
 		private:
 			/**
 			 * Функция обратного вызова при активации триггера
@@ -119,7 +119,7 @@ namespace awh {
 						// Если функция обратного вызова триггера установлена
 						if(this->_trigger != nullptr)
 							// Выполняем функцию обратного вызова
-							std::apply(this->_trigger, std::make_tuple());
+							this->_trigger();
 						// Если данные в очереди существуют
 						if(!this->_payload.empty()){
 							// Извлекаем данные полезной нагрузки
@@ -127,7 +127,7 @@ namespace awh {
 							// Если функция подписки на логи установлена, выводим результат
 							if(this->_callback != nullptr)
 								// Выводим сообщение лога всем подписавшимся
-								std::apply(this->_callback, std::make_tuple(payload));
+								this->_callback(payload);
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Удаляем текущее задание
@@ -137,7 +137,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_state != nullptr)
 								// Выполняем функцию обратного вызова
-								std::apply(this->_state, std::make_tuple(state_t::DECREMENT, this->_payload.size()));
+								this->_state(state_t::DECREMENT, this->_payload.size());
 						}
 					/**
 					 * Если возникает ошибка
@@ -174,7 +174,7 @@ namespace awh {
 					 */
 					try {
 						// Выполняем блокировку уникальным мютексом
-						unique_lock <std::mutex> lock(this->_locker);
+						unique_lock lock(this->_locker);
 						// Выполняем ожидание на поступление новых заданий
 						this->_cv.wait_for(lock, this->_delay, std::bind(&Screen::check, this));
 						// Выполняем запуск обработки поступившей задачи
@@ -251,7 +251,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
@@ -284,7 +284,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
@@ -317,7 +317,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
@@ -351,42 +351,9 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем установку задержки времени
-					this->_delay = std::chrono::nanoseconds(static_cast <uint64_t> (delay) * 1000000);
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", error.what());
-					#endif
-				}
-			}
-			/**
-			 * @brief Метод установки таймаута в наносекундах
-			 *
-			 * @param delay значение таймаута для установки в наносекундах
-			 */
-			void timeout(const uint64_t delay = TIMEOUT) noexcept {
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
-					// Выполняем установку задержки времени
-					this->_delay = std::chrono::nanoseconds(delay);
+					this->_delay = std::chrono::milliseconds(delay);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -426,7 +393,7 @@ namespace awh {
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова
-						std::apply(this->_state, std::make_tuple(state_t::INCREMENT, this->_payload.size()));
+						this->_state(state_t::INCREMENT, this->_payload.size());
 					// Отправляем сообщение, что данные записаны
 					this->_cv.notify_one();
 				/**
@@ -467,7 +434,7 @@ namespace awh {
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова
-						std::apply(this->_state, std::make_tuple(state_t::INCREMENT, this->_payload.size()));
+						this->_state(state_t::INCREMENT, this->_payload.size());
 					// Отправляем сообщение, что данные записаны
 					this->_cv.notify_one();
 				/**
@@ -608,18 +575,6 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * @brief Оператор [=] установки таймаута в наносекундах
-			 *
-			 * @param delay значение таймаута для установки в наносекундах
-			 * @return      текущий объект
-			 */
-			Screen & operator = (const uint64_t delay) noexcept {
-				// Выполняем установку таймаута
-				this->timeout(delay);
-				// Выводим значение текущего объекта
-				return (* this);
-			}
-			/**
 			 * @brief Оператор [=] установки таймаута в миллисекундах
 			 *
 			 * @param delay значение таймаута для установки в миллисекундах
@@ -674,7 +629,7 @@ namespace awh {
 			 */
 			Screen() noexcept :
 			 _stop(true), _id(0), _health(health_t::ALIVE),
-			 _delay(std::chrono::nanoseconds(TIMEOUT)),
+			 _delay(std::chrono::milliseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Выполняем запуск модуля
 				this->start();
@@ -685,8 +640,8 @@ namespace awh {
 			 * @param health статус здоровья
 			 */
 			Screen(const health_t health) noexcept :
-			 _stop(true), _id(0), _health(health),
-			 _delay(std::chrono::nanoseconds(TIMEOUT)),
+			 _id(0), _health(health), _stop(true),
+			 _delay(std::chrono::milliseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Если статус здоровья установлен как живой
 				if(health == health_t::ALIVE)
