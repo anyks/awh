@@ -55,8 +55,8 @@
 /**
  * Наши модули
  */
-#include "fds.hpp"
-#include "watch.hpp"
+#include "fds2.hpp"
+#include "watch2.hpp"
 #include "../net/socket.hpp"
 
 /**
@@ -110,6 +110,24 @@ namespace awh {
 			using callback_t = function <void (const SOCKET, const event_type_t)>;
 		private:
 			/**
+			 * @brief Конструктор таймера
+			 * 
+			 */
+			typedef struct Timer {
+				// Флаг персистентного таймера
+				bool persist;
+				// Задержка времени таймера
+				uint32_t delay;
+				// Функция обратного вызова
+				callback_t callback;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				Timer() noexcept :
+				 persist(false), delay(0), callback(nullptr) {}
+			} timer_t;
+			/**
 			 * @brief Структура работы вышестоящего потока
 			 *
 			 */
@@ -161,6 +179,9 @@ namespace awh {
 		private:
 			// Идентификатор потока
 			uint64_t _wid;
+		private:
+			// Сокет таймера
+			SOCKET _timer;
 		private:
 			// Время блокировки базы событий в ожидании событий
 			std::atomic_int _rate;
@@ -224,6 +245,9 @@ namespace awh {
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
+		private:
+			// Список активных таймеров
+			std::map <uint32_t, timer_t> _timers;
 		private:
 			// Список отслеживаемых участников
 			std::map <SOCKET, peer_t> _peers;

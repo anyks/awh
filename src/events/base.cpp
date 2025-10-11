@@ -4089,7 +4089,7 @@ void awh::Base::start() noexcept {
 												// Если функция обратного вызова установлена
 												if(i->second.callback != nullptr)
 													// Выполняем функцию обратного вызова
-													i->second.callback(-1, event_type_t::TIMER);
+													i->second.callback(INVALID_SOCKET, event_type_t::TIMER);
 												// Выполняем поиск указанный таймер
 												i = this->_timers.find(id);
 												// Если таймер установлен
@@ -4599,10 +4599,10 @@ awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_wid = this->wid();
 	// Выполняем инициализацию базы событий
 	this->init(event_mode_t::ENABLED);
-	// Выполняем создание таймера
-	this->_timer = this->_watch.create();
 	// Выполняем настройку сетевых параметров
 	this->boostingNetwork();
+	// Выполняем создание таймера
+	this->_timer = this->_watch.create();
 }
 /**
  * @brief Деструктор

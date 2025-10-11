@@ -69,7 +69,7 @@ namespace awh {
 				// Если результат получен, выполняем холд
 				if(this->_flag){
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем установку холда
 					this->_status.push(hold);
 				}
@@ -91,7 +91,7 @@ namespace awh {
 				// Если холдирование выполнено
 				if(this->_flag){
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем снятие холда
 					this->_status.pop();
 				}
