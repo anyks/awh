@@ -1,6 +1,6 @@
 /**
  * @file: wsClient.cpp
- * @date: 2025-03-02
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <client/awh.hpp>
+#include <client/awh2.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -229,7 +229,7 @@ class WebClient {
 				// Получаем параметры запроса в виде строки
 				const string query = data.dump();
 				// Отправляем сообщение на сервер
-				awh->sendMessage(vector <char> (query.begin(), query.end()));
+				awh->sendMessage(query.c_str(), query.length());
 			}
 		}
 		/**
@@ -249,7 +249,7 @@ class WebClient {
 		 * @param utf8   тип буфера сообщения
 		 * @param awh    объект web-клиента
 		 */
-		void message(const vector <char> & buffer, const bool utf8, client::awh_t * awh){
+		void message(const buffer_t & buffer, const bool utf8, client::awh_t * awh){
 			// Выбранный сабпротокол
 			string subprotocol = "";
 			// Получаем список выбранных сабпротоколов
@@ -259,16 +259,11 @@ class WebClient {
 				// Выполняем получение выбранного сабпротокола
 				subprotocol = (* subprotocols.begin());
 			// Если данные пришли в виде текста, выводим
-			if(utf8){
-				try {
-					// Создаём объект JSON
-					json data = json::parse(buffer.begin(), buffer.end());
-					// Выводим полученный результат
-					cout << " +++++++++++++ " << data.dump(4) << " == " << subprotocol << endl;
-				// Обрабатываем ошибку
-				} catch(const exception & e) {}
+			if(utf8)
+				// Выводим полученный результат
+				cout << " +++++++++++++ " << buffer << " == " << subprotocol << endl;
 			// Сообщаем количество полученных байт
-			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
+			else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 		}
 		/**
 		 * @brief Метод получения статуса результата запроса
@@ -321,25 +316,9 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const vector <char> & entity, client::awh_t * awh){
-			/**
-			 * Выполняем обработку ошибки
-			 */
-			try {
-				// Получаем результат
-				const string result(entity.begin(), entity.end());
-				// Создаём объект JSON
-				json data = json::parse(result);
-				// Выводим полученный результат
-				cout << " =========== " << data.dump(4) << endl;
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				// Выводим полученный результат
-				cout << " =========== " << string(entity.begin(), entity.end()) << endl;
-			}
-			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const buffer_t & entity, client::awh_t * awh){
+			// Выводим полученный результат
+			cout << " =========== " << entity << endl;
 			// Выполняем остановку
 			awh->stop();
 		}
@@ -352,11 +331,9 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const unordered_multimap <string, string> & headers){
-			// Переходим по всем заголовкам
-			for(auto & header : headers)
-				// Выводим информацию в лог
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const headers_t & headers){
+			// Выводим информацию в лог
+			this->_log->print("%s : %s", log_t::flag_t::INFO, headers.print().c_str());
 		}
 	public:
 		/**
@@ -480,9 +457,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Подписываемся на событие рукопожатия
 	awh.on <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", &WebClient::handshake, &executor, _1, _2, _3, &awh);
 	// Устанавливаем метод получения тела ответа
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
+	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const buffer_t &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
 	// Устанавливаем метод получения заголовков
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
+	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const headers_t &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
 	// Выполняем инициализацию подключения
 	awh.init("wss://stream.binance.com:9443");
 	// awh.init("wss://anyks.net:2222");

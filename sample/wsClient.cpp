@@ -1,6 +1,6 @@
 /**
  * @file: wsClient.cpp
- * @date: 2025-03-02
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <client/ws.hpp>
+#include <client/ws2.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -154,7 +154,7 @@ class Executor {
 		 * @param utf8   тип буфера сообщения
 		 * @param ws     объект websocket-клиента
 		 */
-		void message(const vector <char> & buffer, const bool utf8, client::websocket_t * ws){
+		void message(const buffer_t & buffer, const bool utf8, client::websocket_t * ws){
 			// Выбранный сабпротокол
 			string subprotocol = "";
 			// Получаем список выбранных сабпротоколов
@@ -166,7 +166,7 @@ class Executor {
 			// Если данные пришли в виде текста, выводим
 			if(utf8)
 				// Выводим полученный результат
-				cout << " +++++++++++++ " << string(buffer.begin(), buffer.end()) << " == " << subprotocol << endl;
+				cout << " +++++++++++++ " << buffer << " == " << subprotocol << endl;
 			// Сообщаем количество полученных байт
 			else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 		}
@@ -324,7 +324,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.on <void (const uint32_t, const string &)> ("errorWebsocket", &Executor::error, &executor, _1, _2);
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on <void (const vector <char> &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, &ws);
+	ws.on <void (const buffer_t &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, &ws);
 	// Подписываемся на событие рукопожатия
 	ws.on <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", &Executor::handshake, &executor, _1, _2, _3, &ws);
 	// Выполняем запуск Websocket клиента

@@ -2701,8 +2701,10 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 				// Выполняем уменьшение веса компрессора
 				weight -= .1f;
 			}
-			// Устанавливаем флаг метода компрессии
-			this->_compressors.selected = this->_compressors.supports.rbegin()->second;
+			/**
+			 * Здесь нам не нужно выбирать конкретный компрессор как это делаем в модуле Websocket
+			 * Так-как в запросе должно улететь определённое количество поддерживаемых компрессоров, а иначе улетит только один
+			 */
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3375,7 +3377,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) noexcept {
 					body.push(response);
 				}
 				// Добавляем заголовок тела сообщения
-				headers.emplace("Content-Length", body.size());
+				headers.emplace("Content-Length", std::to_string(body.size()));
 			}
 			// Устанавливаем парарметр ответа
 			this->_web.response(res);
@@ -3484,7 +3486,7 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
 					body.push(response);
 				}
 				// Добавляем заголовок тела сообщения
-				headers.emplace("Content-Length", body.size());
+				headers.emplace("Content-Length", std::to_string(body.size()));
 			}
 			// Устанавливаем парарметр ответа
 			this->_web.response(res);

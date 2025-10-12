@@ -1546,8 +1546,12 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
  * @return       результат сравнения
  */
 bool awh::Framework::compare(const char * first, const char * second) const noexcept {
-	// Выполняем перебор обоих строк
-	return this->compare(string{first}, string{second});
+	// Если данные для сравшнения не пришли пустыми
+	if((first != nullptr) && (second != nullptr))
+		// Выполняем перебор обоих строк
+		return this->compare(string{first}, string{second});
+	// Выводим результат по умолчанию
+	return (first == second);
 }
 /**
  * @brief Метод сравнения двух строк без учёта регистра
@@ -1557,11 +1561,16 @@ bool awh::Framework::compare(const char * first, const char * second) const noex
  * @return       результат сравнения
  */
 bool awh::Framework::compare(const string & first, const string & second) const noexcept {
-	// Выполняем перебор обоих строк
-	return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
-		// Выполняем сравнение каждого символа
-		return (::tolower(a) == ::tolower(b));
-    }) : false);
+	// Если строки пришли не пустыми
+	if(!first.empty() && !second.empty()){
+		// Выполняем перебор обоих строк
+		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+			// Выполняем сравнение каждого символа
+			return (::tolower(a) == ::tolower(b));
+		}) : false);
+	}
+	// Выводим результат по умолчанию
+	return (first.length() == second.length());
 }
 /**
  * @brief Метод сравнения двух строк без учёта регистра

@@ -59,22 +59,6 @@ namespace awh {
 					PROTOCOL = 0x03  // Ошибка активации протокола
 				};
 			private:
-				/**
-				 * @brief Структура основных мютексов
-				 *
-				 */
-				typedef struct Mutex {
-					std::recursive_mutex close;   // Для закрытия подключения
-					std::recursive_mutex reset;   // Для сброса параметров таймаута
-					std::recursive_mutex proxy;   // Для работы с прокси-сервером
-					std::recursive_mutex connect; // Для выполнения подключения
-					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					std::recursive_mutex timeout; // Для создания нового таймаута
-				} mtx_t;
-			private:
-				// Мютекс для блокировки основного потока
-				mtx_t _mtx;
-			private:
 				// Объект работы таймера
 				timer_t _timer;
 			private:

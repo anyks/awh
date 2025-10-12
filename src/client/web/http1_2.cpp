@@ -742,7 +742,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(web_t::_callback.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_callback.on <void ()> ("complete", web_t::_callback.get <void (const int32_t, const uint32_t, const uint32_t, const string &, const buffer_t &, const headers_t &)> ("complete"), sid, i->second->id, response.code, response.message, static_cast <const buffer_t &> (this->_http.body()), this->_http.headers());
+					this->_callback.on <void ()> ("complete", web_t::_callback.get <void (const int32_t, const uint32_t, const uint32_t, const string &, const buffer_t &, const headers_t &)> ("complete"), sid, i->second->id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 				// Устанавливаем размер стопбайт

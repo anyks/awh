@@ -315,11 +315,11 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/cluster/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/cluster/cluster2.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
-    "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
-    "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/server2.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/if.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
@@ -330,93 +330,94 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/ping.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/socket.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/web.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/web2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/core.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/http/web.cpp"
+    "${CMAKE_SOURCE_DIR}/src/http/web_2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/http/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/http2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/http/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/client2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/server.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/http/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/server2.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/headers.cpp"
-    "${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/auth.cpp"
-    "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/client2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/fds.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/events/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/fds2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/base.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/events/base.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/base2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/event.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/events/event.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/event2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/watch.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/events/watch.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/watch2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/watch2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/notifier.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/events/notifier.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/notifier2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/core/node.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/node2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/timer.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/core/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/timer2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/core/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/server2.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/cluster2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/awh.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web/web.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/ws2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/awh.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/awh2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/sample2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/web/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web/web2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/web/web2.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/web2_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web/ws1.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/web/ws1.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/ws1_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web/ws2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/web/ws2.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/ws2_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web/http1.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/http1_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/web/http2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/client/web/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web/http2_2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/awh.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/web2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/ws1.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/web/ws1.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/ws2.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/http1.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web/http2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/sample.cpp"
-    "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/server/sample.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/socks5.cpp"
-    "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/server2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/scheme.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/ws2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/web.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/web2.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/web2.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web2_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/socks5.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/socks5_2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/client2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/server2.cpp"
-    "${CMAKE_SOURCE_DIR}/src/scheme/sample.cpp"
+    #"${CMAKE_SOURCE_DIR}/src/scheme/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/sample2.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
@@ -428,14 +429,14 @@ SET(NTP_APP_NAME ntp)
 SET(PING_APP_NAME ping)
 SET(DATE_APP_NAME date)
 SET(TIMER_APP_NAME timer)
-SET(PROXY_APP_NAME proxy)
-SET(SOCKS5_APP_NAME socks5)
+#SET(PROXY_APP_NAME proxy)
+#SET(SOCKS5_APP_NAME socks5)
 SET(CLIENT_APP_NAME client)
-SET(SERVER_APP_NAME server)
+#SET(SERVER_APP_NAME server)
 SET(WS_CLIENT_APP_NAME wsClient)
-SET(WS_SERVER_APP_NAME wsServer)
+#SET(WS_SERVER_APP_NAME wsServer)
 SET(WEB_CLIENT_APP_NAME webClient)
-SET(WEB_SERVER_APP_NAME webServer)
+#SET(WEB_SERVER_APP_NAME webServer)
 SET(INVESTIGATOR_APP_NAME investigator)
 SET(AWH_LIB_NAME ${PROJECT_NAME})
 
@@ -477,13 +478,13 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
     add_executable(${DATE_APP_NAME} sample/date.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
-    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
-    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
+    #add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
+    #add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
-    add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
-    add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp ${RES_FILES})
+    #add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
+    #add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp ${RES_FILES})
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp ${RES_FILES})
-    add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
+    #add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
     add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp ${RES_FILES})
 # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
@@ -495,14 +496,14 @@ else()
     add_executable(${PING_APP_NAME} sample/ping.cpp)
     add_executable(${DATE_APP_NAME} sample/date.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
-    add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
-    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp)
+    #add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
+    #add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp)
     add_executable(${CLIENT_APP_NAME} sample/client.cpp)
-    add_executable(${SERVER_APP_NAME} sample/server.cpp)
+    #add_executable(${SERVER_APP_NAME} sample/server.cpp)
     add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp)
-    add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp)
+    #add_executable(${WS_SERVER_APP_NAME} sample/wsServer.cpp)
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp)
-    add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
+    #add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
     add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp)
 endif()
@@ -931,12 +932,12 @@ else (CMAKE_SHARED_BUILD_LIB)
         )
 
         # Выполняем сборку приложения WebSocket-сервер
-        target_link_libraries(
-            ${WS_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-        )
+        #target_link_libraries(
+        #    ${WS_SERVER_APP_NAME}
+        #    ${AWH_LIB_NAME}
+        #    ${DEPEND_LIBRARY}
+        #    ${TCMALLOC_LIBRARIES}
+        #)
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
@@ -955,20 +956,20 @@ else (CMAKE_SHARED_BUILD_LIB)
         )
 
         # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-        )
+        #target_link_libraries(
+        #    ${PROXY_APP_NAME}
+        #    ${AWH_LIB_NAME}
+        #    ${DEPEND_LIBRARY}
+        #    ${TCMALLOC_LIBRARIES}
+        #)
 
         # Выполняем сборку приложения Socks5-сервера
-        target_link_libraries(
-            ${SOCKS5_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-        )
+        #target_link_libraries(
+        #    ${SOCKS5_APP_NAME}
+        #    ${AWH_LIB_NAME}
+        #    ${DEPEND_LIBRARY}
+        #    ${TCMALLOC_LIBRARIES}
+        #)
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
@@ -1003,12 +1004,12 @@ else (CMAKE_SHARED_BUILD_LIB)
         )
 
         # Выполняем сборку приложения сервера
-        target_link_libraries(
-            ${SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-        )
+        #target_link_libraries(
+        #    ${SERVER_APP_NAME}
+        #    ${AWH_LIB_NAME}
+        #    ${DEPEND_LIBRARY}
+        #    ${TCMALLOC_LIBRARIES}
+        #)
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
@@ -1027,12 +1028,12 @@ else (CMAKE_SHARED_BUILD_LIB)
         )
 
         # Выполняем сборку приложения HTTP-сервера
-        target_link_libraries(
-            ${WEB_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-        )
+        #target_link_libraries(
+        #    ${WEB_SERVER_APP_NAME}
+        #    ${AWH_LIB_NAME}
+        #    ${DEPEND_LIBRARY}
+        #    ${TCMALLOC_LIBRARIES}
+        #)
 
         # Выполняем сборку приложения дознавателя
         target_link_libraries(
@@ -1062,11 +1063,11 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
-        add_custom_command(TARGET "${WS_SERVER_APP_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${WS_SERVER_APP_NAME}>" "${entitlements_file}"
-            COMMENT "Sign target \"${WS_SERVER_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
+        #add_custom_command(TARGET "${WS_SERVER_APP_NAME}" POST_BUILD
+        #    COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${WS_SERVER_APP_NAME}>" "${entitlements_file}"
+        #    COMMENT "Sign target \"${WS_SERVER_APP_NAME}\" to enable core dump on MacOS X"
+        #    VERBATIM
+        #)
 
         add_custom_command(TARGET "${DNS_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${DNS_APP_NAME}>" "${entitlements_file}"
@@ -1098,17 +1099,17 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
-        add_custom_command(TARGET "${PROXY_APP_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${PROXY_APP_NAME}>" "${entitlements_file}"
-            COMMENT "Sign target \"${PROXY_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
+        #add_custom_command(TARGET "${PROXY_APP_NAME}" POST_BUILD
+        #    COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${PROXY_APP_NAME}>" "${entitlements_file}"
+        #    COMMENT "Sign target \"${PROXY_APP_NAME}\" to enable core dump on MacOS X"
+        #    VERBATIM
+        #)
 
-        add_custom_command(TARGET "${SOCKS5_APP_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${SOCKS5_APP_NAME}>" "${entitlements_file}"
-            COMMENT "Sign target \"${SOCKS5_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
+        #add_custom_command(TARGET "${SOCKS5_APP_NAME}" POST_BUILD
+        #    COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${SOCKS5_APP_NAME}>" "${entitlements_file}"
+        #    COMMENT "Sign target \"${SOCKS5_APP_NAME}\" to enable core dump on MacOS X"
+        #    VERBATIM
+        #)
 
         add_custom_command(TARGET "${CLIENT_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NAME}>" "${entitlements_file}"
@@ -1116,11 +1117,11 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
-        add_custom_command(TARGET "${SERVER_APP_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NAME}>" "${entitlements_file}"
-            COMMENT "Sign target \"${SERVER_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
+        #add_custom_command(TARGET "${SERVER_APP_NAME}" POST_BUILD
+        #    COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NAME}>" "${entitlements_file}"
+        #    COMMENT "Sign target \"${SERVER_APP_NAME}\" to enable core dump on MacOS X"
+        #    VERBATIM
+        #)
 
         add_custom_command(TARGET "${WEB_CLIENT_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${WEB_CLIENT_APP_NAME}>" "${entitlements_file}"
@@ -1128,11 +1129,11 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
-        add_custom_command(TARGET "${WEB_SERVER_APP_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${WEB_SERVER_APP_NAME}>" "${entitlements_file}"
-            COMMENT "Sign target \"${WEB_SERVER_APP_NAME}\" to enable core dump on MacOS X"
-            VERBATIM
-        )
+        #add_custom_command(TARGET "${WEB_SERVER_APP_NAME}" POST_BUILD
+        #    COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${WEB_SERVER_APP_NAME}>" "${entitlements_file}"
+        #    COMMENT "Sign target \"${WEB_SERVER_APP_NAME}\" to enable core dump on MacOS X"
+        #    VERBATIM
+        #)
 
         add_custom_command(TARGET "${CLUSTER_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${CLUSTER_APP_NAME}>" "${entitlements_file}"
@@ -1160,18 +1161,18 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         # Выполняем анализ собранных приложений
         pvs_studio_add_target(TARGET ${IP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${WS_CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WS_CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${WS_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WS_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        #pvs_studio_add_target(TARGET ${WS_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WS_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${DNS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DNS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${DATE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        #pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        #pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        #pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${WEB_CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-        pvs_studio_add_target(TARGET ${WEB_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        #pvs_studio_add_target(TARGET ${WEB_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${CLUSTER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLUSTER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${INVESTIGATOR_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${INVESTIGATOR_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -1238,14 +1239,14 @@ install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${DATE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WS_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WS_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${WS_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${INVESTIGATOR_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Если операционной системой не является Windows

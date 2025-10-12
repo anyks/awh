@@ -72,21 +72,6 @@ namespace awh {
 					RECEIVE = 0x03  // Режим ожидания получения данных
 				};
 			private:
-				/**
-				 * @brief Объект основных мютексов
-				 *
-				 */
-				typedef struct Mutex {
-					std::recursive_mutex main;    // Для установки системных параметров
-					std::recursive_mutex close;   // Для закрытия подключения
-					std::recursive_mutex accept;  // Для одобрения подключения
-					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					std::recursive_mutex timeout; // Для создания нового таймаута
-				} mtx_t;
-			private:
-				// Мютекс для блокировки основного потока
-				mtx_t _mtx;
-			private:
 				// Объект работы с сокетами
 				socket_t _socket;
 				// Объект кластера

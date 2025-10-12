@@ -21,7 +21,6 @@
 #include <set>
 #include <map>
 #include <queue>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -131,16 +130,6 @@ namespace awh {
 			} ssl_t;
 		protected:
 			/**
-			 * @brief Объект основных мютексов
-			 *
-			 */
-			typedef struct Mutex {
-				// Для работы с параметрами модуля
-				std::mutex main;
-				// Для отправки сообщений
-				std::mutex send;
-			} mtx_t;
-			/**
 			 * @brief Структура текущих параметров сети
 			 *
 			 */
@@ -171,9 +160,6 @@ namespace awh {
 				 sockname{""}, sockpath{"/tmp"},
 				 network{"0.0.0.0","[::]"} {}
 			} settings_t;
-		protected:
-			// Мютекс для блокировки потоков
-			mtx_t _mtx;
 		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;

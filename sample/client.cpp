@@ -1,6 +1,6 @@
 /**
  * @file: client.cpp
- * @date: 2025-03-02
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <client/sample.hpp>
+#include <client/sample2.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -62,11 +62,9 @@ class Client {
 		 * @param buffer буфер входящих данных
 		 * @param sample объект активного клиента
 		 */
-		void message(const vector <char> & buffer, client::sample_t * sample){
-			// Получаем сообщение
-			const string message(buffer.begin(), buffer.end());
+		void message(const buffer_t & buffer, client::sample_t * sample){
 			// Выводим информацию в лог
-			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			this->_log->print("%s", log_t::flag_t::INFO, static_cast <string> (buffer).c_str());
 			// Останавливаем работу модуля
 			sample->stop();
 		}
@@ -158,7 +156,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем таймеры ожидания по одной секунде на чтение и запись
 	sample.waitTimeDetect(1, 1);
 	// Подписываемся на событие получения сообщения
-	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const buffer_t &)> ("message", &Client::message, &executor, _1, &sample);
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 	// Выполняем инициализацию подключения

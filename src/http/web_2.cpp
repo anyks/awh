@@ -614,8 +614,10 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 											string name = header.substr(0, pos);
 											// Получаем содержимое заголовка HTTP-протокола
 											string content = header.substr(pos + 1);
+											// Удаляем лишние пробелы у содержимого заголовка
+											this->_fmk->transform(content, fmk_t::transform_t::TRIM);
 											// Добавляем заголовок в список
-											this->_headers.emplace(name, this->_fmk->transform(content, fmk_t::transform_t::TRIM));
+											this->_headers.emplace(name, content);
 											// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 											if(this->_callback.is("header"))
 												// Выполняем функцию обратного вызова
@@ -1197,6 +1199,8 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 										string name(buffer, this->_work.pos[0]);
 										// Получаем содержимое заголовка HTTP-протокола
 										string content(buffer + (this->_work.pos[0] + 1), size - (this->_work.pos[0] + 1));
+										// Удаляем лишние пробелы у содержимого заголовка
+										this->_fmk->transform(content, fmk_t::transform_t::TRIM);
 										// Добавляем заголовок в список заголовков
 										if(!name.empty() && !content.empty()){
 											// Если название заголовка соответствует HOST
@@ -1208,7 +1212,7 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 												// Выполняем установку схемы запроса
 												this->_request.url.schema = "http";
 												// Выполняем установку хоста
-												this->_request.url.host = this->_fmk->transform(content, fmk_t::transform_t::TRIM);
+												this->_request.url.host = content;
 												// Выполняем поиск разделителя
 												const size_t pos = this->_request.url.host.rfind(':');
 												// Если разделитель найден
@@ -1266,15 +1270,12 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 											// Если название заголовка соответствует трейлеру
 											} else if(this->_fmk->compare("trailer", name)) {
 												// Выполняем сбор трейлеров
-												this->_trailers.emplace(this->_fmk->transform(this->_fmk->transform(content, fmk_t::transform_t::TRIM), fmk_t::transform_t::LOWER));
+												this->_trailers.emplace(this->_fmk->transform(content, fmk_t::transform_t::LOWER));
 												// Выводим результат
 												return;
 											}
 											// Добавляем заголовок в список
-											this->_headers.emplace(
-												this->_fmk->transform(name, fmk_t::transform_t::LOWER),
-												this->_fmk->transform(content, fmk_t::transform_t::TRIM)
-											);
+											this->_headers.emplace(name, content);
 											// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 											if(this->_callback.is("header"))
 												// Выполняем функцию обратного вызова
@@ -1651,7 +1652,7 @@ void awh::Web::dump(const char * buffer, const size_t size) noexcept {
 							// Если и ключ и значение заголовка получены
 							if(!name.empty() && !value.empty())
 								// Добавляем заголовок в список заголовков
-								this->_headers.emplace(name, value);
+								this->_headers.emplace(::move(name), ::move(value));
 						}
 					}
 				}

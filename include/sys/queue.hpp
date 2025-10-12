@@ -128,9 +128,9 @@ namespace awh {
 			std::atomic_bool _terminate;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			const fmk_t * _fmk = nullptr;
 			// Объект работы с логами
-			const log_t * _log;
+			const log_t * _log = nullptr;
 		private:
 			/**
 			 * @brief Метод контроля памяти
@@ -267,6 +267,11 @@ namespace awh {
 			 */
 			bool operator == (const Queue & queue) const noexcept;
 		public:
+			/**
+			 * @brief Разрешаем пустое значение объекта
+			 * 
+			 */
+			Queue() = default;
 			/**
 			 * @brief Конструктор перемещения
 			 *

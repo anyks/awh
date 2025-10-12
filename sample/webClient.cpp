@@ -1,6 +1,6 @@
 /**
  * @file: webClient.cpp
- * @date: 2025-03-02
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <client/awh.hpp>
+#include <client/awh2.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -49,7 +49,7 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void response(const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message){
+		void response(const int32_t sid, [[maybe_unused]] const uint32_t rid, const uint32_t code, const string & message){
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -95,11 +95,11 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const vector <char> & entity, client::awh_t * awh){
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const awh::buffer_t & entity, client::awh_t * awh){
 			// Увеличиваем количество выполненных запросов
 			this->_count++;
 			// Выводим полученный результат
-			cout << " =========== " << string(entity.begin(), entity.end()) << endl;
+			cout << " =========== " << entity << endl;
 			// Если оба запроса выполнены
 			if(this->_count == 2)
 				// Выполняем остановку
@@ -114,11 +114,9 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const unordered_multimap <string, string> & headers){
-			// Переходим по всем заголовкам
-			for(auto & header : headers)
-				// Выводим информацию в лог
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const awh::headers_t & headers){
+			// Выводим информацию в лог
+			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
 		}
 		/**
 		 * @brief Метод получения ответа с сервера
@@ -131,15 +129,11 @@ class WebClient {
 		 * @param data    данные полученных заголовков сообщения
 		 * @param awh     объект web-клиента
 		 */
-		void complete([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
+		void complete([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const awh::buffer_t & entity, const awh::headers_t & headers, client::awh_t * awh){
 			// Увеличиваем количество выполненных запросов
 			this->_count++;
-			// Переходим по всем заголовкам
-			for(auto & header : headers)
-				// Выводим информацию в лог
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 			// Выводим полученный результат
-			cout << " =========== " << string(entity.begin(), entity.end()) << endl;
+			cout << " =========== " << headers << entity << endl;
 			// Если оба запроса выполнены
 			if(this->_count == 2)
 				// Выполняем остановку
@@ -311,20 +305,30 @@ int32_t main(int32_t argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
+	// Формируем объект заголовков
+	awh::headers_t headers(&fmk, &log);
 	// Формируем GET запрос
 	// const auto & body = awh.GET(url);
-	// const auto & body = awh.GET(url, {{"Connection", "close"}});
-	const auto & body = awh.GET(url, {{"User-Agent", "curl/7.64.1"},{"te", "trailers, gzip;q=0.5"}});
+	// Добавляем заголовки
+	// headers.emplace("Connection", "close");
+	// const auto & body = awh.GET(url, headers);
+	// Добавляем заголовки
+	headers.emplace("User-Agent", "curl/7.64.1");
+	// headers.emplace("te", "trailers, gzip;q=0.5");
+	// Выполняем запрос на сервер
+	const awh::buffer_t & body = awh.GET(url, headers);
 	// Подготавливаем тело запроса
-	// const string entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
+	// awh::buffer_t entity(&fmk, &log);
+	// Формируем тело запроса
+	// entity = "<html><head><title>404</title></head><body><h1>Hello World!!!</h1></body></html>";
 	// Выполняем тело запроса на сервер
-	// const auto & body = awh.POST(url, vector <char> (entity.begin(), entity.end()), {{"User-Agent", "curl/7.64.1"}});
+	// const awh::buffer_t & body = awh.POST(url, entity, headers);
 	// Выводим время запроса
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены
 	if(!body.empty())
 		// Выводим полученный результат
-		cout << " =========== " << string(body.begin(), body.end()) << endl;
+		cout << " =========== " << body << endl;
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

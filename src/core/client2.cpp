@@ -272,16 +272,12 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Выходим из функции
 						return;
 					}
-					// Выполняем блокировку потока
-					this->_mtx.connect.lock();
 					// Выполняем установку базы событий
 					broker->base(this->base());
 					// Добавляем созданного брокера в список брокеров
 					auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 					// Добавляем брокера в список подключений
 					this->_brokers.emplace(ret.first->first, ret.first->second.get());
-					// Выполняем блокировку потока
-					this->_mtx.connect.unlock();
 					// Если подключение к серверу не выполнено
 					if(!ret.first->second->addr.connect()){
 						// Разрешаем выполнение работы
@@ -643,8 +639,6 @@ void awh::client::Core::timeout(const uint16_t sid, const scheme_t::mode_t mode)
  * @param bid идентификатор брокера
  */
 void awh::client::Core::clearTimeout(const uint32_t bid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.receive);
 	// Выполняем поиск активных таймаутов
 	auto i = this->_receive.find(bid);
 	// Если таймаут найден
@@ -661,8 +655,6 @@ void awh::client::Core::clearTimeout(const uint32_t bid) noexcept {
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.timeout);
 	// Выполняем поиск активных таймаутов
 	auto i = this->_timeouts.find(sid);
 	// Если таймаут найден
@@ -692,13 +684,8 @@ void awh::client::Core::createTimeout(const uint32_t bid, const uint32_t msec) n
 			this->_timer.clear(i->second);
 			// Выполняем создание нового таймаута
 			i->second = tid = this->_timer.timeout(msec);
-		// Если таймаут ещё не создан
-		} else {
-			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.receive);
-			// Выполняем создание нового таймаута
-			this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
-		}
+		// Выполняем создание нового таймаута
+		} else this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
 		// Выполняем добавление функции обратного вызова
 		this->_timer.on <void (const uint32_t)> (tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, bid);
 	}
@@ -722,13 +709,8 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 			this->_timer.clear(i->second);
 			// Выполняем создание нового таймаута на 5 секунд
 			i->second = tid = this->_timer.timeout(5000);
-		// Если таймаут ещё не создан
-		} else {
-			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.timeout);
-			// Выполняем создание нового таймаута на 5 секунд
-			this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
-		}
+		// Выполняем создание нового таймаута на 5 секунд
+		} else this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
 		// Выполняем добавление функции обратного вызова
 		this->_timer.on <void (const uint32_t, const scheme_t::mode_t)>  (tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
 	}
@@ -770,8 +752,6 @@ void awh::client::Core::reset(const uint32_t bid) noexcept {
 			this->close(bid);
 		// Если брокер не существует
 		else if(!this->_schemes.empty()) {
-			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.reset);
 			// Переходим по всему списку схем сети
 			for(auto & item : this->_schemes){
 				// Получаем объект схемы сети
@@ -817,24 +797,12 @@ void awh::client::Core::reset(const uint32_t bid) noexcept {
  *
  */
 void awh::client::Core::close() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock1(this->_mtx.close);
-	// Выполняем блокировку потока
-	const lock_guard lock2(node_t::_mtx.main);
-	const lock_guard lock3(node_t::_mtx.send);
 	// Останавливаем работу таймера
 	this->_timer.clear();
-	{
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.timeout);
-		// Очищаем список таймаутов
-		this->_timeouts.clear();
-	}{
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.receive);
-		// Очищаем список таймаутов ожидания получения данных
-		this->_receive.clear();
-	}
+	// Очищаем список таймаутов
+	this->_timeouts.clear();
+	// Очищаем список таймаутов ожидания получения данных
+	this->_receive.clear();
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Объект работы с функциями обратного вызова
@@ -903,24 +871,12 @@ void awh::client::Core::close() noexcept {
  *
  */
 void awh::client::Core::remove() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock1(this->_mtx.close);
-	// Выполняем блокировку потока
-	const lock_guard lock2(node_t::_mtx.main);
-	const lock_guard lock3(node_t::_mtx.send);
 	// Останавливаем работу таймера
 	this->_timer.clear();
-	{
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.timeout);
-		// Очищаем список таймаутов
-		this->_timeouts.clear();
-	}{
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.receive);
-		// Очищаем список таймаутов ожидания получения данных
-		this->_receive.clear();
-	}
+	// Очищаем список таймаутов
+	this->_timeouts.clear();
+	// Очищаем список таймаутов ожидания получения данных
+	this->_receive.clear();
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Объект работы с функциями обратного вызова
@@ -1067,8 +1023,6 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::client::Core::close(const uint32_t bid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.close);
 	// Если блокировка брокера не установлена
 	if(this->_busy.find(bid) == this->_busy.end()){
 		// Выполняем блокировку брокера
@@ -1140,11 +1094,6 @@ void awh::client::Core::close(const uint32_t bid) noexcept {
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::remove(const uint16_t sid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock1(this->_mtx.close);
-	// Выполняем блокировку потока
-	const lock_guard lock2(node_t::_mtx.main);
-	const lock_guard lock3(node_t::_mtx.send);
 	// Выполняем поиск схемы сети
 	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -1228,8 +1177,6 @@ void awh::client::Core::switchProxy(const uint32_t bid) noexcept {
 		// Если активирован любой другой протокол, выходим из функции
 		default: return;
 	}
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.proxy);
 	// Если идентификатор брокера подключений существует
 	if(this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -1929,8 +1876,6 @@ void awh::client::Core::transferRule(const transfer_t transfer) noexcept {
 void awh::client::Core::waitMessage(const uint32_t bid, const uint16_t sec) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.receive);
 		// Выполняем удаление таймаута
 		this->clearTimeout(bid);
 		// Создаём бъект активного брокера подключения
@@ -1952,8 +1897,6 @@ void awh::client::Core::waitMessage(const uint32_t bid, const uint16_t sec) noex
 void awh::client::Core::waitTimeDetect(const uint32_t bid, const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.receive);
 		// Выполняем удаление таймаута
 		this->clearTimeout(bid);
 		// Создаём бъект активного брокера подключения

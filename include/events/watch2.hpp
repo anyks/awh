@@ -30,7 +30,7 @@
 /**
  * Наши модули
  */
-#include "notifier.hpp"
+#include "notifier2.hpp"
 
 /**
  * @brief основное пространство имён

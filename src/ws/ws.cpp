@@ -102,7 +102,7 @@ void awh::Websocket::init(const process_t flag) noexcept {
 				// Добавляем заголовок поддерживаемых языков
 				headers.emplace("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
 				// Добавляем заголовок версии Websocket
-				headers.emplace("Sec-Websocket-Version", ws_t::VERSION);
+				headers.emplace("Sec-Websocket-Version", std::to_string(ws_t::VERSION));
 				// Если компрессор уже выбран
 				if(http_t::_compressors.selected != compressor_t::NONE){
 					/**

@@ -158,9 +158,9 @@ namespace awh {
 			vector <char> _buffer;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			const fmk_t * _fmk = nullptr;
 			// Объект работы с логами
-			const log_t * _log;
+			const log_t * _log = nullptr;
 		private:
 			/**
 			 * @brief Метод контроля памяти
@@ -425,6 +425,29 @@ namespace awh {
 			operator const vector <char> & () const noexcept;
 		public:
 			/**
+			 * @brief Оператор копирования
+			 *
+			 * @param buffer бинарный буфер для копирования
+			 * @return       текущий контейнер буфера
+			 */
+			Buffer & operator = (const char * buffer) noexcept;
+		public:
+			/**
+			 * @brief Оператор перемещения
+			 *
+			 * @param buffer бинарный буфер для перемещения
+			 * @return       текущий контейнер буфера
+			 */
+			Buffer & operator = (string && buffer) noexcept;
+			/**
+			 * @brief Оператор копирования
+			 *
+			 * @param buffer бинарный буфер для копирования
+			 * @return       текущий контейнер буфера
+			 */
+			Buffer & operator = (const string & buffer) noexcept;
+		public:
+			/**
 			 * @brief Оператор перемещения
 			 *
 			 * @param buffer бинарный буфер для перемещения
@@ -462,6 +485,11 @@ namespace awh {
 			 */
 			bool operator == (const Buffer & buffer) const noexcept;
 		public:
+			/**
+			 * @brief Разрешаем пустое значение объекта
+			 * 
+			 */
+			Buffer() = default;
 			/**
 			 * @brief Конструктор перемещения
 			 *

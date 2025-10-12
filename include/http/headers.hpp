@@ -176,9 +176,9 @@ namespace awh {
 			std::multimap <uint32_t, item_t> _items;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			const fmk_t * _fmk = nullptr;
 			// Объект работы с логами
-			const log_t * _log;
+			const log_t * _log = nullptr;
 		private:
 			/**
 			 * @brief Метод генерации идентификатора заголовка
@@ -266,7 +266,7 @@ namespace awh {
 			 * @return     список значений одинаковых заголовков
 			 */
 			vector <string> range(const string & name) const noexcept;
-		public:
+		private:
 			/**
 			 * @brief Шаблон добавления нового заголовка
 			 *
@@ -281,7 +281,8 @@ namespace awh {
 			 * @param content содержимое заголовка
 			 * @return        общее количество заголовков
 			 */
-			size_t emplace(Name && name, Content && content) noexcept;
+			size_t _emplace(Name && name, Content && content) noexcept;
+		public:
 			/**
 			 * @brief Метод добавления нового заголовка
 			 *
@@ -297,7 +298,7 @@ namespace awh {
 			 * @param content содержимое заголовка
 			 * @return        общее количество заголовков
 			 */
-			size_t emplace(const char * name, const string & content) noexcept;
+			size_t emplace(const char * name, string content) noexcept;
 			/**
 			 * @brief Метод добавления нового заголовка
 			 *
@@ -305,7 +306,23 @@ namespace awh {
 			 * @param content содержимое заголовка
 			 * @return        общее количество заголовков
 			 */
-			size_t emplace(const string & name, const char * content) noexcept;
+			size_t emplace(string name, const char * content) noexcept;
+			/**
+			 * @brief Метод добавления нового заголовка
+			 *
+			 * @param name    название заголовка
+			 * @param content содержимое заголовка
+			 * @return        общее количество заголовков
+			 */
+			size_t emplace(string && name, string && content) noexcept;
+			/**
+			 * @brief Метод добавления нового заголовка
+			 *
+			 * @param name    название заголовка
+			 * @param content содержимое заголовка
+			 * @return        общее количество заголовков
+			 */
+			size_t emplace(const string & name, const string & content) noexcept;
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти
@@ -442,6 +459,11 @@ namespace awh {
 			 */
 			bool operator == (const Headers & headers) const noexcept;
 		public:
+			/**
+			 * @brief Разрешаем пустое значение объекта
+			 * 
+			 */
+			Headers() = default;
 			/**
 			 * @brief Конструктор перемещения
 			 *

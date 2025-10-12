@@ -162,9 +162,6 @@ awh::Node::SSL::SSL() noexcept :
  *
  */
 void awh::Node::remove() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock1(this->_mtx.main);
-	const lock_guard lock2(this->_mtx.send);
 	// Выполняем удаление всей схемы сети
 	this->_schemes.clear();
 	// Выполняем удаление списка брокеров подключения
@@ -182,9 +179,6 @@ void awh::Node::remove() noexcept {
 void awh::Node::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
-		// Выполняем блокировку потока
-		const lock_guard lock1(this->_mtx.main);
-		const lock_guard lock2(this->_mtx.send);
 		// Выполняем поиск идентификатора схемы сети
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден
@@ -213,9 +207,6 @@ void awh::Node::remove(const uint16_t sid) noexcept {
 void awh::Node::remove(const uint32_t bid) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
-		// Выполняем блокировку потока
-		const lock_guard lock1(this->_mtx.main);
-		const lock_guard lock2(this->_mtx.send);
 		// Выполняем поиск брокера подключения
 		auto i = this->_brokers.find(bid);
 		// Если брокер подключения найден
@@ -288,8 +279,6 @@ uint16_t awh::Node::sid(const uint32_t bid) const noexcept {
  * @param bid идентификатор брокера
  */
 void awh::Node::initBuffer(const uint32_t bid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -363,8 +352,6 @@ void awh::Node::initBuffer(const uint32_t bid) noexcept {
  * @param size размер байт удаляемых из буфера
  */
 void awh::Node::erase(const uint32_t bid, const size_t size) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.send);
 	// Значение оставшейся памяти в буфере
 	size_t amount = 0;
 	// Ещем для указанного потока очередь полезной нагрузки
@@ -424,8 +411,6 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
 	uint16_t result = 0;
 	// Если схема сети передана и URL адрес существует
 	if(scheme != nullptr){
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.main);
 		// Получаем объект схемы сети
 		scheme_t * shm = const_cast <scheme_t *> (scheme);
 		// Устанавливаем идентификатор схемы сети
@@ -442,8 +427,6 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
  * @param ssl параметры SSL для установки
  */
 void awh::Node::ssl(const ssl_t & ssl) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	// Выполняем установку флага проверки домена
 	this->_engine.verify(ssl.verify);
 	// Выполняем установку алгоритмов шифрования
@@ -461,8 +444,6 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
  * @param dns объект DNS-резолвер
  */
 void awh::Node::resolver(const dns_t * dns) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	// Устанавливаем DNS-резолвер
 	this->_dns = dns;
 }
@@ -473,8 +454,6 @@ void awh::Node::resolver(const dns_t * dns) noexcept {
  * @return     результат установки названия unix-сокета
  */
 bool awh::Node::sockname(const string & name) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -509,8 +488,6 @@ bool awh::Node::sockname(const string & name) noexcept {
  * @return     результат установки адреса каталога где хранится unix-сокет
  */
 bool awh::Node::sockpath(const string & path) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -570,8 +547,6 @@ awh::engine_t::proto_t awh::Node::proto(const uint32_t bid) const noexcept {
  * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
 void awh::Node::proto(const engine_t::proto_t proto) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	// Выполняем установку поддерживаемого протокола подключения
 	this->_settings.proto = proto;
 }
@@ -590,8 +565,6 @@ awh::scheme_t::sonet_t awh::Node::sonet() const noexcept {
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
 void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	/**
@@ -622,12 +595,8 @@ awh::scheme_t::family_t awh::Node::family() const noexcept {
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::Node::family(const scheme_t::family_t family) noexcept {
-	{
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.main);
-		// Устанавливаем тип активного интернет-подключения
-		this->_settings.family = family;
-	}
+	// Устанавливаем тип активного интернет-подключения
+	this->_settings.family = family;
 	// Если тип сокета подключения соответствует unix-сокету
 	if(this->_settings.family == scheme_t::family_t::IPC){
 		// Если название unix-сокета ещё не инициализированно
@@ -642,8 +611,6 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.main);
 			// Получаем адрес файла unix-сокет
 			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его
@@ -670,8 +637,6 @@ awh::Node::sending_t awh::Node::sending() const noexcept {
  * @param sending режим отправки сообщений для установки
  */
 void awh::Node::sending(const sending_t sending) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.main);
 	// Выполняем установку режима отправки сообщений
 	this->_sending = sending;
 }
@@ -690,8 +655,6 @@ size_t awh::Node::memoryAvailableSize() const noexcept {
  * @param size размер памяти для хранения полезной нагрузки всех брокеров
  */
 void awh::Node::memoryAvailableSize(const size_t size) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.send);
 	// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
 	this->_memoryAvailableSize = size;
 }
@@ -726,8 +689,6 @@ size_t awh::Node::brokerAvailableSize(const uint32_t bid) const noexcept {
  * @param size размер хранимой полезной нагрузки для одного брокера
  */
 void awh::Node::brokerAvailableSize(const size_t size) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.send);
 	// Выполняем установку размера хранимой полезной нагрузки для одного брокера
 	this->_brokerAvailableSize = size;
 }
@@ -739,9 +700,6 @@ void awh::Node::brokerAvailableSize(const size_t size) noexcept {
  * @return     результат выполенния операции
  */
 bool awh::Node::cork(const uint32_t bid, const engine_t::mode_t mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock1(this->_mtx.main);
-	const lock_guard lock2(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -762,9 +720,6 @@ bool awh::Node::cork(const uint32_t bid, const engine_t::mode_t mode) noexcept {
  * @return     результат выполенния операции
  */
 bool awh::Node::nodelay(const uint32_t bid, const engine_t::mode_t mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock1(this->_mtx.main);
-	const lock_guard lock2(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -792,8 +747,6 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint32_t bid)
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.send);
 		// Если идентификатор брокера подключений существует
 		if((bid > 0) && this->has(bid) && (buffer != nullptr) && (size > 0)){
 			// Флаг недоступности свободной памяти в буфере обмена данными
@@ -826,8 +779,6 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint32_t bid)
 				}
 				// Уменьшаем общее количество переданных данных
 				this->_memoryAvailableSize -= size;
-				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.main);
 				// Выполняем поиск размера используемой памяти для хранения полезной нагрузки брокера
 				auto j = this->_available.find(bid);
 				// Если размер полезной нагрузки найден
@@ -926,14 +877,10 @@ void awh::Node::events(const uint32_t bid, const awh::scheme_t::mode_t mode, con
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 void awh::Node::network(const vector <string> & ips, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
-	{
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.main);
-		// Устанавливаем тип сокета
-		this->_settings.sonet = sonet;
-		// Устанавливаем тип активного интернет-подключения
-		this->_settings.family = family;
-	}
+	// Устанавливаем тип сокета
+	this->_settings.sonet = sonet;
+	// Устанавливаем тип активного интернет-подключения
+	this->_settings.family = family;
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::IPC){
 		// Если название unix-сокета ещё не инициализированно
@@ -948,18 +895,14 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			{
-				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.main);
-				// Получаем адрес файла unix-сокет
-				const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
-				// Если сокет в файловой системе уже существует, удаляем его
-				if(this->_fs.isSock(filename))
-					// Удаляем файл сокета
-					::unlink(filename.c_str());
-				// Выполняем очистку unix-сокета
-				this->_settings.sockname.clear();
-			}
+			// Получаем адрес файла unix-сокет
+			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+			// Если сокет в файловой системе уже существует, удаляем его
+			if(this->_fs.isSock(filename))
+				// Удаляем файл сокета
+				::unlink(filename.c_str());
+			// Выполняем очистку unix-сокета
+			this->_settings.sockname.clear();
 		#endif
 	}
 	// Если IP-адреса переданы
@@ -977,12 +920,10 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 				// Если IP-адрес является IPv4 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Если IP-адрес является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6): {
-					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx.main);
+				case static_cast <uint8_t> (net_t::type_t::IPV6):
 					// Устанавливаем полученные IP-адреса
 					this->_settings.network.push_back(host);
-				} break;
+				break;
 				// Для всех остальных адресов
 				default: {
 					// Если объект DNS-резолвера установлен
@@ -996,24 +937,18 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 								// Выполняем получение IP-адреса для IPv4
 								const string & ip = const_cast <dns_t *> (this->_dns)->host(AF_INET, host);
 								// Если IP-адрес успешно получен
-								if(!ip.empty()){
-									// Выполняем блокировку потока
-									const lock_guard lock(this->_mtx.main);
+								if(!ip.empty())
 									// Выполняем добавление полученного хоста в список
 									this->_settings.network.push_back(ip);
-								}
 							} break;
 							// Если тип протокола интернета IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 								// Выполняем получение IP-адреса для IPv6
 								const string & ip = const_cast <dns_t *> (this->_dns)->host(AF_INET6, host);
 								// Если результат получен, выполняем пинг
-								if(!ip.empty()){
-									// Выполняем блокировку потока
-									const lock_guard lock(this->_mtx.main);
+								if(!ip.empty())
 									// Выполняем добавление полученного хоста в список
 									this->_settings.network.push_back(ip);
-								}
 							} break;
 						}
 					}

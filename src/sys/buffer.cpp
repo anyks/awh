@@ -117,19 +117,37 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 	// Выводим результат
@@ -158,19 +176,37 @@ void awh::Buffer::clear() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 }
@@ -197,19 +233,37 @@ void awh::Buffer::reset() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 }
@@ -273,19 +327,37 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	// Если буфер пустой
 	} else {
@@ -596,7 +668,7 @@ T awh::Buffer::at(const size_t index) const noexcept {
 			// Выполняем копирование данных контейнера
 			::memcpy(&result, this->_buffer.data() + (this->_range.begin + (index * size)), size);
 		// Если данных нет в буфере
-		else {
+		else if(this->_log != nullptr) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -609,6 +681,21 @@ T awh::Buffer::at(const size_t index) const noexcept {
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("There is no data in the buffer at INDEX=%zu", log_t::flag_t::WARNING, index);
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\nThere is no data in the buffer at INDEX=%zu\n\n", __PRETTY_FUNCTION__, index);
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "WARNING! There is no data in the buffer at INDEX=%zu\n\n", index);
 			#endif
 		}
 	}
@@ -665,7 +752,7 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 			// Выполняем установку значения
 			::memcpy(const_cast <char *> (this->_buffer.data() + (this->_range.begin + (index * size))), &value, size);
 		// Если данных нет в буфере
-		else {
+		else if(this->_log != nullptr) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -678,6 +765,21 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("There is no data in the buffer at INDEX=%zu", log_t::flag_t::WARNING, index);
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\nThere is no data in the buffer at INDEX=%zu\n\n", __PRETTY_FUNCTION__, index);
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "WARNING! There is no data in the buffer at INDEX=%zu\n\n", index);
 			#endif
 		}
 	}
@@ -745,19 +847,37 @@ void awh::Buffer::erase(const size_t size) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 }
@@ -779,19 +899,37 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 }
 /**
@@ -897,19 +1035,37 @@ bool awh::Buffer::push(buffer_t && buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -970,19 +1126,37 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 					this->_range.end += size;
 				// Выполняем сброс буфера
 				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
-					#endif
+					// Если объект лога установлен
+					if(this->_log != nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
+						#endif
+					// Если объект логирования не установлен
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer is corrupted");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", "Binary data buffer is corrupted");
+						#endif
+					}
 					// Выполняем сброс конца буфера
 					this->_range.end = 0;
 					// Выполняем сброс начала буфера
@@ -992,28 +1166,46 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				}
 			// Если данные больше не помещаются в буфер
 			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug(
-						"You are trying to map %s of data into a %s data buffer, which is impossible",
-						__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
-						this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
-						this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
-					);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print(
-						"You are trying to map %s of data into a %s data buffer, which is impossible",
-						log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
-						this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
-					);
-				#endif
+				// Если объект лога установлен
+				if(this->_log != nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"You are trying to map %s of data into a %s data buffer, which is impossible",
+							__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
+							this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
+							this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
+						);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print(
+							"You are trying to map %s of data into a %s data buffer, which is impossible",
+							log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
+							this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
+						);
+					#endif
+				// Если объект логирования не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "There is not enough memory in the reserved buffer to add a new portion of data");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved buffer to add a new portion of data");
+					#endif
+				}
 				// Выполняем блокировку потока
 				const lock_guard lock(this->_mtx);
 				// Выполняем сброс конца буфера
@@ -1027,19 +1219,37 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 	// Выводим результат
@@ -1065,19 +1275,37 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 }
@@ -1095,6 +1323,22 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard lock2(buffer._mtx);
+		// Если объект фреймворка установлен
+		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
+			// Копируем объект фреймворка
+			this->_fmk = buffer._fmk;
+		// Если объект для работы с логами установлен
+		if((buffer._log != nullptr) && (this->_log == nullptr))
+			// Копируем объект для работы с логами установлен
+			this->_log = buffer._log;
+		// Если объект фреймворка установлен
+		if((this->_fmk != nullptr) && (buffer._fmk == nullptr))
+			// Копируем объект фреймворка
+			buffer._fmk = this->_fmk;
+		// Если объект для работы с логами установлен
+		if((this->_log != nullptr) && (buffer._log == nullptr))
+			// Копируем объект для работы с логами установлен
+			buffer._log = this->_log;
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(buffer._buffer);
 		// Выполняем обмен последними итераторами
@@ -1107,19 +1351,37 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 }
 /**
@@ -1150,6 +1412,188 @@ awh::Buffer::operator const vector <char> & () const noexcept {
 	return this->raw();
 }
 /**
+ * @brief Оператор копирования
+ *
+ * @param buffer бинарный буфер для копирования
+ * @return       текущий контейнер буфера
+ */
+awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока текущего буфера
+		const lock_guard lock(this->_mtx);
+		// Выполняем копирование начального итератора
+		this->_range.begin = 0;
+		// Выполняем копирование последнего итератора
+		this->_range.end = ::strlen(buffer);
+		// Выделяем нужный нам размер памяти
+		this->_buffer.reserve(this->_range.end);
+		// Перемещаем данные (на самом деле — копируем, но эффективно)
+		this->_buffer.assign(buffer, buffer + this->_range.end);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * @brief Оператор перемещения
+ *
+ * @param buffer бинарный буфер для перемещения
+ * @return       текущий контейнер буфера
+ */
+awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока текущего буфера
+		const lock_guard lock(this->_mtx);
+		// Выполняем копирование начального итератора
+		this->_range.begin = 0;
+		// Выполняем копирование последнего итератора
+		this->_range.end = buffer.length();
+		// Выделяем нужный нам размер памяти
+		this->_buffer.reserve(buffer.length());
+		// Перемещаем данные (на самом деле — копируем, но эффективно)
+		this->_buffer.assign(buffer.begin(), buffer.end());
+		// Очищаем исходную строку
+		buffer.clear();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * @brief Оператор копирования
+ *
+ * @param buffer бинарный буфер для копирования
+ * @return       текущий контейнер буфера
+ */
+awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока текущего буфера
+		const lock_guard lock(this->_mtx);
+		// Выполняем копирование начального итератора
+		this->_range.begin = 0;
+		// Выполняем копирование последнего итератора
+		this->_range.end = buffer.length();
+		// Выделяем нужный нам размер памяти
+		this->_buffer.reserve(buffer.length());
+		// Копируем данные из строки в буфер
+		this->_buffer.assign(buffer.begin(), buffer.end());
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим текущий объект
+	return (* this);
+}
+/**
  * @brief Оператор перемещения
  *
  * @param buffer бинарный буфер для перемещения
@@ -1172,19 +1616,37 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 	// Выводим текущий объект
 	return (* this);
@@ -1212,19 +1674,37 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 	// Выводим текущий объект
 	return (* this);
@@ -1244,6 +1724,14 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard lock2(buffer._mtx);
+		// Если объект фреймворка установлен
+		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
+			// Копируем объект фреймворка
+			this->_fmk = buffer._fmk;
+		// Если объект для работы с логами установлен
+		if((buffer._log != nullptr) && (this->_log == nullptr))
+			// Копируем объект для работы с логами установлен
+			this->_log = buffer._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
@@ -1260,19 +1748,37 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 	// Выводим текущий объект
 	return (* this);
@@ -1292,6 +1798,14 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard lock2(buffer._mtx);
+		// Если объект фреймворка установлен
+		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
+			// Копируем объект фреймворка
+			this->_fmk = buffer._fmk;
+		// Если объект для работы с логами установлен
+		if((buffer._log != nullptr) && (this->_log == nullptr))
+			// Копируем объект для работы с логами установлен
+			this->_log = buffer._log;
 		// Выполняем копирование последнего итератора
 		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
@@ -1304,19 +1818,37 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 	// Выводим текущий объект
 	return (* this);
@@ -1345,19 +1877,37 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 	// Выводим результат
 	return false;
@@ -1376,6 +1926,14 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard lock2(buffer._mtx);
+		// Если объект фреймворка установлен
+		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
+			// Копируем объект фреймворка
+			this->_fmk = buffer._fmk;
+		// Если объект для работы с логами установлен
+		if((buffer._log != nullptr) && (this->_log == nullptr))
+			// Копируем объект для работы с логами установлен
+			this->_log = buffer._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
@@ -1392,19 +1950,37 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 }
 /**
@@ -1421,6 +1997,14 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 		const lock_guard lock1(this->_mtx);
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard lock2(buffer._mtx);
+		// Если объект фреймворка установлен
+		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
+			// Копируем объект фреймворка
+			this->_fmk = buffer._fmk;
+		// Если объект для работы с логами установлен
+		if((buffer._log != nullptr) && (this->_log == nullptr))
+			// Копируем объект для работы с логами установлен
+			this->_log = buffer._log;
 		// Выполняем копирование последнего итератора
 		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
@@ -1433,19 +2017,37 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если объект лога установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
 	}
 }
 /**
