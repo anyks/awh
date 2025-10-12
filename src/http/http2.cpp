@@ -2436,6 +2436,15 @@ awh::Http2 & awh::Http2::operator = (const http2_t & ctx) noexcept {
 	return (* this);
 }
 /**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
+ _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
+ _socket(fmk, log), _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
+/**
  * @brief Деструктор
  *
  */

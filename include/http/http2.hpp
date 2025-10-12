@@ -35,7 +35,7 @@
 	// Разрешаем статическую сборку для NGTCP2
 	#define NGTCP2_STATICLIB
 	// Разрешаем статическую сборку для NGHTTP2
-    #define NGHTTP2_STATICLIB
+	#define NGHTTP2_STATICLIB
 	// Разрешаем статическую сборку для NGHTTP3
 	#define NGHTTP3_STATICLIB
 #endif
@@ -634,9 +634,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Http2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
-			 _socket(fmk, log), _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
+			Http2(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

@@ -512,6 +512,14 @@ namespace awh {
 			void clear(const unit_t unit) noexcept;
 		public:
 			/**
+			 * @brief Метод проверки существования данных
+			 * 
+			 * @param unit HTTP-юнит наличие данных которого проверяются
+			 * @return     результат проверки
+			 */
+			bool empty(const unit_t unit) noexcept;
+		public:
+			/**
 			 * @brief Метод проверки завершения обработки
 			 *
 			 * @return результат проверки

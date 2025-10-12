@@ -218,13 +218,13 @@ namespace awh {
 			 *
 			 * @param core модуль ядра для подключения
 			 */
-			void bind(Core * core) noexcept;
+			void bind(Core & core) noexcept;
 			/**
 			 * @brief Метод отключения модуля ядра от текущей базы событий
 			 *
 			 * @param core модуль ядра для отключения
 			 */
-			void unbind(Core * core) noexcept;
+			void unbind(Core & core) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки пинка

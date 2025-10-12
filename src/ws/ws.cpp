@@ -1328,7 +1328,7 @@ bool awh::Websocket::step(const step_t step) noexcept {
  * @param flag флаг выполняемого процесса
  * @return     результат выполнения проверки рукопожатия
  */
-bool awh::Websocket::handshake(const process_t flag) noexcept {
+bool awh::Websocket::isHandshake(const process_t flag) noexcept {
 	// Результат работы функции
 	bool result = (this->_session.state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено

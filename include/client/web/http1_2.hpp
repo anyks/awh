@@ -1,0 +1,459 @@
+/**
+ * @file: http1.hpp
+ * @date: 2025-10-11
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2025
+ */
+
+#ifndef __AWH_WEB_HTTP1_CLIENT__
+#define __AWH_WEB_HTTP1_CLIENT__
+
+/**
+ * Наши модули
+ */
+#include "web_2.hpp"
+#include "ws1_2.hpp"
+
+/**
+ * @brief основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	/**
+	 * @brief клиентское пространство имён
+	 *
+	 */
+	namespace client {
+		/**
+		 * @brief Прототип класса HTTP/2 клиента
+		 *
+		 */
+		class Http2;
+		/**
+		 * @brief Класс HTTP-клиента
+		 *
+		 */
+		typedef class AWH_SHARED_EXPORT Http1 : public web_t {
+			private:
+				/**
+				 * @brief Устанавливаем дружбу с классом HTTP/2 клиента
+				 *
+				 */
+				friend class Http2;
+			private:
+				// Флаг открытия подключения
+				bool _mode;
+				// Флаг разрешения использования протокол Websocket
+				bool _webSocket;
+			private:
+				// Объект для работы c Websocket
+				ws1_t _ws1;
+				// Объект для работы с HTTP-протколом
+				http_t _http;
+			private:
+				// Агент воркера выполнения запроса
+				agent_t _agent;
+			private:
+				// Количество активных ядер
+				int16_t _threads;
+			private:
+				// Хранилище функций обратного вызова для вывода результата
+				callback_t _callback;
+			private:
+				// Список активых запросов
+				std::map <int32_t, std::unique_ptr <request_t>> _requests;
+			private:
+				/**
+				 * @brief Метод обратного вызова при подключении к серверу
+				 *
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 */
+				void connectEvent(const uint32_t bid, const uint16_t sid) noexcept;
+				/**
+				 * @brief Метод обратного вызова при отключении от сервера
+				 *
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 */
+				void disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept;
+				/**
+				 * @brief Метод обратного вызова при чтении сообщения с сервера
+				 *
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param bid    идентификатор брокера
+				 * @param sid    идентификатор схемы сети
+				 */
+				void readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
+				/**
+				 * @brief Метод обратного вызова при записи сообщения на клиенте
+				 *
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param bid    идентификатор брокера
+				 * @param sid    идентификатор схемы сети
+				 */
+				void writeEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
+			private:
+				/**
+				 * @brief Метод отлавливания событий контейнера функций обратного вызова
+				 *
+				 * @param event событие контейнера функций обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
+				 * @param fn    функция обратного вызова в чистом виде
+				 */
+				void callbackEvent(const callback_t::event_t event, const uint32_t fid, const callback_t::fn_t & fn) noexcept;
+			private:
+				/**
+				 * @brief Метод получение статуса рукопожатия с сервером
+				 *
+				 * @param sid       идентификатор потока
+				 * @param rid       идентификатор запроса
+				 * @param handshake статус рукопожатия с сервером
+				 */
+				void answer(const int32_t sid, const uint32_t rid, const http_t::handshake_t handshake) noexcept;
+			private:
+				/**
+				 * @brief Метод выполнения редиректа если требуется
+				 *
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 * @return    результат выполнения редиректа
+				 */
+				bool redirect(const uint32_t bid, const uint16_t sid) noexcept;
+			private:
+				/**
+				 * @brief Метод получения ответа сервера
+				 *
+				 * @param bid     идентификатор брокера
+				 * @param code    код ответа сервера
+				 * @param message сообщение ответа сервера
+				 */
+				void response(const uint32_t bid, const uint32_t code, const string & message) noexcept;
+			private:
+				/**
+				 * @brief Метод получения заголовка
+				 *
+				 * @param bid   идентификатор брокера
+				 * @param key   ключ заголовка
+				 * @param value значение заголовка
+				 */
+				void header(const uint32_t bid, const string & key, const string & value) noexcept;
+				/**
+				 * @brief Метод получения заголовков
+				 *
+				 * @param bid     идентификатор брокера
+				 * @param code    код ответа сервера
+				 * @param message сообщение ответа сервера
+				 * @param headers заголовки ответа сервера
+				 */
+				void headers(const uint32_t bid, const uint32_t code, const string & message, const headers_t & headers) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки получения чанков
+				 *
+				 * @param bid   идентификатор брокера
+				 * @param chunk бинарный буфер чанка
+				 * @param http  объект модуля HTTP
+				 */
+				void chunking(const uint32_t bid, const buffer_t & chunk, const awh::http_t * http) noexcept;
+			private:
+				/**
+				 * @brief Метод сброса параметров запроса
+				 *
+				 */
+				void flush() noexcept;
+			private:
+				/**
+				 * @brief Метод завершения выполнения запроса
+				 *
+				 * @param sid идентификатор запроса
+				 */
+				void result(const int32_t sid) noexcept;
+			private:
+				/**
+				 * @brief Метод таймера выполнения пинга удалённого сервера
+				 *
+				 * @param tid идентификатор таймера
+				 */
+				void pinging(const uint16_t tid) noexcept;
+			private:
+				/**
+				 * @brief Метод выполнения препарирования полученных данных
+				 *
+				 * @param sid идентификатор запроса
+				 * @param bid идентификатор брокера
+				 * @return    результат препарирования
+				 */
+				status_t prepare(const int32_t sid, const uint32_t bid) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения об ошибке
+				 *
+				 * @param mess отправляемое сообщение об ошибке
+				 */
+				void sendError(const ws::mess_t & mess) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения на сервер
+				 *
+				 * @param message передаваемое сообщения в бинарном виде
+				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
+				 */
+				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
+				/**
+				 * @brief Метод отправки сообщения на сервер
+				 *
+				 * @param message передаваемое сообщения в бинарном виде
+				 * @param size    размер передаваемого сообещния
+				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
+				 */
+				bool sendMessage(const char * message, const size_t size, const bool text = true) noexcept;
+			private:
+				/**
+				 * @brief Метод выполнения удалённого запроса на сервер
+				 *
+				 * @param request объект запроса на удалённый сервер
+				 */
+				void submit(const request_t & request) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения на сервер
+				 *
+				 * @param request параметры запроса на удалённый сервер
+				 * @return        идентификатор отправленного запроса
+				 */
+				int32_t send(const request_t & request) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки данных в бинарном виде серверу
+				 *
+				 * @param buffer буфер бинарных данных передаваемых серверу
+				 * @param size   размер сообщения в байтах
+				 * @return       результат отправки сообщения
+				 */
+				bool send(const char * buffer, const size_t size) noexcept;
+				/**
+				 * @brief Метод отправки тела сообщения на сервер
+				 *
+				 * @param buffer буфер бинарных данных передаваемых на сервер
+				 * @param size   размер сообщения в байтах
+				 * @param end    флаг последнего сообщения после которого поток закрывается
+				 * @return       результат отправки данных указанному клиенту
+				 */
+				bool send(const char * buffer, const size_t size, const bool end) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки заголовков на сервер
+				 *
+				 * @param url     адрес запроса на сервере
+				 * @param method  метод запроса на сервере
+				 * @param headers заголовки отправляемые на сервер
+				 * @param end     размер сообщения в байтах
+				 * @return        идентификатор нового запроса
+				 */
+				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const headers_t & headers, const bool end) noexcept;
+			public:
+				/**
+				 * @brief Метод установки на паузу клиента
+				 *
+				 */
+				void pause() noexcept;
+			public:
+				/**
+				 * @brief Метод установки времени ожидания ответа WebSocket-сервера
+				 *
+				 * @param sec время ожидания в секундах
+				 */
+				void waitPong(const uint16_t sec) noexcept;
+				/**
+				 * @brief Метод установки интервала времени выполнения пингов
+				 *
+				 * @param sec интервал времени выполнения пингов в секундах
+				 */
+				void pingInterval(const uint16_t sec) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
+			public:
+				/**
+				 * @brief Метод установки поддерживаемого сабпротокола
+				 *
+				 * @param subprotocol сабпротокол для установки
+				 */
+				void subprotocol(const string & subprotocol) noexcept;
+				/**
+				 * @brief Метод получения списка выбранных сабпротоколов
+				 *
+				 * @return список выбранных сабпротоколов
+				 */
+				const std::unordered_set <string> & subprotocols() const noexcept;
+				/**
+				 * @brief Метод установки списка поддерживаемых сабпротоколов
+				 *
+				 * @param subprotocols сабпротоколы для установки
+				 */
+				void subprotocols(const std::unordered_set <string> & subprotocols) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения списка расширений
+				 *
+				 * @return список поддерживаемых расширений
+				 */
+				const vector <vector <string>> & extensions() const noexcept;
+				/**
+				 * @brief Метод установки списка расширений
+				 *
+				 * @param extensions список поддерживаемых расширений
+				 */
+				void extensions(const vector <vector <string>> & extensions) noexcept;
+			public:
+				/**
+				 * @brief Метод установки размера чанка
+				 *
+				 * @param size размер чанка для установки
+				 */
+				void chunkSize(const size_t size) noexcept;
+				/**
+				 * @brief Метод установки размеров сегментов фрейма
+				 *
+				 * @param size минимальный размер сегмента
+				 */
+				void segmentSize(const size_t size) noexcept;
+				/**
+				 * @brief Метод установки сетевого ядра
+				 *
+				 * @param core объект сетевого ядра
+				 */
+				void core(const client::core_t * core) noexcept;
+				/**
+				 * @brief Метод установки флагов настроек модуля
+				 *
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const std::set <flag_t> & flags) noexcept;
+				/**
+				 * @brief Метод установки параметров авторизации
+				 *
+				 * @param login    логин пользователя для авторизации на сервере
+				 * @param password пароль пользователя для авторизации на сервере
+				 */
+				void user(const string & login, const string & password) noexcept;
+			public:
+				/**
+				 * @brief Метод установки User-Agent для HTTP-запроса
+				 *
+				 * @param userAgent агент пользователя для HTTP-запроса
+				 */
+				void agent(const string & userAgent) noexcept;
+				/**
+				 * @brief Метод установки идентификации клиента
+				 *
+				 * @param id   идентификатор сервиса
+				 * @param name название сервиса
+				 * @param ver  версия сервиса
+				 */
+				void agent(const string & id, const string & name, const string & ver) noexcept;
+			public:
+				/**
+				 * @brief Метод активации многопоточности
+				 *
+				 * @param count количество потоков для активации
+				 * @param mode  флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
+			public:
+				/**
+				 * @brief Метод активации/деактивации прокси-склиента
+				 *
+				 * @param work флаг активации/деактивации прокси-клиента
+				 */
+				void proxy(const client::scheme_t::work_t work) noexcept;
+				/**
+				 * @brief Метод установки прокси-сервера
+				 *
+				 * @param uri    параметры прокси-сервера
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
+				 */
+				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+			public:
+				/**
+				 * @brief Метод установки типа авторизации
+				 *
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest-авторизации
+				 */
+				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+				/**
+				 * @brief Метод установки типа авторизации прокси-сервера
+				 *
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest-авторизации
+				 */
+				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+			public:
+				/**
+				 * @brief Метод получения флага шифрования
+				 *
+				 * @return результат проверки
+				 */
+				bool crypted() const noexcept;
+			public:
+				/**
+				 * @brief Метод активации шифрования
+				 *
+				 * @param mode флаг активации шифрования
+				 */
+				void encryption(const bool mode) noexcept;
+				/**
+				 * @brief Метод установки параметров шифрования
+				 *
+				 * @param pass   пароль шифрования передаваемых данных
+				 * @param salt   соль шифрования передаваемых данных
+				 * @param cipher размер шифрования передаваемых данных
+				 */
+				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Http1(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param core объект сетевого ядра
+				 * @param fmk  объект фреймворка
+				 * @param log  объект для работы с логами
+				 */
+				Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Http1() noexcept;
+		} http1_t;
+	};
+};
+
+#endif // __AWH_WEB_HTTP1_CLIENT__

@@ -1294,6 +1294,16 @@ void awh::Http::clear(const web_t::unit_t unit) noexcept {
 	this->_web.clear(unit);
 }
 /**
+ * @brief Метод проверки существования данных
+ * 
+ * @param unit HTTP-юнит наличие данных которого проверяются
+ * @return     результат проверки
+ */
+bool awh::Http::empty(const web_t::unit_t unit) noexcept {
+	// Выполняем проверку существования данных
+	return this->_web.empty(unit);
+}
+/**
  * @brief Метод установки флага точной установки хоста
  *
  * @param mode флаг для установки

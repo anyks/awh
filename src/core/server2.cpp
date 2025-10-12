@@ -1064,7 +1064,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint32_t bid, co
 			// Устанавливаем флаг запрещающий вывод информационных сообщений
 			this->_timer->verbose(false);
 			// Выполняем биндинг сетевого ядра таймера
-			this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+			this->bind(dynamic_cast <awh::core_t &> (* this->_timer));
 		}
 		/**
 		 * Определяем режим создания таймера
@@ -1569,7 +1569,7 @@ void awh::server::Core::remove() noexcept {
 			// Выполняем удаление всех таймеров
 			this->_timer->clear();
 			// Выполняем анбиндинг сетевого ядра таймера
-			this->unbind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+			this->unbind(dynamic_cast <awh::core_t &> (* this->_timer));
 			// Удалям активный таймер
 			this->_timer.reset(nullptr);
 		}

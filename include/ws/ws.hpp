@@ -208,7 +208,7 @@ namespace awh {
 			 * @param flag флаг выполняемого процесса
 			 * @return     результат выполнения проверки рукопожатия
 			 */
-			bool handshake(const process_t flag) noexcept;
+			bool isHandshake(const process_t flag) noexcept;
 		public:
 			/**
 			 * @brief Метод получения размер скользящего окна

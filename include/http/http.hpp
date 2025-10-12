@@ -89,7 +89,7 @@ namespace awh {
 				BROTLI  = 0x06, // Метод компрессии Brotli
 				DEFLATE = 0x07  // Метод компрессии Deflate
 			};
-		protected:
+		public:
 			/**
 			 * Результат выполнения рукопожатия
 			 */
@@ -371,6 +371,14 @@ namespace awh {
 			 * @param unit HTTP-юнит данные которого очищаются
 			 */
 			void clear(const web_t::unit_t unit) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки существования данных
+			 * 
+			 * @param unit HTTP-юнит наличие данных которого проверяются
+			 * @return     результат проверки
+			 */
+			bool empty(const web_t::unit_t unit) noexcept;
 		public:
 			/**
 			 * @brief Метод установки флага точной установки хоста

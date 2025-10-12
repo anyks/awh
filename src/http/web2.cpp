@@ -1364,6 +1364,29 @@ void awh::Web::clear(const unit_t unit) noexcept {
 	}
 }
 /**
+ * @brief Метод проверки существования данных
+ * 
+ * @param unit HTTP-юнит наличие данных которого проверяются
+ * @return     результат проверки
+ */
+bool awh::Web::empty(const unit_t unit) noexcept {
+	/**
+	 * Определяем текущий HTTP-юнит с которым производится работа
+	 */
+	switch(static_cast <uint8_t> (unit)){
+		// Если производится работы с HTTP-телом
+		case static_cast <uint8_t> (unit_t::BODY):
+			// Выполняем проверку наличия данных
+			return this->_body.data.empty();
+		// Если производится работа с HTTP-заголовками
+		case static_cast <uint8_t> (unit_t::HEADERS):
+			// Выполняем проверку наличия данных
+			return this->_headers.empty();
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод проверки завершения обработки
  *
  * @return результат проверки

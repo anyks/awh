@@ -414,22 +414,22 @@ void awh::Core::reinit() noexcept {
  *
  * @param core модуль ядра для подключения
  */
-void awh::Core::bind(core_t * core) noexcept {
+void awh::Core::bind(core_t & core) noexcept {
 	// Если база событий активна и она отличается от текущей базы событий
-	if((core != nullptr) && (core != this))
+	if(&core != this)
 		// Выполняем запуск управляющей функции
-		core->launching(false, true);
+		core.launching(false, true);
 }
 /**
  * @brief Метод отключения модуля ядра от текущей базы событий
  *
  * @param core модуль ядра для отключения
  */
-void awh::Core::unbind(core_t * core) noexcept {
+void awh::Core::unbind(core_t & core) noexcept {
 	// Если база событий активна и она совпадает с текущей базы событий
-	if((core != nullptr) && (core != this))
+	if(&core != this)
 		// Запускаем метод деактивации базы событий
-		core->closedown(false, true);
+		core.closedown(false, true);
 }
 /**
  * @brief Метод отправки пинка

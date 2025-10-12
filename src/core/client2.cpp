@@ -1982,7 +1982,7 @@ awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_timer.verbose(false);
 	// Выполняем биндинг сетевого ядра таймера
-	this->bind(dynamic_cast <awh::core_t *> (&this->_timer));
+	this->bind(dynamic_cast <awh::core_t &> (this->_timer));
 }
 /**
  * @brief Конструктор
@@ -1998,5 +1998,5 @@ awh::client::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_timer.verbose(false);
 	// Выполняем биндинг сетевого ядра таймера
-	this->bind(dynamic_cast <awh::core_t *> (&this->_timer));
+	this->bind(dynamic_cast <awh::core_t &> (this->_timer));
 }
