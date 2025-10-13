@@ -2490,7 +2490,7 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию извлечения пароля пользователя для прохождения авторизации на сервере
 	this->_server.on <string (const uint32_t, const string &)> ("extractPassword", &server::proxy_t::passwordEvents, this, _1, _2);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	this->_server.on <bool (const string &, const string &, const uint32_t)> ("accept", &server::proxy_t::acceptEvents, this, _1, _2, _3);
+	this->_server.on <bool (const string &, const string &, const uint16_t)> ("accept", &server::proxy_t::acceptEvents, this, _1, _2, _3);
 	// Устанавливаем функцию получения сырых данных полученных сервером с клиента
 	this->_server.on <bool (const uint32_t, const char *, const size_t)> ("raw", &server::proxy_t::raw, this, _1, broker_t::SERVER, _2, _3);
 	// Устанавливаем функцию проверки ввода логина и пароля пользователя
