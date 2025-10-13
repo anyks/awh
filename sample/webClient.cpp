@@ -267,13 +267,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем метод активации подключения
 	awh.on <void (const client::web_t::mode_t)> ("active", &WebClient::active, &executor, _1, &awh);
 	// Устанавливаем метод получения сообщения сервера
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", &WebClient::response, &executor, _1, _2, _3, _4);
+	awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &)> ("response", &WebClient::response, &executor, _1, _2, _3, _4);
 	// Устанавливаем метод получения тела ответа
-	// awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
+	// awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &, const buffer_t &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
 	// Устанавливаем метод получения заголовков
-	// awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
+	// awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &, const headers_t &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
 	// Устанавливаем метод получения ответа с сервера
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", &WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
+	awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &, const buffer_t &, const headers_t &)> ("complete", &WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 	// Выполняем инициализацию подключения
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы

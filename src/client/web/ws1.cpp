@@ -1071,10 +1071,13 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
 		}
 		// Отправляем полученный результат
 		web_t::_callback.call <void (const awh::buffer_t &, const bool)> ("messageWebsocket", this->_buffer.extraction, text);
-		// Создаём сообщение
-		this->_mess = ws::mess_t(1007, "Received data decompression error");
-		// Выполняем отправку сообщения об ошибке
-		this->sendError(this->_mess);
+		// Если данные полезной нагрузки не могут быть извлечены
+		if(this->_buffer.extraction.empty()){
+			// Создаём сообщение
+			this->_mess = ws::mess_t(1007, "Received data decompression error");
+			// Выполняем отправку сообщения об ошибке
+			this->sendError(this->_mess);
+		}
 	}
 }
 /**

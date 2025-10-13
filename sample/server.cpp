@@ -68,7 +68,7 @@ class Server {
 		 * @param bid  идентификатор брокера
 		 * @param mode режим события подключения
 		 */
-		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
+		void active([[maybe_unused]] const uint32_t bid, const server::sample_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -79,7 +79,7 @@ class Server {
 		 * @param buffer буфер входящих данных
 		 * @param sample объект активного сервера
 		 */
-		void message(const uint64_t bid, const buffer_t & buffer, server::sample_t * sample){
+		void message(const uint32_t bid, const buffer_t & buffer, server::sample_t * sample){
 			// Выводим информацию в лог
 			this->_log->print("%s", log_t::flag_t::INFO, static_cast <string> (buffer).c_str());
 			// Отправляем сообщение обратно
@@ -159,11 +159,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
 	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <void (const uint32_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.on <void (const uint64_t, const buffer_t &)> ("message", &Server::message, &executor, _1, _2, &sample);
+	sample.on <void (const uint32_t, const buffer_t &)> ("message", &Server::message, &executor, _1, _2, &sample);
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

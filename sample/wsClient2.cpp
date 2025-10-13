@@ -68,7 +68,7 @@ class WebClient {
 		 * @param size размер буфера полезной нагрузки
 		 * @param core объект сетевого ядра
 		 */
-		void available(const uint64_t bid, const size_t size, client::core_t * core){
+		void available(const uint32_t bid, const size_t size, client::core_t * core){
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -89,7 +89,7 @@ class WebClient {
 		 * @param buffer буфер полезной нагрузки которую не получилось отправить
 		 * @param size   размер буфера полезной нагрузки
 		 */
-		void unavailable(const uint64_t bid, const char * buffer, const size_t size){
+		void unavailable(const uint32_t bid, const char * buffer, const size_t size){
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -112,7 +112,7 @@ class WebClient {
 		 * @param agent идентификатор агента клиента
 		 * @param awh   объект web-клиента
 		 */
-		void handshake([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const client::web_t::agent_t agent, client::awh_t * awh){
+		void handshake([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, const client::web_t::agent_t agent, client::awh_t * awh){
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог
@@ -273,7 +273,7 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void response(const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message){
+		void response(const int32_t sid, [[maybe_unused]] const uint32_t rid, const uint32_t code, const string & message){
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -316,7 +316,7 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const buffer_t & entity, client::awh_t * awh){
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const buffer_t & entity, client::awh_t * awh){
 			// Выводим полученный результат
 			cout << " =========== " << entity << endl;
 			// Выполняем остановку
@@ -331,7 +331,7 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const headers_t & headers){
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const headers_t & headers){
 			// Выводим информацию в лог
 			this->_log->print("%s : %s", log_t::flag_t::INFO, headers.print().c_str());
 		}
@@ -441,9 +441,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем инициализацию типа авторизации
 	// awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
-	core.on <void (const uint64_t, const size_t)> ("available", &WebClient::available, &executor, _1, _2, &core);
+	core.on <void (const uint32_t, const size_t)> ("available", &WebClient::available, &executor, _1, _2, &core);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &WebClient::unavailable, &executor, _1, _2, _3);
+	core.on <void (const uint32_t, const char *, const size_t)> ("unavailable", &WebClient::unavailable, &executor, _1, _2, _3);
 	// Подписываемся на событие запуска/остановки сервера
 	awh.on <void (const awh::core_t::status_t)> ("status", &WebClient::status, &executor, _1);
 	// Устанавливаем метод активации подключения
@@ -453,13 +453,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Подписываемся на событие получения сообщения с сервера
 	awh.on <void (const vector <char> &, const bool)> ("messageWebsocket", &WebClient::message, &executor, _1, _2, &awh);
 	// Устанавливаем метод получения сообщения сервера
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", &WebClient::response, &executor, _1, _2, _3, _4);
+	awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &)> ("response", &WebClient::response, &executor, _1, _2, _3, _4);
 	// Подписываемся на событие рукопожатия
-	awh.on <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", &WebClient::handshake, &executor, _1, _2, _3, &awh);
+	awh.on <void (const int32_t, const uint32_t, const client::web_t::agent_t)> ("handshake", &WebClient::handshake, &executor, _1, _2, _3, &awh);
 	// Устанавливаем метод получения тела ответа
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const buffer_t &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
+	awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &, const buffer_t &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
 	// Устанавливаем метод получения заголовков
-	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const headers_t &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
+	awh.on <void (const int32_t, const uint32_t, const uint32_t, const string &, const headers_t &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
 	// Выполняем инициализацию подключения
 	awh.init("wss://stream.binance.com:9443");
 	// awh.init("wss://anyks.net:2222");

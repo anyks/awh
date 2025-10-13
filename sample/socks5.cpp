@@ -58,7 +58,7 @@ class Proxy {
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const uint64_t bid, const string & login, const string & password){
+		bool auth(const uint32_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
 			// Разрешаем авторизацию
@@ -85,7 +85,7 @@ class Proxy {
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode режим события подключения
 		 */
-		void active([[maybe_unused]] const uint64_t bid, const proxy_socks5_t::mode_t mode){
+		void active([[maybe_unused]] const uint32_t bid, const proxy_socks5_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == proxy_socks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -156,7 +156,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	proxy.on <bool (const string &, const string &, const uint32_t)> ("accept", &Proxy::accept, &executor, _1, _2, _3);
 	// Устанавливаем функцию проверки авторизации
-	// proxy.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &Proxy::auth, &executor, _1, _2, _3);
+	// proxy.on <bool (const uint32_t, const string &, const string &)> ("checkPassword", &Proxy::auth, &executor, _1, _2, _3);
 	// Выполняем запуск Socks5 сервер
 	proxy.start();
 	// Выводим результат

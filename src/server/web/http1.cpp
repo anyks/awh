@@ -1878,5 +1878,5 @@ awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию записи данных
 	const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &http1_t::writeEvents, this, _1, _2, _3, _4);
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint32_t)> ("accept", &http1_t::acceptEvents, this, _1, _2, _3, _4);
+	const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", &http1_t::acceptEvents, this, _1, _2, _3, _4);
 }

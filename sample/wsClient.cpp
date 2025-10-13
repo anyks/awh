@@ -68,7 +68,7 @@ class Executor {
 		 * @param size размер буфера полезной нагрузки
 		 * @param core объект сетевого ядра
 		 */
-		void available(const uint64_t bid, const size_t size, client::core_t * core){
+		void available(const uint32_t bid, const size_t size, client::core_t * core){
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -89,7 +89,7 @@ class Executor {
 		 * @param buffer буфер полезной нагрузки которую не получилось отправить
 		 * @param size   размер буфера полезной нагрузки
 		 */
-		void unavailable(const uint64_t bid, const char * buffer, const size_t size){
+		void unavailable(const uint32_t bid, const char * buffer, const size_t size){
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -112,7 +112,7 @@ class Executor {
 		 * @param agent идентификатор агента клиента
 		 * @param ws    бъект websocket-клиента
 		 */
-		void handshake([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
+		void handshake([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог
@@ -314,9 +314,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Активируем правило асинхронной работы передачи данных
 	core.transferRule(client::core_t::transfer_t::ASYNC);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
-	core.on <void (const uint64_t, const size_t)> ("available", &Executor::available, &executor, _1, _2, &core);
+	core.on <void (const uint32_t, const size_t)> ("available", &Executor::available, &executor, _1, _2, &core);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &Executor::unavailable, &executor, _1, _2, _3);
+	core.on <void (const uint32_t, const char *, const size_t)> ("unavailable", &Executor::unavailable, &executor, _1, _2, _3);
 	// Подписываемся на событие запуска/остановки сервера
 	ws.on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1);
 	// Подписываемся на событие получения ошибки работы клиента
@@ -324,7 +324,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Подписываемся на событие получения сообщения с сервера
 	ws.on <void (const buffer_t &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, &ws);
 	// Подписываемся на событие рукопожатия
-	ws.on <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", &Executor::handshake, &executor, _1, _2, _3, &ws);
+	ws.on <void (const int32_t, const uint32_t, const client::web_t::agent_t)> ("handshake", &Executor::handshake, &executor, _1, _2, _3, &ws);
 	// Выполняем запуск Websocket клиента
 	ws.start();
 	// Выводим результат

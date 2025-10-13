@@ -54,7 +54,7 @@ class Proxy {
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password([[maybe_unused]] const uint64_t bid, const string & login){
+		string password([[maybe_unused]] const uint32_t bid, const string & login){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 			// Выводим пароль
@@ -68,7 +68,7 @@ class Proxy {
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth([[maybe_unused]] const uint64_t bid, const string & login, const string & password){
+		bool auth([[maybe_unused]] const uint32_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
@@ -96,7 +96,7 @@ class Proxy {
 		 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 		 * @param mode   режим события подключения
 		 */
-		void active([[maybe_unused]] const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
+		void active([[maybe_unused]] const uint32_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
 			// Определяем тип подключения
 			switch(static_cast <uint8_t> (broker)){
 				// Если событие принадлежит клиенту
@@ -196,13 +196,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем функцию получения готовности процессов
 	proxy.on <void (const uint16_t, const pid_t)> ("clusterReady", &Proxy::clusterReady, &executor, _1, _2);
 	// Устанавливаем функцию извлечения пароля
-	proxy.on <string (const uint64_t, const string &)> ("extractPassword", &Proxy::password, &executor, _1, _2);
+	proxy.on <string (const uint32_t, const string &)> ("extractPassword", &Proxy::password, &executor, _1, _2);
 	// Устанавливаем функцию проверки авторизации
-	proxy.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &Proxy::auth, &executor, _1, _2, _3);
+	proxy.on <bool (const uint32_t, const string &, const string &)> ("checkPassword", &Proxy::auth, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	proxy.on <bool (const string &, const string &, const uint32_t)> ("accept", &Proxy::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)> ("active", &Proxy::active, &executor, _1, _2, _3);
+	proxy.on <void (const uint32_t, const server::proxy_t::broker_t, const server::web_t::mode_t)> ("active", &Proxy::active, &executor, _1, _2, _3);
 	// Выполняем запуск Proxy-сервер
 	proxy.start();
 	// Выводим результат

@@ -72,7 +72,7 @@ class WebServer {
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const uint64_t bid, const string & login){
+		string password(const uint32_t bid, const string & login){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), "password", bid);
 			// Выводим пароль
@@ -86,7 +86,7 @@ class WebServer {
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const uint64_t bid, const string & login, const string & password){
+		bool auth(const uint32_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s, ID: %zu", log_t::flag_t::INFO, login.c_str(), password.c_str(), bid);
 			// Разрешаем авторизацию
@@ -124,7 +124,7 @@ class WebServer {
 		 * @param size размер буфера полезной нагрузки
 		 * @param core объект сетевого ядра
 		 */
-		void available(const uint64_t bid, const size_t size, server::core_t * core){
+		void available(const uint32_t bid, const size_t size, server::core_t * core){
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -145,7 +145,7 @@ class WebServer {
 		 * @param buffer буфер полезной нагрузки которую не получилось отправить
 		 * @param size   размер буфера полезной нагрузки
 		 */
-		void unavailable(const uint64_t bid, const char * buffer, const size_t size){
+		void unavailable(const uint32_t bid, const char * buffer, const size_t size){
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -167,7 +167,7 @@ class WebServer {
 		 * @param mode режим события подключения
 		 * @param core объект сетевого ядра
 		 */
-		void active(const uint64_t bid, const server::web_t::mode_t mode, server::core_t * core){
+		void active(const uint32_t bid, const server::web_t::mode_t mode, server::core_t * core){
 			// Определяем тип события
 			switch(static_cast <uint8_t> (mode)){
 				// Если произведено подключение клиента к серверу
@@ -191,7 +191,7 @@ class WebServer {
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & mess){
+		void error([[maybe_unused]] const uint32_t bid, const uint32_t code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -203,7 +203,7 @@ class WebServer {
 		 * @param text   тип буфера сообщения
 		 * @param awh    объект веб-сервера
 		 */
-		void message(const uint64_t bid, const buffer_t & buffer, const bool text, server::awh_t * awh){
+		void message(const uint32_t bid, const buffer_t & buffer, const bool text, server::awh_t * awh){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
@@ -228,7 +228,7 @@ class WebServer {
 		 * @param agent идентификатор агента клиента
 		 * @param awh   объект веб-сервера
 		 */
-		void handshake(const int32_t sid, const uint64_t bid, const server::web_t::agent_t agent, server::awh_t * awh){
+		void handshake(const int32_t sid, const uint32_t bid, const server::web_t::agent_t agent, server::awh_t * awh){
 			// Если метод запроса соответствует GET-запросу и агент является HTTP-клиентом
 			if((this->_method == awh::web_t::method_t::GET) && (agent == server::web_t::agent_t::HTTP)){
 				// Деактивируем шифрование
@@ -292,7 +292,7 @@ class WebServer {
 		 * @param url    url-адрес запроса
 		 * @param awh    объект веб-сервера
 		 */
-		void request(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, server::awh_t * awh){
+		void request(const int32_t sid, const uint32_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, server::awh_t * awh){
 			// Запоминаем метод запроса
 			this->_method = method;
 			// Если пришёл запрос на фавиконку
@@ -311,7 +311,7 @@ class WebServer {
 		 * @param headers заголовки запроса
 		 * @param awh     объект веб-сервера
 		 */
-		void complete(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const buffer_t & entity, const headers_t & headers, server::awh_t * awh){
+		void complete(const int32_t sid, const uint32_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const buffer_t & entity, const headers_t & headers, server::awh_t * awh){
 			// Выводим информацию в лог
 			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
 
@@ -455,29 +455,29 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем функцию обработки сигналов завершения работы приложения
 	core.on <void (const int)> ("crash", &WebServer::crash, &executor, _1);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
-	core.on <void (const uint64_t, const size_t)> ("available", &WebServer::available, &executor, _1, _2, &core);
+	core.on <void (const uint32_t, const size_t)> ("available", &WebServer::available, &executor, _1, _2, &core);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &WebServer::unavailable, &executor, _1, _2, _3);
+	core.on <void (const uint32_t, const char *, const size_t)> ("unavailable", &WebServer::unavailable, &executor, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
 	awh.on <void (const string &, const uint32_t)> ("launched", &WebServer::launched, &executor, _1, _2);
 	// Устанавливаем функцию извлечения пароля пользователя для авторизации
-	awh.on <string (const uint64_t, const string &)> ("extractPassword", &WebServer::password, &executor, _1, _2);
+	awh.on <string (const uint32_t, const string &)> ("extractPassword", &WebServer::password, &executor, _1, _2);
 	// Устанавливаем функцию проверки авторизации прользователя
-	awh.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &WebServer::auth, &executor, _1, _2, _3);
+	awh.on <bool (const uint32_t, const string &, const string &)> ("checkPassword", &WebServer::auth, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	awh.on <bool (const string &, const string &, const uint32_t)> ("accept", &WebServer::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	awh.on <void (const uint64_t, const server::web_t::mode_t)> ("active", &WebServer::active, &executor, _1, _2, &core);
+	awh.on <void (const uint32_t, const server::web_t::mode_t)> ("active", &WebServer::active, &executor, _1, _2, &core);
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	awh.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &WebServer::error, &executor, _1, _2, _3);
+	awh.on <void (const uint32_t, const uint32_t, const string &)> ("errorWebsocket", &WebServer::error, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	awh.on <void (const uint64_t, const buffer_t &, const bool)> ("messageWebsocket", &WebServer::message, &executor, _1, _2, _3, &awh);
+	awh.on <void (const uint32_t, const buffer_t &, const bool)> ("messageWebsocket", &WebServer::message, &executor, _1, _2, _3, &awh);
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	awh.on <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", &WebServer::handshake, &executor, _1, _2, _3, &awh);
+	awh.on <void (const int32_t, const uint32_t, const server::web_t::agent_t)> ("handshake", &WebServer::handshake, &executor, _1, _2, _3, &awh);
 	// Установливаем функцию обратного вызова на событие получения запроса
-	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", &WebServer::request, &executor, _1, _2, _3, _4, &awh);
+	awh.on <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", &WebServer::request, &executor, _1, _2, _3, _4, &awh);
 	// Установливаем функцию обратного вызова на событие получения полного запроса клиента
-	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &, const headers_t &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
+	awh.on <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &, const headers_t &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат
