@@ -49,7 +49,7 @@ void awh::server::scheme::Websocket::set(const uint32_t bid) noexcept {
 		// Если новый клиент добавлен удачно
 		if(ret.second){
 			// Устанавливаем список доступных компрессоров
-			ret.first->second->http.compressors(this->compressors);
+			ret.first->second->http.req.compressors(this->compressors);
 			// Устанавливаем контрольную точку
 			ret.first->second->respPong = this->_fmk->timestamp <uint32_t> (fmk_t::chrono_t::MILLISECONDS);
 		}

@@ -21,7 +21,7 @@
 #include "web_2.hpp"
 #include "../../ws/frame.hpp"
 #include "../../ws/client2.hpp"
-#include "../../sys/threadpool.hpp"
+#include "../../core/guard.hpp"
 
 /**
  * @brief основное пространство имён
@@ -79,14 +79,16 @@ namespace awh {
 				 *
 				 */
 				typedef struct Allow {
-					bool send;    // Флаг разрешения отправки данных
-					bool receive; // Флаг разрешения чтения данных
+					// Флаг разрешения чтения данных
+					bool receive;
+					// Объект охранника
+					guard_t guard;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Allow() noexcept : send(true), receive(true) {}
-				} __attribute__((packed)) allow_t;
+					Allow() noexcept : receive(true) {}
+				} allow_t;
 				/**
 				 * @brief Структура партнёра
 				 *
@@ -145,12 +147,8 @@ namespace awh {
 			private:
 				// Флаг разрешения вывода информационных сообщений
 				bool _verb;
-				// Флаг завершения работы клиента
-				bool _close;
 				// Флаг выполненного рукопожатия
 				bool _shake;
-				// Флаг фриза работы клиента
-				bool _freeze;
 				// Флаг шифрования сообщений
 				bool _crypted;
 				// Флаг переданных сжатых данных
@@ -161,8 +159,11 @@ namespace awh {
 				// Контрольная точка ответа на пинг
 				uint64_t _respPong;
 			private:
-				// Объект тредпула для работы с потоками
-				thr_t _thr;
+				// Флаг завершения работы клиента
+				std::atomic_bool _close;
+				// Флаг фриза работы клиента
+				std::atomic_bool _freeze;
+			private:
 				// Объект для работы с HTTP-протколом
 				ws_t _http;
 				// Объект хэширования
@@ -484,14 +485,6 @@ namespace awh {
 				 * @param ver  версия сервиса
 				 */
 				void agent(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

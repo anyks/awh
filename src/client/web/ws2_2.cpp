@@ -77,7 +77,7 @@ void awh::client::Websocket2::send(const uint32_t bid) noexcept {
 		// Если бинарные данные запроса получены
 		if(!buffer.empty())
 			// Выводим параметры запроса
-			std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+			std::cout << buffer << std::endl << std::endl << std::flush;
 	#endif
 	// Запоминаем предыдущее значение идентификатора потока
 	const int32_t sid = this->_sid;
@@ -152,13 +152,6 @@ void awh::client::Websocket2::connectEvent(const uint32_t bid, const uint16_t si
 			if(!this->_headers.empty())
 				// Выполняем установку HTTP-заголовков
 				this->_ws1.setHeaders(this->_headers);
-			// Если многопоточность активированна
-			if(this->_thr.initialized()){
-				// Выполняем завершение всех активных потоков
-				this->_thr.stop();
-				// Выполняем инициализацию нового тредпула
-				this->_ws1.multiThreads(this->_threads);
-			}
 			// Если активирован режим прокси-сервера
 			if(this->_proxy.mode)
 				// Выполняем сброс заголовков прокси-сервера
@@ -532,7 +525,7 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 									// Если параметры ответа получены
 									if(!response.empty())
 										// Выводим параметры ответа
-										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
+										std::cout << response << std::endl << std::flush;
 								}
 							#endif
 							// Получаем параметры запроса
@@ -848,7 +841,7 @@ void awh::client::Websocket2::flush() noexcept {
 		// Снимаем флаг принудительной остановки
 		this->_stopped = false;
 		// Устанавливаем флаг разрешающий обмен данных
-		this->_allow = allow_t();
+		this->_allow.receive = true;
 		// Выполняем очистку оставшихся данных
 		web_t::_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
@@ -910,17 +903,20 @@ void awh::client::Websocket2::pinging(const uint16_t tid) noexcept {
  */
 void awh::client::Websocket2::ping(const void * buffer, const size_t size) noexcept {
 	// Если подключение выполнено
-	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
-		// Если рукопожатие выполнено
-		if((this->_bid > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE)){
-			// Создаём фрейм для отправки
-			const auto & frame = this->_frame.methods.ping(buffer, size, true);
-			// Если фрейм для отправки получен
-			if(!frame.empty()){
-				// Выполняем отправку сообщения на сервер
-				if(web2_t::send(this->_sid, frame.data(), frame.size(), http2_t::flag_t::NONE))
-					// Обновляем время отправленного пинга
-					this->_sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	if((this->_core != nullptr) && this->_core->working()){
+		// Если отправка сообщения разрешена
+		if(!this->_allow.guard.locked()){
+			// Если рукопожатие выполнено
+			if((this->_bid > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE)){
+				// Создаём фрейм для отправки
+				const auto & frame = this->_frame.methods.ping(buffer, size, true);
+				// Если фрейм для отправки получен
+				if(!frame.empty()){
+					// Выполняем отправку сообщения на сервер
+					if(web2_t::send(this->_sid, frame.data(), frame.size(), http2_t::flag_t::NONE))
+						// Обновляем время отправленного пинга
+						this->_sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+				}
 			}
 		}
 	}
@@ -933,15 +929,18 @@ void awh::client::Websocket2::ping(const void * buffer, const size_t size) noexc
  */
 void awh::client::Websocket2::pong(const void * buffer, const size_t size) noexcept {
 	// Если подключение выполнено
-	if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
-		// Если рукопожатие выполнено
-		if((this->_bid > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE)){
-			// Создаём фрейм для отправки
-			const auto & frame = this->_frame.methods.pong(buffer, size, true);
-			// Если фрейм для отправки получен
-			if(!frame.empty())
-				// Выполняем отправку сообщения на сервер
-				web2_t::send(this->_sid, frame.data(), frame.size(), http2_t::flag_t::NONE);
+	if((this->_core != nullptr) && this->_core->working()){
+		// Если отправка сообщения разрешена
+		if(!this->_allow.guard.locked()){
+			// Если рукопожатие выполнено
+			if((this->_bid > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE)){
+				// Создаём фрейм для отправки
+				const auto & frame = this->_frame.methods.pong(buffer, size, true);
+				// Если фрейм для отправки получен
+				if(!frame.empty())
+					// Выполняем отправку сообщения на сервер
+					web2_t::send(this->_sid, frame.data(), frame.size(), http2_t::flag_t::NONE);
+			}
 		}
 	}
 }
@@ -1205,15 +1204,8 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						} else if(!head.fin)
 							// Заполняем фрагментированное сообщение
 							this->_buffer.fragments.push(payload.data(), payload.size());
-						// Если сообщение является последним
-						else {
-							// Если тредпул активирован
-							if(this->_thr.initialized())
-								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-								this->_thr.push(std::bind(&ws2_t::extraction, this, payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
-							// Если тредпул не активирован, выполняем извлечение полученных сообщений
-							else this->extraction(payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
-						}
+						// Если тредпул не активирован, выполняем извлечение полученных сообщений
+						else this->extraction(payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 					} break;
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
@@ -1229,12 +1221,8 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 								return status_t::NEXT;
 							// Если сообщение является последним
 							} else if(head.fin) {
-								// Если тредпул активирован
-								if(this->_thr.initialized())
-									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-									this->_thr.push(std::bind(&ws2_t::extraction, this, static_cast <const char *> (this->_buffer.fragments), static_cast <size_t> (this->_buffer.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 								// Если тредпул не активирован, выполняем извлечение полученных сообщений
-								else this->extraction(static_cast <const char *> (this->_buffer.fragments), static_cast <size_t> (this->_buffer.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+								this->extraction(static_cast <const char *> (this->_buffer.fragments), static_cast <size_t> (this->_buffer.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 								// Очищаем список фрагментированных сообщений
 								this->_buffer.fragments.clear();
 							}
@@ -1439,34 +1427,37 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 			// Если подключение выполнено
-			if((this->_core != nullptr) && this->_core->working() && this->_allow.send && (this->_bid > 0)){
-				// Запрещаем получение данных
-				this->_allow.receive = false;
-				// Если код ошибки относится к Websocket
-				if((mess.code >= 1000) && !this->_stopped){
-					// Получаем буфер сообщения
-					const auto & buffer = this->_frame.methods.message(mess);
-					// Если данные сообщения получены
-					if((this->_stopped = !buffer.empty())){
-						// Выводим сообщение об ошибке
-						this->error(mess);
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим заголовок ответа
-							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
-							// Выводим отправляемое сообщение
-							std::cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << std::endl << std::endl << std::flush;
-						#endif
-						// Выполняем отправку сообщения на сервер
-						web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
-						// Выходим из функции
-						return;
+			if((this->_core != nullptr) && this->_core->working() && (this->_bid > 0)){
+				// Если отправка сообщения разрешена
+				if(auto lock = this->_allow.guard.lock()){
+					// Запрещаем получение данных
+					this->_allow.receive = false;
+					// Если код ошибки относится к Websocket
+					if((mess.code >= 1000) && !this->_stopped){
+						// Получаем буфер сообщения
+						const auto & buffer = this->_frame.methods.message(mess);
+						// Если данные сообщения получены
+						if((this->_stopped = !buffer.empty())){
+							// Выводим сообщение об ошибке
+							this->error(mess);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим заголовок ответа
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
+								// Выводим отправляемое сообщение
+								std::cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << std::endl << std::endl << std::flush;
+							#endif
+							// Выполняем отправку сообщения на сервер
+							web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
+							// Выходим из функции
+							return;
+						}
 					}
+					// Завершаем работу
+					const_cast <client::core_t *> (this->_core)->close(this->_bid);
 				}
-				// Завершаем работу
-				const_cast <client::core_t *> (this->_core)->close(this->_bid);
 			}
 		}
 	}
@@ -1504,134 +1495,133 @@ bool awh::client::Websocket2::sendMessage(const char * message, const size_t siz
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 			// Если подключение выполнено
-			if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
-				// Выполняем блокировку отправки сообщения
-				this->_allow.send = !this->_allow.send;
-				// Если рукопожатие выполнено
-				if((this->_bid > 0) && (message != nullptr) && (size > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE)){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим заголовок ответа
-						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
-						// Если отправляемое сообщение является текстом
-						if(text)
-							// Выводим параметры ответа
-							std::cout << string(message, size) << std::endl << std::endl << std::flush;
-						// Выводим сообщение о выводе чанка полезной нагрузки
-						else std::cout << this->_fmk->format("<bytes %zu>", size) << std::endl << std::endl << std::flush;
-					#endif
-					// Бинарный буфер для отправки
-					vector <char> buffer;
-					// Создаём объект заголовка для отправки
-					ws::frame_t::head_t head(true, true);
-					// Устанавливаем опкод сообщения
-					head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
-					// Указываем, что сообщение передаётся в сжатом виде
-					head.rsv[0] = ((size >= 1024) && (this->_compressor != http_t::compressor_t::NONE));
-					// Если необходимо сжимать сообщение перед отправкой
-					if(head.rsv[0]){
+			if((this->_core != nullptr) && this->_core->working()){
+				// Если отправка сообщения разрешена
+				if(auto lock = this->_allow.guard.lock()){
+					// Если рукопожатие выполнено
+					if((this->_bid > 0) && (message != nullptr) && (size > 0) && this->_http.isHandshake(http_t::process_t::RESPONSE)){
 						/**
-						 * Определяем метод компрессии
+						 * Если включён режим отладки
 						 */
-						switch(static_cast <uint8_t> (this->_compressor)){
-							// Если метод компрессии выбран LZ4
-							case static_cast <uint8_t> (http_t::compressor_t::LZ4):
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::LZ4, buffer);
-							break;
-							// Если метод компрессии выбран Zstandard
-							case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::ZSTD, buffer);
-							break;
-							// Если метод компрессии выбран LZma
-							case static_cast <uint8_t> (http_t::compressor_t::LZMA):
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::LZMA, buffer);
-							break;
-							// Если метод компрессии выбран Brotli
-							case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::BROTLI, buffer);
-							break;
-							// Если метод компрессии выбран BZip2
-							case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::BZIP2, buffer);
-							break;
-							// Если метод компрессии выбран GZip
-							case static_cast <uint8_t> (http_t::compressor_t::GZIP):
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::GZIP, buffer);
-							break;
-							// Если метод компрессии выбран Deflate
-							case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
-								// Устанавливаем размер скользящего окна
-								this->_hash.wbit(this->_client.wbit);
-								// Выполняем компрессию полученных данных
-								this->_hash.compress(message, size, hash_t::method_t::DEFLATE, buffer);
-								// Удаляем хвост в полученных данных
-								this->_hash.rmTail(buffer);
-							} break;
-						}
-						// Если сжатие данных не выполнено
-						if(buffer.empty()){
-							// Снимаем флаг сжатых данных
-							head.rsv[0] = !head.rsv[0];
-							// Заполняем бинарный буфер данными в том виде как они пришли
-							buffer.assign(message, message + size);
-						}
-					// Заполняем бинарный буфер данными в том виде как они пришли
-					} else buffer.assign(message, message + size);
-					// Если нужно производить шифрование
-					if(this->_crypted)
-						// Выполняем шифрование полезной нагрузки
-						buffer = ::move(this->_hash.encode <vector <char>> (buffer.data(), buffer.size(), this->_cipher));
-					// Если требуется фрагментация сообщения
-					if(buffer.size() > this->_frame.size){
-						// Смещение в бинарном буфере и актуальный размер блока
-						size_t offset = 0, actual = 0;
-						/**
-						 * Выполняем разбивку полезной нагрузки на сегменты
-						 */
-						while(offset < buffer.size()){
-							// Поулчаем количество оставшихся байт в буфере
-							actual = (buffer.size() - offset);
-							// Выполняем получение актуального размера отправляемых данных
-							actual = ((actual > this->_frame.size) ? this->_frame.size : actual);
-							// Устанавливаем флаг финального сообщения
-							head.fin = ((offset + actual) == buffer.size());
+						#if DEBUG_MODE
+							// Выводим заголовок ответа
+							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
+							// Если отправляемое сообщение является текстом
+							if(text)
+								// Выводим параметры ответа
+								std::cout << string(message, size) << std::endl << std::endl << std::flush;
+							// Выводим сообщение о выводе чанка полезной нагрузки
+							else std::cout << this->_fmk->format("<bytes %zu>", size) << std::endl << std::endl << std::flush;
+						#endif
+						// Бинарный буфер для отправки
+						vector <char> buffer;
+						// Создаём объект заголовка для отправки
+						ws::frame_t::head_t head(true, true);
+						// Устанавливаем опкод сообщения
+						head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
+						// Указываем, что сообщение передаётся в сжатом виде
+						head.rsv[0] = ((size >= 1024) && (this->_compressor != http_t::compressor_t::NONE));
+						// Если необходимо сжимать сообщение перед отправкой
+						if(head.rsv[0]){
+							/**
+							 * Определяем метод компрессии
+							 */
+							switch(static_cast <uint8_t> (this->_compressor)){
+								// Если метод компрессии выбран LZ4
+								case static_cast <uint8_t> (http_t::compressor_t::LZ4):
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::LZ4, buffer);
+								break;
+								// Если метод компрессии выбран Zstandard
+								case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::ZSTD, buffer);
+								break;
+								// Если метод компрессии выбран LZma
+								case static_cast <uint8_t> (http_t::compressor_t::LZMA):
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::LZMA, buffer);
+								break;
+								// Если метод компрессии выбран Brotli
+								case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::BROTLI, buffer);
+								break;
+								// Если метод компрессии выбран BZip2
+								case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::BZIP2, buffer);
+								break;
+								// Если метод компрессии выбран GZip
+								case static_cast <uint8_t> (http_t::compressor_t::GZIP):
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::GZIP, buffer);
+								break;
+								// Если метод компрессии выбран Deflate
+								case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
+									// Устанавливаем размер скользящего окна
+									this->_hash.wbit(this->_client.wbit);
+									// Выполняем компрессию полученных данных
+									this->_hash.compress(message, size, hash_t::method_t::DEFLATE, buffer);
+									// Удаляем хвост в полученных данных
+									this->_hash.rmTail(buffer);
+								} break;
+							}
+							// Если сжатие данных не выполнено
+							if(buffer.empty()){
+								// Снимаем флаг сжатых данных
+								head.rsv[0] = !head.rsv[0];
+								// Заполняем бинарный буфер данными в том виде как они пришли
+								buffer.assign(message, message + size);
+							}
+						// Заполняем бинарный буфер данными в том виде как они пришли
+						} else buffer.assign(message, message + size);
+						// Если нужно производить шифрование
+						if(this->_crypted)
+							// Выполняем шифрование полезной нагрузки
+							buffer = ::move(this->_hash.encode <vector <char>> (buffer.data(), buffer.size(), this->_cipher));
+						// Если требуется фрагментация сообщения
+						if(buffer.size() > this->_frame.size){
+							// Смещение в бинарном буфере и актуальный размер блока
+							size_t offset = 0, actual = 0;
+							/**
+							 * Выполняем разбивку полезной нагрузки на сегменты
+							 */
+							while(offset < buffer.size()){
+								// Поулчаем количество оставшихся байт в буфере
+								actual = (buffer.size() - offset);
+								// Выполняем получение актуального размера отправляемых данных
+								actual = ((actual > this->_frame.size) ? this->_frame.size : actual);
+								// Устанавливаем флаг финального сообщения
+								head.fin = ((offset + actual) == buffer.size());
+								// Создаём буфер для отправки
+								const auto & payload = this->_frame.methods.set(head, buffer.data() + offset, actual);
+								// Увеличиваем смещение в буфере
+								offset += actual;
+								// Если бинарный буфер для отправки данных получен
+								if(!payload.empty())
+									// Выполняем отправку сообщения на сервер
+									result = web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
+								// Выполняем сброс RSV1
+								head.rsv[0] = false;
+								// Устанавливаем опкод сообщения
+								head.optcode = ws::frame_t::opcode_t::CONTINUATION;
+								// Если запрос не отправлен
+								if(!result)
+									// Выходим из цикла
+									break;
+							}
+						// Если фрагментация сообщения не требуется
+						} else {
 							// Создаём буфер для отправки
-							const auto & payload = this->_frame.methods.set(head, buffer.data() + offset, actual);
-							// Увеличиваем смещение в буфере
-							offset += actual;
+							const auto & payload = this->_frame.methods.set(head, buffer.data(), buffer.size());
 							// Если бинарный буфер для отправки данных получен
 							if(!payload.empty())
 								// Выполняем отправку сообщения на сервер
 								result = web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
-							// Выполняем сброс RSV1
-							head.rsv[0] = false;
-							// Устанавливаем опкод сообщения
-							head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-							// Если запрос не отправлен
-							if(!result)
-								// Выходим из цикла
-								break;
 						}
-					// Если фрагментация сообщения не требуется
-					} else {
-						// Создаём буфер для отправки
-						const auto & payload = this->_frame.methods.set(head, buffer.data(), buffer.size());
-						// Если бинарный буфер для отправки данных получен
-						if(!payload.empty())
-							// Выполняем отправку сообщения на сервер
-							result = web2_t::send(this->_sid, payload.data(), payload.size(), http2_t::flag_t::NONE);
 					}
 				}
-				// Выполняем разблокировку отправки сообщения
-				this->_allow.send = !this->_allow.send;
 			}
 		}
 	}
@@ -1916,26 +1906,12 @@ void awh::client::Websocket2::core(const client::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
-		// Если многопоточность активированна
-		if(this->_thr.initialized() || this->_ws1._thr.initialized())
-			// Устанавливаем простое чтение базы событий
-			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
 		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &ws2_t::writeEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
-	} else if(this->_core != nullptr) {
-		// Если многопоточность активированна
-		if(this->_thr.initialized() || this->_ws1._thr.initialized()){
-			// Выполняем завершение всех активных потоков
-			this->_thr.stop();
-			// Выполняем завершение всех активных потоков
-			this->_ws1._thr.stop();
-			// Снимаем режим простого чтения базы событий
-			const_cast <client::core_t *> (this->_core)->easily(false);
-		}
+	} else if(this->_core != nullptr)
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
-	}
 }
 /**
  * @brief Метод установки флагов настроек модуля
@@ -2008,35 +1984,6 @@ void awh::client::Websocket2::agent(const string & id, const string & name, cons
 		// Устанавливаем данные сервиса для HTTP-клиента
 		this->_http.agent(id, name, ver);
 	}
-}
-/**
- * @brief Метод активации многопоточности
- *
- * @param count количество потоков для активации
- * @param mode  флаг активации/деактивации мультипоточности
- */
-void awh::client::Websocket2::multiThreads(const uint16_t count, const bool mode) noexcept {
-	// Если нужно активировать многопоточность
-	if(mode){
-		// Выполняем установку количества активных ядер
-		this->_threads = count;
-		// Если многопоточность ещё не активированна
-		if(!this->_thr.initialized())
-			// Выполняем инициализацию пула потоков
-			this->_thr.init(this->_threads);
-		// Если многопоточность уже активированна
-		else {
-			// Выполняем завершение всех активных потоков
-			this->_thr.stop();
-			// Выполняем инициализацию нового тредпула
-			this->_thr.init(this->_threads);
-		}
-		// Если сетевое ядро установлено
-		if(this->_core != nullptr)
-			// Устанавливаем простое чтение базы событий
-			const_cast <client::core_t *> (this->_core)->easily(true);
-	// Выполняем завершение всех потоков
-	} else this->_thr.stop();
 }
 /**
  * @brief Метод активации/деактивации прокси-склиента
@@ -2135,8 +2082,8 @@ void awh::client::Websocket2::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false), _shake(false),
- _freeze(false), _crypted(false), _inflate(false), _threads(0), _waitPong(_pingInterval * 2), _respPong(0),
+ web2_t(fmk, log), _sid(-1), _rid(0), _verb(true), _shake(false), _crypted(false),
+ _inflate(false), _waitPong(_pingInterval * 2), _respPong(0), _close(false), _freeze(false),
  _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _buffer(fmk, log), _headers(fmk, log), _callback(log),
  _cipher(hash_t::cipher_t::AES128), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Если размер фрейма не установлен
@@ -2156,8 +2103,8 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false), _shake(false),
- _freeze(false), _crypted(false), _inflate(false), _threads(0), _waitPong(_pingInterval * 2), _respPong(0),
+ web2_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _shake(false), _crypted(false),
+ _inflate(false), _waitPong(_pingInterval * 2), _respPong(0), _close(false), _freeze(false),
  _ws1(fmk, log), _http(fmk, log), _hash(log), _frame(fmk, log), _buffer(fmk, log), _headers(fmk, log), _callback(log),
  _cipher(hash_t::cipher_t::AES128), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Если размер фрейма не установлен
@@ -2175,13 +2122,4 @@ awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * f
  * @brief Деструктор
  *
  */
-awh::client::Websocket2::~Websocket2() noexcept {
-	// Если многопоточность активированна
-	if(this->_thr.initialized())
-		// Выполняем завершение всех активных потоков
-		this->_thr.stop();
-	// Если многопоточность активированна у Websocket/1.1 клиента
-	if(this->_ws1._thr.initialized())
-		// Выполняем завершение всех активных потоков
-		this->_ws1._thr.stop();
-}
+awh::client::Websocket2::~Websocket2() noexcept {}

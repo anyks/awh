@@ -63,10 +63,6 @@ void awh::client::Http2::connectEvent(const uint32_t bid, const uint16_t sid) no
 		this->_ws2._http2 = this->_http2;
 		// Выполняем установку данных URL-адреса
 		this->_ws2._scheme.url = this->_scheme.url;
-		// Если многопоточность активированна
-		if(this->_threads > -1)
-			// Выполняем инициализацию нового тредпула
-			this->_ws2.multiThreads(this->_threads);
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(web2_t::_callback.is("active"))
 			// Выполняем функцию обратного вызова
@@ -258,7 +254,7 @@ int32_t awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffe
 						// Добавляем полученный чанк в тело данных
 						i->second->http.chunk(reinterpret_cast <const char *> (buffer), size);
 						// Обновляем время отправленного пинга
-						this->_sendPing = this->_fmk->timestamp <uint32_t> (fmk_t::chrono_t::MILLISECONDS);
+						this->_sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 						if(web2_t::_callback.is("chunks")){
 							// Выполняем очистку буфера чанка
@@ -351,7 +347,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										// Если параметры запроса получены
 										if(!request.empty())
 											// Выводим параметры запроса
-											std::cout << string(static_cast <const char *> (request), static_cast <size_t> (request)) << std::endl << std::flush;
+											std::cout << request << std::endl << std::flush;
 									}
 								#endif
 								// Если функция обратного вызова на вывода запроса клиента к серверу
@@ -497,7 +493,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 												// Если параметры ответа получены
 												if(!response.empty())
 													// Выводим параметры ответа
-													std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
+													std::cout << response << std::endl << std::flush;
 											}
 										#endif
 										// Получаем параметры запроса
@@ -1446,7 +1442,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Получаем бинарные данные HTTP-запроса
 								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 								// Выводим параметры запроса
-								std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+								std::cout << buffer << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, query);
@@ -1655,17 +1651,17 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Устанавливаем размер чанка
 						ret.first->second->http.chunkSize(this->_chunkSize);
 					// Если User-Agent установлен
-					if(!this->_agent.user.empty())
+					if(!this->_sign.user.empty())
 						// Устанавливаем пользовательского агента
-						ret.first->second->http.agent(this->_agent.user);
+						ret.first->second->http.agent(this->_sign.user);
 					// Если логин пользователя и пароль установлены
 					if(!this->_login.empty() && !this->_password.empty())
 						// Устанавливаем логин и пароль пользователя
 						ret.first->second->http.user(this->_login, this->_password);
 					// Если параметры сервиса установлены
-					if(!this->_agent.id.empty() || !this->_agent.name.empty() || !this->_agent.ver.empty())
+					if(!this->_sign.id.empty() || !this->_sign.name.empty() || !this->_sign.ver.empty())
 						// Устанавливаем данные сервиса
-						ret.first->second->http.agent(this->_agent.id, this->_agent.name, this->_agent.ver);
+						ret.first->second->http.agent(this->_sign.id, this->_sign.name, this->_sign.ver);
 					// Если шифрование активированно
 					if(this->_encryption.mode){
 						// Устанавливаем флаг шифрования
@@ -1814,7 +1810,7 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 						// Получаем бинарные данные HTTP-запроса
 						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 						// Выводим параметры запроса
-						std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+						std::cout << buffer << std::endl << std::endl << std::flush;
 					#endif
 					// Выполняем заголовки запроса на сервер
 					result = web2_t::send(sid, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));
@@ -2067,29 +2063,12 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
-		// Если многопоточность активированна
-		if(this->_threads > 0)
-			// Устанавливаем простое чтение базы событий
-			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
 		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &http2_t::writeEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
-	} else if(this->_core != nullptr) {
-		// Если многопоточность активированна
-		if(this->_threads <= 0){
-			// Если многопоточность активированна
-			if(this->_ws2._thr.initialized() || this->_ws2._ws1._thr.initialized()){
-				// Выполняем завершение всех активных потоков
-				this->_ws2._thr.stop();
-				// Выполняем завершение всех активных потоков
-				this->_ws2._ws1._thr.stop();
-			}
-			// Снимаем режим простого чтения базы событий
-			const_cast <client::core_t *> (this->_core)->easily(false);
-		}
+	} else if(this->_core != nullptr)
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
-	}
 }
 /**
  * @brief Метод установки флагов настроек модуля
@@ -2161,20 +2140,6 @@ void awh::client::Http2::agent(const string & id, const string & name, const str
 		// Устанавливаем данные сервиса для HTTP-клиента
 		this->_http1.agent(id, name, ver);
 	}
-}
-/**
- * @brief Метод активации многопоточности
- *
- * @param count количество потоков для активации
- * @param mode  флаг активации/деактивации мультипоточности
- */
-void awh::client::Http2::multiThreads(const int16_t count, const bool mode) noexcept {
-	// Если необходимо активировать мультипоточность
-	if(mode)
-		// Выполняем установку количества ядер мультипоточности
-		this->_threads = count;
-	// Если необходимо отключить мультипоточность
-	else this->_threads = -1;
 }
 /**
  * @brief Метод активации/деактивации прокси-склиента
@@ -2307,8 +2272,7 @@ void awh::client::Http2::encryption(const string & pass, const string & salt, co
  * @param log объект для работы с логами
  */
 awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log),
- _http(fmk, log), _chunk(fmk, log), _webSocket(false), _threads(-1) {
+ web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _chunk(fmk, log), _webSocket(false) {
 	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
 	this->_http1.on <void (const int32_t, const uint32_t)> ("result", &http2_t::result, this, _1, _2);
 	// Выполняем установку перехвата событий получения статуса овтета сервера для HTTP-клиента
@@ -2330,8 +2294,7 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log),
- _http(fmk, log), _chunk(fmk, log), _webSocket(false), _threads(-1) {
+ web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _chunk(fmk, log), _webSocket(false) {
 	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
 	this->_http1.on <void (const int32_t, const uint32_t)> ("result", &http2_t::result, this, _1, _2);
 	// Выполняем установку перехвата событий получения статуса овтета сервера для HTTP-клиента
@@ -2356,8 +2319,4 @@ awh::client::Http2::~Http2() noexcept {
 	this->_ws2._core = nullptr;
 	// Выполняем установку сессии HTTP/2
 	this->_ws2._http2 = nullptr;
-	// Если многопоточность активированна
-	if(this->_ws2._thr.initialized())
-		// Выполняем завершение всех активных потоков
-		this->_ws2._thr.stop();
 }

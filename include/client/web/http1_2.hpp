@@ -65,9 +65,6 @@ namespace awh {
 				// Агент воркера выполнения запроса
 				agent_t _agent;
 			private:
-				// Количество активных ядер
-				int16_t _threads;
-			private:
 				// Хранилище функций обратного вызова для вывода результата
 				callback_t _callback;
 			private:
@@ -372,14 +369,6 @@ namespace awh {
 				 * @param ver  версия сервиса
 				 */
 				void agent(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

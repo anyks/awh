@@ -1222,16 +1222,6 @@ void awh::client::AWH::keepAlive(const int32_t cnt, const int32_t idle, const in
 	this->_http.keepAlive(cnt, idle, intvl);
 }
 /**
- * @brief Метод активации многопоточности в Websocket
- *
- * @param count количество потоков для активации
- * @param mode  флаг активации/деактивации мультипоточности
- */
-void awh::client::AWH::multiThreads(const uint16_t count, const bool mode) noexcept {
-	// Выполняем активацию многопоточности при получения данных в Websocket
-	this->_http.multiThreads(count, mode);
-}
-/**
  * @brief Метод установки User-Agent для HTTP-запроса
  *
  * @param userAgent агент пользователя для HTTP-запроса

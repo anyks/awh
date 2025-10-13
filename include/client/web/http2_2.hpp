@@ -102,9 +102,6 @@ namespace awh {
 				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
 			private:
-				// Количество активных ядер
-				int16_t _threads;
-			private:
 				// Список активных маршрутов запросов
 				std::unordered_map <string, string> _route;
 			private:
@@ -469,14 +466,6 @@ namespace awh {
 				 * @param ver  версия сервиса
 				 */
 				void agent(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

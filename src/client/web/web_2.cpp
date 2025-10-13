@@ -253,7 +253,7 @@ void awh::client::Web::proxyConnectEvent(const uint32_t bid, const uint16_t sid)
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
-								std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+								std::cout << buffer << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем отправку сообщения на сервер
 							const_cast <client::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
@@ -391,7 +391,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 										// Выводим заголовок ответа
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры ответа
-										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+										std::cout << response << std::endl << std::endl << std::flush;
 										// Если тело ответа существует
 										if(!this->_scheme.proxy.http.empty(awh::web_t::unit_t::BODY))
 											// Выводим сообщение о выводе чанка тела
@@ -992,9 +992,9 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk, log), _scheme(fmk, log), _callback(log), _nossl(false),
- _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
+ _reading(false), _pinging(true), _complete(true), _redirects(false),
  _attempt(0), _attempts(15), _sendPing(0), _pingInterval(PING_INTERVAL),
- _buffer(fmk, log), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
+ _stopped(false), _buffer(fmk, log), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -1011,9 +1011,9 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk, log), _scheme(fmk, log), _callback(log), _nossl(false),
- _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
+ _reading(false), _pinging(true), _complete(true), _redirects(false),
  _attempt(0), _attempts(15), _sendPing(0), _pingInterval(PING_INTERVAL),
- _buffer(fmk, log), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _stopped(false), _buffer(fmk, log), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

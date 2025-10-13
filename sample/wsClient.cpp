@@ -257,8 +257,6 @@ int32_t main(int32_t argc, char * argv[]){
 	// core.sending(node_t::sending_t::DEFFER);
 	// Устанавливаем логин и пароль пользователя
 	ws.user("user", "password");
-	// Выполняем активацию многопоточности
-	// ws.multiThreads(22);
 
 	// Устанавливаем данные прокси-сервера
 	// ws.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");

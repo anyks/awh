@@ -60,7 +60,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Переходим по всему списку брокера
 					for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 						// Если блокировка брокера не установлена
-						if(this->_busy.find(i->first) == this->_busy.end()){
+						if(auto lock = this->_guard.lock(i->first)){
 							// Создаём бъект активного брокера подключения
 							awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 							// Выполняем остановку работы событий
@@ -745,7 +745,7 @@ void awh::client::Core::start() noexcept {
  */
 void awh::client::Core::reset(const uint32_t bid) noexcept {
 	// Если блокировка брокера не установлена
-	if(this->_busy.find(bid) == this->_busy.end()){
+	if(auto lock = this->_guard.lock(bid)){
 		// Если брокер существует
 		if(this->has(bid))
 			// Выполняем отключение от сервера
@@ -826,9 +826,7 @@ void awh::client::Core::close() noexcept {
 				// Переходим по всему списку брокера
 				for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(i->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(i->first);
+					if(auto lock = this->_guard.lock(i->first)){
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 						// Выполняем остановку работы событий
@@ -853,8 +851,6 @@ void awh::client::Core::close() noexcept {
 						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.on <void ()> (i->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), i->first, item.first);
-						// Удаляем блокировку брокера
-						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
 						i = shm->_brokers.erase(i);
 					// Иначе продолжаем дальше
@@ -894,9 +890,7 @@ void awh::client::Core::remove() noexcept {
 				// Переходим по всему списку брокера
 				for(auto j = shm->_brokers.begin(); j!= shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(j->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(j->first);
+					if(auto lock = this->_guard.lock(j->first)){
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 						// Выполняем остановку работы событий
@@ -921,8 +915,6 @@ void awh::client::Core::remove() noexcept {
 						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.on <void ()> (j->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), j->first, i->first);
-						// Удаляем блокировку брокера
-						this->_busy.erase(j->first);
 						// Удаляем брокера из списка
 						j = shm->_brokers.erase(j);
 					// Иначе продолжаем дальше
@@ -1024,9 +1016,7 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
  */
 void awh::client::Core::close(const uint32_t bid) noexcept {
 	// Если блокировка брокера не установлена
-	if(this->_busy.find(bid) == this->_busy.end()){
-		// Выполняем блокировку брокера
-		this->_busy.emplace(bid);
+	if(auto lock = this->_guard.lock(bid)){
 		// Объект работы с функциями обратного вызова
 		callback_t callback(this->_log);
 		// Если идентификатор брокера подключений существует
@@ -1071,8 +1061,6 @@ void awh::client::Core::close(const uint32_t bid) noexcept {
 					callback.on <void ()> ("reconnect", &core_t::reconnect, this, i->first);
 			}
 		}
-		// Удаляем блокировку брокера
-		this->_busy.erase(bid);
 		// Если функция дисконнекта установлена
 		if(callback.is("disconnect")){
 			// Если разрешено выводить информационные сообщения
@@ -1117,9 +1105,7 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 					// Выполняем удаление таймаута
 					this->clearTimeout(j->first);
 				// Если блокировка брокера не установлена
-				if(this->_busy.find(j->first) == this->_busy.end()){
-					// Выполняем блокировку брокера
-					this->_busy.emplace(j->first);
+				if(auto lock = this->_guard.lock(j->first)){
 					// Получаем бъект активного брокера подключения
 					awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 					// Выполняем остановку работы событий
@@ -1144,8 +1130,6 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 					if(this->_callback.is("disconnect"))
 						// Устанавливаем полученную функцию обратного вызова
 						callback.on <void ()> (j->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), j->first, i->first);
-					// Удаляем блокировку брокера
-					this->_busy.erase(j->first);
 					// Удаляем брокера из списка
 					j = shm->_brokers.erase(j);
 				// Иначе продолжаем дальше

@@ -1462,9 +1462,7 @@ void awh::server::Core::close() noexcept {
 				// Переходим по всему списку брокера
 				for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(i->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(i->first);
+					if(auto lock = this->_guard.lock(i->first)){
 						// Выполняем удаление таймера ожидания получения данных
 						this->clearTimeout(i->first);
 						// Получаем бъект активного брокера подключения
@@ -1491,8 +1489,6 @@ void awh::server::Core::close() noexcept {
 						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.on <void ()> (i->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), i->first, item.first);
-						// Удаляем блокировку брокера
-						this->_busy.erase(i->first);
 						// Удаляем брокера из списка
 						i = shm->_brokers.erase(i);
 					// Иначе продолжаем дальше
@@ -1544,9 +1540,7 @@ void awh::server::Core::remove() noexcept {
 				// Переходим по всему списку брокера
 				for(auto j = shm->_brokers.begin(); j != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(j->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(j->first);
+					if(auto lock = this->_guard.lock(j->first)){
 						// Выполняем удаление таймера ожидания получения данных
 						this->clearTimeout(j->first);
 						// Получаем бъект активного брокера подключения
@@ -1573,8 +1567,6 @@ void awh::server::Core::remove() noexcept {
 						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.on <void ()> (j->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), j->first, i->first);
-						// Удаляем блокировку брокера
-						this->_busy.erase(j->first);
 						// Удаляем брокера из списка
 						j = shm->_brokers.erase(j);
 					// Иначе продолжаем дальше
@@ -1618,9 +1610,7 @@ void awh::server::Core::close(const uint32_t bid) noexcept {
 		// Если тип сокета установлен как SCTP
 		case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 			// Если блокировка брокера не установлена
-			if(this->_busy.find(bid) == this->_busy.end()){
-				// Выполняем блокировку брокера
-				this->_busy.emplace(bid);
+			if(auto lock = this->_guard.lock(bid)){
 				// Объект работы с функциями обратного вызова
 				callback_t callback(this->_log);
 				// Если идентификатор брокера подключений существует
@@ -1649,8 +1639,6 @@ void awh::server::Core::close(const uint32_t bid) noexcept {
 							callback.on <void ()> (bid, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), bid, shm->id);
 					}
 				}
-				// Удаляем блокировку брокера
-				this->_busy.erase(bid);
 				// Если функция обратного вызова установлена
 				if(callback.is(bid))
 					// Выполняем все функции обратного вызова
@@ -1691,9 +1679,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 				// Переходим по всему списку брокера
 				for(auto j = shm->_brokers.begin(); j != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(j->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(j->first);
+					if(auto lock = this->_guard.lock(j->first)){
 						// Выполняем удаление таймера ожидания получения данных
 						this->clearTimeout(j->first);
 						// Получаем бъект активного брокера подключения
@@ -1720,8 +1706,6 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.on <void ()> (j->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), j->first, i->first);
-						// Удаляем блокировку брокера
-						this->_busy.erase(j->first);
 						// Удаляем брокера из списка
 						j = shm->_brokers.erase(j);
 					// Иначе продолжаем дальше
@@ -1753,9 +1737,7 @@ void awh::server::Core::close(const uint16_t sid, const uint32_t bid) noexcept {
 		// Если тип сокета установлен как UDP
 		case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
 			// Если блокировка брокера не установлена
-			if(this->_busy.find(bid) == this->_busy.end()){
-				// Выполняем блокировку брокера
-				this->_busy.emplace(bid);
+			if(auto lock = this->_guard.lock(bid)){
 				// Если идентификатор брокера подключений существует
 				if(this->has(bid)){
 					// Создаём бъект активного брокера подключения
@@ -1778,8 +1760,6 @@ void awh::server::Core::close(const uint16_t sid, const uint32_t bid) noexcept {
 							this->_log->print("Disconnect server", log_t::flag_t::INFO);
 					}
 				}
-				// Удаляем блокировку брокера
-				this->_busy.erase(bid);
 				// Выполняем активацию сервера
 				this->accept(1, sid);
 			}
@@ -1787,9 +1767,7 @@ void awh::server::Core::close(const uint16_t sid, const uint32_t bid) noexcept {
 		// Если тип сокета установлен как DTLS
 		case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 			// Если блокировка брокера не установлена
-			if(this->_busy.find(bid) == this->_busy.end()){
-				// Выполняем блокировку брокера
-				this->_busy.emplace(bid);
+			if(auto lock = this->_guard.lock(bid)){
 				// Если идентификатор брокера подключений существует
 				if(this->has(bid)){
 					// Создаём бъект активного брокера подключения
@@ -1842,8 +1820,6 @@ void awh::server::Core::close(const uint16_t sid, const uint32_t bid) noexcept {
 									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server [%s:%u] cannot be started", shm->_host.c_str(), shm->_port));
 							}
 						}
-						// Удаляем блокировку брокера
-						this->_busy.erase(bid);
 					}
 				}
 			}

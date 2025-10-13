@@ -273,16 +273,6 @@ void awh::client::AWH_Websocket::keepAlive(const int32_t cnt, const int32_t idle
 	this->_ws.keepAlive(cnt, idle, intvl);
 }
 /**
- * @brief Метод активации многопоточности в Websocket
- *
- * @param count количество потоков для активации
- * @param mode  флаг активации/деактивации мультипоточности
- */
-void awh::client::AWH_Websocket::multiThreads(const uint16_t count, const bool mode) noexcept {
-	// Выполняем активацию многопоточности при получения данных в Websocket
-	this->_ws.multiThreads(count, mode);
-}
-/**
  * @brief Метод установки списка заголовков
  *
  * @param headers список заголовков для установки

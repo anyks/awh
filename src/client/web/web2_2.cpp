@@ -115,7 +115,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 							// Если параметры ответа получены
 							if(!response.empty())
 								// Выводим параметры ответа
-								std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+								std::cout << response << std::endl << std::endl << std::flush;
 						}
 					#endif
 					// Получаем параметры запроса
@@ -282,7 +282,7 @@ void awh::client::Web2::proxyConnectEvent(const uint32_t bid, const uint16_t sid
 									// Получаем бинарные данные HTTP-запроса
 									const auto & buffer = this->_scheme.proxy.http.proxy(request);
 									// Выводим параметры запроса
-									std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+									std::cout << buffer << std::endl << std::endl << std::flush;
 								#endif
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(request);
@@ -693,7 +693,7 @@ void awh::client::Web2::agent(const string & userAgent) noexcept {
 		// Устанавливаем пользовательского агента у родительского класса
 		web_t::agent(userAgent);
 		// Устанавливаем пользовательского агента
-		this->_agent.user = userAgent;
+		this->_sign.user = userAgent;
 	}
 }
 /**
@@ -709,11 +709,11 @@ void awh::client::Web2::agent(const string & id, const string & name, const stri
 		// Выполняем установку данных сервиса у родительского класса
 		web_t::agent(id, name, ver);
 		// Запоминаем идентификатор сервиса
-		this->_agent.id = id;
+		this->_sign.id = id;
 		// Запоминаем версию сервиса
-		this->_agent.ver = ver;
+		this->_sign.ver = ver;
 		// Запоминаем название сервиса
-		this->_agent.name = name;
+		this->_sign.name = name;
 	}
 }
 /**

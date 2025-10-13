@@ -20,13 +20,16 @@
  */
 #include <map>
 #include <vector>
+#include <atomic>
 
 /**
  * Наши модули
  */
 #include "server2.hpp"
 #include "../ws/frame.hpp"
-#include "../ws/server.hpp"
+#include "../ws/server2.hpp"
+#include "../core/guard.hpp"
+#include "../http/server2.hpp"
 #include "../sys/buffer.hpp"
 
 /**
@@ -55,38 +58,20 @@ namespace awh {
 			typedef struct AWH_SHARED_EXPORT Websocket : public scheme_t {
 				public:
 					/**
-					 * @brief Структура буфера данных
-					 *
-					 */
-					typedef struct Buffer {
-						// Бинарный буфер полезной нагрузки
-						awh::buffer_t payload;
-						// Буфер фрагментированного сообщения
-						awh::buffer_t fragments;
-						// Буфер извлечения данных
-						awh::buffer_t extraction;
-						/**
-						 * @brief Конструктор
-						 *
-						 * @param fmk объект фреймворка
-						 * @param log объект для работы с логами
-						 */
-						Buffer(const fmk_t * fmk, const log_t * log) noexcept :
-						 payload(fmk, log), fragments(fmk, log), extraction(fmk, log) {}
-					} buffer_t;
-					/**
 					 * @brief Структура флагов разрешения обменом данных
 					 *
 					 */
 					typedef struct Allow {
-						bool send;    // Флаг разрешения отправки данных
-						bool receive; // Флаг разрешения чтения данных
+						// Флаг разрешения чтения данных
+						bool receive;
+						// Объект охранника
+						guard_t guard;
 						/**
 						 * @brief Конструктор
 						 *
 						 */
-						Allow() noexcept : send(true), receive(true) {}
-					} __attribute__((packed)) allow_t;
+						Allow() noexcept : receive(true) {}
+					} allow_t;
 					/**
 					 * @brief Структура партнёра
 					 *
@@ -118,32 +103,88 @@ namespace awh {
 						 size(AWH_CHUNK_SIZE), methods(fmk, log),
 						 opcode(ws::frame_t::opcode_t::TEXT) {}
 					} frame_t;
+					/**
+					 * @brief Структура работы с HTTP-протоколом
+					 * 
+					 */
+					typedef struct Http {
+						// Объект для работы с HTTP-запросом
+						server::ws_t req;
+						// Объект для работы с HTTP-ответом
+						server::http_t res;
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Объект для формирования отладочной информации
+							server::http_t debug;
+							/**
+							 * @brief Конструктор
+							 * 
+							 * @param fmk объект фреймворка
+							 * @param log объект для работы с логами
+							 */
+							Http(const fmk_t * fmk, const log_t * log) noexcept :
+							 req(fmk, log), res(fmk, log), debug(fmk, log) {}
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							/**
+							 * @brief Конструктор
+							 * 
+							 * @param fmk объект фреймворка
+							 * @param log объект для работы с логами
+							 */
+							Http(const fmk_t * fmk, const log_t * log) noexcept :
+							 req(fmk, log), res(fmk, log) {}
+						#endif
+					} http_t;
+					/**
+					 * @brief Структура буфера данных
+					 *
+					 */
+					typedef struct Buffer {
+						// Бинарный буфер полезной нагрузки
+						awh::buffer_t payload;
+						// Буфер фрагментированного сообщения
+						awh::buffer_t fragments;
+						// Буфер извлечения данных
+						awh::buffer_t extraction;
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param fmk объект фреймворка
+						 * @param log объект для работы с логами
+						 */
+						Buffer(const fmk_t * fmk, const log_t * log) noexcept :
+						 payload(fmk, log), fragments(fmk, log), extraction(fmk, log) {}
+					} buffer_t;
 				public:
 					/**
 					 * @brief Структура параметров активного клиента
 					 *
 					 */
 					typedef struct Options {
-						bool close;                      // Флаг требования закрыть брокера
-						bool shake;                      // Флаг выполненного рукопожатия
-						bool crypted;                    // Флаг шифрования сообщений
-						bool inflate;                    // Флаг переданных сжатых данных
-						bool stopped;                    // Флаг принудительной остановки
-						int32_t sid;                     // Идентификатор потока
-						uint64_t respPong;               // Контрольная точка ответа на пинг
-						uint64_t sendPing;               // Время отправленного пинга
-						hash_t hash;                     // Объект хэширования
-						allow_t allow;                   // Объект разрешения обмена данными
-						frame_t frame;                   // Объект фрейма Websocket
-						ws::mess_t mess;                 // Объект отправляемого сообщения
-						buffer_t buffer;                 // Объект буфера данных
-						partner_t client;                // Объект партнёра клиента
-						partner_t server;                // Объект партнёра сервера
-						server::ws_t http;               // Объект для работы с HTTP
-						hash_t::cipher_t cipher;         // Формат шифрования
-						engine_t::proto_t proto;         // Активный прототип интернета
-						std::recursive_mutex mtx;        // Мютекс для блокировки потока
-						http_t::compressor_t compressor; // Метод компрессии данных
+						bool shake;                           // Флаг выполненного рукопожатия
+						bool crypted;                         // Флаг шифрования сообщений
+						bool inflate;                         // Флаг переданных сжатых данных
+						int32_t sid;                          // Идентификатор потока
+						uint64_t respPong;                    // Контрольная точка ответа на пинг
+						uint64_t sendPing;                    // Время отправленного пинга
+						std::atomic_bool close;               // Флаг требования закрыть брокера
+						std::atomic_bool stopped;             // Флаг принудительной остановки
+						http_t http;                          // Объект для работы с HTTP
+						hash_t hash;                          // Объект хэширования
+						allow_t allow;                        // Объект разрешения обмена данными
+						frame_t frame;                        // Объект фрейма Websocket
+						ws::mess_t mess;                      // Объект отправляемого сообщения
+						buffer_t buffer;                      // Объект буфера данных
+						partner_t client;                     // Объект партнёра клиента
+						partner_t server;                     // Объект партнёра сервера
+						hash_t::cipher_t cipher;              // Формат шифрования
+						engine_t::proto_t proto;              // Активный прототип интернета
+						awh::http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * @brief Конструктор
 						 *
@@ -151,13 +192,12 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						 close(false), shake(false),
-						 crypted(false), inflate(false), stopped(false),
-						 sid(1), respPong(0), sendPing(0), hash(log),
-						 frame(fmk, log), buffer(fmk, log), http(fmk, log),
+						 shake(false), crypted(false), inflate(false), sid(1),
+						 respPong(0), sendPing(0), close(false), stopped(false),
+						 http(fmk, log), hash(log), frame(fmk, log), buffer(fmk, log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
-						 compressor(http_t::compressor_t::NONE) {}
+						 compressor(awh::http_t::compressor_t::NONE) {}
 						/**
 						 * @brief Деструктор
 						 *

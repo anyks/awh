@@ -547,14 +547,6 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * @brief Метод активации многопоточности в Websocket
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
-			public:
-				/**
 				 * @brief Метод установки User-Agent для HTTP-запроса
 				 *
 				 * @param userAgent агент пользователя для HTTP-запроса

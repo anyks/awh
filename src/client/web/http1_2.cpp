@@ -48,10 +48,6 @@ void awh::client::Http1::connectEvent(const uint32_t bid, const uint16_t sid) no
 		this->_ws1._http.id(bid);
 		// Выполняем установку сетевого ядра
 		this->_ws1._core = this->_core;
-		// Если многопоточность активированна
-		if(this->_threads > -1)
-			// Выполняем инициализацию нового тредпула
-			this->_ws1.multiThreads(this->_threads);
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(web_t::_callback.is("active"))
 			// Выполняем функцию обратного вызова
@@ -164,7 +160,7 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 												// Выводим заголовок ответа
 												std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 												// Выводим параметры ответа
-												std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
+												std::cout << response << std::endl << std::flush;
 												// Если тело ответа существует
 												if(!this->_http.empty(awh::web_t::unit_t::BODY))
 													// Выводим сообщение о выводе чанка тела
@@ -905,7 +901,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					// Выводим заголовок запроса
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
-					std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+					std::cout << buffer << std::endl << std::endl << std::flush;
 				#endif
 				// Кусок тела отправляемого запроса
 				buffer_t chunk(this->_fmk, this->_log);
@@ -1167,7 +1163,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 					// Выводим заголовок запроса
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
-					std::cout << string(static_cast <const char *> (headers), static_cast <size_t> (headers)) << std::endl << std::endl << std::flush;
+					std::cout << headers << std::endl << std::endl << std::flush;
 				#endif
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = end;
@@ -1335,26 +1331,12 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 	if(core != nullptr){
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
-		// Если многопоточность активированна
-		if(this->_threads > 0)
-			// Устанавливаем простое чтение базы событий
-			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
 		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &http1_t::writeEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
-	} else if(this->_core != nullptr) {
-		// Если многопоточность активированна
-		if(this->_threads <= 0){
-			// Если многопоточность активированна
-			if(this->_ws1._thr.initialized())
-				// Выполняем завершение всех активных потоков
-				this->_ws1._thr.stop();
-			// Снимаем режим простого чтения базы событий
-			const_cast <client::core_t *> (this->_core)->easily(false);
-		}
+	} else if(this->_core != nullptr)
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
-	}
 }
 /**
  * @brief Метод установки флагов настроек модуля
@@ -1428,20 +1410,6 @@ void awh::client::Http1::agent(const string & id, const string & name, const str
 		// Устанавливаем данные сервиса
 		this->_http.agent(id, name, ver);
 	}
-}
-/**
- * @brief Метод активации многопоточности
- *
- * @param count количество потоков для активации
- * @param mode  флаг активации/деактивации мультипоточности
- */
-void awh::client::Http1::multiThreads(const int16_t count, const bool mode) noexcept {
-	// Если необходимо активировать мультипоточность
-	if(mode)
-		// Выполняем установку количества ядер мультипоточности
-		this->_threads = count;
-	// Если необходимо отключить мультипоточность
-	else this->_threads = -1;
 }
 /**
  * @brief Метод активации/деактивации прокси-склиента
@@ -1547,7 +1515,7 @@ void awh::client::Http1::encryption(const string & pass, const string & salt, co
  * @param log объект для работы с логами
  */
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _callback(log) {
+ web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _callback(log) {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
 	this->_ws1.on <void (const int32_t, const uint32_t, const awh::http_t::handshake_t)> ("answer", &http1_t::answer, this, _1, _2, _3);
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
@@ -1569,7 +1537,7 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _callback(log) {
+ web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _callback(log) {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
 	this->_ws1.on <void (const int32_t, const uint32_t, const awh::http_t::handshake_t)> ("answer", &http1_t::answer, this, _1, _2, _3);
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
@@ -1592,8 +1560,4 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
 awh::client::Http1::~Http1() noexcept {
 	// Снимаем адрес сетевого ядра
 	this->_ws1._core = nullptr;
-	// Если многопоточность активированна
-	if(this->_ws1._thr.initialized())
-		// Выполняем завершение всех активных потоков
-		this->_ws1._thr.stop();
 }

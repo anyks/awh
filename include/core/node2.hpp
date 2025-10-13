@@ -28,6 +28,7 @@
  * Наши модули
  */
 #include "core2.hpp"
+#include "guard.hpp"
 #include "../net/uri.hpp"
 #include "../net/dns.hpp"
 #include "../net/engine.hpp"
@@ -167,6 +168,8 @@ namespace awh {
 			net_t _net;
 			// Объект работы с URI
 			uri_t _uri;
+			// Объект охранника
+			guard_t _guard;
 			// Объект сетевого двигателя
 			engine_t _engine;
 			// Режим отправки сообщений
@@ -179,8 +182,6 @@ namespace awh {
 			// Максимальный размер хранимой полезной нагрузки для одного брокера
 			size_t _brokerAvailableSize;
 		protected:
-			// Список занятых процессов брокера
-			std::set <uint32_t> _busy;
 			// Список свободной памяти хранения полезной нагрузки
 			std::map <uint32_t, size_t> _available;
 			// Список активных схем сети

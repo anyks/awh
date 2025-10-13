@@ -224,8 +224,6 @@ namespace awh {
 				bool _nossl;
 				// Флаг чтения данных из буфера
 				bool _reading;
-				// Флаг принудительной остановки
-				bool _stopped;
 				// Флаг разрешающий выполнение пингов
 				bool _pinging;
 				// Флаг остановки работы базы событий
@@ -243,6 +241,9 @@ namespace awh {
 			protected:
 				// Интервал времени на выполнение пингов
 				uint32_t _pingInterval;
+			protected:
+				// Флаг принудительной остановки
+				std::atomic_bool _stopped;
 			protected:
 				// Объект буфера данных
 				buffer_t _buffer;
@@ -698,10 +699,10 @@ namespace awh {
 		typedef class Web2 : public web_t {
 			protected:
 				/**
-				 * @brief Структура агента клиента
+				 * @brief Сигнатура идентификации сервера
 				 *
 				 */
-				typedef struct Agent {
+				typedef struct Signature {
 					string id;   // Идентификатор сервиса
 					string ver;  // Версия сервиса
 					string name; // Название сервиса
@@ -710,12 +711,14 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Agent() noexcept :
-					 id{""}, ver{""}, name{""}, user{""} {}
-				} agent_t;
+					Signature() noexcept :
+					 id{AWH_SHORT_NAME},
+					 ver{AWH_VERSION},
+					 name{AWH_NAME}, user{""} {}
+				} sign_t;
 			protected:
-				// Объект агента клиента
-				agent_t _agent;
+				// Объект сигнатуры клиента
+				sign_t _sign;
 				// Объект работы с фреймами Http2
 				http2_t _http2;
 			protected:

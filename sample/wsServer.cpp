@@ -292,8 +292,6 @@ int32_t main(int32_t argc, char * argv[]){
 	// core.clusterAutoRestart(true);
 	// Активируем максимальное количество рабочих процессов
 	core.cluster(awh::scheme_t::mode_t::ENABLED);
-	// Выполняем активацию многопоточности
-	// ws.multiThreads(22);
 	// Устанавливаем название сервера
 	// ws.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
