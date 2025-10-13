@@ -1,6 +1,6 @@
 /**
  * @file: awh.hpp
- * @date: 2023-09-19
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -126,7 +126,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, awh::headers_t & headers, const bool end) noexcept;
 			public:
 				/**
 				 * @brief Метод HTTP/2 отправки сообщения на сервер
@@ -169,7 +169,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> GET(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t GET(const uri_t::url_t & url, const awh::headers_t & headers = {}) noexcept;
 				/**
 				 * @brief Метод запроса в формате HTTP методом DEL
 				 *
@@ -177,7 +177,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> DEL(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t DEL(const uri_t::url_t & url, const awh::headers_t & headers = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод запроса в формате HTTP методом PUT
@@ -187,7 +187,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t PUT(const uri_t::url_t & url, const awh::buffer_t & entity, const awh::headers_t & headers = {}) noexcept;
+				/**
+				 * @brief Метод запроса в формате HTTP методом PUT
+				 *
+				 * @param url     адрес запроса
+				 * @param entity  тело запроса
+				 * @param headers заголовки запроса
+				 * @return        результат запроса
+				 */
+				awh::buffer_t PUT(const uri_t::url_t & url, const awh::headers_t & entity, const awh::headers_t & headers = {}) noexcept;
 				/**
 				 * @brief Метод запроса в формате HTTP методом PUT
 				 *
@@ -197,16 +206,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
-				/**
-				 * @brief Метод запроса в формате HTTP методом PUT
-				 *
-				 * @param url     адрес запроса
-				 * @param entity  тело запроса
-				 * @param headers заголовки запроса
-				 * @return        результат запроса
-				 */
-				vector <char> PUT(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t PUT(const uri_t::url_t & url, const char * entity, const size_t size, const awh::headers_t & headers = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод запроса в формате HTTP методом POST
@@ -216,7 +216,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t POST(const uri_t::url_t & url, const awh::buffer_t & entity, const awh::headers_t & headers = {}) noexcept;
+				/**
+				 * @brief Метод запроса в формате HTTP методом POST
+				 *
+				 * @param url     адрес запроса
+				 * @param entity  тело запроса
+				 * @param headers заголовки запроса
+				 * @return        результат запроса
+				 */
+				awh::buffer_t POST(const uri_t::url_t & url, const awh::headers_t & entity, const awh::headers_t & headers = {}) noexcept;
 				/**
 				 * @brief Метод запроса в формате HTTP методом POST
 				 *
@@ -226,16 +235,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
-				/**
-				 * @brief Метод запроса в формате HTTP методом POST
-				 *
-				 * @param url     адрес запроса
-				 * @param entity  тело запроса
-				 * @param headers заголовки запроса
-				 * @return        результат запроса
-				 */
-				vector <char> POST(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t POST(const uri_t::url_t & url, const char * entity, const size_t size, const awh::headers_t & headers = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод запроса в формате HTTP методом PATCH
@@ -245,7 +245,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t PATCH(const uri_t::url_t & url, const awh::buffer_t & entity, const awh::headers_t & headers = {}) noexcept;
+				/**
+				 * @brief Метод запроса в формате HTTP методом PATCH
+				 *
+				 * @param url     адрес запроса
+				 * @param entity  тело запроса
+				 * @param headers заголовки запроса
+				 * @return        результат запроса
+				 */
+				awh::buffer_t PATCH(const uri_t::url_t & url, const awh::headers_t & entity, const awh::headers_t & headers = {}) noexcept;
 				/**
 				 * @brief Метод запроса в формате HTTP методом PATCH
 				 *
@@ -255,16 +264,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
-				/**
-				 * @brief Метод запроса в формате HTTP методом PATCH
-				 *
-				 * @param url     адрес запроса
-				 * @param entity  тело запроса
-				 * @param headers заголовки запроса
-				 * @return        результат запроса
-				 */
-				vector <char> PATCH(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::buffer_t PATCH(const uri_t::url_t & url, const char * entity, const size_t size, const awh::headers_t & headers = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод запроса в формате HTTP методом HEAD
@@ -273,7 +273,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				std::unordered_multimap <string, string> HEAD(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::headers_t HEAD(const uri_t::url_t & url, const awh::headers_t & headers = {}) noexcept;
 				/**
 				 * @brief Метод запроса в формате HTTP методом TRACE
 				 *
@@ -281,7 +281,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				std::unordered_multimap <string, string> TRACE(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::headers_t TRACE(const uri_t::url_t & url, const awh::headers_t & headers = {}) noexcept;
 				/**
 				 * @brief Метод запроса в формате HTTP методом OPTIONS
 				 *
@@ -289,7 +289,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				std::unordered_multimap <string, string> OPTIONS(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				awh::headers_t OPTIONS(const uri_t::url_t & url, const awh::headers_t & headers = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод выполнения запроса HTTP
@@ -299,7 +299,7 @@ namespace awh {
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
 				 */
-				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, std::unordered_multimap <string, string> & headers) noexcept;
+				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, awh::buffer_t & entity, awh::headers_t & headers) noexcept;
 				/**
 				 * @brief Метод выполнения запроса HTTP
 				 *
@@ -310,7 +310,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @param result  результат работы функции
 				 */
-				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, const char * entity, const size_t size, std::unordered_multimap <string, string> & headers, vector <char> & result) noexcept;
+				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, const char * entity, const size_t size, awh::headers_t & headers, awh::buffer_t & result) noexcept;
 			public:
 				/**
 				 * @brief Метод открытия подключения
@@ -369,7 +369,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const char * name, Args... args) noexcept -> uint64_t {
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
@@ -391,7 +391,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint64_t {
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова
@@ -413,7 +413,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(fid > 0)
 						// Выполняем установку функции обратного вызова
@@ -436,11 +436,11 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const A fid, Args... args) noexcept -> uint64_t {
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
-					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 						// Выполняем установку функции обратного вызова
-						return this->_http.on <B> (static_cast <uint64_t> (fid), args...);
+						return this->_http.on <B> (static_cast <uint32_t> (fid), args...);
 					// Выводим результат по умолчанию
 					return 0;
 				}
@@ -504,7 +504,7 @@ namespace awh {
 				 *
 				 * @param size размер чанка для установки
 				 */
-				void chunk(const size_t size) noexcept;
+				void chunkSize(const size_t size) noexcept;
 				/**
 				 * @brief Метод установки размеров сегментов фрейма Websocket
 				 *
@@ -547,19 +547,11 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * @brief Метод активации многопоточности в Websocket
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
-			public:
-				/**
 				 * @brief Метод установки User-Agent для HTTP-запроса
 				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void userAgent(const string & userAgent) noexcept;
+				void agent(const string & userAgent) noexcept;
 				/**
 				 * @brief Метод установки идентификации клиента
 				 *
@@ -567,7 +559,7 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void ident(const string & id, const string & name, const string & ver) noexcept;
+				void agent(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

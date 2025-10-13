@@ -1,6 +1,6 @@
 /**
  * @file: awh.cpp
- * @date: 2022-10-02
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -28,7 +28,7 @@ using namespace std;
  * @param bid идентификатор брокера
  * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
-awh::engine_t::proto_t awh::server::AWH::proto(const uint64_t bid) const noexcept {
+awh::engine_t::proto_t awh::server::AWH::proto(const uint32_t bid) const noexcept {
 	// Выполняем извлечения поддерживаемого протокола подключения
 	return this->_http.proto(bid);
 }
@@ -39,7 +39,7 @@ awh::engine_t::proto_t awh::server::AWH::proto(const uint64_t bid) const noexcep
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
  */
-const awh::http_t * awh::server::AWH::parser(const int32_t sid, const uint64_t bid) const noexcept {
+const awh::http_t * awh::server::AWH::parser(const int32_t sid, const uint32_t bid) const noexcept {
 	// Выполняем извлечение объекта HTTP-парсера
 	return this->_http.parser(sid, bid);
 }
@@ -50,7 +50,7 @@ const awh::http_t * awh::server::AWH::parser(const int32_t sid, const uint64_t b
  * @param sid идентификатор потока
  * @return    флаг запроса клиентом передачи трейлеров
  */
-bool awh::server::AWH::trailers(const int32_t sid, const uint64_t bid) const noexcept {
+bool awh::server::AWH::trailers(const int32_t sid, const uint32_t bid) const noexcept {
 	// Выводим флаг запроса клиентом на передачу трейлеров
 	return this->_http.trailers(sid, bid);
 }
@@ -62,7 +62,7 @@ bool awh::server::AWH::trailers(const int32_t sid, const uint64_t bid) const noe
  * @param key ключ заголовка
  * @param val значение заголовка
  */
-void awh::server::AWH::trailer(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
+void awh::server::AWH::trailer(const int32_t sid, const uint32_t bid, const string & key, const string & val) noexcept {
 	// Выполняем установку трейлера
 	this->_http.trailer(sid, bid, key, val);
 }
@@ -93,7 +93,7 @@ void awh::server::AWH::init(const uint32_t port, const string & host, const vect
  * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::AWH::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
+void awh::server::AWH::sendError(const uint32_t bid, const ws::mess_t & mess) noexcept {
 	// Выполняем отправку сообещния об ошибке клиенту
 	this->_http.sendError(bid, mess);
 }
@@ -105,7 +105,7 @@ void awh::server::AWH::sendError(const uint64_t bid, const ws::mess_t & mess) no
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
  */
-bool awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::AWH::sendMessage(const uint32_t bid, const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
 	return this->_http.sendMessage(bid, message, text);
 }
@@ -118,7 +118,7 @@ bool awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & mes
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
  */
-bool awh::server::AWH::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+bool awh::server::AWH::sendMessage(const uint32_t bid, const char * message, const size_t size, const bool text) noexcept {
 	// Выполняем отправку сообщения клиенту
 	return this->_http.sendMessage(bid, message, size, text);
 }
@@ -130,7 +130,7 @@ bool awh::server::AWH::sendMessage(const uint64_t bid, const char * message, con
  * @param size   размер сообщения в байтах
  * @return       результат отправки сообщения
  */
-bool awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::AWH::send(const uint32_t bid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных в бинарном виде клиенту
 	return this->_http.send(bid, buffer, size);
 }
@@ -144,7 +144,7 @@ bool awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::server::AWH::send(const int32_t sid, const uint32_t bid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Выполняем отправку тела сообщения клиенту
 	return this->_http.send(sid, bid, buffer, size, end);
 }
@@ -159,7 +159,7 @@ bool awh::server::AWH::send(const int32_t sid, const uint64_t bid, const char * 
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::AWH::send(const int32_t sid, const uint32_t bid, const uint32_t code, const string & mess, const headers_t & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков сообщения клиенту
 	return this->_http.send(sid, bid, code, mess, headers, end);
 }
@@ -174,7 +174,7 @@ int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint
  * @param size    размер данных полезной нагрузки (размер тела сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::server::AWH::send(const int32_t sid, const uint32_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const headers_t & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
 	this->_http.send(sid, bid, code, mess, buffer, size, headers);
 }
@@ -188,7 +188,7 @@ void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::server::AWH::send(const int32_t sid, const uint32_t bid, const uint32_t code, const string & mess, const buffer_t & entity, const headers_t & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
 	this->_http.send(sid, bid, code, mess, entity, headers);
 }
@@ -198,7 +198,7 @@ void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_
  * @param bid идентификатор брокера
  * @return    результат выполнения операции
  */
-bool awh::server::AWH::shutdown2(const uint64_t bid) noexcept {
+bool awh::server::AWH::shutdown2(const uint32_t bid) noexcept {
 	// Выполняем отправку клиенту сообщения корректного завершения
 	return this->_http.shutdown2(bid);
 }
@@ -210,7 +210,7 @@ bool awh::server::AWH::shutdown2(const uint64_t bid) noexcept {
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::AWH::reject2(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+bool awh::server::AWH::reject2(const int32_t sid, const uint32_t bid, const awh::http2_t::error_t error) noexcept {
 	// Выполняем сброс подключения
 	return this->_http.reject2(sid, bid, error);
 }
@@ -224,7 +224,7 @@ bool awh::server::AWH::reject2(const int32_t sid, const uint64_t bid, const awh:
  * @param size   размер отправляемого буфера данных
  * @return       результат отправки данных фрейма
  */
-bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const awh::http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
+bool awh::server::AWH::goaway2(const int32_t last, const uint32_t bid, const awh::http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения закрытия всех потоков
 	return this->_http.goaway2(last, bid, error, buffer, size);
 }
@@ -236,7 +236,7 @@ bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const awh
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept {
+bool awh::server::AWH::send2(const int32_t sid, const uint32_t bid, const vector <std::pair <string, string>> & headers) noexcept {
 	// Выполняем отправку трейлеров
 	return this->_http.send2(sid, bid, headers);
 }
@@ -250,7 +250,7 @@ bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
+bool awh::server::AWH::send2(const int32_t sid, const uint32_t bid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку сообщения клиенту
 	return this->_http.send2(sid, bid, buffer, size, flag);
 }
@@ -263,7 +263,7 @@ bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const char *
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::send2(const int32_t sid, const uint32_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку заголовков
 	return this->_http.send2(sid, bid, headers, flag);
 }
@@ -276,7 +276,7 @@ int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vec
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::push2(const int32_t sid, const uint32_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку пуш-уведомлений
 	return this->_http.push2(sid, bid, headers, flag);
 }
@@ -295,7 +295,7 @@ void awh::server::AWH::callback(const callback_t & callback) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-uint32_t awh::server::AWH::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::AWH::port(const uint32_t bid) const noexcept {
 	// Выполняем извлечение порта брокера
 	return this->_http.port(bid);
 }
@@ -305,7 +305,7 @@ uint32_t awh::server::AWH::port(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
-awh::server::web_t::agent_t awh::server::AWH::agent(const uint64_t bid) const noexcept {
+awh::server::web_t::agent_t awh::server::AWH::agent(const uint32_t bid) const noexcept {
 	// Выводим идентификатор агента к которому относится клиент
 	return this->_http.agent(bid);
 }
@@ -315,7 +315,7 @@ awh::server::web_t::agent_t awh::server::AWH::agent(const uint64_t bid) const no
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
-const string & awh::server::AWH::ip(const uint64_t bid) const noexcept {
+const string & awh::server::AWH::ip(const uint32_t bid) const noexcept {
 	// Выполняем извлечение IP-адреса брокера
 	return this->_http.ip(bid);
 }
@@ -325,7 +325,7 @@ const string & awh::server::AWH::ip(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
-const string & awh::server::AWH::mac(const uint64_t bid) const noexcept {
+const string & awh::server::AWH::mac(const uint32_t bid) const noexcept {
 	// Выполняем извлечение MAC-адреса брокера
 	return this->_http.mac(bid);
 }
@@ -350,7 +350,7 @@ void awh::server::AWH::start() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::AWH::close(const uint64_t bid) noexcept {
+void awh::server::AWH::close(const uint32_t bid) noexcept {
 	// Выполняем закрытие подключения брокера
 	this->_http.close(bid);
 }
@@ -396,7 +396,7 @@ void awh::server::AWH::subprotocols(const std::unordered_set <string> & subproto
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const std::unordered_set <string> & awh::server::AWH::subprotocols(const uint64_t bid) const noexcept {
+const std::unordered_set <string> & awh::server::AWH::subprotocols(const uint32_t bid) const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_http.subprotocols(bid);
 }
@@ -415,7 +415,7 @@ void awh::server::AWH::extensions(const vector <vector <string>> & extensions) n
  * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::server::AWH::extensions(const uint64_t bid) const noexcept {
+const vector <vector <string>> & awh::server::AWH::extensions(const uint32_t bid) const noexcept {
 	// Выполняем извлечение списка поддерживаемых расширений
 	return this->_http.extensions(bid);
 }
@@ -546,9 +546,9 @@ void awh::server::AWH::opaque(const string & opaque) noexcept {
  *
  * @param size размер чанка для установки
  */
-void awh::server::AWH::chunk(const size_t size) noexcept {
+void awh::server::AWH::chunkSize(const size_t size) noexcept {
 	// Выполняем установку размера чанка
-	this->_http.chunk(size);
+	this->_http.chunkSize(size);
 }
 /**
  * @brief Метод установки максимального количества запросов
@@ -574,7 +574,7 @@ void awh::server::AWH::alive(const bool mode) noexcept {
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::AWH::alive(const uint64_t bid, const bool mode) noexcept {
+void awh::server::AWH::alive(const uint32_t bid, const bool mode) noexcept {
 	// Выполняем установку долгоживущего подключения
 	this->_http.alive(bid, mode);
 }
@@ -613,9 +613,9 @@ void awh::server::AWH::waitTimeDetect(const uint16_t read, const uint16_t write)
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::server::AWH::ident(const string & id, const string & name, const string & ver) noexcept {
+void awh::server::AWH::agent(const string & id, const string & name, const string & ver) noexcept {
 	// Выполняем установку идентификатора сервера
-	this->_http.ident(id, name, ver);
+	this->_http.agent(id, name, ver);
 }
 /**
  * @brief Метод установки типа авторизации
@@ -634,7 +634,7 @@ void awh::server::AWH::authType(const auth_t::type_t type, const auth_t::hash_t 
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::AWH::crypted(const int32_t sid, const uint64_t bid) const noexcept {
+bool awh::server::AWH::crypted(const int32_t sid, const uint32_t bid) const noexcept {
 	// Выводим установленный флаг шифрования
 	return this->_http.crypted(sid, bid);
 }
@@ -645,7 +645,7 @@ bool awh::server::AWH::crypted(const int32_t sid, const uint64_t bid) const noex
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::AWH::encrypt(const int32_t sid, const uint64_t bid, const bool mode) noexcept {
+void awh::server::AWH::encrypt(const int32_t sid, const uint32_t bid, const bool mode) noexcept {
 	// Выполняем установку флага шифрования для клиента
 	this->_http.encrypt(sid, bid, mode);
 }

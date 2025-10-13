@@ -1,6 +1,6 @@
 /**
  * @file: web.cpp
- * @date: 2022-10-01
+ * @date: 2025-11-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -56,25 +56,25 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 			// Если система запущена
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
-				const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+				const_cast <server::core_t *> (this->_core)->bind(this->_timer);
 				// Если разрешено выполнять пинги
 				if(this->_pinging){
 					// Устанавливаем интервал времени на выполнения пинга клиента
 					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.on(tid, &web_t::pinging, this, tid);
+					this->_timer.on <void (const uint16_t)> (tid, &web_t::pinging, this, tid);
 				}
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on(tid, &web_t::disconected, this, tid);
+				this->_timer.on <void (const uint16_t)> (tid, &web_t::disconected, this, tid);
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
 				// Останавливаем все установленные таймеры
 				this->_timer.clear();
 				// Выполняем анбиндинг ядра локального таймера
-				const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+				const_cast <server::core_t *> (this->_core)->unbind(this->_timer);
 			} break;
 		}
 	}
@@ -127,7 +127,7 @@ bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::server::Web::chunking(const uint32_t bid, const buffer_t & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()){
 		// Выполняем добавление полученного чанка в тело ответа
@@ -135,7 +135,7 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 		if(this->_callback.is("chunks"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", 1, bid, chunk);
+			this->_callback.call <void (const int32_t, const uint32_t, const buffer_t &)> ("chunks", 1, bid, chunk);
 	}
 }
 /**
@@ -145,7 +145,7 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
  * @param fid   идентификатор функции обратного вызова
  * @param fn    функция обратного вызова в чистом виде
  */
-void awh::server::Web::callbackEvents([[maybe_unused]] const callback_t::event_t event, [[maybe_unused]] const uint64_t fid, [[maybe_unused]] const callback_t::fn_t & fn) noexcept {}
+void awh::server::Web::callbackEvents([[maybe_unused]] const callback_t::event_t event, [[maybe_unused]] const uint32_t fid, [[maybe_unused]] const callback_t::fn_t & fn) noexcept {}
 /**
  * @brief Метод вывода статуса кластера
  *
@@ -164,18 +164,18 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
 			// Если событие прислал дочерний процесс
 			if(family == cluster_t::family_t::CHILDREN){
 				// Выполняем биндинг ядра локального таймера
-				const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+				const_cast <server::core_t *> (this->_core)->bind(this->_timer);
 				// Если разрешено выполнять пинги
 				if(this->_pinging){
 					// Устанавливаем интервал времени на выполнения пинга клиента
 					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.on(tid, &web_t::pinging, this, tid);
+					this->_timer.on <void (const uint16_t)> (tid, &web_t::pinging, this, tid);
 				}
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on(tid, &web_t::disconected, this, tid);
+				this->_timer.on <void (const uint16_t)> (tid, &web_t::disconected, this, tid);
 			}
 		} break;
 		// Если событие остановки сервиса
@@ -185,7 +185,7 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
 				// Останавливаем все установленные таймеры
 				this->_timer.clear();
 				// Выполняем анбиндинг ядра локального таймера
-				const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+				const_cast <server::core_t *> (this->_core)->unbind(this->_timer);
 			}
 		} break;
 	}
@@ -199,7 +199,7 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
  *
  * @param bid идентификатор брокера
  */
-void awh::server::Web::erase(const uint64_t bid) noexcept {
+void awh::server::Web::erase(const uint32_t bid) noexcept {
 	// Если список отключившихся клиентов не пустой
 	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
@@ -231,7 +231,7 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::Web::disconnect(const uint64_t bid) noexcept {
+void awh::server::Web::disconnect(const uint32_t bid) noexcept {
 	// Добавляем в очередь список отключившихся клиентов
 	this->_disconected.emplace(bid, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS));
 }
@@ -329,7 +329,7 @@ void awh::server::Web::callback(const callback_t & callback) noexcept {
  * @param bid идентификатор брокера
  * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
-awh::engine_t::proto_t awh::server::Web::proto(const uint64_t bid) const noexcept {
+awh::engine_t::proto_t awh::server::Web::proto(const uint32_t bid) const noexcept {
 	// Если сетевое ядро установлено
 	if(this->_core != nullptr)
 		// Выводим идентификатор активного HTTP-протокола
@@ -410,7 +410,7 @@ void awh::server::Web::opaque(const string & opaque) noexcept {
  *
  * @param size размер чанка для установки
  */
-void awh::server::Web::chunk(const size_t size) noexcept {
+void awh::server::Web::chunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->_chunkSize = (size > 0 ? size : AWH_CHUNK_SIZE);
 }
@@ -421,13 +421,13 @@ void awh::server::Web::chunk(const size_t size) noexcept {
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::server::Web::ident(const string & id, const string & name, const string & ver) noexcept {
+void awh::server::Web::agent(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем идентификатор сервера
-	this->_ident.id = id;
+	this->_sign.id = id;
 	// Устанавливаем версию сервера
-	this->_ident.ver = ver;
+	this->_sign.ver = ver;
 	// Устанавливаем название сервера
-	this->_ident.name = name;
+	this->_sign.name = name;
 }
 /**
  * @brief Метод установки типа авторизации

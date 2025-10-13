@@ -1,6 +1,6 @@
 /**
  * @file: sample.hpp
- * @date: 2022-09-01
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -94,7 +94,7 @@ namespace awh {
 					/**
 					 * Тип данных для хранения опций активных клиентов
 					 */
-					typedef std::map <uint64_t, std::unique_ptr <options_t>> clients_t;
+					using clients_t = std::map <uint32_t, std::unique_ptr <options_t>>;
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;
@@ -115,13 +115,13 @@ namespace awh {
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void set(const uint64_t bid) noexcept;
+					void set(const uint32_t bid) noexcept;
 					/**
 					 * @brief Метод удаления параметров активного клиента
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void rm(const uint64_t bid) noexcept;
+					void rm(const uint32_t bid) noexcept;
 				public:
 					/**
 					 * @brief Метод извлечения списка параметров активных клиентов
@@ -135,7 +135,7 @@ namespace awh {
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
-					const options_t * get(const uint64_t bid) const noexcept;
+					const options_t * get(const uint32_t bid) const noexcept;
 				public:
 					/**
 					 * @brief Конструктор
@@ -143,8 +143,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Sample(const fmk_t * fmk, const log_t * log) noexcept :
-					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					Sample(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *

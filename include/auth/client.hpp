@@ -1,6 +1,6 @@
 /**
  * @file: client.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
+#include "auth.hpp"
 
 /**
  * @brief основное пространство имён
@@ -41,40 +41,27 @@ namespace awh {
 		typedef class AWH_SHARED_EXPORT Auth : public auth_t {
 			public:
 				/**
-				 * @brief Структура данных авторизации
+				 * @brief Структура параметров авторизации
 				 *
 				 */
-				typedef struct Data {
+				typedef struct Settings {
+					const char * user;       // Логин пользователя
+					const char * pass;       // Пароль пользователя
 					const type_t * type;     // Тип авторизации
 					const digest_t * digest; // Параметры Digest авторизации
-					const string * user;     // Логин пользователя
-					const string * pass;     // Пароль пользователя
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Data() noexcept :
-					 type(nullptr), digest(nullptr),
-					 user(nullptr), pass(nullptr) {}
-				} data_t;
+					Settings() noexcept :
+					 user(nullptr), pass(nullptr),
+					 type(nullptr), digest(nullptr) {}
+				} __attribute__((packed)) settings_t;
 			private:
 				// Логин пользователя
 				string _user;
 				// Пароль пользователя
 				string _pass;
-			public:
-				/**
-				 * @brief Метод извлечения данных авторизации
-				 *
-				 * @return данные модуля авторизации
-				 */
-				data_t data() const noexcept;
-				/**
-				 * @brief Метод установки данных авторизации
-				 *
-				 * @param data данные авторизации для установки
-				 */
-				void data(const data_t & data) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров HTTP запроса
@@ -112,12 +99,30 @@ namespace awh {
 				string auth(const string & method) noexcept;
 			public:
 				/**
+				 * @brief Метод извлечения параметров авторизации
+				 *
+				 * @return параметры модуля авторизации
+				 */
+				settings_t settings() const noexcept;
+				/**
+				 * @brief Метод установки параметров авторизации
+				 *
+				 * @param settings параметры авторизации для установки
+				 */
+				void settings(const settings_t & settings) noexcept;
+			public:
+				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""} {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 * 
+				 */
+				~Auth() noexcept {}
 		} auth_t;
 	};
 };

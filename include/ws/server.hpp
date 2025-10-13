@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2021-12-19
+ * @date: 2025-10-07
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,14 +12,13 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_WS_CORE_SERVER__
-#define __AWH_WS_CORE_SERVER__
+#ifndef __AWH_WS_SERVER__
+#define __AWH_WS_SERVER__
 
 /**
  * Наши модули
  */
-#include "core.hpp"
-#include "../auth/server.hpp"
+#include "ws.hpp"
 
 /**
  * @brief основное пространство имён
@@ -39,7 +38,7 @@ namespace awh {
 		 * @brief Класс для работы с сервером WebSocket
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT WS : public ws_core_t {
+		typedef class AWH_SHARED_EXPORT Websocket : public awh::ws_t {
 			public:
 				/**
 				 * @brief Метод применения полученных результатов
@@ -48,19 +47,19 @@ namespace awh {
 				void commit() noexcept;
 			public:
 				/**
-				 * @brief Метод проверки текущего статуса
+				 * @brief Метод проверки выполнения рукопожатия
 				 *
-				 * @return результат проверки текущего статуса
+				 * @return результат выполнения рукопожатия
 				 */
-				status_t status() noexcept;
+				handshake_t handshake() noexcept;
 			public:
 				/**
 				 * @brief Метод проверки шагов рукопожатия
 				 *
-				 * @param flag флаг выполнения проверки
+				 * @param step флаг выполнения проверки
 				 * @return     результат проверки соответствия
 				 */
-				bool check(const flag_t flag) noexcept;
+				bool step(const step_t step) noexcept;
 			public:
 				/**
 				 * @brief Метод установки название сервера
@@ -76,24 +75,24 @@ namespace awh {
 				void opaque(const string & opaque) noexcept;
 			public:
 				/**
-				 * @brief Метод извлечения данных авторизации
+				 * @brief Метод извлечения параметров авторизации
 				 *
-				 * @return данные модуля авторизации
+				 * @return параметры модуля авторизации
 				 */
-				server::auth_t::data_t authorization() const noexcept;
+				server::auth_t::settings_t authorization() const noexcept;
 				/**
-				 * @brief Метод установки данных авторизации
+				 * @brief Метод установки параметров авторизации
 				 *
-				 * @param data данные авторизации для установки
+				 * @param settings параметры авторизации для установки
 				 */
-				void authorization(const server::auth_t::data_t & data) noexcept;
+				void authorization(const server::auth_t::settings_t & settings) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления функции извлечения пароля
 				 *
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */
-				void extractPassCallback(function <string (const string &)> callback) noexcept;
+				void authCallback(function <string (const string &)> callback) noexcept;
 				/**
 				 * @brief Метод добавления функции обработки авторизации
 				 *
@@ -115,14 +114,14 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WS(const fmk_t * fmk, const log_t * log) noexcept;
+				Websocket(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~WS() noexcept {}
+				~Websocket() noexcept {}
 		} ws_t;
 	};
 };
 
-#endif // __AWH_WS_CORE_SERVER__
+#endif // __AWH_WS_SERVER__

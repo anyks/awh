@@ -12,8 +12,6 @@
  * @copyright: Copyright © 2025
  */
 
-#include <iostream>
-
 /**
  * Если максимальное количество файловых дескрипторов не передано
  */
@@ -158,6 +156,14 @@ void awh::Base::boostingNetwork() const noexcept {
 		 * Если необходимо выполнить тюннинг операционной системы
 		 */
 		#if AWH_BOOSTING_NET
+			/**
+			 * Для операционных систем не относящихся к MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Устанавливаем правила освобождения памяти
+				::mallopt(M_MMAP_THRESHOLD, 64 * 1024);
+				::mallopt(M_TRIM_THRESHOLD, 128 * 1024);
+			#endif
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -580,7 +586,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
  * @param sock  сокет межпотокового передатчика
  * @param event входящее событие от межпотокового передатчика
  */
-void awh::Base::stream(const SOCKET sock, const uint64_t event) noexcept {
+void awh::Base::stream(const SOCKET sock, const uint32_t event) noexcept {
 	// Выполняем поиск указанного межпотокового передатчика
 	auto i = this->_upstream.find(sock);
 	// Если межпотоковый передатчик обнаружен
@@ -588,7 +594,7 @@ void awh::Base::stream(const SOCKET sock, const uint64_t event) noexcept {
 		// Если функция обратного вызова установлена
 		if(i->second->callback != nullptr)
 			// Выполняем функцию обратного вызова
-			std::apply(i->second->callback, std::make_tuple(event));
+			i->second->callback(event);
 	}
 }
 /**
@@ -814,7 +820,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
  * @param sock сокет для удаления
  * @return   результат работы функции
  */
-bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
+bool awh::Base::del(const uint32_t id, const SOCKET sock) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1067,7 +1073,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
  * @param type тип отслеживаемого события
  * @return     результат работы функции
  */
-bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t type) noexcept {
+bool awh::Base::del(const uint32_t id, const SOCKET sock, const event_type_t type) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если сокет передан верный
@@ -1845,7 +1851,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
  * @param persist  флаг персистентного таймера
  * @return         результат работы функции
  */
-bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const uint32_t delay, const bool persist) noexcept {
+bool awh::Base::add(const uint32_t id, SOCKET & sock, const callback_t & callback, const uint32_t delay, const bool persist) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если сокет передан верный
@@ -2186,7 +2192,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
  * @param mode флаг режима работы модуля
  * @return     результат работы функции
  */
-bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept {
+bool awh::Base::mode(const uint32_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если сокет и его тип переданы правильно
@@ -3294,39 +3300,7 @@ void awh::Base::start() noexcept {
 				baseDelay.tv_nsec = ((this->_rate % 1000) * 1000000L);
 			}
 		#endif
-		/**
-		 * Для операционной системы MS Windows
-		 */
-		#if _WIN32 || _WIN64
-
-		/**
-		 * Для операционной системы Sun Solaris
-		 */
-		#elif __sun__
-
-		/**
-		 * Для операционной системы Linux
-		 */
-		#elif __linux__
-
-		/**
-		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
-		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Устанавливаем новый объект для изменений события
-			this->_change.push_back((struct kevent){});
-			// Устанавливаем новый объект для отслеживания события
-			this->_events.push_back((struct kevent){});
-			// Выполняем заполнение нулями всю структуру изменений
-			::memset(&this->_change.back(), 0, sizeof(this->_change.back()));
-			// Выполняем заполнение нулями всю структуру событий
-			::memset(&this->_events.back(), 0, sizeof(this->_events.back()));
-			// Устанавливаем идентификатор файлового дескриптора
-			this->_change.back().ident = this->_timer;
-			// Выполняем смену режима работы отлова события
-			EV_SET(&this->_change.back(), this->_change.back().ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, nullptr);
-		#endif
-		// Запускаем работу таймеров
+		// Запускаем работу часов
 		this->_watch.start();
 		// Получаем идентификатор потока
 		this->_wid = this->wid();
@@ -3387,7 +3361,7 @@ void awh::Base::start() noexcept {
 								// Получаем количество файловых дескрипторов для проверки
 								count = this->_events.size();
 								// Идентификатор события
-								uint64_t id = 0;
+								uint32_t id = 0;
 								// Файловый дескриптор события
 								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
@@ -3427,7 +3401,7 @@ void awh::Base::start() noexcept {
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {
 														// Выполняем чтение входящего события
-														const uint64_t event = this->_watch.event(sock);
+														const uint32_t event = this->_watch.event(sock);
 														// Если чтение выполнено удачно
 														if(event > 0){
 															// Если функция обратного вызова установлена
@@ -3437,7 +3411,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем функцию обратного вызова
-																	std::apply(j->second.callback, std::make_tuple(sock, event_type_t::TIMER));
+																	j->second.callback(sock, event_type_t::TIMER);
 															}
 															// Выполняем поиск указанной записи
 															j = this->_peers.find(sock);
@@ -3465,7 +3439,7 @@ void awh::Base::start() noexcept {
 															// Выполняем блокировку потока
 															i->second->mtx.lock();
 															// Выполняем чтение входящего события
-															const uint64_t event = i->second->notifier.event();
+															const uint32_t event = i->second->notifier.event();
 															// Выполняем разблокировку потока
 															i->second->mtx.unlock();
 															// Выполняем поиск события межпотоковое присутствует в базе событий
@@ -3485,7 +3459,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(j->second.callback, std::make_tuple(sock, event_type_t::READ));
+																j->second.callback(sock, event_type_t::READ);
 														}
 													}
 												}
@@ -3506,7 +3480,7 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::WRITE));
+														j->second.callback(sock, event_type_t::WRITE);
 												}
 											}
 										}
@@ -3551,7 +3525,7 @@ void awh::Base::start() noexcept {
 															// Удаляем сокет из базы событий
 															this->del(j->second.id, sock);
 															// Выполняем функцию обратного вызова
-															std::apply(callback, std::make_tuple());
+															callback();
 															// Продолжаем обход дальше
 															continue;
 														}
@@ -3622,7 +3596,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Идентификатор события
-								uint64_t id = 0;
+								uint32_t id = 0;
 								// Файловый дескриптор события
 								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
@@ -3662,7 +3636,7 @@ void awh::Base::start() noexcept {
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {
 														// Выполняем чтение входящего события
-														const uint64_t event = this->_watch.event(sock);
+														const uint32_t event = this->_watch.event(sock);
 														// Если чтение выполнено удачно
 														if(event > 0){
 															// Если функция обратного вызова установлена
@@ -3672,7 +3646,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем функцию обратного вызова
-																	std::apply(j->second.callback, std::make_tuple(sock, event_type_t::TIMER));
+																	j->second.callback(sock, event_type_t::TIMER);
 															}
 															// Выполняем поиск указанной записи
 															j = this->_peers.find(sock);
@@ -3700,7 +3674,7 @@ void awh::Base::start() noexcept {
 															// Выполняем блокировку потока
 															i->second->mtx.lock();
 															// Выполняем чтение входящего события
-															const uint64_t event = i->second->notifier.event();
+															const uint32_t event = i->second->notifier.event();
 															// Выполняем разблокировку потока
 															i->second->mtx.unlock();
 															// Выполняем поиск события межпотоковое присутствует в базе событий
@@ -3720,7 +3694,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(j->second.callback, std::make_tuple(sock, event_type_t::READ));
+																j->second.callback(sock, event_type_t::READ);
 														}
 													}
 												}
@@ -3741,7 +3715,7 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::WRITE));
+														j->second.callback(sock, event_type_t::WRITE);
 												}
 											}
 										}
@@ -3782,7 +3756,7 @@ void awh::Base::start() noexcept {
 															// Удаляем сокет из базы событий
 															this->del(j->second.id, sock);
 															// Выполняем функцию обратного вызова
-															std::apply(callback, std::make_tuple());
+															callback();
 															// Продолжаем обход дальше
 															continue;
 														}
@@ -3847,7 +3821,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Идентификатор события
-								uint64_t id = 0;
+								uint32_t id = 0;
 								// Файловый дескриптор события
 								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
@@ -3883,7 +3857,7 @@ void awh::Base::start() noexcept {
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {
 														// Выполняем чтение входящего события
-														const uint64_t event = this->_watch.event(sock);
+														const uint32_t event = this->_watch.event(sock);
 														// Если чтение выполнено удачно
 														if(event > 0){
 															// Если функция обратного вызова установлена
@@ -3893,7 +3867,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																	// Выполняем функцию обратного вызова
-																	std::apply(item->callback, std::make_tuple(item->sock, event_type_t::TIMER));
+																	item->callback(item->sock, event_type_t::TIMER);
 															}
 															// Выполняем поиск файлового дескриптора в базе событий
 															auto j = this->_peers.find(sock);
@@ -3921,7 +3895,7 @@ void awh::Base::start() noexcept {
 															// Выполняем блокировку потока
 															i->second->mtx.lock();
 															// Выполняем чтение входящего события
-															const uint64_t event = i->second->notifier.event();
+															const uint32_t event = i->second->notifier.event();
 															// Выполняем разблокировку потока
 															i->second->mtx.unlock();
 															// Выполняем поиск события межпотоковое присутствует в базе событий
@@ -3941,7 +3915,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(item->callback, std::make_tuple(item->sock, event_type_t::READ));
+																item->callback(item->sock, event_type_t::READ);
 														}
 													}
 												}
@@ -3959,7 +3933,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															std::apply(i->second.callback, std::make_tuple(i->second.sock, event_type_t::WRITE));
+															i->second.callback(i->second.sock, event_type_t::WRITE);
 													}
 												}
 											}
@@ -3998,7 +3972,7 @@ void awh::Base::start() noexcept {
 																// Удаляем сокет из базы событий
 																this->del(i->second.id, i->second.sock);
 																// Выполняем функцию обратного вызова
-																std::apply(callback, std::make_tuple());
+																callback();
 																// Продолжаем обход дальше
 																continue;
 															}
@@ -4064,7 +4038,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Идентификатор события
-								uint64_t id = 0;
+								uint32_t id = 0;
 								// Код ошибки полученный от ядра
 								int32_t code = 0;
 								// Файловый дескриптор события
@@ -4081,7 +4055,7 @@ void awh::Base::start() noexcept {
 										// Если событие принадлежит таймеру
 										if(event.ident == this->_timer){
 											// Получаем идентификатор таймера
-											const uint64_t id = this->_watch.event();
+											const uint32_t id = this->_watch.event();
 											// Выполняем поиск указанный таймер
 											auto i = this->_timers.find(id);
 											// Если таймер установлен
@@ -4136,7 +4110,7 @@ void awh::Base::start() noexcept {
 																// Выполняем блокировку потока
 																i->second->mtx.lock();
 																// Выполняем чтение входящего события
-																const uint64_t event = i->second->notifier.event();
+																const uint32_t event = i->second->notifier.event();
 																// Выполняем разблокировку потока
 																i->second->mtx.unlock();
 																// Выполняем поиск события межпотоковое присутствует в базе событий
@@ -4156,7 +4130,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем функцию обратного вызова
-																	std::apply(item->callback, std::make_tuple(sock, event_type_t::READ));
+																	item->callback(sock, event_type_t::READ);
 															}
 														}
 													}
@@ -4174,7 +4148,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(j->second.callback, std::make_tuple(j->second.sock, event_type_t::WRITE));
+																j->second.callback(j->second.sock, event_type_t::WRITE);
 														}
 													}
 												}
@@ -4213,7 +4187,7 @@ void awh::Base::start() noexcept {
 																	// Удаляем сокет из базы событий
 																	this->del(j->second.id, j->second.sock);
 																	// Выполняем функцию обратного вызова
-																	std::apply(callback, std::make_tuple());
+																	callback();
 																	// Продолжаем обход дальше
 																	continue;
 																}
@@ -4250,36 +4224,6 @@ void awh::Base::start() noexcept {
 					std::this_thread::sleep_for(100ms);
 				#endif
 			}
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if _WIN32 || _WIN64
-
-			/**
-			 * Для операционной системы Sun Solaris
-			 */
-			#elif __sun__
-
-			/**
-			 * Для операционной системы Linux
-			 */
-			#elif __linux__
-
-			/**
-			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
-			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-				// Выполняем поиск файлового дескриптора из списка событий
-				for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
-					// Если сокет найден
-					if(k->ident == this->_timer){
-						// Выполняем смену режима работы отлова события
-						EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, nullptr);
-						// Выходим из цикла
-						break;
-					}
-				}
-			#endif
 			// Останавливаем работу таймеров скрина
 			this->_watch.stop();
 			// Снимаем флаг запущенного опроса базы событий
@@ -4410,7 +4354,7 @@ void awh::Base::rate(const uint32_t msec) noexcept {
  * @param sock сокет межпотокового передатчика
  * @param tid  идентификатор трансферной передачи
  */
-void awh::Base::upstream(const SOCKET sock, const uint64_t tid) noexcept {
+void awh::Base::upstream(const SOCKET sock, const uint32_t tid) noexcept {
 	// Если метод запущен в основном потоке
 	if(!this->isChildThread())
 		// Выводим сообщение об ошибке
@@ -4426,7 +4370,7 @@ void awh::Base::upstream(const SOCKET sock, const uint64_t tid) noexcept {
 			// Если межпотоковый передатчик обнаружен
 			if(i != this->_upstream.end()){
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(i->second->mtx);
+				const lock_guard lock(i->second->mtx);
 				// Выполняем отправку родительскому потоку сообщение
 				i->second->notifier.notify(tid);
 			}
@@ -4471,9 +4415,9 @@ void awh::Base::deactivationUpstream(const SOCKET sock) noexcept {
 			// Если межпотоковый передатчик обнаружен
 			if(i != this->_upstream.end()){
 				// Выполняем блокировку потока
-				const lock_guard <std::recursive_mutex> lock(this->_mtx);
+				const lock_guard lock(this->_mtx);
 				// Выполняем удаление события сокета из базы событий
-				if(!this->del(static_cast <uint64_t> (i->first), i->first))
+				if(!this->del(static_cast <uint32_t> (i->first), i->first))
 					// Выводим сообщение что событие не вышло активировать
 					this->_log->print("Failed remove upstream event for SOCKET=%d", log_t::flag_t::WARNING, i->first);
 				// Выполняем удаление верхнеуровневого потока из списка
@@ -4505,7 +4449,7 @@ void awh::Base::deactivationUpstream(const SOCKET sock) noexcept {
  * @param callback функция обратного вызова
  * @return         сокет межпотокового передатчика
  */
-SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) noexcept {
+SOCKET awh::Base::activationUpstream(function <void (const uint32_t)> callback) noexcept {
 	// Результат работы функции
 	SOCKET result = INVALID_SOCKET;
 	// Если метод запущен в дочернем потоке
@@ -4521,23 +4465,23 @@ SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) 
 			// Создаём объект межпотокового передатчика
 			auto upstream = std::make_unique <upstream_t> (this->_fmk, this->_log);
 			// Выполняем установку функции обратного вызова
-			upstream->callback = callback;
+			upstream->callback = ::move(callback);
 			// Выполняем инициализацию уведомителя
 			const SOCKET sock = upstream->notifier.init();
 			// Если уведомитель инициализирован правильно
 			if(sock != INVALID_SOCKET){
 				// Выполняем блокировку потока
-				const lock_guard <std::recursive_mutex> lock(this->_mtx);
+				const lock_guard lock(this->_mtx);
 				// Устанавливаем результат
 				result = sock;
 				// Выполняем перенос нашего уведомителя в список уведомителей
 				if(this->_upstream.emplace(result, ::move(upstream)).first->first){
 					// Выполняем добавление события в базу событий
-					if(!this->add(static_cast <uint64_t> (result), result))
+					if(!this->add(static_cast <uint32_t> (result), result))
 						// Выводим сообщение что событие не вышло активировать
 						this->_log->print("Failed activate upstream event for SOCKET=%d", log_t::flag_t::WARNING, result);
 					// Если событие в базу событий успешно добавленно, активируем событие верхнеуровневого потока
-					else if(!this->mode(static_cast <uint64_t> (result), result, event_type_t::STREAM, event_mode_t::ENABLED))
+					else if(!this->mode(static_cast <uint32_t> (result), result, event_type_t::STREAM, event_mode_t::ENABLED))
 						// Выводим сообщение что событие не вышло активировать
 						this->_log->print("Failed enabled read upstream event for SOCKET=%d", log_t::flag_t::WARNING, result);
 				// Выводим сообщение, что такой сокет уже существует
@@ -4591,7 +4535,7 @@ SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) 
  * @param log объект для работы с логами
  */
 awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
- _wid(0), _timer(INVALID_SOCKET), _rate(-1),
+ _wid(0), _rate(-1),
  _works(false), _easily(false),
  _locker(false), _launched(false),
  _fds(log), _watch(fmk, log), _fmk(fmk), _log(log) {

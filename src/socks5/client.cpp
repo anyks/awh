@@ -42,7 +42,7 @@ void awh::client::Socks5::cmd() const noexcept {
 		// Увеличиваем память на 4 октета
 		this->_buffer.resize(sizeof(uint8_t) * 4, 0x00);
 		// Устанавливаем версию протокола
-		uint16_t offset = this->octet(VER);
+		uint16_t offset = this->octet(socks5_t::VERSION);
 		// Устанавливаем комманду запроса
 		offset = this->octet(static_cast <uint8_t> (cmd_t::CONNECT), offset);
 		// Устанавливаем RSV октет
@@ -115,7 +115,7 @@ void awh::client::Socks5::methods() const noexcept {
 	// Увеличиваем память на 4 октета
 	this->_buffer.resize(sizeof(uint8_t) * 4, 0x00);
 	// Устанавливаем версию протокола
-	uint16_t offset = this->octet(VER);
+	uint16_t offset = this->octet(socks5_t::VERSION);
 	// Устанавливаем количество методов авторизации
 	offset = this->octet(2, offset);
 	// Устанавливаем первый метод авторизации (без авторизации)
@@ -147,19 +147,19 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 				// Если данных достаточно для получения ответа
 				if(size >= sizeof(method_t)){
 					// Создаём объект данных метода
-					res_method_t resp;
+					action_t response;
 					// Выполняем чтение данных
-					::memcpy(&resp, buffer, sizeof(resp));
+					::memcpy(&response, buffer, sizeof(response));
 					// Если версия протокола соответствует
-					if(resp.ver == static_cast <uint8_t> (VER)){
+					if(response.version == static_cast <uint8_t> (socks5_t::VERSION)){
 						// Если авторизацию производить не нужно
-						if(resp.method == static_cast <uint8_t> (method_t::NOAUTH)){
+						if(response.method == static_cast <uint8_t> (method_t::NOAUTH)){
 							// Устанавливаем статус ожидания ответа
 							this->_state = state_t::RESPONSE;
 							// Формируем запрос для доступа к сайту
 							this->cmd();
 						// Если сервер требует авторизацию
-						} else if(resp.method == static_cast <uint8_t> (method_t::PASSWD)) {
+						} else if(response.method == static_cast <uint8_t> (method_t::PASSWD)) {
 							// Проверяем установлен ли логин с паролем
 							if(!this->_login.empty() && !this->_pass.empty()){
 								// Устанавливаем статус ожидания ответа на авторизацию
@@ -194,13 +194,13 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 				// Если данных достаточно для получения ответа
 				if(size >= sizeof(auth_t)){
 					// Создаём объект данных ответа
-					auth_t resp;
+					auth_t response;
 					// Выполняем чтение данных
-					::memcpy(&resp, buffer, sizeof(resp));
+					::memcpy(&response, buffer, sizeof(response));
 					// Если версия протокола соответствует
-					if(resp.ver == static_cast <uint8_t> (AVER)){
+					if(response.version == static_cast <uint8_t> (AVER)){
 						// Если авторизация пройдера нуспешно
-						if(resp.status == static_cast <uint8_t> (rep_t::SUCCESS)){
+						if(response.status == static_cast <uint8_t> (rep_t::SUCCESS)){
 							// Устанавливаем статус ожидания ответа
 							this->_state = state_t::RESPONSE;
 							// Формируем запрос для доступа к сайту
@@ -224,27 +224,27 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 			// Если установлен стейт, ожидания ответа на запрос
 			case static_cast <uint8_t> (state_t::RESPONSE): {
 				// Если данных достаточно для получения ответа
-				if(size > sizeof(res_t)){
+				if(size > sizeof(response_t)){
 					// Создаём объект данных ответа
-					res_t res;
+					response_t response;
 					// Выполняем чтение данных
-					::memcpy(&res, buffer, sizeof(res));
+					::memcpy(&response, buffer, sizeof(response));
 					// Если версия протокола соответствует
-					if(res.ver == static_cast <uint8_t> (VER)){
+					if(response.version == static_cast <uint8_t> (socks5_t::VERSION)){
 						// Если рукопожатие выполнено
-						if(res.rep == static_cast <uint8_t> (rep_t::SUCCESS)){
+						if(response.rep == static_cast <uint8_t> (rep_t::SUCCESS)){
 							/**
 							 * Определяем тип адреса
 							 */
-							switch(res.atyp){
+							switch(response.type){
 								// Получаем адрес IPv4
 								case static_cast <uint8_t> (atyp_t::IPv4): {
 									// Если буфер пришел достаточного размера
-									if(size >= (sizeof(res_t) + sizeof(ip_t))){
+									if(size >= (sizeof(response_t) + sizeof(ip_t))){
 										// Создаём объект данных сервера
 										ip_t server;
 										// Копируем в буфер наши данные IP адреса
-										::memcpy(&server, buffer + sizeof(res_t), sizeof(server));
+										::memcpy(&server, buffer + sizeof(response_t), sizeof(server));
 										// Выполняем получение IP адреса
 										const string & ip = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET);
 										// Если IP адрес получен
@@ -268,11 +268,11 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 								// Получаем адрес IPv6
 								case static_cast <uint8_t> (atyp_t::IPv6): {
 									// Если буфер пришел достаточного размера
-									if(size >= (sizeof(res_t) + sizeof(ip_t))){
+									if(size >= (sizeof(response_t) + sizeof(ip_t))){
 										// Создаём объект данных сервера
 										ip_t server;
 										// Копируем в буфер наши данные IP адреса
-										::memcpy(&server, buffer + sizeof(res_t), sizeof(server));
+										::memcpy(&server, buffer + sizeof(response_t), sizeof(server));
 										// Выполняем получение IP адреса
 										const string & ip = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
 										// Если IP адрес получен
@@ -296,11 +296,11 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 								// Получаем адрес DMNAME
 								case static_cast <uint8_t> (atyp_t::DMNAME): {
 									// Если буфер пришел достаточного размера
-									if(size >= (sizeof(res_t) + sizeof(uint16_t))){
+									if(size >= (sizeof(response_t) + sizeof(uint16_t))){
 										// Извлекаем доменное имя
-										const string & domain = this->text(buffer + sizeof(res_t), size);
+										const string & domain = this->text(buffer + sizeof(response_t), size);
 										// Получаем размер смещения
-										uint16_t offset = (sizeof(res_t) + sizeof(uint8_t) + domain.size());
+										uint16_t offset = (sizeof(response_t) + sizeof(uint8_t) + domain.size());
 										// Если доменное имя получено
 										if(!domain.empty() && (size >= (offset + sizeof(uint16_t)))){
 											// Создаём порт сервера
@@ -327,7 +327,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 						// Если авторизация не пройдена
 						} else {
 							// Устанавливаем код сообщения
-							this->_code = res.rep;
+							this->_code = response.rep;
 							// Устанавливаем статус ошибки
 							this->_state = state_t::BROKEN;
 						}
@@ -382,3 +382,10 @@ void awh::client::Socks5::user(const string & login, const string & pass) noexce
 	// Устанавливаем данные пользователя
 	this->_login = login;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ */
+awh::client::Socks5::Socks5(const log_t * log) noexcept :
+ awh::socks5_t(log), _pass{""}, _login{""} {}

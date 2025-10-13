@@ -1,6 +1,6 @@
 /**
  * @file: http1.cpp
- * @date: 2022-10-01
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -33,7 +33,7 @@ using namespace placeholders;
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Http1::connectEvents(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
@@ -45,35 +45,35 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 			// Выполняем установку идентификатора объекта
 			options->http.id(bid);
 			// Устанавливаем размер чанка
-			options->http.chunk(this->_chunkSize);
+			options->http.chunkSize(this->_chunkSize);
 			// Устанавливаем флаг идентичности протокола
 			options->http.identity(this->_identity);
 			// Устанавливаем список компрессоров поддерживаемый сервером
 			options->http.compressors(this->_scheme.compressors);
 			// Устанавливаем данные сервиса
-			options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+			options->http.agent(this->_sign.id, this->_sign.name, this->_sign.ver);
 			// Если функция обратного вызова для обработки чанков установлена
 			if(!this->_callback.is("chunking"))
 				// Устанавливаем функцию обработки вызова для получения чанков
-				options->http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &http1_t::chunking, this, _1, _2, _3);
+				options->http.on <void (const uint32_t, const buffer_t &, const awh::http_t *)> ("chunking", &http1_t::chunking, this, _1, _2, _3);
 			// Устанавливаем функцию обработки вызова для получения чанков
-			else options->http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", this->_callback.get <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking"));
+			else options->http.on <void (const uint32_t, const buffer_t &, const awh::http_t *)> ("chunking", this->_callback.get <void (const uint32_t, const buffer_t &, const awh::http_t *)> ("chunking"));
 			// Если функция обратного вызова на полученного заголовка с клиента установлена
 			if(this->_callback.is("header"))
 				// Устанавливаем функцию обратного вызова для получения заголовков запроса
-				options->http.on <void (const uint64_t, const string &, const string &)> ("header", this->_callback.get <void (const int32_t, const uint64_t, const string &, const string &)> ("header"), 1, _1, _2, _3);
+				options->http.on <void (const uint32_t, const string &, const string &)> ("header", this->_callback.get <void (const int32_t, const uint32_t, const string &, const string &)> ("header"), 1, _1, _2, _3);
 			// Если функция обратного вызова на вывод запроса клиента установлена
 			if(this->_callback.is("request"))
 				// Устанавливаем функцию обратного вызова для получения запроса клиента
-				options->http.on <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request"), 1, _1, _2, _3);
+				options->http.on <void (const uint32_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", this->_callback.get <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request"), 1, _1, _2, _3);
 			// Если функция обратного вызова на вывод полученных заголовков с клиента установлена
 			if(this->_callback.is("headers"))
 				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
-				options->http.on <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_callback.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4);
+				options->http.on <void (const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const headers_t &)> ("headersRequest", this->_callback.get <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const headers_t &)> ("headers"), 1, _1, _2, _3, _4);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Устанавливаем функцию обратного вызова для вывода ошибок
-				options->http.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
+				options->http.on <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
 			// Если требуется установить параметры шифрования
 			if(this->_encryption.mode){
 				// Устанавливаем флаг шифрования
@@ -92,7 +92,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 					// Если функция обратного вызова для обработки чанков установлена
 					if(this->_callback.is("checkPassword"))
 						// Устанавливаем функцию проверки авторизации
-						options->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+						options->http.authCallback(std::bind(this->_callback.get <bool (const uint32_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 				} break;
 				// Если тип авторизации Digest
 				case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -105,7 +105,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 					// Если функция обратного вызова для обработки чанков установлена
 					if(this->_callback.is("extractPassword"))
 						// Устанавливаем функцию извлечения пароля
-						options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+						options->http.authCallback(std::bind(this->_callback.get <string (const uint32_t, const string &)> ("extractPassword"), bid, _1));
 				} break;
 			}
 			// Выполняем добавление агнета
@@ -113,7 +113,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 			// Если функция обратного вызова при подключении/отключении установлена
 			if(this->_callback.is("active"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
+				this->_callback.call <void (const uint32_t, const mode_t)> ("active", bid, mode_t::CONNECT);
 		}
 	}
 }
@@ -123,7 +123,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Http1::disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Http1::disconnectEvents(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Выполняем отключение подключившегося брокера
@@ -131,7 +131,7 @@ void awh::server::Http1::disconnectEvents(const uint64_t bid, const uint16_t sid
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
+			this->_callback.call <void (const uint32_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
 }
 /**
@@ -142,7 +142,7 @@ void awh::server::Http1::disconnectEvents(const uint64_t bid, const uint16_t sid
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::server::Http1::readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Http1::readEvents(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Флаг выполнения обработки полученных данных
@@ -150,7 +150,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 		// Если установлена функция обратного вызова для вывода данных в сыром виде
 		if(!(process = !this->_callback.is("raw")))
 			// Выполняем функцию обратного вызова
-			process = this->_callback.call <bool (const uint64_t, const char *, const size_t)> ("raw", bid, buffer, size);
+			process = this->_callback.call <bool (const uint32_t, const char *, const size_t)> ("raw", bid, buffer, size);
 		// Если обработка полученных данных разрешена
 		if(process){
 			// Выполняем поиск агента которому соответствует клиент
@@ -173,21 +173,21 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						return;
 					}
 					// Добавляем полученные данные в буфер
-					options->buffer.push(buffer, size);
+					options->buffer.payload.push(buffer, size);
 					// Если функция обратного вызова активности потока установлена
-					if(!options->mode && (options->mode = this->_callback.is("stream")))
+					if(!options->begin && (options->begin = this->_callback.is("stream")))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::OPEN);
+						this->_callback.call <void (const int32_t, const uint32_t, const mode_t)> ("stream", 1, bid, mode_t::OPEN);
 					/**
 					 * Выполняем обработку полученных данных
 					 */
 					while(!options->close){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = options->http.parse(static_cast <const char *> (options->buffer), static_cast <size_t> (options->buffer));
+						const size_t bytes = options->http.parse(static_cast <const char *> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
 						// Если все данные получены
-						if((bytes > 0) && options->http.is(http_t::state_t::END)){
+						if((bytes > 0) && options->http.state(http_t::state_t::END)){
 							// Получаем флаг постоянного подключения
-							const bool alive = options->http.is(http_t::state_t::ALIVE);
+							const bool alive = options->http.state(http_t::state_t::ALIVE);
 							// Если включён режим отладки
 							#if DEBUG_MODE
 								{
@@ -198,9 +198,9 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										// Выводим заголовок запроса
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры запроса
-										std::cout << string(static_cast <const char *> (request), static_cast <size_t> (request)) << std::endl << std::endl << std::flush;
+										std::cout << request << std::endl << std::endl << std::flush;
 										// Если тело запроса существует
-										if(!options->http.empty(awh::http_t::suite_t::BODY))
+										if(!options->http.empty(awh::web_t::unit_t::BODY))
 											// Выводим сообщение о выводе чанка тела
 											std::cout << this->_fmk->format("<body %u>", options->http.body().size()) << std::endl << std::endl << std::flush;
 										// Иначе устанавливаем перенос строки
@@ -213,13 +213,13 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 							 *
 							 * @param bid идентификатор брокера
 							 */
-							auto rejectFn = [alive, &options, this](const uint64_t bid) noexcept -> void {
+							auto rejectFn = [alive, &options, this](const uint32_t bid) noexcept -> void {
 								// Выполняем очистку HTTP-парсера
 								options->http.clear();
 								// Выполняем сброс состояния HTTP-парсера
 								options->http.reset();
 								// Выполняем очистку буфера полученных данных
-								options->buffer.clear();
+								options->buffer.payload.clear();
 								// Если подключение установленно не постоянное
 								if(!alive){
 									/**
@@ -244,8 +244,6 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 								const auto & response = options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Requested protocol is not supported by this server"));
 								// Если ответ получен
 								if(!response.empty()){
-									// Тело полезной нагрузки
-									buffer_t payload(this->_fmk, this->_log);
 									/**
 									 * Если включён режим отладки
 									 */
@@ -253,42 +251,45 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										// Выводим заголовок ответа
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры ответа
-										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+										std::cout << response << std::endl << std::endl << std::flush;
 									#endif
 									// Отправляем ответ брокеру
 									const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 									/**
 									 * Получаем тело полезной нагрузки ответа
 									 */
-									while(!(payload = ::move(options->http.payload())).empty()){
+									while(!(options->buffer.extraction = ::move(options->http.chunk())).empty()){
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение о выводе чанка полезной нагрузки
-											std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+											std::cout << this->_fmk->format("<chunk %zu>", options->buffer.extraction.size()) << std::endl << std::endl << std::flush;
 										#endif
 										// Если тела данных для отправки больше не осталось
-										if(options->http.empty(awh::http_t::suite_t::BODY))
+										if(options->http.empty(awh::web_t::unit_t::BODY))
 											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-											options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+											options->stopped = (!this->_service.alive && !options->alive && !options->http.state(http_t::state_t::ALIVE));
 										// Выполняем отправку тела ответа клиенту
-										const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+										const_cast <server::core_t *> (this->_core)->send(
+											static_cast <const char *> (options->buffer.extraction),
+											static_cast <size_t> (options->buffer.extraction), bid
+										);
 									}
 								// Выполняем отключение брокера
 								} else const_cast <server::core_t *> (this->_core)->close(bid);
 								// Если функция обратного вызова активности потока установлена
 								if(this->_callback.is("stream"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
+									this->_callback.call <void (const int32_t, const uint32_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
 								// Если функция обратного вызова на на вывод ошибок установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
+									this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "Requested protocol is not supported by this server");
 								// Если установлена функция отлова завершения запроса
 								if(this->_callback.is("end"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
+									this->_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
 							};
 							// Если метод CONNECT на сервере запрещён и в данный момент он выполняется
 							if(!this->_methodConnect && (options->http.request().method == awh::web_t::method_t::CONNECT)){
@@ -316,17 +317,17 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 							/**
 							 * Выполняем проверку авторизации
 							 */
-							switch(static_cast <uint8_t> (options->http.auth())){
+							switch(static_cast <uint8_t> (options->http.status())){
 								// Если запрос выполнен удачно
-								case static_cast <uint8_t> (http_t::status_t::GOOD): {
+								case static_cast <uint8_t> (http_t::handshake_t::GOOD): {
 									// Если сервер соответствует HTTP-серверу
 									if(this->_identity == http_t::identity_t::HTTP){
+										// Извлекаем полученные заголовки
+										headers_t & headers = options->http.headers();
 										// Если заголовок Upgrade установлен
-										if(options->http.is(http_t::suite_t::HEADER, "upgrade")){
-											// Выполняем извлечение заголовка Upgrade
-											const string & header = options->http.header("upgrade");
+										if(headers.has("Upgrade")){
 											// Если запрашиваемый протокол соответствует Websocket
-											if(this->_webSocket && this->_fmk->compare(header, "websocket"))
+											if(this->_webSocket && this->_fmk->compare(headers["upgrade"], "websocket"))
 												// Выполняем инициализацию Websocket-сервера
 												this->websocket(bid, sid);
 											// Если протокол запрещён или не поддерживается, выполняем закрытие подключения
@@ -340,36 +341,34 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 									// Если функция обратного вызова на получение удачного запроса установлена
 									if(this->_callback.is("handshake"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", 1, bid, agent_t::HTTP);
+										this->_callback.call <void (const int32_t, const uint32_t, const agent_t)> ("handshake", 1, bid, agent_t::HTTP);
 									// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-									if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
+									if(this->_callback.is("entity") && !options->http.empty(awh::web_t::unit_t::BODY))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", 1, bid, request.method, request.url, options->http.body());
+										this->_callback.call <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &)> ("entity", 1, bid, request.method, request.url, options->http.body());
 									// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 									if(this->_callback.is("complete"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", 1, bid, request.method, request.url, options->http.body(), options->http.headers());
+										this->_callback.call <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &, const headers_t &)> ("complete", 1, bid, request.method, request.url, options->http.body(), options->http.headers());
 									// Если функция обратного вызова активности потока установлена
 									if(this->_callback.is("stream"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
+										this->_callback.call <void (const int32_t, const uint32_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
 									// Если установлена функция отлова завершения запроса
 									if(this->_callback.is("end"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
+										this->_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
 									// Завершаем обработку
 									goto Next;
 								} break;
 								// Если запрос неудачный
-								case static_cast <uint8_t> (http_t::status_t::FAULT): {
-									// Ответ на запрос об авторизации
-									buffer_t response(this->_fmk, this->_log);
+								case static_cast <uint8_t> (http_t::handshake_t::FAULT): {
 									// Выполняем очистку HTTP-парсера
 									options->http.clear();
 									// Выполняем сброс состояния HTTP-парсера
 									options->http.reset();
 									// Выполняем очистку буфера полученных данных
-									options->buffer.clear();
+									options->buffer.payload.clear();
 									/**
 									 * Определяем идентичность сервера
 									 */
@@ -381,7 +380,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 												// Устанавливаем закрытие подключения
 												options->http.header("Connection", "close");
 											// Формируем запрос авторизации
-											response = ::move(options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (401))));
+											options->buffer.extraction = ::move(options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (401))));
 										} break;
 										// Если сервер соответствует PROXY-серверу
 										case static_cast <uint8_t> (http_t::identity_t::PROXY): {
@@ -393,13 +392,11 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 												options->http.header("Proxy-Connection", "close");
 											}
 											// Формируем запрос авторизации
-											response = ::move(options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (407))));
+											options->buffer.extraction = ::move(options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (407))));
 										} break;
 									}
 									// Если ответ получен
-									if(!response.empty()){
-										// Тело полезной нагрузки
-										buffer_t payload(this->_fmk, this->_log);
+									if(!options->buffer.extraction.empty()){
 										/**
 										 * Если включён режим отладки
 										 */
@@ -407,42 +404,48 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 											// Выводим заголовок ответа
 											std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 											// Выводим параметры ответа
-											std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+											std::cout << options->buffer.extraction << std::endl << std::endl << std::flush;
 										#endif
 										// Отправляем ответ брокеру
-										const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
+										const_cast <server::core_t *> (this->_core)->send(
+											static_cast <const char *> (options->buffer.extraction),
+											static_cast <size_t> (options->buffer.extraction), bid
+										);
 										/**
 										 * Получаем данные полезной нагрузки ответа
 										 */
-										while(!(payload = ::move(options->http.payload())).empty()){
+										while(!(options->buffer.extraction = ::move(options->http.chunk())).empty()){
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение о выводе чанка полезной нагрузки
-												std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+												std::cout << this->_fmk->format("<chunk %zu>", options->buffer.extraction.size()) << std::endl << std::endl << std::flush;
 											#endif
 											// Если тела данных для отправки больше не осталось
-											if(options->http.empty(awh::http_t::suite_t::BODY))
+											if(options->http.empty(awh::web_t::unit_t::BODY))
 												// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-												options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+												options->stopped = (!this->_service.alive && !options->alive && !options->http.state(http_t::state_t::ALIVE));
 											// Отправляем тело ответа клиенту
-											const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+											const_cast <server::core_t *> (this->_core)->send(
+												static_cast <const char *> (options->buffer.extraction),
+												static_cast <size_t> (options->buffer.extraction), bid
+											);
 										}
 									// Выполняем отключение брокера
 									} else const_cast <server::core_t *> (this->_core)->close(bid);
 									// Если функция обратного вызова активности потока установлена
 									if(this->_callback.is("stream"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
+										this->_callback.call <void (const int32_t, const uint32_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
 									// Если функция обратного вызова на на вывод ошибок установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
+										this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, "authorization failed");
 									// Если установлена функция отлова завершения запроса
 									if(this->_callback.is("end"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
+										this->_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
 									// Выходим из функции
 									return;
 								}
@@ -451,15 +454,15 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						// Устанавливаем метку продолжения обработки пайплайна
 						Next:
 						// Если парсер обработал какое-то количество байт
-						if((bytes > 0) && !options->buffer.empty()){
+						if((bytes > 0) && !options->buffer.payload.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(options->buffer.size() >= bytes)
+							if(options->buffer.payload.size() >= bytes)
 								// Удаляем количество обработанных байт
-								options->buffer.erase(bytes);
+								options->buffer.payload.erase(bytes);
 							// Если байт в буфере меньше, просто очищаем буфер
-							else options->buffer.clear();
+							else options->buffer.payload.clear();
 							// Если данных для обработки не осталось, выходим
-							if(options->buffer.empty())
+							if(options->buffer.payload.empty())
 								// Выходим из цикла
 								break;
 						// Если данных для обработки недостаточно, выходим
@@ -478,7 +481,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::server::Http1::writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Http1::writeEvents(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
 		// Выполняем поиск агента которому соответствует клиент
@@ -511,7 +514,7 @@ void awh::server::Http1::writeEvents(const char * buffer, const size_t size, con
  * @param id   идентификатор функции обратного вызова
  * @param fn    функция обратного вызова в чистом виде
  */
-void awh::server::Http1::callbackEvents(const callback_t::event_t event, const uint64_t id, const callback_t::fn_t & fn) noexcept {
+void awh::server::Http1::callbackEvents(const callback_t::event_t event, const uint32_t id, const callback_t::fn_t & fn) noexcept {
 	/**
 	 * Определяем входящее событие контейнера функций обратного вызова
 	 */
@@ -538,7 +541,7 @@ void awh::server::Http1::callbackEvents(const callback_t::event_t event, const u
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Http1::websocket(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
@@ -557,7 +560,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 				options->hash.password(this->_encryption.pass);
 			}
 			// Выполняем установку идентификатора объекта
-			options->http.id(bid);
+			options->http.req.id(bid);
 			// Устанавливаем флаг перехвата контекста компрессии
 			options->server.takeover = this->_ws1._server.takeover;
 			// Устанавливаем флаг перехвата контекста декомпрессии
@@ -567,25 +570,25 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 			// Разрешаем перехватывать контекст декомпрессии
 			options->hash.takeoverDecompress(this->_ws1._client.takeover);
 			// Разрешаем перехватывать контекст для клиента
-			options->http.takeover(awh::web_t::hid_t::CLIENT, this->_ws1._client.takeover);
+			options->http.req.takeover(awh::web_t::hid_t::CLIENT, this->_ws1._client.takeover);
 			// Разрешаем перехватывать контекст для сервера
-			options->http.takeover(awh::web_t::hid_t::SERVER, this->_ws1._server.takeover);
+			options->http.req.takeover(awh::web_t::hid_t::SERVER, this->_ws1._server.takeover);
 			// Устанавливаем данные сервиса
-			options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+			options->http.req.agent(this->_sign.id, this->_sign.name, this->_sign.ver);
 			// Если сабпротоколы установлены
 			if(!this->_ws1._subprotocols.empty())
 				// Устанавливаем поддерживаемые сабпротоколы
-				options->http.subprotocols(this->_ws1._subprotocols);
+				options->http.req.subprotocols(this->_ws1._subprotocols);
 			// Если список расширений установлены
 			if(!this->_ws1._extensions.empty())
 				// Устанавливаем список поддерживаемых расширений
-				options->http.extensions(this->_ws1._extensions);
+				options->http.req.extensions(this->_ws1._extensions);
 			// Если размер фрейма установлен
 			if(this->_ws1._frameSize > 0)
 				// Выполняем установку размера фрейма
 				options->frame.size = this->_ws1._frameSize;
 			// Устанавливаем метод компрессии поддерживаемый сервером
-			options->http.compressors(this->_scheme.compressors);
+			options->http.req.compressors(this->_scheme.compressors);
 			// Если сервер требует авторизацию
 			if(this->_service.type != auth_t::type_t::NONE){
 				/**
@@ -595,24 +598,24 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Если тип авторизации Basic
 					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 						// Устанавливаем параметры авторизации
-						options->http.authType(this->_service.type);
+						options->http.req.authType(this->_service.type);
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callback.is("checkPassword"))
 							// Устанавливаем функцию проверки авторизации
-							options->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+							options->http.req.authCallback(std::bind(this->_callback.get <bool (const uint32_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 					} break;
 					// Если тип авторизации Digest
 					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
 						// Устанавливаем название сервера
-						options->http.realm(this->_service.realm);
+						options->http.req.realm(this->_service.realm);
 						// Устанавливаем временный ключ сессии сервера
-						options->http.opaque(this->_service.opaque);
+						options->http.req.opaque(this->_service.opaque);
 						// Устанавливаем параметры авторизации
-						options->http.authType(this->_service.type, this->_service.hash);
+						options->http.req.authType(this->_service.type, this->_service.hash);
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callback.is("extractPassword"))
 							// Устанавливаем функцию извлечения пароля
-							options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+							options->http.req.authCallback(std::bind(this->_callback.get <string (const uint32_t, const string &)> ("extractPassword"), bid, _1));
 					} break;
 				}
 			}
@@ -620,64 +623,62 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 			scheme::web_t::options_t * web = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(web != nullptr){
-				// Буфер данных для записи в сокет
-				buffer_t buffer(this->_fmk, this->_log);
 				// Выполняем установку параметров запроса
-				options->http.request(web->http.request());
+				options->http.req.request(web->http.request());
 				// Выполняем установку полученных заголовков
-				options->http.headers(web->http.headers());
+				options->http.req.headers(web->http.headers());
 				// Выполняем коммит полученного результата
-				options->http.commit();
+				options->http.req.commit();
 				// Метод компрессии данных
 				http_t::compressor_t compressor = http_t::compressor_t::NONE;
 				// Если рукопожатие выполнено
-				if(options->http.handshake(http_t::process_t::REQUEST)){
+				if(options->http.req.isHandshake(http_t::process_t::REQUEST)){
 					// Получаем метод компрессии HTML данных
-					compressor = options->http.compression();
+					compressor = options->http.req.compression();
 					// Проверяем версию протокола
-					if(!options->http.check(ws_core_t::flag_t::VERSION)){
+					if(!options->http.req.step(ws_t::step_t::VERSION)){
 						// Получаем бинарные данные REST ответа
-						buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Unsupported protocol version")));
+						options->buffer.extraction = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Unsupported protocol version")));
 						// Завершаем работу
 						goto End;
 					}
 					// Проверяем ключ брокера
-					if(!options->http.check(ws_core_t::flag_t::KEY)){
+					if(!options->http.req.step(ws_t::step_t::KEY)){
 						// Получаем бинарные данные REST ответа
-						buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (400), "Wrong client key")));
+						options->buffer.extraction = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (400), "Wrong client key")));
 						// Завершаем работу
 						goto End;
 					}
 					// Выполняем очистку HTTP-парсера
-					options->http.clear();
+					options->http.req.clear();
 					// Получаем флаг шифрованных данных
-					options->crypted = options->http.crypted();
+					options->crypted = options->http.req.crypted();
 					// Если клиент согласился на шифрование данных
 					if(this->_encryption.mode)
 						// Устанавливаем параметры шифрования
-						options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
+						options->http.req.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					// Получаем поддерживаемый метод компрессии
-					options->compressor = options->http.compression();
+					options->compressor = options->http.req.compression();
 					// Получаем размер скользящего окна сервера
-					options->server.wbit = options->http.wbit(awh::web_t::hid_t::SERVER);
+					options->server.wbit = options->http.req.wbits(awh::web_t::hid_t::SERVER);
 					// Получаем размер скользящего окна клиента
-					options->client.wbit = options->http.wbit(awh::web_t::hid_t::CLIENT);
+					options->client.wbit = options->http.req.wbits(awh::web_t::hid_t::CLIENT);
 					// Если разрешено выполнять перехват контекста компрессии для сервера
-					if(options->http.takeover(awh::web_t::hid_t::SERVER))
+					if(options->http.req.takeover(awh::web_t::hid_t::SERVER))
 						// Разрешаем перехватывать контекст компрессии для клиента
 						options->hash.takeoverCompress(true);
 					// Если разрешено выполнять перехват контекста компрессии для клиента
-					if(options->http.takeover(awh::web_t::hid_t::CLIENT))
+					if(options->http.req.takeover(awh::web_t::hid_t::CLIENT))
 						// Разрешаем перехватывать контекст компрессии для сервера
 						options->hash.takeoverDecompress(true);
 					// Если заголовки для передаче клиенту установлены
 					if(!this->_ws1._headers.empty())
 						// Выполняем установку HTTP-заголовков
-						options->http.headers(this->_ws1._headers);
+						options->http.req.headers(this->_ws1._headers);
 					// Получаем бинарные данные REST-ответа клиенту
-					buffer = ::move(options->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <uint32_t> (101))));
+					options->buffer.extraction = ::move(options->http.req.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <uint32_t> (101))));
 					// Если бинарные данные ответа получены
-					if(!buffer.empty()){
+					if(!options->buffer.extraction.empty()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -685,44 +686,45 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 							// Выводим заголовок ответа
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры ответа
-							std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+							std::cout << options->buffer.extraction << std::endl << std::endl << std::flush;
 						#endif
 						// Выполняем замену активного агнета
 						this->_agents.at(bid) = agent_t::WEBSOCKET;
 						// Выполняем установку сетевого ядра
 						this->_ws1._core = this->_core;
 						// Выполняем отправку данных брокеру
-						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
+						const_cast <server::core_t *> (this->_core)->send(
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction), bid
+						);
 						// Выполняем извлечение параметров запроса
-						const auto & request = options->http.request();
+						const auto & request = options->http.req.request();
 						// Если функция обратного вызова активности потока установлена
 						if(this->_callback.is("stream"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", options->sid, bid, mode_t::OPEN);
+							this->_callback.call <void (const int32_t, const uint32_t, const mode_t)> ("stream", options->sid, bid, mode_t::OPEN);
 						// Если функция обратного вызова на получение удачного запроса установлена
 						if(this->_callback.is("handshake"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
+							this->_callback.call <void (const int32_t, const uint32_t, const agent_t)> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
+						if(this->_callback.is("entity") && !options->http.req.empty(awh::web_t::unit_t::BODY))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+							this->_callback.call <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &)> ("entity", options->sid, bid, request.method, request.url, options->http.req.body());
 						// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 						if(this->_callback.is("complete"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
+							this->_callback.call <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &, const headers_t &)> ("complete", options->sid, bid, request.method, request.url, options->http.req.body(), options->http.req.headers());
 						// Завершаем работу
 						return;
 					// Формируем ответ, что страница не доступна
-					} else buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (500))));
+					} else options->buffer.extraction = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (500))));
 				// Сообщаем, что рукопожатие не выполнено
-				} else buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (403), "Handshake failed")));
+				} else options->buffer.extraction = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (403), "Handshake failed")));
 				// Устанавливаем метку завершения запроса
 				End:
 				// Если бинарные данные запроса получены, отправляем клиенту
-				if(!buffer.empty()){
-					// Тело полезной нагрузки
-					buffer_t payload(this->_fmk, this->_log);
+				if(!options->buffer.extraction.empty()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -730,69 +732,77 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Выводим заголовок ответа
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим параметры ответа
-						std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+						std::cout << options->buffer.extraction << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем метод компрессии данных ответа
 					web->http.compression(compressor);
 					// Выполняем извлечение параметров запроса
-					const auto & request = options->http.request();
+					const auto & request = options->http.req.request();
 					// Получаем параметры ответа
-					const auto response = options->http.response();
+					const auto response = options->http.req.response();
 					// Выполняем отправку заголовков сообщения
-					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
+					const_cast <server::core_t *> (this->_core)->send(
+						static_cast <const char *> (options->buffer.extraction),
+						static_cast <size_t> (options->buffer.extraction), bid
+					);
 					/**
 					 * Получаем данные тела ответа
 					 */
-					while(!(payload = ::move(web->http.payload())).empty()){
+					while(!(options->buffer.extraction = ::move(web->http.chunk())).empty()){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение о выводе чанка полезной нагрузки
-							std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+							std::cout << this->_fmk->format("<chunk %zu>", options->buffer.extraction.size()) << std::endl << std::endl << std::flush;
 						#endif
 						// Если тела данных для отправки больше не осталось
-						if(web->http.empty(awh::http_t::suite_t::BODY))
+						if(web->http.empty(awh::web_t::unit_t::BODY))
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-							options->stopped = (!this->_service.alive && !web->alive && !web->http.is(http_t::state_t::ALIVE));
+							options->stopped = (!this->_service.alive && !web->alive && !web->http.state(http_t::state_t::ALIVE));
 						// Выполняем отправку ответа клиенту
-						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+						const_cast <server::core_t *> (this->_core)->send(
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction), bid
+						);
 					}
 					// Если получение данных нужно остановить
 					if(options->stopped)
 						// Выполняем запрет на получение входящих данных
 						const_cast <server::core_t *> (this->_core)->events(bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!web->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
+					if(this->_callback.is("entity") && !web->http.empty(awh::web_t::unit_t::BODY))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, web->http.body());
+						this->_callback.call <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &)> ("entity", options->sid, bid, request.method, request.url, web->http.body());
 					// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 					if(this->_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, web->http.body(), web->http.headers());
+						this->_callback.call <void (const int32_t, const uint32_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &, const headers_t &)> ("complete", options->sid, bid, request.method, request.url, web->http.body(), web->http.headers());
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", options->sid, bid, mode_t::CLOSE);
+						this->_callback.call <void (const int32_t, const uint32_t, const mode_t)> ("stream", options->sid, bid, mode_t::CLOSE);
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
+						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::CRITICAL, http::error_t::HTTP1_RECV, response.message);
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end")){
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::RECV);
+						this->_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", options->sid, bid, direct_t::RECV);
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::SEND);
+						this->_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", options->sid, bid, direct_t::SEND);
 					}
 					// Выполняем очистку HTTP-парсера
-					options->http.clear();
+					options->http.req.clear();
 					// Выполняем сброс состояния HTTP-парсера
-					options->http.reset();
+					options->http.req.reset();
 					// Выполняем очистку буфера данных
 					options->buffer.payload.clear();
 					// Выполняем очистку фрагментированных сообщений
 					options->buffer.fragments.clear();
+					// Выполняем очистку временного буфера данных
+					options->buffer.extraction.clear();
 					// Завершаем работу
 					return;
 				}
@@ -807,7 +817,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
  *
  * @param bid идентификатор брокера
  */
-void awh::server::Http1::erase(const uint64_t bid) noexcept {
+void awh::server::Http1::erase(const uint32_t bid) noexcept {
 	// Если список отключившихся брокеров не пустой
 	if(!this->_disconected.empty()){
 		/**
@@ -815,7 +825,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 		 *
 		 * @param bid идентификатор брокера
 		 */
-		auto eraseFn = [this](const uint64_t bid) noexcept -> void {
+		auto eraseFn = [this](const uint32_t bid) noexcept -> void {
 			// Выполняем поиск агента которому соответствует клиент
 			auto i = this->_agents.find(bid);
 			// Если агент найден в списке активных агентов
@@ -834,7 +844,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 				// Устанавливаем флаг отключения
 				options->close = true;
 				// Выполняем очистку оставшихся данных
-				options->buffer.clear();
+				options->buffer.payload.clear();
 			}
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
@@ -850,7 +860,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 				// Если установлена функция детекции удаление брокера сообщений установлена
 				if(this->_callback.is("erase"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint64_t)> ("erase", bid);
+					this->_callback.call <void (const uint32_t)> ("erase", bid);
 				// Выполняем удаление отключившегося брокера
 				eraseFn(i->first);
 				// Выполняем удаление брокера
@@ -865,7 +875,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 					// Если установлена функция детекции удаление брокера сообщений установлена
 					if(this->_callback.is("erase"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t)> ("erase", i->first);
+						this->_callback.call <void (const uint32_t)> ("erase", i->first);
 					// Выполняем удаление отключившегося брокера
 					eraseFn(i->first);
 					// Выполняем удаление объекта брокеров из списка отключившихся
@@ -899,7 +909,7 @@ void awh::server::Http1::pinging(const uint16_t tid) noexcept {
 						// Если параметры активного клиента получены
 						if((options != nullptr) && ((!options->alive && !this->_service.alive) || options->close)){
 							// Если брокер давно должен был быть отключён, отключаем его
-							if(options->close || !options->http.is(http_t::state_t::ALIVE))
+							if(options->close || !options->http.state(http_t::state_t::ALIVE))
 								// Выполняем отключение клиента от сервера
 								const_cast <server::core_t *> (this->_core)->close(agent.first);
 						}
@@ -920,7 +930,7 @@ void awh::server::Http1::pinging(const uint16_t tid) noexcept {
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
  */
-const awh::http_t * awh::server::Http1::parser(const uint64_t bid) const noexcept {
+const awh::http_t * awh::server::Http1::parser(const uint32_t bid) const noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -944,7 +954,7 @@ const awh::http_t * awh::server::Http1::parser(const uint64_t bid) const noexcep
  * @param bid идентификатор брокера
  * @return    флаг запроса клиентом передачи трейлеров
  */
-bool awh::server::Http1::trailers(const uint64_t bid) const noexcept {
+bool awh::server::Http1::trailers(const uint32_t bid) const noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -956,7 +966,7 @@ bool awh::server::Http1::trailers(const uint64_t bid) const noexcept {
 			// Если параметры активного клиента получены
 			if(options != nullptr)
 				// Выполняем получение флага запроса клиента на передачу трейлеров
-				return options->http.is(http_t::state_t::TRAILERS);
+				return options->http.state(http_t::state_t::TRAILERS);
 		}
 	}
 	// Выводим результат
@@ -969,7 +979,7 @@ bool awh::server::Http1::trailers(const uint64_t bid) const noexcept {
  * @param key ключ заголовка
  * @param val значение заголовка
  */
-void awh::server::Http1::trailer(const uint64_t bid, const string & key, const string & val) noexcept {
+void awh::server::Http1::trailer(const uint32_t bid, const string & key, const string & val) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1016,7 +1026,7 @@ void awh::server::Http1::init(const uint32_t port, const string & host, const ve
  * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
+void awh::server::Http1::sendError(const uint32_t bid, const ws::mess_t & mess) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1035,7 +1045,7 @@ void awh::server::Http1::sendError(const uint64_t bid, const ws::mess_t & mess) 
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
  */
-bool awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+bool awh::server::Http1::sendMessage(const uint32_t bid, const vector <char> & message, const bool text) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1057,7 +1067,7 @@ bool awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & m
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
  */
-bool awh::server::Http1::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+bool awh::server::Http1::sendMessage(const uint32_t bid, const char * message, const size_t size, const bool text) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1078,7 +1088,7 @@ bool awh::server::Http1::sendMessage(const uint64_t bid, const char * message, c
  * @param size   размер сообщения в байтах
  * @return       результат отправки сообщения
  */
-bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::Http1::send(const uint32_t bid, const char * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
@@ -1095,7 +1105,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
  * @param end    флаг последнего сообщения после которого поток закрывается
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept {
+bool awh::server::Http1::send(const uint32_t bid, const char * buffer, const size_t size, const bool end) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
@@ -1108,30 +1118,31 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
-				// Тело WEB сообщения
-				buffer_t payload(this->_fmk, this->_log);
 				// Выполняем очистку данных тела
-				options->http.clear(http_t::suite_t::BODY);
+				options->http.clear(awh::web_t::unit_t::BODY);
 				// Устанавливаем тело запроса
 				options->http.body(buffer, size);
 				/**
 				 * Получаем данные тела полезной нагрузки
 				 */
-				while(!(payload = ::move(options->http.payload())).empty()){
+				while(!(options->buffer.extraction = ::move(options->http.chunk())).empty()){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение о выводе чанка тела
-						std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+						std::cout << this->_fmk->format("<chunk %zu>", options->buffer.extraction.size()) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем флаг закрытия подключения
-					options->stopped = (end && options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0));
+					options->stopped = (end && options->http.empty(awh::web_t::unit_t::BODY) && (options->http.trailersCount() == 0));
 					// Выполняем отправку ответа клиенту
-					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+					const_cast <server::core_t *> (this->_core)->send(
+						static_cast <const char *> (options->buffer.extraction),
+						static_cast <size_t> (options->buffer.extraction), bid
+					);
 				}
 				// Если список трейлеров установлен
-				if(options->http.trailers() > 0){
+				if(options->http.trailersCount() > 0){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1142,18 +1153,21 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					/**
 					 * Получаем отправляемые трейлеры
 					 */
-					while(!(payload = ::move(options->http.trailer())).empty()){
+					while(!(options->buffer.extraction = ::move(options->http.trailers())).empty()){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение о выводе чанка тела
-							std::cout << this->_fmk->format("%s", string(static_cast <const char *> (payload), static_cast <size_t> (payload)).c_str()) << std::flush;
+							std::cout << this->_fmk->format("%s", static_cast <string> (options->buffer.extraction).c_str()) << std::flush;
 						#endif
 						// Устанавливаем флаг закрытия подключения
-						options->stopped = (end && (options->http.trailers() == 0));
+						options->stopped = (end && (options->http.trailersCount() == 0));
 						// Выполняем отправку трейлера клиенту
-						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+						const_cast <server::core_t *> (this->_core)->send(
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction), bid
+						);
 					}
 					/**
 					 * Если включён режим отладки
@@ -1179,7 +1193,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::Http1::send(const uint32_t bid, const uint32_t code, const string & mess, const headers_t & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если заголовки запроса переданы
@@ -1195,7 +1209,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const 
 				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
 				// Выполняем очистку заголовков
-				options->http.clear(http_t::suite_t::HEADER);
+				options->http.clear(awh::web_t::unit_t::HEADERS);
 				// Устанавливаем заголовоки запроса
 				options->http.headers(headers);
 				// Если сообщение ответа не установлено
@@ -1215,7 +1229,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const 
 						// Выводим заголовок запроса
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим параметры запроса
-						std::cout << string(static_cast <const char *> (headers), static_cast <size_t> (headers)) << std::endl << std::endl << std::flush;
+						std::cout << headers << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = end;
@@ -1240,7 +1254,7 @@ int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const 
  * @param size    размер данных полезной нагрузки (размер тела сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http1::send(const uint32_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const headers_t & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1251,18 +1265,16 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
-				// Тело полезной нагрузки
-				buffer_t payload(this->_fmk, this->_log);
 				// Получаем флаг постоянного подключения
-				const bool alive = options->http.is(http_t::state_t::ALIVE);
+				const bool alive = options->http.state(http_t::state_t::ALIVE);
 				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
 				// Выполняем очистку буфера полученных данных
-				options->buffer.clear();
+				options->buffer.payload.clear();
 				// Выполняем очистку данных тела
-				options->http.clear(http_t::suite_t::BODY);
+				options->http.clear(awh::web_t::unit_t::BODY);
 				// Выполняем очистку заголовков
-				options->http.clear(http_t::suite_t::HEADER);
+				options->http.clear(awh::web_t::unit_t::HEADERS);
 				// Устанавливаем заголовки ответа
 				options->http.headers(headers);
 				// Устанавливаем полезную нагрузку
@@ -1276,21 +1288,21 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 						// Если сервер соответствует HTTP-серверу
 						case static_cast <uint8_t> (http_t::identity_t::HTTP): {
 							// Если заголовок подключения не переопределён
-							if(!options->http.is(http_t::suite_t::HEADER, "Connection"))
+							if(!options->http.headers().has("Connection"))
 								// Устанавливаем закрытие подключения
 								options->http.header("Connection", "close");
 						} break;
 						// Если сервер соответствует PROXY-серверу
 						case static_cast <uint8_t> (http_t::identity_t::PROXY): {
 							// Если заголовок подключения не переопределён
-							if(!options->http.is(http_t::suite_t::HEADER, "Proxy-Connection"))
+							if(!options->http.headers().has("Proxy-Connection"))
 								// Устанавливаем закрытие подключения
 								options->http.header("Proxy-Connection", "close");
 						} break;
 					}
 				}
 				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if((this->_scheme.timeouts.wait > 0) && !this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
+				if((this->_scheme.timeouts.wait > 0) && !this->_service.alive && !options->alive && options->http.state(http_t::state_t::ALIVE))
 					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 					options->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_scheme.timeouts.wait, this->_maxRequests));
 				// Если сообщение ответа не установлено
@@ -1304,34 +1316,37 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					// Выводим заголовок ответа
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры ответа
-					std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+					std::cout << response << std::endl << std::endl << std::flush;
 				#endif
 				// Если тело данных не установлено для отправки
-				if(options->http.empty(awh::http_t::suite_t::BODY))
+				if(options->http.empty(awh::web_t::unit_t::BODY))
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-					options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+					options->stopped = (!this->_service.alive && !options->alive && !options->http.state(http_t::state_t::ALIVE));
 				// Отправляем серверу сообщение
 				const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 				// Если код ответа содержит тело ответа
-				if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
+				if((code >= 200) && !options->http.empty(awh::web_t::unit_t::BODY)){
 					/**
 					 * Получаем данные тела полезной нагрузки
 					 */
-					while(!(payload = ::move(options->http.payload())).empty()){
+					while(!(options->buffer.extraction = ::move(options->http.chunk())).empty()){
 						// Если включён режим отладки
 						#if DEBUG_MODE
 							// Выводим сообщение о выводе чанка полезной нагрузки
-							std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+							std::cout << this->_fmk->format("<chunk %zu>", options->buffer.extraction.size()) << std::endl << std::endl << std::flush;
 						#endif
 						// Если тела данных для отправки больше не осталось
-						if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
+						if(options->http.empty(awh::web_t::unit_t::BODY) && (options->http.trailersCount() == 0))
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-							options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+							options->stopped = (!this->_service.alive && !options->alive && !options->http.state(http_t::state_t::ALIVE));
 						// Отправляем тело ответа клиенту
-						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+						const_cast <server::core_t *> (this->_core)->send(
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction), bid
+						);
 					}
 					// Если список трейлеров установлен
-					if(options->http.trailers() > 0){
+					if(options->http.trailersCount() > 0){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1342,20 +1357,23 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 						/**
 						 * Получаем отправляемые трейлеры
 						 */
-						while(!(payload = ::move(options->http.trailer())).empty()){
+						while(!(options->buffer.extraction = ::move(options->http.trailers())).empty()){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение о выводе чанка тела
-								std::cout << this->_fmk->format("%s", string(static_cast <const char *> (payload), static_cast <size_t> (payload)).c_str()) << std::flush;
+								std::cout << this->_fmk->format("%s", static_cast <string> (options->buffer.extraction).c_str()) << std::flush;
 							#endif
 							// Если все трейлеры были отправлены
-							if(options->http.trailers() == 0)
+							if(options->http.trailersCount() == 0)
 								// Устанавливаем флаг закрытия подключения
-								options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+								options->stopped = (!this->_service.alive && !options->alive && !options->http.state(http_t::state_t::ALIVE));
 							// Выполняем отправку трейлера клиенту
-							const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+							const_cast <server::core_t *> (this->_core)->send(
+								static_cast <const char *> (options->buffer.extraction),
+								static_cast <size_t> (options->buffer.extraction), bid
+							);
 						}
 						/**
 						 * Если включён режим отладки
@@ -1368,7 +1386,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					// Если установлена функция отлова завершения запроса
 					if(this->_callback.is("end"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::SEND);
+						this->_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", 1, bid, direct_t::SEND);
 				}
 			}
 		}
@@ -1383,13 +1401,13 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http1::send(const uint32_t bid, const uint32_t code, const string & mess, const buffer_t & entity, const headers_t & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Если тело сообщения передано
 		if(!entity.empty())
 			// Выполняем отправку ответа с телом сообщения
-			this->send(bid, code, mess, entity.data(), entity.size(), headers);
+			this->send(bid, code, mess, static_cast <const char *> (entity), static_cast <size_t> (entity), headers);
 		// Выполняем отправку ответа без тела сообщения
 		else this->send(bid, code, mess, nullptr, 0, headers);
 	}
@@ -1453,7 +1471,7 @@ void awh::server::Http1::callback(const callback_t & callback) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-uint32_t awh::server::Http1::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::Http1::port(const uint32_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.port(bid);
 }
@@ -1463,7 +1481,7 @@ uint32_t awh::server::Http1::port(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
-awh::server::web_t::agent_t awh::server::Http1::agent(const uint64_t bid) const noexcept {
+awh::server::web_t::agent_t awh::server::Http1::agent(const uint32_t bid) const noexcept {
 	// Выполняем поиск нужного нам агента
 	auto i = this->_agents.find(bid);
 	// Если агент клиента найден
@@ -1479,7 +1497,7 @@ awh::server::web_t::agent_t awh::server::Http1::agent(const uint64_t bid) const 
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
-const string & awh::server::Http1::ip(const uint64_t bid) const noexcept {
+const string & awh::server::Http1::ip(const uint32_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.ip(bid);
 }
@@ -1489,7 +1507,7 @@ const string & awh::server::Http1::ip(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
-const string & awh::server::Http1::mac(const uint64_t bid) const noexcept {
+const string & awh::server::Http1::mac(const uint32_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.mac(bid);
 }
@@ -1521,7 +1539,7 @@ void awh::server::Http1::start() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::Http1::close(const uint64_t bid) noexcept {
+void awh::server::Http1::close(const uint32_t bid) noexcept {
 	// Выполняем поиск агента которому соответствует клиент
 	auto i = this->_agents.find(bid);
 	// Если агент соответствует Websocket-у
@@ -1585,7 +1603,7 @@ void awh::server::Http1::subprotocols(const std::unordered_set <string> & subpro
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const std::unordered_set <string> & awh::server::Http1::subprotocols(const uint64_t bid) const noexcept {
+const std::unordered_set <string> & awh::server::Http1::subprotocols(const uint32_t bid) const noexcept {
 	// Выполняем извлечение выбранных сабпротоколов
 	return this->_ws1.subprotocols(bid);
 }
@@ -1604,36 +1622,9 @@ void awh::server::Http1::extensions(const vector <vector <string>> & extensions)
  * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::server::Http1::extensions(const uint64_t bid) const noexcept {
+const vector <vector <string>> & awh::server::Http1::extensions(const uint32_t bid) const noexcept {
 	// Выполняем извлечение списка поддерживаемых расширений
 	return this->_ws1.extensions(bid);
-}
-/**
- * @brief Метод активации многопоточности
- *
- * @param count количество потоков для активации
- * @param mode  флаг активации/деактивации мультипоточности
- */
-void awh::server::Http1::multiThreads(const uint16_t count, const bool mode) noexcept {
-	// Если нужно активировать многопоточность
-	if(mode){
-		// Если многопоточность ещё не активированна
-		if(!this->_ws1._thr.initialized())
-			// Выполняем инициализацию пула потоков
-			this->_ws1._thr.init(count);
-		// Если многопоточность уже активированна
-		else {
-			// Выполняем завершение всех активных потоков
-			this->_ws1._thr.stop();
-			// Выполняем инициализацию нового тредпула
-			this->_ws1._thr.init(count);
-		}
-		// Если сетевое ядро установлено
-		if(this->_core != nullptr)
-			// Устанавливаем простое чтение базы событий
-			const_cast <server::core_t *> (this->_core)->easily(true);
-	// Выполняем завершение всех потоков
-	} else this->_ws1._thr.stop();
 }
 /**
  * @brief Метод установки максимального количества одновременных подключений
@@ -1717,7 +1708,7 @@ void awh::server::Http1::alive(const bool mode) noexcept {
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::Http1::alive(const uint64_t bid, const bool mode) noexcept {
+void awh::server::Http1::alive(const uint32_t bid, const bool mode) noexcept {
 	// Получаем параметры активного клиента
 	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -1737,31 +1728,20 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 		web_t::core(core);
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
-		// Если многопоточность активированна
-		if(this->_ws1._thr.initialized())
-			// Устанавливаем простое чтение базы событий
-			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
 		const_cast <server::core_t *> (this->_core)->on <void (const uint16_t)> ("open", &http1_t::openEvents, this, _1);
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &http1_t::connectEvents, this, _1, _2);
+		const_cast <server::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("connect", &http1_t::connectEvents, this, _1, _2);
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &http1_t::disconnectEvents, this, _1, _2);
+		const_cast <server::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("disconnect", &http1_t::disconnectEvents, this, _1, _2);
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &http1_t::readEvents, this, _1, _2, _3, _4);
+		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("read", &http1_t::readEvents, this, _1, _2, _3, _4);
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeEvents, this, _1, _2, _3, _4);
+		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &http1_t::writeEvents, this, _1, _2, _3, _4);
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", &http1_t::acceptEvents, this, _1, _2, _3, _4);
+		const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint32_t)> ("accept", &http1_t::acceptEvents, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
-		// Если многопоточность активированна
-		if(this->_ws1._thr.initialized()){
-			// Выполняем завершение всех активных потоков
-			this->_ws1._thr.stop();
-			// Снимаем режим простого чтения базы событий
-			const_cast <server::core_t *> (this->_core)->easily(false);
-		}
 		// Удаляем схему сети из сетевого ядра
 		const_cast <server::core_t *> (this->_core)->remove(this->_scheme.id);
 		// Выполняем удаление объекта сетевого ядра
@@ -1813,7 +1793,7 @@ void awh::server::Http1::maxRequests(const uint32_t max) noexcept {
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
-bool awh::server::Http1::crypted(const uint64_t bid) const noexcept {
+bool awh::server::Http1::crypted(const uint32_t bid) const noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
@@ -1832,7 +1812,7 @@ bool awh::server::Http1::crypted(const uint64_t bid) const noexcept {
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
-void awh::server::Http1::encrypt(const uint64_t bid, const bool mode) noexcept {
+void awh::server::Http1::encrypt(const uint32_t bid, const bool mode) noexcept {
 	// Если активированно шифрование обмена сообщениями
 	if(this->_encryption.mode){
 		// Получаем параметры активного клиента
@@ -1890,13 +1870,13 @@ awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем событие на запуск системы
 	const_cast <server::core_t *> (this->_core)->on <void (const uint16_t)> ("open", &http1_t::openEvents, this, _1);
 	// Устанавливаем событие подключения
-	const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &http1_t::connectEvents, this, _1, _2);
+	const_cast <server::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("connect", &http1_t::connectEvents, this, _1, _2);
 	// Устанавливаем событие отключения
-	const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &http1_t::disconnectEvents, this, _1, _2);
+	const_cast <server::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("disconnect", &http1_t::disconnectEvents, this, _1, _2);
 	// Устанавливаем функцию чтения данных
-	const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &http1_t::readEvents, this, _1, _2, _3, _4);
+	const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("read", &http1_t::readEvents, this, _1, _2, _3, _4);
 	// Устанавливаем функцию записи данных
-	const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeEvents, this, _1, _2, _3, _4);
+	const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &http1_t::writeEvents, this, _1, _2, _3, _4);
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", &http1_t::acceptEvents, this, _1, _2, _3, _4);
+	const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint32_t)> ("accept", &http1_t::acceptEvents, this, _1, _2, _3, _4);
 }

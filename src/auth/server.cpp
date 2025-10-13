@@ -1,6 +1,6 @@
 /**
  * @file: server.cpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -22,47 +22,6 @@
  */
 using namespace std;
 
-/**
- * @brief Метод извлечения данных авторизации
- *
- * @return данные модуля авторизации
- */
-awh::server::Auth::data_t awh::server::Auth::data() const noexcept {
-	// Результат работы функции
-	data_t result;
-	// Выполняем установку типа авторизации
-	result.type = &this->_type;
-	// Выполняем установку параметров Digest авторизации
-	result.digest = &this->_digest;
-	// Выполняем установку пользовательских параметров Digest авторизации
-	result.locale = &this->_locale;
-	// Выполняем установку логина пользователя
-	result.user = &this->_user;
-	// Выполняем установку пароля пользователя
-	result.pass = &this->_pass;
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки данных авторизации
- *
- * @param data данные авторизации для установки
- */
-void awh::server::Auth::data(const data_t & data) noexcept {
-	// Если данные переданы
-	if((data.type != nullptr) && (data.digest != nullptr) && (data.locale != nullptr) && (data.user != nullptr) && (data.pass != nullptr)){
-		// Выполняем установку типа авторизации
-		this->_type = (* data.type);
-		// Выполняем установку параметров Digest авторизации
-		this->_digest = (* data.digest);
-		// Выполняем установку пользовательских параметров Digest авторизации
-		this->_locale = (* data.locale);
-		// Выполняем установку логина пользователя
-		this->_user.assign(data.user->begin(), data.user->end());
-		// Выполняем установку пароля пользователя
-		this->_pass.assign(data.pass->begin(), data.pass->end());
-	}
-}
 /**
  * @brief Метод проверки авторизации
  *
@@ -163,7 +122,7 @@ void awh::server::Auth::callback(function <bool (const string &, const string &)
  */
 void awh::server::Auth::header(const string & header) noexcept {
 	// Если заголовок передан
-	if(!header.empty() && (this->_fmk != nullptr)){
+	if(!header.empty()){
 		/**
 		 * Определяем тип авторизации
 		 */
@@ -282,6 +241,48 @@ void awh::server::Auth::header(const string & header) noexcept {
 	}
 }
 /**
+ * @brief Метод извлечения параметров авторизации
+ *
+ * @return параметры модуля авторизации
+ */
+awh::server::Auth::settings_t awh::server::Auth::settings() const noexcept {
+	// Результат работы функции
+	settings_t result;
+	// Выполняем установку типа авторизации
+	result.type = &this->_type;
+	// Выполняем установку параметров Digest авторизации
+	result.digest = &this->_digest;
+	// Выполняем установку пользовательских параметров Digest авторизации
+	result.locale = &this->_locale;
+	// Выполняем установку логина пользователя
+	result.user = this->_user.c_str();
+	// Выполняем установку пароля пользователя
+	result.pass = this->_pass.c_str();
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки параметров авторизации
+ *
+ * @param settings параметры авторизации для установки
+ */
+void awh::server::Auth::settings(const settings_t & settings) noexcept {
+	// Если данные переданы
+	if((settings.type != nullptr) && (settings.digest != nullptr) &&
+	   (settings.locale != nullptr) && (settings.user != nullptr) && (settings.pass != nullptr)){
+		// Выполняем установку типа авторизации
+		this->_type = (* settings.type);
+		// Выполняем установку параметров Digest авторизации
+		this->_digest = (* settings.digest);
+		// Выполняем установку пользовательских параметров Digest авторизации
+		this->_locale = (* settings.locale);
+		// Выполняем установку логина пользователя
+		this->_user.assign(settings.user);
+		// Выполняем установку пароля пользователя
+		this->_pass.assign(settings.pass);
+	}
+}
+/**
  * @brief Оператор вывода строки авторизации
  *
  * @return строка авторизации
@@ -289,153 +290,158 @@ void awh::server::Auth::header(const string & header) noexcept {
 awh::server::Auth::operator string() noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если фреймворк установлен
-	if(this->_fmk != nullptr){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
 		/**
-		 * Выполняем отлов ошибок
+		 * Определяем тип авторизации
 		 */
-		try {
-			/**
-			 * Определяем тип авторизации
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип авторизации Digest
-				case static_cast <uint8_t> (type_t::DIGEST): {
-					// Флаг нужно ли клиенту повторить запрос
-					string stale = "FALSE";
-					// Алгоритм шифрования
-					string algorithm = "MD5";
-					// Флаг создания нового ключа nonce
-					bool createNonce = false;
-					// Получаем текущее значение штампа времени
-					const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-					// Если ключ клиента не создан или прошло времени больше 30-ти минут
-					if((createNonce = (this->_digest.nonce.empty() || ((date - this->_digest.date) >= DIGEST_ALIVE_NONCE)))){
-						// Устанавливаем штамп времени
-						this->_digest.date = date;
-						// Если ключ клиента, ещё небыл сгенерирован
-						if(!this->_digest.nonce.empty())
+		switch(static_cast <uint8_t> (this->_type)){
+			// Если тип авторизации Digest
+			case static_cast <uint8_t> (type_t::DIGEST): {
+				// Флаг нужно ли клиенту повторить запрос
+				string stale = "FALSE";
+				// Алгоритм шифрования
+				string algorithm = "MD5";
+				// Флаг создания нового ключа nonce
+				bool createNonce = false;
+				// Получаем текущее значение штампа времени
+				const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+				// Если ключ клиента не создан или прошло времени больше 30-ти минут
+				if((createNonce = (this->_digest.nonce.empty() || ((date - this->_digest.date) >= DIGEST_ALIVE_NONCE)))){
+					// Устанавливаем штамп времени
+					this->_digest.date = date;
+					// Если ключ клиента, ещё небыл сгенерирован
+					if(!this->_digest.nonce.empty())
+						// Выполняем установку полученного значения
+						stale = "TRUE";
+				}
+				/**
+				 * Определяем алгоритм шифрования
+				 */
+				switch(static_cast <uint16_t> (this->_digest.hash)){
+					// Если алгоритм шифрования MD5
+					case static_cast <uint16_t> (hash_t::MD5): {
+						// Устанавливаем тип шифрования
+						algorithm = "MD5";
+						// Выполняем создание ключа клиента
+						if(createNonce)
 							// Выполняем установку полученного значения
-							stale = "TRUE";
-					}
-					/**
-					 * Определяем алгоритм шифрования
-					 */
-					switch(static_cast <uint16_t> (this->_digest.hash)){
-						// Если алгоритм шифрования MD5
-						case static_cast <uint16_t> (hash_t::MD5): {
-							// Устанавливаем тип шифрования
-							algorithm = "MD5";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::MD5, this->_digest.nonce);
-							// Создаём ключ сервера
-							if(this->_digest.opaque.empty())
-								// Выполняем установку полученного значения
-								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::MD5, this->_digest.opaque);
-						} break;
-						// Если алгоритм шифрования SHA1
-						case static_cast <uint16_t> (hash_t::SHA1): {
-							// Устанавливаем тип шифрования
-							algorithm = "SHA1";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
-							// Создаём ключ сервера
-							if(this->_digest.opaque.empty())
-								// Выполняем установку полученного значения
-								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA1, this->_digest.opaque);
-						} break;
-						// Если алгоритм шифрования SHA224
-						case static_cast <uint16_t> (hash_t::SHA224): {
-							// Устанавливаем тип шифрования
-							algorithm = "SHA224";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
-							// Создаём ключ сервера
-							if(this->_digest.opaque.empty())
-								// Выполняем установку полученного значения
-								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA224, this->_digest.opaque);
-						} break;
-						// Если алгоритм шифрования SHA256
-						case static_cast <uint16_t> (hash_t::SHA256): {
-							// Устанавливаем тип шифрования
-							algorithm = "SHA256";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
-							// Создаём ключ сервера
-							if(this->_digest.opaque.empty())
-								// Выполняем установку полученного значения
-								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA256, this->_digest.opaque);
-						} break;
-						// Если алгоритм шифрования SHA384
-						case static_cast <uint16_t> (hash_t::SHA384): {
-							// Устанавливаем тип шифрования
-							algorithm = "SHA384";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
-							// Создаём ключ сервера
-							if(this->_digest.opaque.empty())
-								// Выполняем установку полученного значения
-								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA384, this->_digest.opaque);
-						} break;
-						// Если алгоритм шифрования SHA512
-						case static_cast <uint16_t> (hash_t::SHA512): {
-							// Устанавливаем тип шифрования
-							algorithm = "SHA512";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
-							// Создаём ключ сервера
-							if(this->_digest.opaque.empty())
-								// Выполняем установку полученного значения
-								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA512, this->_digest.opaque);
-						} break;
-					}
-					// Создаём строку запроса авторизации
-					result = this->_fmk->format(
-						"Digest realm=\"%s\", qop=\"%s\", stale=%s, algorithm=\"%s\", nonce=\"%s\", opaque=\"%s\"",
-						this->_digest.realm.c_str(),
-						this->_digest.qop.c_str(),
-						stale.c_str(), algorithm.c_str(),
-						this->_digest.nonce.c_str(),
-						this->_digest.opaque.c_str()
-					);
-				} break;
-				// Если тип авторизации Basic
-				case static_cast <uint8_t> (type_t::BASIC):
-					// Создаём строку запроса авторизации
-					result = this->_fmk->format("Basic realm=\"%s\", charset=\"UTF-8\"", "Please login for access");
-				break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+							this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::MD5, this->_digest.nonce);
+						// Создаём ключ сервера
+						if(this->_digest.opaque.empty())
+							// Выполняем установку полученного значения
+							this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::MD5, this->_digest.opaque);
+					} break;
+					// Если алгоритм шифрования SHA1
+					case static_cast <uint16_t> (hash_t::SHA1): {
+						// Устанавливаем тип шифрования
+						algorithm = "SHA1";
+						// Выполняем создание ключа клиента
+						if(createNonce)
+							// Выполняем установку полученного значения
+							this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
+						// Создаём ключ сервера
+						if(this->_digest.opaque.empty())
+							// Выполняем установку полученного значения
+							this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA1, this->_digest.opaque);
+					} break;
+					// Если алгоритм шифрования SHA224
+					case static_cast <uint16_t> (hash_t::SHA224): {
+						// Устанавливаем тип шифрования
+						algorithm = "SHA224";
+						// Выполняем создание ключа клиента
+						if(createNonce)
+							// Выполняем установку полученного значения
+							this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
+						// Создаём ключ сервера
+						if(this->_digest.opaque.empty())
+							// Выполняем установку полученного значения
+							this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA224, this->_digest.opaque);
+					} break;
+					// Если алгоритм шифрования SHA256
+					case static_cast <uint16_t> (hash_t::SHA256): {
+						// Устанавливаем тип шифрования
+						algorithm = "SHA256";
+						// Выполняем создание ключа клиента
+						if(createNonce)
+							// Выполняем установку полученного значения
+							this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
+						// Создаём ключ сервера
+						if(this->_digest.opaque.empty())
+							// Выполняем установку полученного значения
+							this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA256, this->_digest.opaque);
+					} break;
+					// Если алгоритм шифрования SHA384
+					case static_cast <uint16_t> (hash_t::SHA384): {
+						// Устанавливаем тип шифрования
+						algorithm = "SHA384";
+						// Выполняем создание ключа клиента
+						if(createNonce)
+							// Выполняем установку полученного значения
+							this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
+						// Создаём ключ сервера
+						if(this->_digest.opaque.empty())
+							// Выполняем установку полученного значения
+							this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA384, this->_digest.opaque);
+					} break;
+					// Если алгоритм шифрования SHA512
+					case static_cast <uint16_t> (hash_t::SHA512): {
+						// Устанавливаем тип шифрования
+						algorithm = "SHA512";
+						// Выполняем создание ключа клиента
+						if(createNonce)
+							// Выполняем установку полученного значения
+							this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
+						// Создаём ключ сервера
+						if(this->_digest.opaque.empty())
+							// Выполняем установку полученного значения
+							this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA512, this->_digest.opaque);
+					} break;
+				}
+				// Создаём строку запроса авторизации
+				result = this->_fmk->format(
+					"Digest realm=\"%s\", qop=\"%s\", stale=%s, algorithm=\"%s\", nonce=\"%s\", opaque=\"%s\"",
+					this->_digest.realm.c_str(),
+					this->_digest.qop.c_str(),
+					stale.c_str(), algorithm.c_str(),
+					this->_digest.nonce.c_str(),
+					this->_digest.opaque.c_str()
+				);
+			} break;
+			// Если тип авторизации Basic
+			case static_cast <uint8_t> (type_t::BASIC):
+				// Создаём строку запроса авторизации
+				result = this->_fmk->format("Basic realm=\"%s\", charset=\"UTF-8\"", "Please login for access");
+			break;
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::server::Auth::Auth(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::auth_t(fmk, log), _user{""}, _pass{""}, _callback(log) {}

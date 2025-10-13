@@ -1,6 +1,6 @@
 /**
  * @file: web2.cpp
- * @date: 2023-11-29
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -41,13 +41,15 @@ void awh::server::scheme::WEB2::clear() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
+void awh::server::scheme::WEB2::set(const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (this->_clients.count(bid) < 1)){
+	if(bid > 0){
 		// Создаём объект параметров активного клиента
 		auto ret = this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
-		// Устанавливаем контрольную точку
-		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		// Если новый клиент добавлен удачно
+		if(ret.second)
+			// Устанавливаем контрольную точку
+			ret.first->second->respPong = this->_fmk->timestamp <uint32_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
 }
 /**
@@ -55,7 +57,7 @@ void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::WEB2::rm(const uint64_t bid) noexcept {
+void awh::server::scheme::WEB2::rm(const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -81,7 +83,7 @@ const awh::server::scheme::WEB2::clients_t & awh::server::scheme::WEB2::get() co
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
-const awh::server::scheme::WEB2::options_t * awh::server::scheme::WEB2::get(const uint64_t bid) const noexcept {
+const awh::server::scheme::WEB2::options_t * awh::server::scheme::WEB2::get(const uint32_t bid) const noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -100,7 +102,7 @@ const awh::server::scheme::WEB2::options_t * awh::server::scheme::WEB2::get(cons
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid) noexcept {
+void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (sid > -1) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -122,7 +124,7 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::WEB2::closeStream(const int32_t sid, const uint64_t bid) noexcept {
+void awh::server::scheme::WEB2::closeStream(const int32_t sid, const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (sid > -1) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -145,7 +147,7 @@ void awh::server::scheme::WEB2::closeStream(const int32_t sid, const uint64_t bi
  * @param bid идентификатор брокера
  * @return    данные запрашиваемого потока
  */
-const awh::server::scheme::WEB2::stream_t * awh::server::scheme::WEB2::getStream(const int32_t sid, const uint64_t bid) const noexcept {
+const awh::server::scheme::WEB2::stream_t * awh::server::scheme::WEB2::getStream(const int32_t sid, const uint32_t bid) const noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (sid > -1) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -163,3 +165,11 @@ const awh::server::scheme::WEB2::stream_t * awh::server::scheme::WEB2::getStream
 	// Выводим результат
 	return nullptr;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::server::scheme::WEB2::WEB2(const fmk_t * fmk, const log_t * log) noexcept :
+ scheme_t(fmk, log), _fmk(fmk), _log(log) {}

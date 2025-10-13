@@ -1,6 +1,6 @@
 /**
  * @file: web2.hpp
- * @date: 2022-11-29
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -20,6 +20,7 @@
  */
 #include <map>
 #include <vector>
+#include <atomic>
 
 /**
  * Наши модули
@@ -60,6 +61,7 @@ namespace awh {
 						bool crypted;                    // Флаг шифрования сообщений
 						int32_t sid;                     // Идентификатор потока
 						http_t http;                     // Объект для работы с HTTP
+						buffer_t buffer;                 // Объект буфера данных
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * @brief Конструктор
@@ -68,7 +70,7 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Stream(const fmk_t * fmk, const log_t * log) noexcept :
-						 crypted(false), sid(1), http(fmk, log),
+						 crypted(false), sid(1), http(fmk, log), buffer(fmk, log),
 						 compressor(awh::http_t::compressor_t::NONE) {}
 					} stream_t;
 					/**
@@ -78,11 +80,11 @@ namespace awh {
 					typedef class Options {
 						public:
 							bool alive;                                             // Флаг долгоживущего подключения
-							bool close;                                             // Флаг требования закрыть брокера
-							bool stopped;                                           // Флаг принудительной остановки
 							uint32_t requests;                                      // Количество выполненных запросов
 							uint64_t respPong;                                      // Контрольная точка ответа на пинг
 							uint64_t sendPing;                                      // Время отправленного пинга
+							std::atomic_bool close;                                 // Флаг требования закрыть подключение
+							std::atomic_bool stopped;                               // Флаг принудительной остановки
 							engine_t::proto_t proto;                                // Активный прототип интернета
 							std::map <int32_t, std::unique_ptr <stream_t>> streams; // Список активных потоков
 						public:
@@ -98,8 +100,8 @@ namespace awh {
 							 * @param log объект для работы с логами
 							 */
 							Options(const fmk_t * fmk, const log_t * log) noexcept :
-							 alive(false), close(false), stopped(false),
-							 requests(0), respPong(0), sendPing(0),
+							 alive(false), requests(0), respPong(0),
+							 sendPing(0), close(false), stopped(false),
 							 proto(engine_t::proto_t::HTTP1_1), fmk(fmk), log(log) {}
 							/**
 							 * @brief Деструктор
@@ -111,7 +113,7 @@ namespace awh {
 					/**
 					 * Тип данных для хранения опций активных клиентов
 					 */
-					typedef std::map <uint64_t, std::unique_ptr <options_t>> clients_t;
+					using clients_t = std::map <uint32_t, std::unique_ptr <options_t>>;
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;
@@ -135,13 +137,13 @@ namespace awh {
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void set(const uint64_t bid) noexcept;
+					void set(const uint32_t bid) noexcept;
 					/**
 					 * @brief Метод удаления параметров активного клиента
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void rm(const uint64_t bid) noexcept;
+					void rm(const uint32_t bid) noexcept;
 				public:
 					/**
 					 * @brief Метод извлечения списка параметров активных клиентов
@@ -155,7 +157,7 @@ namespace awh {
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
-					const options_t * get(const uint64_t bid) const noexcept;
+					const options_t * get(const uint32_t bid) const noexcept;
 				public:
 					/**
 					 * @brief Метод открытия потока
@@ -163,14 +165,14 @@ namespace awh {
 					 * @param sid идентификатор потока
 					 * @param bid идентификатор брокера
 					 */
-					void openStream(const int32_t sid, const uint64_t bid) noexcept;
+					void openStream(const int32_t sid, const uint32_t bid) noexcept;
 					/**
 					 * @brief Метод закрытия потока
 					 *
 					 * @param sid идентификатор потока
 					 * @param bid идентификатор брокера
 					 */
-					void closeStream(const int32_t sid, const uint64_t bid) noexcept;
+					void closeStream(const int32_t sid, const uint32_t bid) noexcept;
 				public:
 					/**
 					 * @brief Метод извлечения данных потока
@@ -179,7 +181,7 @@ namespace awh {
 					 * @param bid идентификатор брокера
 					 * @return    данные запрашиваемого потока
 					 */
-					const stream_t * getStream(const int32_t sid, const uint64_t bid) const noexcept;
+					const stream_t * getStream(const int32_t sid, const uint32_t bid) const noexcept;
 				public:
 					/**
 					 * @brief Конструктор
@@ -187,8 +189,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WEB2(const fmk_t * fmk, const log_t * log) noexcept :
-					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					WEB2(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *

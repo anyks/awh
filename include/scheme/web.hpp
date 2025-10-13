@@ -1,6 +1,6 @@
 /**
  * @file: web.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -20,6 +20,7 @@
  */
 #include <map>
 #include <vector>
+#include <atomic>
 
 /**
  * Наши модули
@@ -54,20 +55,38 @@ namespace awh {
 			typedef struct AWH_SHARED_EXPORT WEB : public scheme_t {
 				public:
 					/**
+					 * @brief Структура буфера данных
+					 *
+					 */
+					typedef struct Buffer {
+						// Бинарный буфер полезной нагрузки
+						awh::buffer_t payload;
+						// Буфер извлечения данных
+						awh::buffer_t extraction;
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param fmk объект фреймворка
+						 * @param log объект для работы с логами
+						 */
+						Buffer(const fmk_t * fmk, const log_t * log) noexcept :
+						 payload(fmk, log), extraction(fmk, log) {}
+					} buffer_t;
+					/**
 					 * @brief Структура параметров активного клиента
 					 *
 					 */
 					typedef struct Options {
-						bool mode;                       // Флаг открытия подключения
 						bool alive;                      // Флаг долгоживущего подключения
-						bool close;                      // Флаг требования закрыть брокера
 						bool crypted;                    // Флаг шифрования сообщений
-						bool stopped;                    // Флаг принудительной остановки
 						int32_t sid;                     // Идентификатор потока
 						uint32_t requests;               // Количество выполненных запросов
 						uint64_t respPong;               // Контрольная точка ответа на пинг
+						std::atomic_bool begin;          // Флаг открытия подключения
+						std::atomic_bool close;          // Флаг требования закрыть подключение
+						std::atomic_bool stopped;        // Флаг принудительной остановки
 						http_t http;                     // Объект для работы с HTTP
-						awh::buffer_t buffer;            // Буфер бинарных необработанных данных
+						buffer_t buffer;                 // Объект буфера данных
 						hash_t::cipher_t cipher;         // Формат шифрования
 						engine_t::proto_t proto;         // Активный прототип интернета
 						http_t::compressor_t compressor; // Метод компрессии данных
@@ -78,9 +97,9 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						 mode(false), alive(false), close(false),
-						 crypted(false), stopped(false),
+						 alive(false), crypted(false), 
 						 sid(1), requests(0), respPong(0),
+						 begin(false), close(false), stopped(false),
 						 http(fmk, log), buffer(fmk, log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
@@ -95,7 +114,7 @@ namespace awh {
 					/**
 					 * Тип данных для хранения опций активных клиентов
 					 */
-					typedef std::map <uint64_t, std::unique_ptr <options_t>> clients_t;
+					using clients_t = std::map <uint32_t, std::unique_ptr <options_t>>;
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;
@@ -119,13 +138,13 @@ namespace awh {
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void set(const uint64_t bid) noexcept;
+					void set(const uint32_t bid) noexcept;
 					/**
 					 * @brief Метод удаления параметров активного клиента
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void rm(const uint64_t bid) noexcept;
+					void rm(const uint32_t bid) noexcept;
 				public:
 					/**
 					 * @brief Метод извлечения списка параметров активных клиентов
@@ -139,7 +158,7 @@ namespace awh {
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
-					const options_t * get(const uint64_t bid) const noexcept;
+					const options_t * get(const uint32_t bid) const noexcept;
 				public:
 					/**
 					 * @brief Конструктор
@@ -147,8 +166,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WEB(const fmk_t * fmk, const log_t * log) noexcept :
-					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					WEB(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *

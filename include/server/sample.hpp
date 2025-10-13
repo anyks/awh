@@ -1,6 +1,6 @@
 /**
  * @file: sample.hpp
- * @date: 2023-10-18
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -78,6 +78,9 @@ namespace awh {
 			private:
 				// Ядро для локального таймера
 				timer_t _timer;
+			private:
+				// Буфер бинарных данных
+				buffer_t _buffer;
 			protected:
 				// Интервал времени на выполнение пингов
 				uint32_t _pingInterval;
@@ -91,7 +94,7 @@ namespace awh {
 				hash_t::cipher_t _cipher;
 			private:
 				// Список отключившихся клиентов
-				std::map <uint64_t, uint64_t> _disconnected;
+				std::map <uint32_t, uint64_t> _disconnected;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -118,14 +121,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при отключении от сервера
 				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод получения события запуска сервера
 				 *
@@ -141,7 +144,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при записи сообщение брокеру
 				 *
@@ -150,7 +153,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при проверке подключения брокера
 				 *
@@ -210,7 +213,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const char * name, Args... args) noexcept -> uint64_t {
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
@@ -232,7 +235,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint64_t {
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова
@@ -254,7 +257,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(fid > 0)
 						// Выполняем установку функции обратного вызова
@@ -277,11 +280,11 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const A fid, Args... args) noexcept -> uint64_t {
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
-					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 						// Выполняем установку функции обратного вызова
-						return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+						return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
 					// Выводим результат по умолчанию
 					return 0;
 				}
@@ -293,7 +296,7 @@ namespace awh {
 				 * @param buffer буфер бинарных данных для отправки
 				 * @param size   размер бинарных данных для отправки
 				 */
-				void send(const uint64_t bid, const char * buffer, const size_t size) const noexcept;
+				void send(const uint32_t bid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения порта подключения брокера
@@ -301,21 +304,21 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				uint32_t port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения IP-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const uint64_t bid) const noexcept;
+				const string & ip(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения MAC-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const uint64_t bid) const noexcept;
+				const string & mac(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки долгоживущего подключения
@@ -329,7 +332,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void alive(const uint64_t bid, const bool mode) noexcept;
+				void alive(const uint32_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод остановки сервера
@@ -347,7 +350,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid) noexcept;
+				void close(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод установки интервала времени выполнения пингов

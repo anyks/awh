@@ -1,6 +1,6 @@
 /**
  * @file: socks5.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -20,6 +20,7 @@
  */
 #include <map>
 #include <vector>
+#include <atomic>
 
 /**
  * Наши модули
@@ -54,45 +55,16 @@ namespace awh {
 			typedef struct AWH_SHARED_EXPORT Socks5 : public scheme_t {
 				public:
 					/**
-					 * @brief Структура локера
-					 *
-					 */
-					typedef struct Locker {
-						bool mode;                // Флаг блокировки
-						std::recursive_mutex mtx; // Мютекс для блокировки потока
-						/**
-						 * @brief Конструктор
-						 *
-						 */
-						Locker() noexcept : mode(false) {}
-					} locker_t;
-					/**
-					 * @brief Структура флагов разрешения обменом данных
-					 *
-					 */
-					typedef struct Allow {
-						bool send;    // Флаг разрешения отправки данных
-						bool receive; // Флаг разрешения чтения данных
-						/**
-						 * @brief Конструктор
-						 *
-						 */
-						Allow() noexcept : send(true), receive(true) {}
-					} allow_t;
-				public:
-					/**
 					 * @brief Структура параметров активного клиента
 					 *
 					 */
 					typedef struct Options {
-						uint64_t id;             // Идентификатор активного клиента
-						bool locked;             // Флаг блокировки обработки запроса
-						bool connect;            // Флаг выполненного подключения
-						bool stopped;            // Флаг принудительной остановки
-						allow_t allow;           // Объект разрешения обмена данными
-						locker_t locker;         // Объект блокировщика
-						client::scheme_t scheme; // Объект схемы сети клиента
-						server::socks5_t socks5; // Объект для работы с Socks5
+						uint32_t id;              // Идентификатор активного клиента
+						std::atomic_bool locked;  // Флаг блокировки обработки запроса
+						std::atomic_bool connect; // Флаг выполненного подключения
+						std::atomic_bool stopped; // Флаг принудительной остановки
+						client::scheme_t scheme;  // Объект схемы сети клиента
+						server::socks5_t socks5;  // Объект для работы с Socks5
 						/**
 						 * @brief Конструктор
 						 *
@@ -112,7 +84,7 @@ namespace awh {
 					/**
 					 * Тип данных для хранения опций активных клиентов
 					 */
-					typedef std::map <uint64_t, std::unique_ptr <options_t>> clients_t;
+					using clients_t = std::map <uint32_t, std::unique_ptr <options_t>>;
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;
@@ -133,20 +105,20 @@ namespace awh {
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void set(const uint64_t bid) noexcept;
+					void set(const uint32_t bid) noexcept;
 					/**
 					 * @brief Метод удаления параметров активного клиента
 					 *
 					 * @param bid идентификатор брокера
 					 */
-					void rm(const uint64_t bid) noexcept;
+					void rm(const uint32_t bid) noexcept;
 					/**
 					 * @brief Метод получения параметров активного клиента
 					 *
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
-					const options_t * get(const uint64_t bid) const noexcept;
+					const options_t * get(const uint32_t bid) const noexcept;
 				public:
 					/**
 					 * @brief Конструктор
@@ -154,8 +126,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Socks5(const fmk_t * fmk, const log_t * log) noexcept :
-					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *

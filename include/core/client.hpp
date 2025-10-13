@@ -1,6 +1,6 @@
 /**
  * @file: client.hpp
- * @date: 2024-03-09
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -59,22 +59,6 @@ namespace awh {
 					PROTOCOL = 0x03  // Ошибка активации протокола
 				};
 			private:
-				/**
-				 * @brief Структура основных мютексов
-				 *
-				 */
-				typedef struct Mutex {
-					std::recursive_mutex close;   // Для закрытия подключения
-					std::recursive_mutex reset;   // Для сброса параметров таймаута
-					std::recursive_mutex proxy;   // Для работы с прокси-сервером
-					std::recursive_mutex connect; // Для выполнения подключения
-					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					std::recursive_mutex timeout; // Для создания нового таймаута
-				} mtx_t;
-			private:
-				// Мютекс для блокировки основного потока
-				mtx_t _mtx;
-			private:
 				// Объект работы таймера
 				timer_t _timer;
 			private:
@@ -82,7 +66,7 @@ namespace awh {
 				transfer_t _transfer;
 			private:
 				// Список таймаутов на получение данных
-				std::map <uint64_t, uint16_t> _receive;
+				std::map <uint32_t, uint16_t> _receive;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
 			private:
@@ -127,7 +111,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void clearTimeout(const uint64_t bid) noexcept;
+				void clearTimeout(const uint32_t bid) noexcept;
 				/**
 				 * @brief Метод удаления таймера подключения или переподключения
 				 *
@@ -141,7 +125,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param msec время ожидания получения данных в миллисекундах
 				 */
-				void createTimeout(const uint64_t bid, const uint32_t msec) noexcept;
+				void createTimeout(const uint32_t bid, const uint32_t msec) noexcept;
 				/**
 				 * @brief Метод создания таймаута подключения или переподключения
 				 *
@@ -166,7 +150,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void reset(const uint64_t bid) noexcept;
+				void reset(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод отключения всех брокеров
@@ -191,7 +175,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid) noexcept;
+				void close(const uint32_t bid) noexcept;
 				/**
 				 * @brief Метод удаления схемы сети
 				 *
@@ -204,14 +188,14 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void switchProxy(const uint64_t bid) noexcept;
+				void switchProxy(const uint32_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод вызова при удачном подключении к серверу
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void connected(const uint64_t bid) noexcept;
+				void connected(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод асинхронной отправки буфера данных в сокет
@@ -221,20 +205,20 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @return       результат отправки сообщения
 				 */
-				bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+				bool send(const char * buffer, const size_t size, const uint32_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод чтения данных для брокера
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void read(const uint64_t bid) noexcept;
+				void read(const uint32_t bid) noexcept;
 				/**
 				 * @brief Метод записи данных в брокер
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void write(const uint64_t bid) noexcept;
+				void write(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод записи буфера данных в сокет
@@ -244,7 +228,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @return       количество отправленных байт
 				 */
-				size_t write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+				size_t write(const char * buffer, const size_t size, const uint32_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод запуска работы подключения клиента
@@ -268,7 +252,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const uint64_t bid, const uint16_t sec) noexcept;
+				void waitMessage(const uint32_t bid, const uint16_t sec) noexcept;
 				/**
 				 * @brief Метод детекции сообщений по количеству секунд
 				 *
@@ -277,7 +261,7 @@ namespace awh {
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
 				 */
-				void waitTimeDetect(const uint64_t bid, const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
+				void waitTimeDetect(const uint32_t bid, const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

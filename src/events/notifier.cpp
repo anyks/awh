@@ -37,7 +37,6 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
-	#include <cstdint>
 	#include <sys/event.h>
 
 	/**
@@ -462,9 +461,9 @@ SOCKET awh::Notifier::init() noexcept {
  *
  * @return идентификатор события
  */
-uint64_t awh::Notifier::event() noexcept {
+uint32_t awh::Notifier::event() noexcept {
 	// Результат работы функции
-	uint64_t result = 0;
+	uint32_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -476,7 +475,7 @@ uint64_t awh::Notifier::event() noexcept {
 			// Если сокет ещё не закрыт
 			if(this->_socks[0] != INVALID_SOCKET){
 				// Буфер данных для чтения
-				char buffer[8];
+				char buffer[4];
 				// Общий размер прочитанных данных
 				int8_t size = 0;
 				// Количество прочитанных данных
@@ -484,9 +483,9 @@ uint64_t awh::Notifier::event() noexcept {
 				/**
 				 * Выполняем чтение данных пока не прочитаем все
 				 */
-				while(size < 8){
+				while(size < 4){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::recv(this->_socks[0], buffer + size, 8, 0));
+					bytes = static_cast <int8_t> (::recv(this->_socks[0], buffer + size, 4, 0));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -502,7 +501,7 @@ uint64_t awh::Notifier::event() noexcept {
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
 				// Буфер данных для чтения
-				char buffer[8];
+				char buffer[4];
 				// Общий размер прочитанных данных
 				int8_t size = 0;
 				// Количество прочитанных данных
@@ -510,9 +509,9 @@ uint64_t awh::Notifier::event() noexcept {
 				/**
 				 * Выполняем чтение данных пока не прочитаем все
 				 */
-				while(size < 8){
+				while(size < 4){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::read(this->_sock, buffer + size, 8));
+					bytes = static_cast <int8_t> (::read(this->_sock, buffer + size, 4));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -528,7 +527,7 @@ uint64_t awh::Notifier::event() noexcept {
 			// Если сокет ещё не закрыт
 			if(this->_socks[0] != INVALID_SOCKET){
 				// Буфер данных для чтения
-				char buffer[8];
+				char buffer[4];
 				// Общий размер прочитанных данных
 				int8_t size = 0;
 				// Количество прочитанных данных
@@ -536,9 +535,9 @@ uint64_t awh::Notifier::event() noexcept {
 				/**
 				 * Выполняем чтение данных пока не прочитаем все
 				 */
-				while(size < 8){
+				while(size < 4){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::read(this->_socks[0], buffer + size, 8));
+					bytes = static_cast <int8_t> (::read(this->_socks[0], buffer + size, 4));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -618,7 +617,7 @@ uint64_t awh::Notifier::event() noexcept {
  *
  * @param id идентификатор для отправки
  */
-void awh::Notifier::notify(const uint64_t id) noexcept {
+void awh::Notifier::notify(const uint32_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

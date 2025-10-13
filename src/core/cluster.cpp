@@ -1,6 +1,6 @@
 /**
  * @file: cluster.cpp
- * @date: 2023-07-01
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -237,22 +237,17 @@ void awh::cluster::Core::stop() noexcept {
 	switch(static_cast <uint8_t> (this->family())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
-			// Выполняем блокировку потока
-			this->_mtx.status.lock();
 			// Если система уже запущена
 			if(this->_mode){
 				// Запрещаем работу Websocket
 				this->_mode = !this->_mode;
-				// Выполняем разблокировку потока
-				this->_mtx.status.unlock();
 				// Выполняем остановку чтения базы событий
 				this->_dispatch.stop();
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("clusterStatus"))
 					// Выполняем получение функции обратного вызова
 					this->_callback.set("clusterStatus", "status", this->_callback);
-			// Выполняем разблокировку потока
-			} else this->_mtx.status.unlock();
+			}
 		} break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
@@ -272,14 +267,10 @@ void awh::cluster::Core::start() noexcept {
 	switch(static_cast <uint8_t> (this->family())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
-			// Выполняем блокировку потока
-			this->_mtx.status.lock();
 			// Если система ещё не запущена
 			if(!this->_mode){
 				// Разрешаем работу Websocket
 				this->_mode = !this->_mode;
-				// Выполняем разблокировку потока
-				this->_mtx.status.unlock();
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("status"))
 					// Выполняем получение функции обратного вызова
@@ -288,8 +279,7 @@ void awh::cluster::Core::start() noexcept {
 				this->_callback.on <void (const status_t)> ("status", &cluster::core_t::activeCallback, this, _1);
 				// Выполняем запуск чтения базы событий
 				this->_dispatch.start();
-			// Выполняем разблокировку потока
-			} else this->_mtx.status.unlock();
+			}
 		} break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
@@ -325,8 +315,6 @@ void awh::cluster::Core::name(const string & name) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::cluster::Core::callback(const callback_t & callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функций обратного вызова
 	awh::core_t::callback(callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса

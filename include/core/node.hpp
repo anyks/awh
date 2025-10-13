@@ -1,6 +1,6 @@
 /**
  * @file: node.hpp
- * @date: 2024-03-11
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -21,7 +21,6 @@
 #include <set>
 #include <map>
 #include <queue>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -29,11 +28,11 @@
  * Наши модули
  */
 #include "core.hpp"
+#include "guard.hpp"
 #include "../net/uri.hpp"
 #include "../net/dns.hpp"
 #include "../net/engine.hpp"
 #include "../sys/buffer.hpp"
-#include "../scheme/core.hpp"
 
 /**
  * @brief основное пространство имён
@@ -131,16 +130,6 @@ namespace awh {
 			} ssl_t;
 		protected:
 			/**
-			 * @brief Объект основных мютексов
-			 *
-			 */
-			typedef struct Mutex {
-				// Для работы с параметрами модуля
-				std::recursive_mutex main;
-				// Для отправки сообщений
-				std::recursive_mutex send;
-			} mtx_t;
-			/**
 			 * @brief Структура текущих параметров сети
 			 *
 			 */
@@ -172,40 +161,34 @@ namespace awh {
 				 network{"0.0.0.0","[::]"} {}
 			} settings_t;
 		protected:
-			// Мютекс для блокировки потоков
-			mtx_t _mtx;
-		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;
 			// Объект IP-адресов
 			net_t _net;
 			// Объект работы с URI
 			uri_t _uri;
+			// Объект охранника
+			guard_t _guard;
 			// Объект сетевого двигателя
 			engine_t _engine;
 			// Режим отправки сообщений
 			sending_t _sending;
 			// Объект сетевых параметров
 			settings_t _settings;
-		protected:
-			// Размер буфера полезной нагрузки
-			size_t _payloadSize;
 		private:
 			// Максимальный размер памяти для хранений полезной нагрузки всех брокеров
 			size_t _memoryAvailableSize;
 			// Максимальный размер хранимой полезной нагрузки для одного брокера
 			size_t _brokerAvailableSize;
 		protected:
-			// Список занятых процессов брокера
-			std::set <uint64_t> _busy;
 			// Список свободной памяти хранения полезной нагрузки
-			std::map <uint64_t, size_t> _available;
+			std::map <uint32_t, size_t> _available;
 			// Список активных схем сети
 			std::map <uint16_t, const scheme_t *> _schemes;
 			// Список брокеров подключения
-			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
+			std::map <uint32_t, const scheme_t::broker_t *> _brokers;
 			// Буферы отправляемой полезной нагрузки
-			std::map <uint64_t, std::unique_ptr <buffer_t>> _payloads;
+			std::map <uint32_t, std::unique_ptr <buffer_t>> _payloads;
 		protected:
 			// Объект DNS-резолвера
 			const dns_t * _dns;
@@ -226,7 +209,7 @@ namespace awh {
 			 *
 			 * @param bid идентификатор брокера
 			 */
-			void remove(const uint64_t bid) noexcept;
+			void remove(const uint32_t bid) noexcept;
 		protected:
 			/**
 			 * @brief Метод проверки существования схемы сети
@@ -241,7 +224,7 @@ namespace awh {
 			 * @param bid идентификатор брокера
 			 * @return    результат проверки
 			 */
-			bool has(const uint64_t bid) const noexcept;
+			bool has(const uint32_t bid) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения идентификатора схемы сети
@@ -249,21 +232,21 @@ namespace awh {
 			 * @param bid идентификатор брокера
 			 * @return    идентификатор схемы сети
 			 */
-			uint16_t sid(const uint64_t bid) const noexcept;
+			uint16_t sid(const uint32_t bid) const noexcept;
 		protected:
 			/**
 			 * @brief Метод инициализации буфера полезной нагрузки
 			 *
 			 * @param bid идентификатор брокера
 			 */
-			void initBuffer(const uint64_t bid) noexcept;
+			void initBuffer(const uint32_t bid) noexcept;
 			/**
 			 * @brief Метод освобождение памяти занятой для хранение полезной нагрузки брокера
 			 *
 			 * @param bid  идентификатор брокера
 			 * @param size размер байт удаляемых из буфера
 			 */
-			void erase(const uint64_t bid, const size_t size) noexcept;
+			void erase(const uint32_t bid, const size_t size) noexcept;
 		protected:
 			/**
 			 * @brief Метод извлечения брокера подключения
@@ -271,7 +254,7 @@ namespace awh {
 			 * @param bid идентификатор брокера
 			 * @return    объект брокера подключения
 			 */
-			const scheme_t::broker_t * broker(const uint64_t bid) const noexcept;
+			const scheme_t::broker_t * broker(const uint32_t bid) const noexcept;
 		public:
 			/**
 			 * @brief Метод добавления схемы сети
@@ -322,7 +305,7 @@ namespace awh {
 			 * @param bid идентификатор брокера
 			 * @return    активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 */
-			engine_t::proto_t proto(const uint64_t bid) const noexcept;
+			engine_t::proto_t proto(const uint32_t bid) const noexcept;
 			/**
 			 * @brief Метод установки поддерживаемого протокола подключения
 			 *
@@ -394,7 +377,7 @@ namespace awh {
 			 * @param bid идентификатор брокера
 			 * @return    размер хранимой полезной нагрузки для текущего брокера
 			 */
-			size_t brokerAvailableSize(const uint64_t bid) const noexcept;
+			size_t brokerAvailableSize(const uint32_t bid) const noexcept;
 			/**
 			 * @brief Метод установки максимального размера хранимой полезной нагрузки для одного брокера
 			 *
@@ -409,7 +392,7 @@ namespace awh {
 			 * @param mode режим применимой операции
 			 * @return     результат выполенния операции
 			 */
-			bool cork(const uint64_t bid, const engine_t::mode_t mode) noexcept;
+			bool cork(const uint32_t bid, const engine_t::mode_t mode) noexcept;
 			/**
 			 * @brief Метод отключения/включения алгоритма Нейгла
 			 *
@@ -417,7 +400,7 @@ namespace awh {
 			 * @param mode режим применимой операции
 			 * @return     результат выполенния операции
 			 */
-			bool nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcept;
+			bool nodelay(const uint32_t bid, const engine_t::mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод асинхронной отправки буфера данных в сокет
@@ -427,7 +410,7 @@ namespace awh {
 			 * @param bid    идентификатор брокера
 			 * @return       результат отправки сообщения
 			 */
-			virtual bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+			virtual bool send(const char * buffer, const size_t size, const uint32_t bid) noexcept;
 		public:
 			/**
 			 * @brief Метод установки пропускной способности сети
@@ -436,7 +419,7 @@ namespace awh {
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
-			virtual void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
+			virtual void bandwidth(const uint32_t bid, const string & read = "", const string & write = "") noexcept;
 		public:
 			/**
 			 * @brief Метод активации/деактивации метода события сокета
@@ -445,7 +428,7 @@ namespace awh {
 			 * @param mode   сигнал активации сокета
 			 * @param method метод режима работы
 			 */
-			void events(const uint64_t bid, const awh::scheme_t::mode_t mode, const engine_t::method_t method) noexcept;
+			void events(const uint32_t bid, const awh::scheme_t::mode_t mode, const engine_t::method_t method) noexcept;
 		public:
 			/**
 			 * @brief Метод установки параметров сети
@@ -518,11 +501,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Node(const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _net(log), _uri(fmk, log),
-			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
-			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
-			 _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
+			Node(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
@@ -530,11 +509,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _fs(fmk, log), _net(log), _uri(fmk, log),
-			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
-			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
-			 _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
+			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

@@ -1,6 +1,6 @@
 /**
  * @file: ws.hpp
- * @date: 2023-10-04
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -38,7 +38,7 @@ namespace awh {
 		 * @brief Класс работы с Websocket-сервером
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT Websocket {
+		typedef class AWH_SHARED_EXPORT AWH_Websocket {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;
@@ -56,7 +56,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
 				 */
-				engine_t::proto_t proto(const uint64_t bid) const noexcept;
+				engine_t::proto_t proto(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод инициализации Websocket-сервера
@@ -80,7 +80,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void sendError(const uint64_t bid, const ws::mess_t & mess) noexcept;
+				void sendError(const uint32_t bid, const ws::mess_t & mess) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения клиенту
@@ -90,7 +90,7 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 * @return        результат отправки сообщения
 				 */
-				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const uint32_t bid, const vector <char> & message, const bool text = true) noexcept;
 				/**
 				 * @brief Метод отправки сообщения на сервер
 				 *
@@ -100,7 +100,7 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 * @return        результат отправки сообщения
 				 */
-				bool sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text = true) noexcept;
+				bool sendMessage(const uint32_t bid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова
@@ -123,7 +123,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const char * name, Args... args) noexcept -> uint64_t {
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
@@ -145,7 +145,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint64_t {
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова
@@ -167,7 +167,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(fid > 0)
 						// Выполняем установку функции обратного вызова
@@ -190,11 +190,11 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const A fid, Args... args) noexcept -> uint64_t {
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
-					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 						// Выполняем установку функции обратного вызова
-						return this->_ws.on <B> (static_cast <uint64_t> (fid), args...);
+						return this->_ws.on <B> (static_cast <uint32_t> (fid), args...);
 					// Выводим результат по умолчанию
 					return 0;
 				}
@@ -205,21 +205,21 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				uint32_t port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения IP-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const uint64_t bid) const noexcept;
+				const string & ip(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения MAC-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const uint64_t bid) const noexcept;
+				const string & mac(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод остановки сервера
@@ -237,7 +237,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid) noexcept;
+				void close(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод установки времени ожидания ответа WebSocket-клиента
@@ -270,7 +270,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const std::unordered_set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const std::unordered_set <string> & subprotocols(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки списка расширений
@@ -284,15 +284,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    список поддерживаемых расширений
 				 */
-				const vector <vector <string>> & extensions(const uint64_t bid) const noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const uint16_t threads = 0, const bool mode = true) noexcept;
+				const vector <vector <string>> & extensions(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки максимального количества одновременных подключений
@@ -353,7 +345,7 @@ namespace awh {
 				 *
 				 * @param size размер чанка для установки
 				 */
-				void chunk(const size_t size) noexcept;
+				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки долгоживущего подключения
@@ -367,7 +359,7 @@ namespace awh {
 				 *
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const headers_t & headers) noexcept;
 			public:
 				/**
 				 * @brief Метод ожидания входящих сообщений
@@ -424,7 +416,7 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void ident(const string & id, const string & name, const string & ver) noexcept;
+				void agent(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * @brief Метод установки типа авторизации
@@ -440,14 +432,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    результат проверки
 				 */
-				bool crypted(const uint64_t bid) const noexcept;
+				bool crypted(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод активации шифрования для клиента
 				 *
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг активации шифрования
 				 */
-				void encrypt(const uint64_t bid, const bool mode) noexcept;
+				void encrypt(const uint32_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод активации шифрования
@@ -471,12 +463,12 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Websocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				AWH_Websocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Websocket() noexcept {}
+				~AWH_Websocket() noexcept {}
 		} websocket_t;
 	};
 };

@@ -1,6 +1,6 @@
 /**
  * @file: server.cpp
- * @date: 2021-12-19
+ * @date: 2025-10-07
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -26,21 +26,21 @@ using namespace std;
  * @brief Метод применения полученных результатов
  *
  */
-void awh::server::WS::commit() noexcept {
+void awh::server::Websocket::commit() noexcept {
 	// Если данные ещё не зафиксированы
-	if(this->_status == status_t::NONE){
+	if(this->_session.handshake == handshake_t::NONE){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Выполняем проверку авторизации
-			this->_status = this->status();
+			this->_session.handshake = this->handshake();
 			// Если ключ соответствует
-			if(this->_status == status_t::GOOD)
+			if(this->_session.handshake == handshake_t::GOOD)
 				// Устанавливаем стейт рукопожатия
-				this->_state = state_t::GOOD;
+				this->_session.state = state_t::GOOD;
 			// Поменяем данные как бракованные
-			else this->_state = state_t::BROKEN;
+			else this->_session.state = state_t::BROKEN;
 			{
 				// Список доступных расширений
 				vector <string> extensions;
@@ -55,7 +55,7 @@ void awh::server::WS::commit() noexcept {
 						// Если список поддерживаемых протоколов установлен
 						if(!http_t::_compressors.supports.empty()){
 							// Если конкретный метод сжатия не запрашивается
-							if(this->_fmk->compare(header.second, "*"))
+							if(this->_fmk->compare("*", header.second))
 								// Устанавливаем флаг метода компрессии
 								http_t::_compressors.selected = http_t::_compressors.supports.rbegin()->second;
 							// Если запрашиваются конкретные методы сжатия
@@ -122,9 +122,9 @@ void awh::server::WS::commit() noexcept {
 					// Если заголовок сабпротокола найден
 					} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
 						// Проверяем, соответствует ли желаемый подпротокол нашему установленному
-						if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
+						if(this->_protocols.supported.find(header.second) != this->_protocols.supported.end())
 							// Устанавливаем выбранный подпротокол
-							this->_selectedProtocols.emplace(header.second);
+							this->_protocols.selected.emplace(header.second);
 					// Если заголовок расширения найден
 					} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
 						// Запись названия расширения
@@ -177,7 +177,7 @@ void awh::server::WS::commit() noexcept {
 					// Если заголовок получен зашифрованных данных
 					} else if(this->_fmk->compare(header.first, "x-awh-encryption")) {
 						// Если заголовок найден
-						if((http_t::_crypted = !header.second.empty())){
+						if((http_t::_encrypt.crypted = !header.second.empty())){
 							/**
 							 * Выполняем отлов ошибок
 							 */
@@ -187,18 +187,18 @@ void awh::server::WS::commit() noexcept {
 								 */
 								switch(static_cast <uint16_t> (::stoi(header.second))){
 									// Если шифрование произведено 128 битным ключём
-									case 128: this->_cipher = hash_t::cipher_t::AES128; break;
+									case 128: this->_encrypt.cipher = hash_t::cipher_t::AES128; break;
 									// Если шифрование произведено 192 битным ключём
-									case 192: this->_cipher = hash_t::cipher_t::AES192; break;
+									case 192: this->_encrypt.cipher = hash_t::cipher_t::AES192; break;
 									// Если шифрование произведено 256 битным ключём
-									case 256: this->_cipher = hash_t::cipher_t::AES256; break;
+									case 256: this->_encrypt.cipher = hash_t::cipher_t::AES256; break;
 								}
 							/**
 							 * Если возникает ошибка
 							 */
 							} catch(const exception &) {
 								// Если шифрование произведено 128 битным ключём
-								this->_cipher = hash_t::cipher_t::AES128;
+								this->_encrypt.cipher = hash_t::cipher_t::AES128;
 							}
 						}
 					}
@@ -215,7 +215,7 @@ void awh::server::WS::commit() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -233,13 +233,13 @@ void awh::server::WS::commit() noexcept {
 	}
 }
 /**
- * @brief Метод проверки текущего статуса
+ * @brief Метод проверки выполнения рукопожатия
  *
- * @return результат проверки текущего статуса
+ * @return результат выполнения рукопожатия
  */
-awh::Http::status_t awh::server::WS::status() noexcept {
+awh::http_t::handshake_t awh::server::Websocket::handshake() noexcept {
 	// Результат работы функции
-	http_t::status_t result = http_t::status_t::FAULT;
+	handshake_t result = handshake_t::FAULT;
 	// Если авторизация требуется
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		/**
@@ -272,7 +272,7 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 				// Выполняем проверку авторизации
 				if(this->_auth.server.check(method))
 					// Устанавливаем успешный результат авторизации
-					result = http_t::status_t::GOOD;
+					result = handshake_t::GOOD;
 			}
 		/**
 		 * Если возникает ошибка
@@ -281,7 +281,7 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -297,17 +297,17 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 			#endif
 		}
 	// Сообщаем, что авторизация прошла успешно
-	} else result = http_t::status_t::GOOD;
+	} else result = handshake_t::GOOD;
 	// Выводим результат
 	return result;
 }
 /**
  * @brief Метод проверки шагов рукопожатия
  *
- * @param flag флаг выполнения проверки
+ * @param step флаг выполнения проверки
  * @return     результат проверки соответствия
  */
-bool awh::server::WS::check(const flag_t flag) noexcept {
+bool awh::server::Websocket::step(const step_t step) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -315,16 +315,16 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 		/**
 		 * Определяем флаг выполнения проверки
 		 */
-		switch(static_cast <uint8_t> (flag)){
+		switch(static_cast <uint8_t> (step)){
 			// Если требуется выполнить проверку соответствие ключа
-			case static_cast <uint8_t> (flag_t::KEY): {
+			case static_cast <uint8_t> (step_t::KEY): {
 				// Получаем параметры ключа клиента
 				this->_key = this->_web.header("sec-websocket-key");
 				// Выводим результат
 				return !this->_key.empty();
 			}
 			// Если требуется выполнить проверку версию протокола
-			case static_cast <uint8_t> (flag_t::VERSION): {
+			case static_cast <uint8_t> (step_t::VERSION): {
 				// Переходим по всему списку заголовков
 				for(auto & header : this->_web.headers()){
 					// Если заголовок найден
@@ -334,7 +334,7 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 						 */
 						try {
 							// Проверяем, совпадает ли желаемая версия протокола
-							return (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (WS_VERSION));
+							return (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (awh::ws_t::VERSION));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -346,9 +346,9 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 				}
 			} break;
 			// Если требуется выполнить проверки на переключение протокола
-			case static_cast <uint8_t> (flag_t::UPGRADE):
+			case static_cast <uint8_t> (step_t::UPGRADE):
 				// Выполняем проверку переключения протокола
-				return ws_core_t::check(flag);
+				return awh::ws_t::step(step);
 		}
 	/**
 	 * Если возникает ошибка
@@ -357,13 +357,13 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (step)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -380,7 +380,7 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
  *
  * @param realm название сервера
  */
-void awh::server::WS::realm(const string & realm) noexcept {
+void awh::server::Websocket::realm(const string & realm) noexcept {
 	// Если название сервера передано
 	if(!realm.empty())
 		// Устанавливаем название сервера
@@ -391,36 +391,36 @@ void awh::server::WS::realm(const string & realm) noexcept {
  *
  * @param opaque временный ключ сессии сервера
  */
-void awh::server::WS::opaque(const string & opaque) noexcept {
+void awh::server::Websocket::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
 	if(!opaque.empty())
 		// Устанавливаем временный ключ сессии
 		this->_auth.server.opaque(opaque);
 }
 /**
- * @brief Метод извлечения данных авторизации
+ * @brief Метод извлечения параметров авторизации
  *
- * @return данные модуля авторизации
+ * @return параметры модуля авторизации
  */
-awh::server::auth_t::data_t awh::server::WS::authorization() const noexcept {
-	// Выполняем извлечение данных авторизации
-	return this->_auth.server.data();
+awh::server::auth_t::settings_t awh::server::Websocket::authorization() const noexcept {
+	// Выполняем извлечение параметров авторизации
+	return this->_auth.server.settings();
 }
 /**
- * @brief Метод установки данных авторизации
+ * @brief Метод установки параметров авторизации
  *
- * @param data данные авторизации для установки
+ * @param settings параметры авторизации для установки
  */
-void awh::server::WS::authorization(const server::auth_t::data_t & data) noexcept {
-	// Выполняем установку данных авторизации
-	this->_auth.server.data(data);
+void awh::server::Websocket::authorization(const server::auth_t::settings_t & settings) noexcept {
+	// Выполняем установку параметров авторизации
+	this->_auth.server.settings(settings);
 }
 /**
  * @brief Метод добавления функции извлечения пароля
  *
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::WS::extractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::server::Websocket::authCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
 	this->_auth.server.callback(::move(callback));
 }
@@ -429,7 +429,7 @@ void awh::server::WS::extractPassCallback(function <string (const string &)> cal
  *
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::WS::authCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::Websocket::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
 	this->_auth.server.callback(::move(callback));
 }
@@ -439,7 +439,7 @@ void awh::server::WS::authCallback(function <bool (const string &, const string 
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
+void awh::server::Websocket::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
 	this->_auth.server.type(type, hash);
 }
@@ -449,7 +449,7 @@ void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(fmk, log) {
+awh::server::Websocket::Websocket(const fmk_t * fmk, const log_t * log) noexcept : awh::ws_t(fmk, log) {
 	// Выполняем установку списка поддерживаемых компрессоров
 	http_t::compressors({
 		compressor_t::ZSTD,
@@ -457,8 +457,6 @@ awh::server::WS::WS(const fmk_t * fmk, const log_t * log) noexcept : ws_core_t(f
 		compressor_t::GZIP,
 		compressor_t::DEFLATE
 	});
-	// Выполняем установку идентичность клиента к протоколу WebSocket
-	this->_identity = identity_t::WS;
 	// Устанавливаем тип HTTP-модуля (Сервер)
 	this->_web.hid(awh::web_t::hid_t::SERVER);
 }

@@ -1,6 +1,6 @@
 /**
  * @file: client.hpp
- * @date: 2021-12-19
+ * @date: 2025-10-07
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -18,8 +18,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
-#include "../auth/client.hpp"
+#include "http.hpp"
 
 /**
  * @brief основное пространство имён
@@ -36,30 +35,30 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * @brief Класс для работы с REST клиентом
+		 * @brief Класс для работы клиента HTTP-протокола
 		 *
 		 */
 		typedef class AWH_SHARED_EXPORT Http : public awh::http_t {
 			private:
 				/**
-				 * @brief Метод проверки текущего статуса
+				 * @brief Метод проверки выполнения рукопожатия
 				 *
-				 * @return результат проверки текущего статуса
+				 * @return результат выполнения рукопожатия
 				 */
-				status_t status() noexcept;
+				handshake_t handshake() noexcept;
 			public:
 				/**
-				 * @brief Метод извлечения данных авторизации
+				 * @brief Метод извлечения параметров авторизации
 				 *
-				 * @return данные модуля авторизации
+				 * @return параметры модуля авторизации
 				 */
-				client::auth_t::data_t authorization() const noexcept;
+				client::auth_t::settings_t authorization() const noexcept;
 				/**
-				 * @brief Метод установки данных авторизации
+				 * @brief Метод установки параметров авторизации
 				 *
-				 * @param data данные авторизации для установки
+				 * @param settings параметры авторизации для установки
 				 */
-				void authorization(const client::auth_t::data_t & data) noexcept;
+				void authorization(const client::auth_t::settings_t & settings) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров авторизации

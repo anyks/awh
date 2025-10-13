@@ -1,6 +1,6 @@
 /**
  * @file: client.cpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -22,43 +22,6 @@
  */
 using namespace std;
 
-/**
- * @brief Метод извлечения данных авторизации
- *
- * @return данные модуля авторизации
- */
-awh::client::Auth::data_t awh::client::Auth::data() const noexcept {
-	// Результат работы функции
-	data_t result;
-	// Выполняем установку типа авторизации
-	result.type = &this->_type;
-	// Выполняем установку параметров Digest авторизации
-	result.digest = &this->_digest;
-	// Выполняем установку логина пользователя
-	result.user = &this->_user;
-	// Выполняем установку пароля пользователя
-	result.pass = &this->_pass;
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки данных авторизации
- *
- * @param data данные авторизации для установки
- */
-void awh::client::Auth::data(const data_t & data) noexcept {
-	// Если данные переданы
-	if((data.type != nullptr) && (data.digest != nullptr) && (data.user != nullptr) && (data.pass != nullptr)){
-		// Выполняем установку типа авторизации
-		this->_type = (* data.type);
-		// Выполняем установку параметров Digest авторизации
-		this->_digest = (* data.digest);
-		// Выполняем установку логина пользователя
-		this->_user.assign(data.user->begin(), data.user->end());
-		// Выполняем установку пароля пользователя
-		this->_pass.assign(data.pass->begin(), data.pass->end());
-	}
-}
 /**
  * @brief Метод установки параметров HTTP запроса
  *
@@ -97,7 +60,7 @@ void awh::client::Auth::pass(const string & pass) noexcept {
  */
 void awh::client::Auth::header(const string & header) noexcept {
 	// Если заголовок передан
-	if(!header.empty() && (this->_fmk != nullptr)){
+	if(!header.empty()){
 		// Выполняем поиск авторизации
 		size_t pos = string::npos;
 		// Переводим заголовок в нижний регистр
@@ -291,3 +254,49 @@ string awh::client::Auth::auth(const string & method) noexcept {
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Метод извлечения параметров авторизации
+ *
+ * @return параметры модуля авторизации
+ */
+awh::client::Auth::settings_t awh::client::Auth::settings() const noexcept {
+	// Результат работы функции
+	settings_t result;
+	// Выполняем установку типа авторизации
+	result.type = &this->_type;
+	// Выполняем установку параметров Digest авторизации
+	result.digest = &this->_digest;
+	// Выполняем установку логина пользователя
+	result.user = this->_user.c_str();
+	// Выполняем установку пароля пользователя
+	result.pass = this->_pass.c_str();
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки параметров авторизации
+ *
+ * @param settings параметры авторизации для установки
+ */
+void awh::client::Auth::settings(const settings_t & settings) noexcept {
+	// Если данные переданы
+	if((settings.type != nullptr) && (settings.digest != nullptr) &&
+	   (settings.user != nullptr) && (settings.pass != nullptr)){
+		// Выполняем установку типа авторизации
+		this->_type = (* settings.type);
+		// Выполняем установку параметров Digest авторизации
+		this->_digest = (* settings.digest);
+		// Выполняем установку логина пользователя
+		this->_user.assign(settings.user);
+		// Выполняем установку пароля пользователя
+		this->_pass.assign(settings.pass);
+	}
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::client::Auth::Auth(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::auth_t(fmk, log), _user{""}, _pass{""} {}

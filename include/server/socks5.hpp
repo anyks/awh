@@ -1,6 +1,6 @@
 /**
  * @file: socks5.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -119,9 +119,9 @@ namespace awh {
 				size_t _brokerAvailableSize;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				std::map <uint64_t, std::unique_ptr <queue_t>> _payloads;
+				std::map <uint32_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
-				std::map <uint64_t, std::unique_ptr <client::core_t>> _clients;
+				std::map <uint32_t, std::unique_ptr <client::core_t>> _clients;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -169,7 +169,7 @@ namespace awh {
 				 * @param bid2   идентификатор брокера клиента
 				 * @param sid    идентификатор схемы сети
 				 */
-				void connectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid) noexcept;
+				void connectEvents(const broker_t broker, const uint32_t bid1, const uint32_t bid2, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при отключении
 				 *
@@ -178,7 +178,7 @@ namespace awh {
 				 * @param bid2   идентификатор брокера клиента
 				 * @param sid    идентификатор схемы сети
 				 */
-				void disconnectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid) noexcept;
+				void disconnectEvents(const broker_t broker, const uint32_t bid1, const uint32_t bid2, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод обратного вызова при чтении сообщения
@@ -189,7 +189,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvents(const broker_t broker, const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при записи сообщения на клиенте
 				 *
@@ -199,7 +199,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvents(const broker_t broker, const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод получения событий освобождения памяти буфера полезной нагрузки
@@ -209,7 +209,7 @@ namespace awh {
 				 * @param size   размер буфера полезной нагрузки
 				 * @param core   объект сетевого ядра
 				 */
-				void available(const broker_t broker, const uint64_t bid, const size_t size, awh::core_t * core) noexcept;
+				void available(const broker_t broker, const uint32_t bid, const size_t size, awh::core_t * core) noexcept;
 				/**
 				 * @brief Метод получения событий недоступности памяти буфера полезной нагрузки
 				 *
@@ -218,7 +218,7 @@ namespace awh {
 				 * @param buffer буфер полезной нагрузки которую не получилось отправить
 				 * @param size   размер буфера полезной нагрузки
 				 */
-				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
+				void unavailable(const broker_t broker, const uint32_t bid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * @brief Метод удаления отключённых клиентов
@@ -226,7 +226,7 @@ namespace awh {
 				 * @param tid идентификатор таймера
 				 * @param bid идентификатор брокера
 				 */
-				void erase(const uint16_t tid, const uint64_t bid) noexcept;
+				void erase(const uint16_t tid, const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод инициализации брокера
@@ -263,7 +263,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const char * name, Args... args) noexcept -> uint64_t {
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
@@ -285,7 +285,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint64_t {
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова
@@ -307,7 +307,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(fid > 0)
 						// Выполняем установку функции обратного вызова
@@ -330,11 +330,11 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const A fid, Args... args) noexcept -> uint64_t {
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
-					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 						// Выполняем установку функции обратного вызова
-						return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+						return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
 					// Выводим результат по умолчанию
 					return 0;
 				}
@@ -345,21 +345,21 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				uint32_t port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения IP-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const uint64_t bid) const noexcept;
+				const string & ip(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения MAC-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const uint64_t bid) const noexcept;
+				const string & mac(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения хоста сервера
@@ -392,20 +392,20 @@ namespace awh {
 				 *
 				 * @param core модуль ядра для подключения
 				 */
-				void bind(awh::core_t * core) noexcept;
+				void bind(awh::core_t & core) noexcept;
 				/**
 				 * @brief Метод отключения модуля ядра от текущей базы событий
 				 *
 				 * @param core модуль ядра для отключения
 				 */
-				void unbind(awh::core_t * core) noexcept;
+				void unbind(awh::core_t & core) noexcept;
 			public:
 				/**
 				 * @brief Метод закрытия подключения
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid) noexcept;
+				void close(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
@@ -597,7 +597,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
+				void bandwidth(const uint32_t bid, const string & read = "", const string & write = "") noexcept;
 				/**
 				 * @brief Метод установки параметров сети
 				 *

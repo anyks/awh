@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2022-09-08
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -72,21 +72,6 @@ namespace awh {
 					RECEIVE = 0x03  // Режим ожидания получения данных
 				};
 			private:
-				/**
-				 * @brief Объект основных мютексов
-				 *
-				 */
-				typedef struct Mutex {
-					std::recursive_mutex main;    // Для установки системных параметров
-					std::recursive_mutex close;   // Для закрытия подключения
-					std::recursive_mutex accept;  // Для одобрения подключения
-					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					std::recursive_mutex timeout; // Для создания нового таймаута
-				} mtx_t;
-			private:
-				// Мютекс для блокировки основного потока
-				mtx_t _mtx;
-			private:
 				// Объект работы с сокетами
 				socket_t _socket;
 				// Объект кластера
@@ -110,7 +95,7 @@ namespace awh {
 				std::multimap <uint16_t, pid_t> _workers;
 			private:
 				// Список таймаутов на получение данных
-				std::map <uint64_t, uint16_t> _receive;
+				std::map <uint32_t, uint16_t> _receive;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
 			private:
@@ -130,7 +115,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @param bid идентификатор брокера
 				 */
-				void accept(const uint16_t sid, const uint64_t bid) noexcept;
+				void accept(const uint16_t sid, const uint32_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод вызова при активации базы событий
@@ -152,7 +137,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void clearTimeout(const uint64_t bid) noexcept;
+				void clearTimeout(const uint32_t bid) noexcept;
 				/**
 				 * @brief Метод удаления таймера подключения или переподключения
 				 *
@@ -168,7 +153,7 @@ namespace awh {
 				 * @param msec время ожидания получения данных в миллисекундах
 				 * @param mode режим создания таймера
 				 */
-				void createTimeout(const uint16_t sid, const uint64_t bid, const uint32_t msec, const mode_t mode) noexcept;
+				void createTimeout(const uint16_t sid, const uint32_t bid, const uint32_t msec, const mode_t mode) noexcept;
 			private:
 				/**
 				 * @brief Метод получения события подключения дочерних процессов
@@ -245,7 +230,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid) noexcept;
+				void close(const uint32_t bid) noexcept;
 				/**
 				 * @brief Метод удаления схемы сети
 				 *
@@ -259,7 +244,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint16_t sid, const uint64_t bid) noexcept;
+				void close(const uint16_t sid, const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод запуска сервера
@@ -307,7 +292,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @return       результат отправки сообщения
 				 */
-				bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+				bool send(const char * buffer, const size_t size, const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения родительскому процессу
@@ -361,13 +346,13 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void read(const uint64_t bid) noexcept;
+				void read(const uint32_t bid) noexcept;
 				/**
 				 * @brief Метод записи данных в брокер
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void write(const uint64_t bid) noexcept;
+				void write(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод записи буфера данных в сокет
@@ -377,7 +362,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @return       количество отправленных байт
 				 */
-				size_t write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
+				size_t write(const char * buffer, const size_t size, const uint32_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод активации параметров запуска сервера
@@ -509,7 +494,7 @@ namespace awh {
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
+				void bandwidth(const uint32_t bid, const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
 				 * @brief Метод ожидания входящих сообщений
@@ -517,7 +502,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const uint64_t bid, const uint16_t sec) noexcept;
+				void waitMessage(const uint32_t bid, const uint16_t sec) noexcept;
 				/**
 				 * @brief Метод детекции сообщений по количеству секунд
 				 *
@@ -526,7 +511,7 @@ namespace awh {
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
 				 */
-				void waitTimeDetect(const uint64_t bid, const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
+				void waitTimeDetect(const uint32_t bid, const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

@@ -18,9 +18,7 @@
 /**
  * Стандартные модули
  */
-#include <cerrno>
-#include <string>
-#include <cstring>
+#include <cstdint>
 #include <unistd.h>
 
 /**
@@ -52,7 +50,7 @@ namespace awh {
 			 * @param actual  текущее значение установленных файловых дескрипторов
 			 * @param desired желаемое значение для установки файловых дескрипторов
 			 */
-			void help(const uint64_t actual, const uint64_t desired) const noexcept;
+			void help(const uint32_t actual, const uint32_t desired) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки нужного количества файловых дескрипторов
@@ -60,13 +58,13 @@ namespace awh {
 			 * @param limit желаемое количество файловых дескрипторов
 			 * @return      результат установки
 			 */
-			bool limit(const uint64_t limit) const noexcept;
+			bool limit(const uint32_t limit) const noexcept;
 			/**
 			 * @brief Метод получения лимита файловых дескрипторов установленных в операционной системе
 			 *
 			 * @return количество файловых дескрипторов установленных в файловой системе
 			 */
-			std::pair <uint64_t, uint64_t> limit() const noexcept;
+			std::pair <uint32_t, uint32_t> limit() const noexcept;
 		public:
 			/**
 			 * @brief Конструктор

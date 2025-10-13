@@ -17,6 +17,22 @@
  */
 #include <memory>
 #include <cstring>
+#include <cstddef>
+#include <cstdlib>
+
+/**
+ * Если используется аллокатор TcMalloc
+ */
+#if __AWH_USE_TCMALLOC__
+	// Подключаем заголовки аллокатора
+	#include <tcmalloc/malloc_extension.h>
+/**
+ * Если используется аллокатор Glibc
+ */
+#elif __GLIBC__
+	// Подключаем заголовки аллокатора
+	#include <malloc.h>
+#endif
 
 /**
  * Операционной системой является Linux
@@ -69,13 +85,18 @@
 	 * Стандартные модули
 	 */
 	#include <unistd.h>
+	#include <sys/mman.h>
 	#include <sys/resource.h>
 
 	/**
 	 * Для операционной системы MacOS X
 	 */
 	#if __APPLE__ || __MACH__
+		/**
+		 * Стандартные модули
+		 */
 		#include <mach/mach.h>
+		#include <malloc/malloc.h>
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
@@ -104,12 +125,25 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 && _WIN64
+#if _WIN32 || _WIN64
 	/**
 	 * Стандартные модули
 	 */
 	#include <wchar.h>
 	#include <psapi.h>
+	/**
+	 * Если активирован компилятор MinGW
+	 */
+	#if __MINGW32__ || __MINGW64__
+		// Подключаем заголовки контроллера памяти
+		#include <malloc.h>
+	/**
+	 * Если активирован компилятор MS Visual Studio
+	 */
+	#else
+		// Подключаем заголовки контроллера памяти
+		#include <process.h>
+	#endif
 #endif
 
 /**
@@ -521,6 +555,73 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	#else
 		// Выводим результат
 		return family_t::NONE;
+	#endif
+}
+/**
+ * @brief Метод очистки выделенной памяти
+ * 
+ */
+void awh::OS::releaseFreeMemory() const noexcept {
+	/**
+	 * Если используется аллокатор TcMalloc
+	 */
+	#if __AWH_USE_TCMALLOC__
+		// Выполняем сброс памяти
+		::tcmalloc::MallocExtension::instance()->ReleaseFreeMemory();
+	/**
+	 * Если используется аллокатор Glibc
+	 */
+	#elif __GLIBC__
+		// Выполняем сброс памяти
+		::malloc_trim(0);
+	/**
+	 * Операционной системой является MacOS X
+	 */
+	#elif __APPLE__ || __MACH__
+		/**
+		 * MacOS X: нет malloc_trim, но можно использовать malloc_zone.
+		 * В новых версиях достаточно madvise, но явного API нет.
+		 * Альтернатива: malloc_zone_pressure_relief (доступна в macOS 11+)
+		 */
+		#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 110000
+			// Выполняем сброс памяти
+			::malloc_zone_pressure_relief(nullptr, 0);
+		#endif
+	/**
+	 * Если операционной системой является FreeBSD, NetBSD и OpenBSD
+	 */
+	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		/**
+		 * BSD: можно попробовать malloc_trim (FreeBSD 13+)
+		 */
+		#if __FreeBSD__ && __FreeBSD__ >= 13
+			// Выполняем сброс памяти
+			::malloc_trim(0);
+		#endif
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#elif _WIN32 || _WIN64
+		/**
+		 * Если активирован компилятор MS Visual Studio
+		 */
+		#if _MSC_VER
+			// Выполняем сброс памяти
+			::_heapmin();
+		/**
+		 * Если активирован компилятор MinGW
+		 */
+		#elif __MINGW32__ || __MINGW64__
+			/**
+			 * MinGW: нет стандартного trim, но можно попробовать
+			 */
+			#if _UCRT || __MSVCRT_VERSION__
+				// Экспортируем нужную нам функцию
+				extern "C" int _heap_trim(size_t);
+				// Выполняем сброс памяти
+				_heap_trim(0);
+			#endif
+		#endif
 	#endif
 }
 /**

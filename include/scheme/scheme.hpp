@@ -30,7 +30,7 @@
 #include "../sys/buffer.hpp"
 #include "../sys/callback.hpp"
 #include "../net/engine.hpp"
-#include "../events/event2.hpp"
+#include "../events/event.hpp"
 
 /**
  * @brief основное пространство имён

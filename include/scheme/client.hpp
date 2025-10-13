@@ -1,6 +1,6 @@
 /**
  * @file: client.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
+#include "scheme.hpp"
 #include "../http/client.hpp"
 #include "../socks5/client.hpp"
 
@@ -77,13 +77,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 mode(false), type(type_t::NONE),
-				 family(scheme_t::family_t::IPV4),
-				 net(log), socks5(log), http(fmk, log) {
-					// Устанавливаем идентичность протокола к прокси-серверу
-					this->http.identity(http_t::identity_t::PROXY);
-				}
+				Proxy(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -179,7 +173,7 @@ namespace awh {
 				 *
 				 * @return идентификатор брокера
 				 */
-				uint64_t bid() const noexcept;
+				uint32_t bid() const noexcept;
 			public:
 				/**
 				 * @brief Метод активации прокси-клиента
@@ -194,9 +188,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log), receiving(false),
-				 proxy(fmk, log), _connect(connect_t::SERVER) {}
+				Scheme(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

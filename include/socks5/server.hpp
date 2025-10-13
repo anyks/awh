@@ -23,7 +23,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
+#include "socks5.hpp"
 
 /**
  * @brief основное пространство имён
@@ -57,7 +57,8 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Server() noexcept : host{""}, port(80), family(AF_INET) {}
+					Server() noexcept :
+					 host{""}, port(80), family(AF_INET) {}
 				} serv_t;
 			private:
 				// Параметры запрашиваемого сервера
@@ -66,7 +67,7 @@ namespace awh {
 				/**
 				 * Внешняя функция проверки авторизации
 				 */
-				function <bool (const string &, const string &)> _auth;
+				function <bool (const string &, const string &)> _callback;
 			public:
 				/**
 				 * @brief Метод извлечения параметров запрашиваемого сервера
@@ -122,7 +123,7 @@ namespace awh {
 				 *
 				 * @param log объект для работы с логами
 				 */
-				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _auth(nullptr) {}
+				Socks5(const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

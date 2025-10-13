@@ -237,7 +237,7 @@ SOCKET awh::Watch::create() noexcept {
  *
  * @return идентификатор события
  */
-uint64_t awh::Watch::event() noexcept {
+uint32_t awh::Watch::event() noexcept {
 	// Выполняем вывод полученного уведомления
 	return this->_notifier.event();
 }
@@ -246,7 +246,7 @@ uint64_t awh::Watch::event() noexcept {
  *
  * @param id идентификатор таймера
  */
-void awh::Watch::away(const uint64_t id) noexcept {
+void awh::Watch::away(const uint32_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -291,7 +291,7 @@ void awh::Watch::away(const uint64_t id) noexcept {
  * @param id    идентификатор таймера
  * @param delay задержка времени в миллисекундах
  */
-void awh::Watch::wait(const uint64_t id, const uint32_t delay) noexcept {
+void awh::Watch::wait(const uint32_t id, const uint32_t delay) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

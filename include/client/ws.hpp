@@ -1,6 +1,6 @@
 /**
  * @file: ws.hpp
- * @date: 2023-09-25
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -38,7 +38,7 @@ namespace awh {
 		 * @brief Класс работы с Websocket-клиентом
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT Websocket {
+		typedef class AWH_SHARED_EXPORT AWH_Websocket {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;
@@ -155,7 +155,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const char * name, Args... args) noexcept -> uint64_t {
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
@@ -177,7 +177,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint64_t {
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова
@@ -199,7 +199,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(fid > 0)
 						// Выполняем установку функции обратного вызова
@@ -222,11 +222,11 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const A fid, Args... args) noexcept -> uint64_t {
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
-					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 						// Выполняем установку функции обратного вызова
-						return this->_ws.on <B> (static_cast <uint64_t> (fid), args...);
+						return this->_ws.on <B> (static_cast <uint32_t> (fid), args...);
 					// Выводим результат по умолчанию
 					return 0;
 				}
@@ -276,7 +276,7 @@ namespace awh {
 				 *
 				 * @param size размер чанка для установки
 				 */
-				void chunk(const size_t size) noexcept;
+				void chunkSize(const size_t size) noexcept;
 				/**
 				 * @brief Метод установки размеров сегментов фрейма Websocket
 				 *
@@ -325,26 +325,18 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * @brief Метод активации многопоточности в Websocket
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
-			public:
-				/**
 				 * @brief Метод установки списка заголовков
 				 *
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const headers_t & headers) noexcept;
 			public:
 				/**
 				 * @brief Метод установки User-Agent для HTTP-запроса
 				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void userAgent(const string & userAgent) noexcept;
+				void agent(const string & userAgent) noexcept;
 				/**
 				 * @brief Метод установки идентификации клиента
 				 *
@@ -352,7 +344,7 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void ident(const string & id, const string & name, const string & ver) noexcept;
+				void agent(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента
@@ -486,12 +478,12 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Websocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				AWH_Websocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Websocket() noexcept {}
+				~AWH_Websocket() noexcept {}
 		} websocket_t;
 	};
 };

@@ -1,6 +1,6 @@
 /**
  * @file: ws.cpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -26,7 +26,7 @@ using namespace std;
  * @brief Метод очистки
  *
  */
-void awh::server::scheme::WebSocket::clear() noexcept {
+void awh::server::scheme::Websocket::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список параметров активных клиентов
@@ -41,15 +41,18 @@ void awh::server::scheme::WebSocket::clear() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::WebSocket::set(const uint64_t bid) noexcept {
+void awh::server::scheme::Websocket::set(const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (this->_clients.count(bid) < 1)){
+	if(bid > 0){
 		// Создаём объект параметров активного клиента
 		auto ret = this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
-		// Устанавливаем список доступных компрессоров
-		ret.first->second->http.compressors(this->compressors);
-		// Устанавливаем контрольную точку
-		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		// Если новый клиент добавлен удачно
+		if(ret.second){
+			// Устанавливаем список доступных компрессоров
+			ret.first->second->http.req.compressors(this->compressors);
+			// Устанавливаем контрольную точку
+			ret.first->second->respPong = this->_fmk->timestamp <uint32_t> (fmk_t::chrono_t::MILLISECONDS);
+		}
 	}
 }
 /**
@@ -57,7 +60,7 @@ void awh::server::scheme::WebSocket::set(const uint64_t bid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::WebSocket::rm(const uint64_t bid) noexcept {
+void awh::server::scheme::Websocket::rm(const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -73,7 +76,7 @@ void awh::server::scheme::WebSocket::rm(const uint64_t bid) noexcept {
  *
  * @return список параметров активных клиентов
  */
-const awh::server::scheme::WebSocket::clients_t & awh::server::scheme::WebSocket::get() const noexcept {
+const awh::server::scheme::Websocket::clients_t & awh::server::scheme::Websocket::get() const noexcept {
 	// Выводим результат
 	return this->_clients;
 }
@@ -83,7 +86,7 @@ const awh::server::scheme::WebSocket::clients_t & awh::server::scheme::WebSocket
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
-const awh::server::scheme::WebSocket::options_t * awh::server::scheme::WebSocket::get(const uint64_t bid) const noexcept {
+const awh::server::scheme::Websocket::options_t * awh::server::scheme::Websocket::get(const uint32_t bid) const noexcept {
 	// Результат работы функции
 	options_t * result = nullptr;
 	// Если идентификатор брокера передан
@@ -98,3 +101,11 @@ const awh::server::scheme::WebSocket::options_t * awh::server::scheme::WebSocket
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::server::scheme::Websocket::Websocket(const fmk_t * fmk, const log_t * log) noexcept :
+ scheme_t(fmk, log), _fmk(fmk), _log(log) {}

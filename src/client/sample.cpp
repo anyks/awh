@@ -1,6 +1,6 @@
 /**
  * @file: sample.cpp
- * @date: 2022-09-01
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -69,7 +69,7 @@ void awh::client::Sample::statusEvent(const awh::core_t::status_t status) noexce
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::client::Sample::connectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Sample::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -91,7 +91,7 @@ void awh::client::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::client::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Sample::disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && (sid > 0)){
 		// Если подключение не является постоянным
@@ -117,7 +117,7 @@ void awh::client::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::client::Sample::readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Sample::readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -125,9 +125,14 @@ void awh::client::Sample::readEvent(const char * buffer, const size_t size, cons
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::CONNECT}, event_t::READ)){
 			// Если функция обратного вызова существует
-			if(this->_callback.is("message"))
+			if(this->_callback.is("message")){
+				// Выполняем очистку буфера данных
+				this->_buffer.clear();
+				// Добавляем полученные данные в буфер
+				this->_buffer.push(buffer, size);
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const vector <char> &)> ("message", vector <char> (buffer, buffer + size));
+				this->_callback.call <void (const buffer_t &)> ("message", this->_buffer);
+			}
 		}
 	}
 }
@@ -139,7 +144,7 @@ void awh::client::Sample::readEvent(const char * buffer, const size_t size, cons
  * @param sid идентификатор схемы сети
  * @return    результат активации зашифрованного канала SSL
  */
-bool awh::client::Sample::enableSSLEvent([[maybe_unused]] const uri_t::url_t & url, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const uint16_t sid) noexcept {
+bool awh::client::Sample::enableSSLEvent([[maybe_unused]] const uri_t::url_t & url, [[maybe_unused]] const uint32_t bid, [[maybe_unused]] const uint16_t sid) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Получаем тип активного протокола
@@ -157,7 +162,7 @@ bool awh::client::Sample::enableSSLEvent([[maybe_unused]] const uri_t::url_t & u
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::client::Sample::chunking([[maybe_unused]] const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::client::Sample::chunking([[maybe_unused]] const uint32_t bid, const buffer_t & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty())
 		// Выполняем добавление полученного чанка в тело ответа
@@ -169,7 +174,7 @@ void awh::client::Sample::chunking([[maybe_unused]] const uint64_t bid, const ve
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Sample::proxyConnectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -236,7 +241,7 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((this->_core != nullptr) && (buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -272,8 +277,8 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							// Если рукопожатие выполнено
 							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
 								/**
-								const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
-								const_cast <client::core_t *> (this->_core)-> */
+								 * Выполняем переключение на работу с сервером
+								 */
 								const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 								// Выполняем запуск функции подключения
 								this->connectEvent(bid, sid);
@@ -316,7 +321,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 						// Выполняем парсинг полученных данных
 						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Если все данные получены
-						if((bytes > 0) && this->_scheme.proxy.http.is(http_t::state_t::END)){
+						if((bytes > 0) && this->_scheme.proxy.http.state(http_t::state_t::END)){
 							// Выполняем очистку буфера данных
 							this->_buffer.clear();
 							/**
@@ -333,7 +338,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 										// Выводим параметры ответа
 										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
 										// Если тело ответа существует
-										if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
+										if(!this->_scheme.proxy.http.empty(awh::web_t::unit_t::BODY))
 											// Выводим сообщение о выводе чанка тела
 											std::cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << std::endl << std::endl << std::flush;
 									}
@@ -341,29 +346,29 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							#endif
 							// Получаем параметры запроса
 							const auto & response = this->_scheme.proxy.http.response();
-							// Получаем статус ответа
-							awh::http_t::status_t status = this->_scheme.proxy.http.auth();
+							// Получаем статус рукопожатия
+							http_t::handshake_t handshake = this->_scheme.proxy.http.status();
 							// Устанавливаем ответ прокси-сервера
 							this->_proxy.answer = response.code;
 							// Если выполнять редиректы запрещено
-							if(status == awh::http_t::status_t::RETRY){
+							if(handshake == http_t::handshake_t::RETRY){
 								// Если ответом сервера является положительным
 								if(response.code == 200)
 									// Запрещаем выполнять редирект
-									status = awh::http_t::status_t::GOOD;
+									handshake = http_t::handshake_t::GOOD;
 							}
 							/**
 							 * Выполняем проверку авторизации
 							 */
-							switch(static_cast <uint8_t> (status)){
+							switch(static_cast <uint8_t> (handshake)){
 								// Если нужно попытаться ещё раз
-								case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
+								case static_cast <uint8_t> (http_t::handshake_t::RETRY): {
 									// Если попытки повторить переадресацию ещё не закончились
 									if(this->_attempt < this->_attempts){
 										// Если адрес запроса получен
 										if(!this->_scheme.proxy.url.empty()){
 											// Если соединение является постоянным
-											if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE)){
+											if(this->_scheme.proxy.http.state(http_t::state_t::ALIVE)){
 												// Увеличиваем количество попыток
 												this->_attempt++;
 												// Устанавливаем новый экшен выполнения
@@ -376,10 +381,10 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 									}
 								} break;
 								// Если запрос выполнен удачно
-								case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
+								case static_cast <uint8_t> (http_t::handshake_t::GOOD): {
 									/**
-									const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
-									const_cast <client::core_t *> (this->_core)-> */
+									 * Выполняем переключение на работу с сервером
+									 */
 									const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 									// Выполняем запуск функции подключения
 									this->connectEvent(bid, sid);
@@ -387,7 +392,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 									return;
 								}
 								// Если запрос неудачный
-								case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
+								case static_cast <uint8_t> (http_t::handshake_t::FAULT):
 									// Выводим в лог сообщение
 									this->_log->print("Proxy server error", log_t::flag_t::CRITICAL);
 								break;
@@ -677,11 +682,11 @@ void awh::client::Sample::waitTimeDetect(const uint16_t read, const uint16_t wri
  *
  * @param userAgent агент пользователя для HTTP-запроса
  */
-void awh::client::Sample::userAgentProxy(const string & userAgent) noexcept {
+void awh::client::Sample::agentProxy(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty())
 		// Устанавливаем пользовательского агента для прокси-сервера
-		this->_scheme.proxy.http.userAgent(userAgent);
+		this->_scheme.proxy.http.agent(userAgent);
 }
 /**
  * @brief Метод установки идентификации клиента прокси-сервера
@@ -690,9 +695,9 @@ void awh::client::Sample::userAgentProxy(const string & userAgent) noexcept {
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Sample::identProxy(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Sample::agentProxy(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса для прокси-сервера
-	this->_scheme.proxy.http.ident(id, name, ver);
+	this->_scheme.proxy.http.agent(id, name, ver);
 }
 /**
  * @brief Метод активации/деактивации прокси-склиента
@@ -765,7 +770,7 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-		this->_scheme.proxy.http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &sample_t::chunking, this, _1, _2, _3);
+		this->_scheme.proxy.http.on <void (const uint32_t, const buffer_t &, const awh::http_t *)> ("chunking", &sample_t::chunking, this, _1, _2, _3);
 		// Добавляем схему сети в сетевое ядро
 		const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Устанавливаем событие на запуск системы
@@ -773,16 +778,16 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
 		// Выполняем установку функций обратного вызова для клиента
 		const_cast <client::core_t *> (this->_core)->on <void (const awh::core_t::status_t)> ("status", &sample_t::statusEvent, this, _1);
 		// Устанавливаем событие подключения
-		const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &sample_t::connectEvent, this, _1, _2);
+		const_cast <client::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("connect", &sample_t::connectEvent, this, _1, _2);
 		// Устанавливаем событие отключения
-		const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &sample_t::disconnectEvent, this, _1, _2);
+		const_cast <client::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("disconnect", &sample_t::disconnectEvent, this, _1, _2);
 		// Устанавливаем событие на подключение к прокси-серверу
-		const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connectProxy", &sample_t::proxyConnectEvent, this, _1, _2);
+		const_cast <client::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("connectProxy", &sample_t::proxyConnectEvent, this, _1, _2);
 		// Устанавливаем событие на активацию шифрованного SSL канала
-		const_cast <client::core_t *> (this->_core)->on <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", &sample_t::enableSSLEvent, this, _1, _2, _3);
+		const_cast <client::core_t *> (this->_core)->on <bool (const uri_t::url_t &, const uint32_t, const uint16_t)> ("ssl", &sample_t::enableSSLEvent, this, _1, _2, _3);
 		// Устанавливаем функцию чтения данных
-		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &sample_t::readEvent, this, _1, _2, _3, _4);
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("read", &sample_t::readEvent, this, _1, _2, _3, _4);
 		// Устанавливаем событие на чтение данных с прокси-сервера
-		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", &sample_t::proxyReadEvent, this, _1, _2, _3, _4);
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("readProxy", &sample_t::proxyReadEvent, this, _1, _2, _3, _4);
 	}
 }

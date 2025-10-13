@@ -1,6 +1,6 @@
 /**
  * @file: server.cpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -31,3 +31,14 @@ void awh::server::Scheme::clear() noexcept {
 	// Восстанавливаем максимальное количество одновременных подключений
 	this->_total = SERVER_TOTAL_CONNECT;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::server::Scheme::Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::scheme_t(fmk, log),
+ _host(SERVER_HOST), _port(SERVER_PORT),
+ _total(SERVER_TOTAL_CONNECT),
+ _ectx(fmk, log), _addr(fmk, log) {}

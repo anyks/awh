@@ -1,6 +1,6 @@
 /**
  * @file: core.hpp
- * @date: 2024-03-07
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -19,15 +19,15 @@
  * Стандартные модули
  */
 #include <mutex>
+#include <atomic>
 #include <string>
-#include <cstdlib>
 
 /**
  * Наши модули
  */
-#include "../scheme/core.hpp"
 #include "../sys/signals.hpp"
 #include "../sys/callback.hpp"
+#include "../scheme/scheme.hpp"
 
 /**
  * @brief основное пространство имён
@@ -54,28 +54,21 @@ namespace awh {
 			 * Статус работы сетевого ядра
 			 */
 			enum class status_t : uint8_t {
-				STOP  = 0x02, // Статус остановки
-				START = 0x01  // Статус запуска
+				STOP  = 0x01, // Статус остановки
+				START = 0x02  // Статус запуска
 			};
-		protected:
-			/**
-			 * @brief Объект основных мютексов
-			 *
-			 */
-			typedef struct Mutex {
-				// Для работы с параметрами модуля
-				std::recursive_mutex main;
-				// Для работы с биндингом сетевых ядер
-				std::recursive_mutex bind;
-				// Для контроля запуска модуля
-				std::recursive_mutex status;
-			} mtx_t;
 		private:
 			/**
 			 * @brief Класс работы с событиями
 			 *
 			 */
 			typedef class AWH_SHARED_EXPORT Dispatch {
+				private:
+					/**
+					 * @brief Устанавливаем дружбу с сетевым ядром
+					 *
+					 */
+					friend class Core;
 				private:
 					// Идентификатор процесса
 					pid_t _pid;
@@ -89,6 +82,9 @@ namespace awh {
 					std::atomic_bool _init;
 					// Флаг виртуальной базы данных
 					std::atomic_bool _virt;
+				private:
+					// Активная база событий
+					static std::unique_ptr <base_t> _base;
 				private:
 					/**
 					 * Функция обратного вызова при запуске модуля
@@ -174,29 +170,26 @@ namespace awh {
 		protected:
 			// Идентификатор процесса
 			pid_t _pid;
-		protected:
-			// Флаг разрешения работы
-			bool _mode;
-			// Флаг разрешающий вывод информационных сообщений
-			bool _info;
+		private:
+			// Объект работы с сигналами
+			sig_t _sig;
 		protected:
 			// Объект для работы с чтением базы событий
 			dispatch_t _dispatch;
 			// Хранилище функций обратного вызова
 			callback_t _callback;
-		private:
-			// Объект работы с сигналами
-			sig_t _sig;
 		protected:
-			// Мютекс для блокировки основного потока
-			mtx_t _mtx;
+			// Флаг разрешения работы
+			std::atomic_bool _mode;
+			// Флаг разрешающий вывод информационных сообщений
+			std::atomic_bool _info;
 		protected:
 			// Статус сетевого ядра
-			status_t _status;
+			std::atomic <status_t> _status;
 			// Тип запускаемого ядра
-			engine_t::type_t _type;
+			std::atomic <engine_t::type_t> _type;
 			// Флаг обработки сигналов
-			scheme_t::mode_t _signals;
+			std::atomic <scheme_t::mode_t> _signals;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -225,13 +218,13 @@ namespace awh {
 			 *
 			 * @param core модуль ядра для подключения
 			 */
-			void bind(Core * core) noexcept;
+			void bind(Core & core) noexcept;
 			/**
 			 * @brief Метод отключения модуля ядра от текущей базы событий
 			 *
 			 * @param core модуль ядра для отключения
 			 */
-			void unbind(Core * core) noexcept;
+			void unbind(Core & core) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки пинка
@@ -286,7 +279,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const char * name, Args... args) noexcept -> uint64_t {
+			auto on(const char * name, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(name != nullptr)
 					// Выполняем установку функции обратного вызова
@@ -308,7 +301,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const string & name, Args... args) noexcept -> uint64_t {
+			auto on(const string & name, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(!name.empty())
 					// Выполняем установку функции обратного вызова
@@ -330,7 +323,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+			auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(fid > 0)
 					// Выполняем установку функции обратного вызова
@@ -353,11 +346,11 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const A fid, Args... args) noexcept -> uint64_t {
+			auto on(const A fid, Args... args) noexcept -> uint32_t {
 				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем установку функции обратного вызова
-					return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+					return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
 				// Выводим результат по умолчанию
 				return 0;
 			}
@@ -415,7 +408,7 @@ namespace awh {
 			 * @param sock сокет межпотокового передатчика
 			 * @param tid  идентификатор трансферной передачи
 			 */
-			void upstream(const SOCKET sock, const uint64_t tid) noexcept;
+			void upstream(const SOCKET sock, const uint32_t tid) noexcept;
 			/**
 			 * @brief Метод деактивации межпотокового передатчика
 			 *
@@ -428,7 +421,7 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @return         сокет межпотокового передатчика
 			 */
-			SOCKET activationUpstream(function <void (const uint64_t)> callback) noexcept;
+			SOCKET activationUpstream(function <void (const uint32_t)> callback) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

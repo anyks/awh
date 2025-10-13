@@ -1,6 +1,6 @@
 /**
  * @file: http1.hpp
- * @date: 2023-10-01
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -71,7 +71,7 @@ namespace awh {
 				scheme::web_t _scheme;
 			private:
 				// Список активных агентов
-				std::map <uint64_t, agent_t> _agents;
+				std::map <uint32_t, agent_t> _agents;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу
@@ -79,14 +79,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvents(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvents(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при отключении клиента
 				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvents(const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод обратного вызова при чтении сообщения с клиента
@@ -96,7 +96,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvents(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при записи сообщение брокеру
 				 *
@@ -105,7 +105,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvents(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод отлавливания событий контейнера функций обратного вызова
@@ -114,7 +114,7 @@ namespace awh {
 				 * @param fid   идентификатор функции обратного вызова
 				 * @param fn    функция обратного вызова в чистом виде
 				 */
-				void callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept;
+				void callbackEvents(const callback_t::event_t event, const uint32_t fid, const callback_t::fn_t & fn) noexcept;
 			private:
 				/**
 				 * @brief Метод инициализации Websocket протокола
@@ -122,14 +122,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void websocket(const uint64_t bid, const uint16_t sid) noexcept;
+				void websocket(const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод удаления отключившихся брокеров
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void erase(const uint64_t bid = 0) noexcept;
+				void erase(const uint32_t bid = 0) noexcept;
 			private:
 				/**
 				 * @brief Метод таймера выполнения пинга клиента
@@ -144,7 +144,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    объект HTTP-парсера
 				 */
-				const awh::http_t * parser(const uint64_t bid) const noexcept;
+				const awh::http_t * parser(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения запроса на передачу трейлеров
@@ -152,7 +152,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    флаг запроса клиентом передачи трейлеров
 				 */
-				bool trailers(const uint64_t bid) const noexcept;
+				bool trailers(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод установки трейлера
 				 *
@@ -160,7 +160,7 @@ namespace awh {
 				 * @param key ключ заголовка
 				 * @param val значение заголовка
 				 */
-				void trailer(const uint64_t bid, const string & key, const string & val) noexcept;
+				void trailer(const uint32_t bid, const string & key, const string & val) noexcept;
 			public:
 				/**
 				 * @brief Метод инициализации WEB-сервера
@@ -184,7 +184,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param mess отправляемое сообщение об ошибке
 				 */
-				void sendError(const uint64_t bid, const ws::mess_t & mess) noexcept;
+				void sendError(const uint32_t bid, const ws::mess_t & mess) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения клиенту
@@ -194,7 +194,7 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 * @return        результат отправки сообщения
 				 */
-				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+				bool sendMessage(const uint32_t bid, const vector <char> & message, const bool text = true) noexcept;
 				/**
 				 * @brief Метод отправки сообщения на сервер
 				 *
@@ -204,7 +204,7 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 * @return        результат отправки сообщения
 				 */
-				bool sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text = true) noexcept;
+				bool sendMessage(const uint32_t bid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки данных в бинарном виде клиенту
@@ -214,7 +214,7 @@ namespace awh {
 				 * @param size   размер сообщения в байтах
 				 * @return       результат отправки сообщения
 				 */
-				bool send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
+				bool send(const uint32_t bid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки тела сообщения клиенту
@@ -225,7 +225,7 @@ namespace awh {
 				 * @param end    флаг последнего сообщения после которого поток закрывается
 				 * @return       результат отправки данных указанному клиенту
 				 */
-				bool send(const uint64_t bid, const char * buffer, const size_t size, const bool end) noexcept;
+				bool send(const uint32_t bid, const char * buffer, const size_t size, const bool end) noexcept;
 				/**
 				 * @brief Метод отправки заголовков клиенту
 				 *
@@ -236,7 +236,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const uint32_t bid, const uint32_t code, const string & mess, const headers_t & headers, const bool end) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения брокеру
@@ -248,7 +248,7 @@ namespace awh {
 				 * @param size    размер данных полезной нагрузки (размер тела сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept;
+				void send(const uint32_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const headers_t & headers) noexcept;
 				/**
 				 * @brief Метод отправки сообщения брокеру
 				 *
@@ -258,7 +258,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const uint32_t bid, const uint32_t code = 200, const string & mess = "", const buffer_t & entity = {}, const headers_t & headers = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова
@@ -273,28 +273,28 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				uint32_t port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод извлечения агента клиента
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    агент к которому относится подключённый клиент
 				 */
-				agent_t agent(const uint64_t bid) const noexcept;
+				agent_t agent(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения IP-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
-				const string & ip(const uint64_t bid) const noexcept;
+				const string & ip(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод получения MAC-адреса брокера
 				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
-				const string & mac(const uint64_t bid) const noexcept;
+				const string & mac(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод остановки сервера
@@ -312,7 +312,7 @@ namespace awh {
 				 *
 				 * @param bid идентификатор брокера
 				 */
-				void close(const uint64_t bid) noexcept;
+				void close(const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод установки времени ожидания ответа WebSocket-клиента
@@ -345,7 +345,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const std::unordered_set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const std::unordered_set <string> & subprotocols(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки списка расширений
@@ -359,15 +359,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    список поддерживаемых расширений
 				 */
-				const vector <vector <string>> & extensions(const uint64_t bid) const noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
+				const vector <vector <string>> & extensions(const uint32_t bid) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки максимального количества одновременных подключений
@@ -415,7 +407,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void alive(const uint64_t bid, const bool mode) noexcept;
+				void alive(const uint32_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки сетевого ядра
@@ -458,14 +450,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    результат проверки
 				 */
-				bool crypted(const uint64_t bid) const noexcept;
+				bool crypted(const uint32_t bid) const noexcept;
 				/**
 				 * @brief Метод активации шифрования для клиента
 				 *
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг активации шифрования
 				 */
-				void encrypt(const uint64_t bid, const bool mode) noexcept;
+				void encrypt(const uint32_t bid, const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод активации шифрования

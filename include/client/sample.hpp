@@ -1,6 +1,6 @@
 /**
  * @file: sample.hpp
- * @date: 2022-09-01
+ * @date: 2025-10-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -92,7 +92,7 @@ namespace awh {
 				} __attribute__((packed)) proxy_t;
 			private:
 				// Идентификатор подключения
-				uint64_t _bid;
+				uint32_t _bid;
 			private:
 				// Флаг чтения данных из буфера
 				bool _reading;
@@ -145,14 +145,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при отключении от сервера
 				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при чтении сообщения с сервера
 				 *
@@ -161,7 +161,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод активации зашифрованного канала SSL
@@ -171,7 +171,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    результат активации зашифрованного канала SSL
 				 */
-				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept;
+				bool enableSSLEvent(const uri_t::url_t & url, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обработки получения чанков
 				 *
@@ -179,7 +179,7 @@ namespace awh {
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
+				void chunking(const uint32_t bid, const buffer_t & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к прокси-серверу
@@ -187,7 +187,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void proxyConnectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при чтении сообщения с прокси-сервера
 				 *
@@ -196,7 +196,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void proxyReadEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 			public:
 				/**
 				 * @brief Метод остановки клиента
@@ -250,7 +250,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const char * name, Args... args) noexcept -> uint64_t {
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
@@ -272,7 +272,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint64_t {
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова
@@ -294,7 +294,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(fid > 0)
 						// Выполняем установку функции обратного вызова
@@ -317,11 +317,11 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const A fid, Args... args) noexcept -> uint64_t {
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
-					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 						// Выполняем установку функции обратного вызова
-						return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+						return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
 					// Выводим результат по умолчанию
 					return 0;
 				}
@@ -392,7 +392,7 @@ namespace awh {
 				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void userAgentProxy(const string & userAgent) noexcept;
+				void agentProxy(const string & userAgent) noexcept;
 				/**
 				 * @brief Метод установки идентификации клиента прокси-сервера
 				 *
@@ -400,7 +400,7 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void identProxy(const string & id, const string & name, const string & ver) noexcept;
+				void agentProxy(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

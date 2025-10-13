@@ -163,6 +163,12 @@ namespace awh {
 			family_t family() const noexcept;
 		public:
 			/**
+			 * @brief Метод очистки выделенной памяти
+			 * 
+			 */
+			void releaseFreeMemory() const noexcept;
+		public:
+			/**
 			 * @brief Метод определения текущего расхода памяти
 			 *
 			 * @param mode режим потребления памяти

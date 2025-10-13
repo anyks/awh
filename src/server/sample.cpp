@@ -1,6 +1,6 @@
 /**
  * @file: sample.cpp
- * @date: 2023-10-18
+ * @date: 2025-10-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -56,22 +56,22 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 			// Если система запущена
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
 				// Выполняем биндинг ядра локального таймера
-				const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+				const_cast <server::core_t *> (this->_core)->bind(this->_timer);
 				// Устанавливаем интервал времени на выполнения пинга клиента
 				uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on(tid, &sample_t::pinging, this, tid);
+				this->_timer.on <void (const uint16_t)> (tid, &sample_t::pinging, this, tid);
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on(tid, &sample_t::erase, this, tid);
+				this->_timer.on <void (const uint16_t)> (tid, &sample_t::erase, this, tid);
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
 				// Останавливаем все установленные таймеры
 				this->_timer.clear();
 				// Выполняем анбиндинг ядра локального таймера
-				const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+				const_cast <server::core_t *> (this->_core)->unbind(this->_timer);
 			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
@@ -86,7 +86,7 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Sample::connectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
@@ -94,7 +94,7 @@ void awh::server::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
+			this->_callback.call <void (const uint32_t, const mode_t)> ("active", bid, mode_t::CONNECT);
 	}
 }
 /**
@@ -103,7 +103,7 @@ void awh::server::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Добавляем в очередь список отключившихся клиентов
@@ -111,7 +111,7 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
+			this->_callback.call <void (const uint32_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
 }
 /**
@@ -137,7 +137,7 @@ void awh::server::Sample::launchedEvent(const string & host, const uint32_t port
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::server::Sample::readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
@@ -149,9 +149,14 @@ void awh::server::Sample::readEvent(const char * buffer, const size_t size, cons
 			// Если разрешено получение данных
 			if(options->allow.receive){
 				// Если функция обратного вызова при получении входящих сообщений установлена
-				if(this->_callback.is("message"))
+				if(this->_callback.is("message")){
+					// Выполняем очистку бинарного буфера
+					this->_buffer.clear();
+					// Заполняем бинарный буфер данными
+					this->_buffer.push(buffer, size);
 					// Выводим данные полученного сообщения
-					this->_callback.call <void (const uint64_t, const vector <char> &)> ("message", bid, vector <char> (buffer, buffer + size));
+					this->_callback.call <void (const uint32_t, const buffer_t &)> ("message", bid, this->_buffer);
+				}
 			}
 		}
 	}
@@ -164,7 +169,7 @@ void awh::server::Sample::readEvent(const char * buffer, const size_t size, cons
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::server::Sample::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::writeEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((this->_core != nullptr) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
@@ -302,7 +307,7 @@ void awh::server::Sample::callback(const callback_t & callback) noexcept {
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
  */
-void awh::server::Sample::send(const uint64_t bid, const char * buffer, const size_t size) const noexcept {
+void awh::server::Sample::send(const uint32_t bid, const char * buffer, const size_t size) const noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -327,7 +332,7 @@ void awh::server::Sample::send(const uint64_t bid, const char * buffer, const si
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-uint32_t awh::server::Sample::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::Sample::port(const uint32_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.port(bid);
 }
@@ -337,7 +342,7 @@ uint32_t awh::server::Sample::port(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
-const string & awh::server::Sample::ip(const uint64_t bid) const noexcept {
+const string & awh::server::Sample::ip(const uint32_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.ip(bid);
 }
@@ -347,7 +352,7 @@ const string & awh::server::Sample::ip(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
-const string & awh::server::Sample::mac(const uint64_t bid) const noexcept {
+const string & awh::server::Sample::mac(const uint32_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.mac(bid);
 }
@@ -366,7 +371,7 @@ void awh::server::Sample::alive(const bool mode) noexcept {
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::Sample::alive(const uint64_t bid, const bool mode) noexcept {
+void awh::server::Sample::alive(const uint32_t bid, const bool mode) noexcept {
 	// Получаем параметры активного клиента
 	scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг пдолгоживущего подключения
@@ -404,7 +409,7 @@ void awh::server::Sample::start() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::Sample::close(const uint64_t bid) noexcept {
+void awh::server::Sample::close(const uint32_t bid) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Получаем параметры активного клиента
@@ -495,8 +500,8 @@ void awh::server::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
  * @param log  объект для работы с логами
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _alive(false), _pinging(true), _complete(true),
- _port(SERVER_PORT), _host{""}, _uri(fmk, log), _timer(fmk, log), _pingInterval(PING_INTERVAL),
+ _pid(::getpid()), _alive(false), _pinging(true), _complete(true), _port(SERVER_PORT),
+ _host{""}, _uri(fmk, log), _timer(fmk, log), _buffer(fmk, log), _pingInterval(PING_INTERVAL),
  _callback(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
@@ -509,16 +514,16 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 		// Устанавливаем событие на запуск системы
 		const_cast <server::core_t *> (this->_core)->on <void (const uint16_t)> ("open", &sample_t::openEvent, this, _1);
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &sample_t::connectEvent, this, _1, _2);
+		const_cast <server::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("connect", &sample_t::connectEvent, this, _1, _2);
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &sample_t::disconnectEvent, this, _1, _2);
+		const_cast <server::core_t *> (this->_core)->on <void (const uint32_t, const uint16_t)> ("disconnect", &sample_t::disconnectEvent, this, _1, _2);
 		// Устанавливаем функцию получения события запуска сервера
 		const_cast <server::core_t *> (this->_core)->on <void (const string &, const uint32_t)> ("launched", &sample_t::launchedEvent, this, _1, _2);
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &sample_t::readEvent, this, _1, _2, _3, _4);
+		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("read", &sample_t::readEvent, this, _1, _2, _3, _4);
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &sample_t::writeEvent, this, _1, _2, _3, _4);
+		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", &sample_t::writeEvent, this, _1, _2, _3, _4);
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", &sample_t::acceptEvent, this, _1, _2, _3, _4);
+		const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint32_t)> ("accept", &sample_t::acceptEvent, this, _1, _2, _3, _4);
 	}
 }

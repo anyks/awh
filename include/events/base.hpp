@@ -49,6 +49,7 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <cstdint>
 #include <functional>
 
 /**
@@ -106,7 +107,7 @@ namespace awh {
 			/**
 			 * Создаём тип функции обратного вызова
 			 */
-			typedef function <void (const SOCKET, const event_type_t)> callback_t;
+			using callback_t = function <void (const SOCKET, const event_type_t)>;
 		private:
 			/**
 			 * @brief Конструктор таймера
@@ -138,7 +139,7 @@ namespace awh {
 				/**
 				 * Функция обратного вызова
 				 */
-				function <void (const uint64_t)> callback;
+				function <void (const uint32_t)> callback;
 				/**
 				 * @brief Конструктор
 				 *
@@ -154,7 +155,7 @@ namespace awh {
 			 */
 			typedef struct Peer {
 				// Идентификатор участника
-				uint64_t id;
+				uint32_t id;
 				// Отслеживаемый сокет
 				SOCKET sock;
 				// Флаг персистентного таймера
@@ -246,7 +247,7 @@ namespace awh {
 			std::recursive_mutex _mtx;
 		private:
 			// Список активных таймеров
-			std::map <uint64_t, timer_t> _timers;
+			std::map <uint32_t, timer_t> _timers;
 		private:
 			// Список отслеживаемых участников
 			std::map <SOCKET, peer_t> _peers;
@@ -292,7 +293,7 @@ namespace awh {
 			 * @param sock  окет межпотокового передатчика
 			 * @param event входящее событие от межпотокового передатчика
 			 */
-			void stream(const SOCKET sock, const uint64_t event) noexcept;
+			void stream(const SOCKET sock, const uint32_t event) noexcept;
 		private:
 			/**
 			 * @brief Метод удаления файлового дескриптора из базы событий
@@ -308,7 +309,7 @@ namespace awh {
 			 * @param sock сокет для удаления
 			 * @return     результат работы функции
 			 */
-			bool del(const uint64_t id, const SOCKET sock) noexcept;
+			bool del(const uint32_t id, const SOCKET sock) noexcept;
 			/**
 			 * @brief Метод удаления файлового дескриптора из базы событий для указанного события
 			 *
@@ -317,7 +318,7 @@ namespace awh {
 			 * @param type тип отслеживаемого события
 			 * @return     результат работы функции
 			 */
-			bool del(const uint64_t id, const SOCKET sock, const event_type_t type) noexcept;
+			bool del(const uint32_t id, const SOCKET sock, const event_type_t type) noexcept;
 		private:
 			/**
 			 * @brief Метод добавления файлового дескриптора в базу событий
@@ -329,7 +330,7 @@ namespace awh {
 			 * @param persist  флаг персистентного таймера
 			 * @return         результат работы функции
 			 */
-			bool add(const uint64_t id, SOCKET & sock, callback_t callback = nullptr, const uint32_t delay = 0, const bool persist = false) noexcept;
+			bool add(const uint32_t id, SOCKET & sock, const callback_t & callback = nullptr, const uint32_t delay = 0, const bool persist = false) noexcept;
 		private:
 			/**
 			 * @brief Метод установки режима работы модуля
@@ -340,7 +341,7 @@ namespace awh {
 			 * @param mode флаг режима работы модуля
 			 * @return     результат работы функции
 			 */
-			bool mode(const uint64_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept;
+			bool mode(const uint32_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки запущена ли в данный момент база событий
@@ -402,7 +403,7 @@ namespace awh {
 			 * @param sock сокет межпотокового передатчика
 			 * @param tid  идентификатор трансферной передачи
 			 */
-			void upstream(const SOCKET sock, const uint64_t tid) noexcept;
+			void upstream(const SOCKET sock, const uint32_t tid) noexcept;
 			/**
 			 * @brief Метод деактивации межпотокового передатчика
 			 *
@@ -415,7 +416,7 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @return         сокет межпотокового передатчика
 			 */
-			SOCKET activationUpstream(function <void (const uint64_t)> callback) noexcept;
+			SOCKET activationUpstream(function <void (const uint32_t)> callback) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

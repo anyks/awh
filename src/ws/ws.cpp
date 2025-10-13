@@ -970,74 +970,74 @@ void awh::Websocket::clean() noexcept {
  *
  * @return бинарный дамп данных
  */
-awh::buffer_t awh::Websocket::dump() const noexcept {
-	// Результат работы функции
-	buffer_t result(this->_fmk, this->_log);
+awh::buffer_t & awh::Websocket::dump() noexcept {
+	// Выполняем сброс данных временного буфера
+	this->_buffer.clear();
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Устанавливаем параметры компрессии сообщений
-		result.push(&this->_permessage, sizeof(this->_permessage));
+		this->_buffer.push(&this->_permessage, sizeof(this->_permessage));
 		// Устанавливаем метод компрессии отправляемых данных
-		result.push(&this->_compressors.selected, sizeof(this->_compressors.selected));
+		this->_buffer.push(&this->_compressors.selected, sizeof(this->_compressors.selected));
 		// Устанавливаем количество поддерживаемых компрессоров
-		result.push(this->_compressors.supports.size());
+		this->_buffer.push(this->_compressors.supports.size());
 		// Если список поддерживаемых компрессоров не пустой
 		if(!this->_compressors.supports.empty()){
 			// Выполняем перебор всех поддерживаемых компрессоров
 			for(auto & compressor : this->_compressors.supports){
 				// Выполняем установку веска компрессора
-				result.push(&compressor.first, sizeof(compressor.first));
+				this->_buffer.push(&compressor.first, sizeof(compressor.first));
 				// Выполняем установку идентификатора компрессора
-				result.push(&compressor.second, sizeof(compressor.second));
+				this->_buffer.push(&compressor.second, sizeof(compressor.second));
 			}
 		}
 		// Устанавливаем количество расширений
-		result.push(this->_extensions.size());
+		this->_buffer.push(this->_extensions.size());
 		// Если расширения установлены
 		if(!this->_extensions.empty()){
 			// Выполняем перебор всего списка расширений
 			for(auto & extensions : this->_extensions){
 				// Устанавливаем количество расширений
-				result.push(extensions.size());
+				this->_buffer.push(extensions.size());
 				// Выполняем перебор всего количества расширений
 				for(auto & extension : extensions){
 					// Устанавливаем количество расширений
-					result.push(extension.length());
+					this->_buffer.push(extension.length());
 					// Устанавливаем значение полученного расширения
-					result.push(extension);
+					this->_buffer.push(extension);
 				}
 			}
 		}
 		// Устанавливаем размер ключа клиента
-		result.push(this->_key.length());
+		this->_buffer.push(this->_key.length());
 		// Добавляем ключ клиента
-		result.push(this->_key);
+		this->_buffer.push(this->_key);
 		// Устанавливаем количество выбранных сабпротоколов
-		result.push(this->_protocols.selected.size());
+		this->_buffer.push(this->_protocols.selected.size());
 		// Выполняем перебор всех выбранных сабпротоколов
 		for(auto & subprotocol : this->_protocols.selected){
 			// Устанавливаем размер выбранному сабпротокола
-			result.push(subprotocol.length());
+			this->_buffer.push(subprotocol.length());
 			// Устанавливаем данные выбранному сабпротокола
-			result.push(subprotocol);
+			this->_buffer.push(subprotocol);
 		}
 		// Устанавливаем количество поддерживаемых сабпротоколов
-		result.push(this->_protocols.supported.size());
+		this->_buffer.push(this->_protocols.supported.size());
 		// Выполняем перебор всех поддерживаемых сабпротоколов
 		for(auto & subprotocol : this->_protocols.supported){
 			// Устанавливаем размер поддерживаемого сабпротокола
-			result.push(subprotocol.length());
+			this->_buffer.push(subprotocol.length());
 			// Устанавливаем данные поддерживаемого сабпротокола
-			result.push(subprotocol);
+			this->_buffer.push(subprotocol);
 		}
 		// Выполняем получение дампа основного класса
-		buffer_t dump = http_t::dump();
+		buffer_t & dump = http_t::dump();
 		// Устанавливаем размер дампа бинарных данных модуля
-		result.push(dump.size());
+		this->_buffer.push(dump.size());
 		// Добавляем дамп бинарных данных модуля
-		result.push(dump);
+		this->_buffer.push(::move(dump));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1061,7 +1061,7 @@ awh::buffer_t awh::Websocket::dump() const noexcept {
 		#endif
 	}
 	// Выводим результат
-	return result;
+	return this->_buffer;
 }
 /**
  * @brief Метод установки бинарного дампа
@@ -1629,11 +1629,13 @@ void awh::Websocket::subprotocols(const std::unordered_set <string> & subprotoco
  * @param res объект параметров HTTP-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-awh::buffer_t awh::Websocket::reject(const web_t::res_t & res) noexcept {
+awh::buffer_t & awh::Websocket::reject(const web_t::res_t & res) noexcept {
 	// Выполняем очистку выбранного сабпротокола
 	this->_protocols.selected.clear();
 	// Выполняем генерацию сообщения ответа
-	return ::move(http_t::reject(res));
+	this->_buffer = ::move(http_t::reject(res));
+	// Выводим результат
+	return this->_buffer;
 }
 /**
  * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
@@ -1654,9 +1656,9 @@ vector <std::pair <string, string>> awh::Websocket::reject2(const web_t::res_t &
  * @param prov параметры провайдера обмена сообщениями
  * @return     буфер данных в бинарном виде
  */
-awh::buffer_t awh::Websocket::process(const process_t flag, const web_t::provider_t & prov) noexcept {
-	// Результат работы функции
-	buffer_t result(this->_fmk, this->_log);
+awh::buffer_t & awh::Websocket::process(const process_t flag, const web_t::provider_t & prov) noexcept {
+	// Выполняем сброс данных временного буфера
+	this->_buffer.clear();
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1700,7 +1702,7 @@ awh::buffer_t awh::Websocket::process(const process_t flag, const web_t::provide
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for Websocket-client is incorrect");
 					// Выходим из функции
-					return result;
+					return this->_buffer;
 				}
 			} break;
 			// Если нужно сформировать данные ответа
@@ -1739,7 +1741,7 @@ awh::buffer_t awh::Websocket::process(const process_t flag, const web_t::provide
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "SHA1 key could not be generated, no further work possiblet");
 							// Выходим из функции
-							return result;
+							return this->_buffer;
 						}
 						// Добавляем заголовок хеша ключа
 						headers.emplace("Sec-Websocket-Accept", sha1.c_str());
@@ -1755,7 +1757,7 @@ awh::buffer_t awh::Websocket::process(const process_t flag, const web_t::provide
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Websocket-server response code set incorrectly");
 					// Выходим из функции
-					return result;
+					return this->_buffer;
 				}
 			} break;
 		}
@@ -1783,8 +1785,10 @@ awh::buffer_t awh::Websocket::process(const process_t flag, const web_t::provide
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+	// Выполняем генерацию сообщения ответа
+	this->_buffer = ::move(http_t::process(flag, prov));
 	// Выводим результат
-	return ::move(http_t::process(flag, prov));
+	return this->_buffer;
 }
 /**
  * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
@@ -1930,7 +1934,7 @@ void awh::Websocket::encryption(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::Websocket::Websocket(const fmk_t * fmk, const log_t * log) noexcept :
- http_t(identity_t::WS, fmk, log), _encryption(false), _key{""} {}
+ http_t(identity_t::WS, fmk, log), _encryption(false), _buffer(fmk, log), _key{""} {}
 /**
  * @brief Деструктор
  *

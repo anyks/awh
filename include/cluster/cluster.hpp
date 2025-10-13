@@ -684,7 +684,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const char * name, Args... args) noexcept -> uint64_t {
+			auto on(const char * name, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(name != nullptr)
 					// Выполняем установку функции обратного вызова
@@ -706,7 +706,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const string & name, Args... args) noexcept -> uint64_t {
+			auto on(const string & name, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(!name.empty())
 					// Выполняем установку функции обратного вызова
@@ -728,7 +728,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+			auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(fid > 0)
 					// Выполняем установку функции обратного вызова
@@ -751,11 +751,11 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const A fid, Args... args) noexcept -> uint64_t {
+			auto on(const A fid, Args... args) noexcept -> uint32_t {
 				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем установку функции обратного вызова
-					return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+					return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
 				// Выводим результат по умолчанию
 				return 0;
 			}

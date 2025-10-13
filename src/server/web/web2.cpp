@@ -1,6 +1,6 @@
 /**
  * @file: web2.cpp
- * @date: 2022-10-01
+ * @date: 2025-11-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -34,7 +34,7 @@ using namespace placeholders;
  * @param sid идентификатор схемы сети
  * @return    результат инициализации сессии
  */
-bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept {
+bool awh::server::Web2::session(const uint32_t bid, const uint16_t sid) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
@@ -66,7 +66,7 @@ bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Устанавливаем функцию обработки вызова на событие получения ошибок
-					callback.on <void (const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3);
+					callback.on <void (const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint32_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3);
 				// Выполняем создание нового объекта сессии HTTP/2
 				auto ret = this->_sessions.emplace(bid, std::make_unique <http2_t> (this->_fmk, this->_log));
 				// Выполняем установку функции обратного вызова
@@ -114,7 +114,7 @@ void awh::server::Web2::statusEvents(const awh::core_t::status_t status) noexcep
  * @param buffer буфер бинарных данных
  * @param size   размер буфера данных для отправки
  */
-void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
+void awh::server::Web2::sendSignal(const uint32_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Выполняем отправку заголовков ответа клиенту
@@ -125,7 +125,7 @@ void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, c
  *
  * @param bid идентификатор брокера
  */
-void awh::server::Web2::close(const uint64_t bid) noexcept {
+void awh::server::Web2::close(const uint32_t bid) noexcept {
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск брокера в списке активных сессий
@@ -133,7 +133,7 @@ void awh::server::Web2::close(const uint64_t bid) noexcept {
 		// Если активная сессия найдена
 		if(i != this->_sessions.end())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			i->second->on <void (void)> (1, static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid);
+			i->second->on <void (void)> (1, static_cast <void (server::core_t::*)(const uint32_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid);
 		// Завершаем работу
 		else const_cast <server::core_t *> (this->_core)->close(bid);
 	}
@@ -144,7 +144,7 @@ void awh::server::Web2::close(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  * @return    результат работы пинга
  */
-bool awh::server::Web2::ping(const uint64_t bid) noexcept {
+bool awh::server::Web2::ping(const uint32_t bid) noexcept {
 	// Выполняем поиск брокера в списке активных сессий
 	auto i = this->_sessions.find(bid);
 	// Если активная сессия найдена
@@ -160,7 +160,7 @@ bool awh::server::Web2::ping(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  * @return    результат выполнения операции
  */
-bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
+bool awh::server::Web2::shutdown(const uint32_t bid) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -189,7 +189,7 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
  */
-bool awh::server::Web2::reject(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept {
+bool awh::server::Web2::reject(const int32_t sid, const uint32_t bid, const http2_t::error_t error) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -220,7 +220,7 @@ bool awh::server::Web2::reject(const int32_t sid, const uint64_t bid, const http
  * @param size   размер отправляемого буфера данных
  * @return       результат отправки данных фрейма
  */
-bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
+bool awh::server::Web2::goaway(const int32_t last, const uint32_t bid, const http2_t::error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -249,7 +249,7 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept {
+bool awh::server::Web2::send(const int32_t sid, const uint32_t bid, const vector <std::pair <string, string>> & headers) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -280,7 +280,7 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector
  * @param flag   флаг передаваемого потока по сети
  * @return       результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept {
+bool awh::server::Web2::send(const int32_t sid, const uint32_t bid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -310,7 +310,7 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const char *
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::send(const int32_t sid, const uint32_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -340,7 +340,7 @@ int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vec
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::push(const int32_t sid, const uint32_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено

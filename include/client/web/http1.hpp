@@ -1,6 +1,6 @@
 /**
  * @file: http1.hpp
- * @date: 2023-09-12
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -62,11 +62,11 @@ namespace awh {
 				// Объект для работы с HTTP-протколом
 				http_t _http;
 			private:
+				// Объект буфера куска данных
+				buffer_t _chunk;
+			private:
 				// Агент воркера выполнения запроса
 				agent_t _agent;
-			private:
-				// Количество активных ядер
-				int16_t _threads;
 			private:
 				// Хранилище функций обратного вызова для вывода результата
 				callback_t _callback;
@@ -80,14 +80,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при отключении от сервера
 				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при чтении сообщения с сервера
 				 *
@@ -96,7 +96,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при записи сообщения на клиенте
 				 *
@@ -105,7 +105,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод отлавливания событий контейнера функций обратного вызова
@@ -114,16 +114,16 @@ namespace awh {
 				 * @param fid   идентификатор функции обратного вызова
 				 * @param fn    функция обратного вызова в чистом виде
 				 */
-				void callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept;
+				void callbackEvent(const callback_t::event_t event, const uint32_t fid, const callback_t::fn_t & fn) noexcept;
 			private:
 				/**
-				 * @brief Метод получение статуса ответа сервера
+				 * @brief Метод получение статуса рукопожатия с сервером
 				 *
-				 * @param sid    идентификатор потока
-				 * @param rid    идентификатор запроса
-				 * @param status статус ответа сервера
+				 * @param sid       идентификатор потока
+				 * @param rid       идентификатор запроса
+				 * @param handshake статус рукопожатия с сервером
 				 */
-				void answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept;
+				void answer(const int32_t sid, const uint32_t rid, const http_t::handshake_t handshake) noexcept;
 			private:
 				/**
 				 * @brief Метод выполнения редиректа если требуется
@@ -132,7 +132,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    результат выполнения редиректа
 				 */
-				bool redirect(const uint64_t bid, const uint16_t sid) noexcept;
+				bool redirect(const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод получения ответа сервера
@@ -141,7 +141,7 @@ namespace awh {
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
 				 */
-				void response(const uint64_t bid, const uint32_t code, const string & message) noexcept;
+				void response(const uint32_t bid, const uint32_t code, const string & message) noexcept;
 			private:
 				/**
 				 * @brief Метод получения заголовка
@@ -150,7 +150,7 @@ namespace awh {
 				 * @param key   ключ заголовка
 				 * @param value значение заголовка
 				 */
-				void header(const uint64_t bid, const string & key, const string & value) noexcept;
+				void header(const uint32_t bid, const string & key, const string & value) noexcept;
 				/**
 				 * @brief Метод получения заголовков
 				 *
@@ -159,7 +159,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки ответа сервера
 				 */
-				void headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
+				void headers(const uint32_t bid, const uint32_t code, const string & message, const headers_t & headers) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки получения чанков
@@ -168,7 +168,7 @@ namespace awh {
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
+				void chunking(const uint32_t bid, const buffer_t & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
 				 * @brief Метод сброса параметров запроса
@@ -197,7 +197,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    результат препарирования
 				 */
-				status_t prepare(const int32_t sid, const uint64_t bid) noexcept;
+				status_t prepare(const int32_t sid, const uint32_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения об ошибке
@@ -266,7 +266,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const headers_t & headers, const bool end) noexcept;
 			public:
 				/**
 				 * @brief Метод установки на паузу клиента
@@ -331,7 +331,7 @@ namespace awh {
 				 *
 				 * @param size размер чанка для установки
 				 */
-				void chunk(const size_t size) noexcept;
+				void chunkSize(const size_t size) noexcept;
 				/**
 				 * @brief Метод установки размеров сегментов фрейма
 				 *
@@ -363,7 +363,7 @@ namespace awh {
 				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void userAgent(const string & userAgent) noexcept;
+				void agent(const string & userAgent) noexcept;
 				/**
 				 * @brief Метод установки идентификации клиента
 				 *
@@ -371,15 +371,7 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void ident(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
+				void agent(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

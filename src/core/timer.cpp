@@ -1,6 +1,6 @@
 /**
  * @file: timer.cpp
- * @date: 2024-07-15
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -27,6 +27,17 @@ using namespace std;
  */
 using namespace placeholders;
 
+/**
+ * @brief Метод генерации уникального идентификатора
+ * 
+ * @return уникальный идентификатор
+ */
+uint16_t awh::Timer::identifier() const noexcept {
+	// Начинаем с 1 (0 можно оставить как "invalid")
+	static std::atomic_uint16_t id{1};
+	// Выводим новое значение идентификатора
+    return id.fetch_add(1, std::memory_order_relaxed);
+}
 /**
  * @brief Метод вызова при активации базы событий
  *
@@ -83,32 +94,21 @@ void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET sock, c
 						this->_brokers.erase(i);
 						// Выполняем разблокировку потока
 						this->_mtx.unlock();
-						// Выполняем поиск функции обратного вызова
-						auto j = this->_callback.find(tid);
-						// Если функция обратного вызова найдена
-						if(j != this->_callback.end()){
+						// Если функция обратного вызова установлена
+						if(this->_callback.is(tid)){
 							// Выполняем извлечение функции обратного вызова
-							auto fn = j->second;
-							// Выполняем блокировку потока
-							this->_mtx.lock();
+							auto callback = ::move(this->_callback.get <uint16_t, void ()> (tid));
 							// Выполняем удаление функции обратного вызова
-							this->_callback.erase(j);
-							// Выполняем разблокировку потока
-							this->_mtx.unlock();
+							this->_callback.erase(tid);
 							// Выполняем функцию обратного вызова
-							std::apply(fn, std::make_tuple());
+							callback();
 						}
 					// Если мы работаем не с таймером а с интервалом
 					} else {
-						// Выполняем поиск функции обратного вызова
-						auto j = this->_callback.find(i->first);
-						// Если функция обратного вызова найдена
-						if(j != this->_callback.end()){
-							// Выполняем извлечение функции обратного вызова
-							auto fn = j->second;
+						// Если функция обратного вызова установлена
+						if(this->_callback.is(i->first))
 							// Выполняем функцию обратного вызова
-							std::apply(fn, std::make_tuple());
-						}
+							this->_callback.call <uint16_t, void ()> (i->first);
 					}
 				}
 			/**
@@ -142,19 +142,15 @@ void awh::Timer::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Если список брокеров не пустой
 		if(!this->_brokers.empty()){
 			// Выполняем перебор всех активных брокеров
 			for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
 				// Выполняем остановку активного брокера
 				i->second->event.stop();
-				// Если функция обратного вызова существует
-				auto j = this->_callback.find(i->first);
-				// Если функция обратного вызова найдена
-				if(j != this->_callback.end())
-					// Выполняем удаление функции обратного вызова
-					this->_callback.erase(j);
+				// Выполняем удаление функции обратного вызова
+				this->_callback.erase(i->first);
 				// Выполняем удаление таймера
 				i = this->_brokers.erase(i);
 			}
@@ -189,19 +185,15 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем поиск активного брокера
 		auto i = this->_brokers.find(tid);
 		// Если активный брокер найден
 		if(i != this->_brokers.end()){
 			// Выполняем остановку активного брокера
 			i->second->event.stop();
-			// Если функция обратного вызова существует
-			auto j = this->_callback.find(i->first);
-			// Если функция обратного вызова найдена
-			if(j != this->_callback.end())
-				// Выполняем удаление функции обратного вызова
-				this->_callback.erase(j);
+			// Выполняем удаление функции обратного вызова
+			this->_callback.erase(i->first);
 			// Выполняем удаление таймера
 			this->_brokers.erase(i);
 		}
@@ -239,10 +231,8 @@ uint16_t awh::Timer::timeout(const uint32_t delay) noexcept {
 		try {
 			// Выполняем блокировку потока
 			this->_mtx.lock();
-			// Получаем идентификатор таймера
-			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, std::make_unique <broker_t> (this->_fmk, this->_log));
+			auto ret = this->_brokers.emplace(this->identifier(), std::make_unique <broker_t> (this->_fmk, this->_log));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем время задержки таймера
@@ -313,10 +303,8 @@ uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 		try {
 			// Выполняем блокировку потока
 			this->_mtx.lock();
-			// Получаем идентификатор таймера
-			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, std::make_unique <broker_t> (this->_fmk, this->_log));
+			auto ret = this->_brokers.emplace(this->identifier(), std::make_unique <broker_t> (this->_fmk, this->_log));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем флаг персистентной работы
@@ -374,6 +362,14 @@ uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 	// Выводим результат
 	return 0;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::core_t(fmk, log), _callback(log) {}
 /**
  * @brief Деструктор
  *

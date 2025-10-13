@@ -23,7 +23,13 @@
 	 * Стандартные модули
 	 */
 	#include <queue>
+	#include <mutex>
 #endif
+
+/**
+ * Стандартные модули
+ */
+#include <cstdint>
 
 /**
  * Наши модули
@@ -67,7 +73,7 @@ namespace awh {
 					std::mutex _mtx;
 				private:
 					// Список передаваемых событий
-					std::queue <uint64_t> _events;
+					std::queue <uint32_t> _events;
 				#endif
 		private:
 			/**
@@ -101,14 +107,14 @@ namespace awh {
 			 *
 			 * @return идентификатор события
 			 */
-			uint64_t event() noexcept;
+			uint32_t event() noexcept;
 		public:
 			/**
 			 * @brief Метод отправки уведомления
 			 *
 			 * @param id идентификатор для отправки
 			 */
-			void notify(const uint64_t id) noexcept;
+			void notify(const uint32_t id) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <cerrno>
+#include <string>
+#include <cstring>
+
+/**
  * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
@@ -59,22 +66,22 @@ using namespace std;
  * @param actual  текущее значение установленных файловых дескрипторов
  * @param desired желаемое значение для установки файловых дескрипторов
  */
-void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcept {
+void awh::FDS::help(const uint32_t actual, const uint32_t desired) const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"On Windows, the default handle limit is ~16K. If you need more, increase it programmatically.\n\n"
 			"🔧 How to increase the limit on Windows:\n\n"
 			"1. Programmatically — call early in your application (before creating sockets!):\n"
-			"   SetHandleCount(%llu);\n\n"
+			"   SetHandleCount(%u);\n\n"
 			"   C++ Example:\n"
 			"      #include <windows.h>\n"
 			"      int main() {\n"
-			"          SetHandleCount(%llu); // Call as early as possible!\n"
+			"          SetHandleCount(%u); // Call as early as possible!\n"
 			"          // ... rest of your code ...\n"
 			"      }\n\n"
 			"2. Via Registry (affects GUI handles, may not affect sockets):\n"
@@ -82,7 +89,7 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 			"      HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\SubSystems\n"
 			"   Find \"Windows\" value, a string like:\n"
 			"      %%SystemRoot%%\\system32\\csrss.exe ... SharedSection=1024,20480,768\n"
-			"   Increase the THIRD number (e.g., to %llu).\n"
+			"   Increase the THIRD number (e.g., to %u).\n"
 			"   Reboot system.\n\n"
 			"3. For server applications — prefer SetHandleCount().\n\n"
 			"💡 Important: SetHandleCount() is a hint to the system — actual limit depends on Windows version and available memory.\n"
@@ -95,21 +102,21 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	#elif __linux__
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"This may cause failures under high load.\n\n"
 			"🔧 How to increase the limit on Linux:\n\n"
 			"1. Temporary increase (for current session):\n"
-			"   ulimit -n %llu\n\n"
+			"   ulimit -n %u\n\n"
 			"2. Permanent increase:\n"
 			"   Edit: /etc/security/limits.conf\n"
 			"   Add lines:\n"
-			"      * soft nofile %llu\n"
-			"      * hard nofile %llu\n\n"
+			"      * soft nofile %u\n"
+			"      * hard nofile %u\n\n"
 			"   (Replace '*' with username if setting for a specific user)\n\n"
 			"3. For systemd services:\n"
 			"   Edit: /etc/systemd/system.conf\n"
 			"   Add:\n"
-			"      DefaultLimitNOFILE=%llu\n\n"
+			"      DefaultLimitNOFILE=%u\n\n"
 			"   Then run:\n"
 			"      sudo systemctl daemon-reload\n\n"
 			"4. Restart your application or re-login to apply.\n\n"
@@ -124,24 +131,24 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	#elif __OpenBSD__
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"OpenBSD has strict defaults for security.\n\n"
 			"🔧 How to increase the limit on OpenBSD:\n\n"
 			"1. Temporary increase:\n"
-			"   ulimit -n %llu\n\n"
+			"   ulimit -n %u\n\n"
 			"2. Permanent increase:\n"
 			"   Edit: /etc/login.conf\n"
 			"   In target class (e.g., \"default:\"), add:\n"
-			"      :openfiles-cur=%llu:\n"
-			"      :openfiles-max=%llu:\n\n"
+			"      :openfiles-cur=%u:\n"
+			"      :openfiles-max=%u:\n\n"
 			"3. Rebuild database:\n"
 			"   cap_mkdb /etc/login.conf\n\n"
 			"4. Increase system limits (if needed):\n"
-			"   sysctl kern.maxfiles=%llu\n"
-			"   sysctl kern.maxfilesperproc=%llu\n\n"
+			"   sysctl kern.maxfiles=%u\n"
+			"   sysctl kern.maxfilesperproc=%u\n\n"
 			"   For permanent change, add to /etc/sysctl.conf:\n"
-			"      kern.maxfiles=%llu\n"
-			"      kern.maxfilesperproc=%llu\n\n"
+			"      kern.maxfiles=%u\n"
+			"      kern.maxfilesperproc=%u\n\n"
 			"5. Reboot or re-login to apply.\n\n"
 			"💡 Note: OpenBSD may require reboot for some changes to take effect.",
 			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired, desired
@@ -152,25 +159,25 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	#elif __sun__
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"Solaris requires configuration via projects and system parameters.\n\n"
 			"🔧 How to increase the limit on Solaris:\n\n"
 			"1. Check current limits:\n"
 			"   ulimit -n\n\n"
 			"2. Set temporary limit:\n"
-			"   ulimit -n %llu\n\n"
+			"   ulimit -n %u\n\n"
 			"3. For permanent limit — use projects:\n"
 			"   Create project (if not exists):\n"
 			"      projadd -U $USER network\n\n"
 			"   Set limit for project:\n"
-			"      projmod -s -K \"process.max-file-descriptor=(priv,%llu,deny)\" network\n\n"
+			"      projmod -s -K \"process.max-file-descriptor=(priv,%u,deny)\" network\n\n"
 			"   Assign project to user:\n"
 			"      usermod -K project=network $USER\n\n"
 			"4. Re-login or start app within project:\n"
 			"   newtask -p network ./your_app\n\n"
 			"5. Optionally, increase system-wide limit:\n"
-			"   echo \"rlim_fd_max=%llu\" >> /etc/system\n"
-			"   echo \"rlim_fd_cur=%llu\" >> /etc/system\n"
+			"   echo \"rlim_fd_max=%u\" >> /etc/system\n"
+			"   echo \"rlim_fd_cur=%u\" >> /etc/system\n"
 			"   Reboot system.\n\n"
 			"💡 Tip: Use `prctl -n process.max-file-descriptor -i process $$` to check current process limit.",
 			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired
@@ -181,25 +188,25 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	#elif __FreeBSD__
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"FreeBSD allows tuning limits via login.conf and sysctl.\n\n"
 			"🔧 How to increase the limit on FreeBSD:\n\n"
 			"1. Temporary increase:\n"
-			"   ulimit -n %llu\n\n"
+			"   ulimit -n %u\n\n"
 			"2. Permanent increase via login.conf:\n"
 			"   Edit: /etc/login.conf\n"
 			"   Find class (e.g., \"default:\") and add/modify:\n"
-			"      :openfiles=%llu:\n\n"
+			"      :openfiles=%u:\n\n"
 			"3. Rebuild database:\n"
 			"   cap_mkdb /etc/login.conf\n\n"
 			"4. Assign class to user (if needed):\n"
 			"   pw usermod $USER -L <class_name>\n\n"
 			"5. Increase system limits (optional):\n"
-			"   sysctl kern.maxfiles=%llu\n"
-			"   sysctl kern.maxfilesperproc=%llu\n\n"
+			"   sysctl kern.maxfiles=%u\n"
+			"   sysctl kern.maxfilesperproc=%u\n\n"
 			"   For permanent change, add to /etc/sysctl.conf:\n"
-			"      kern.maxfiles=%llu\n"
-			"      kern.maxfilesperproc=%llu\n\n"
+			"      kern.maxfiles=%u\n"
+			"      kern.maxfilesperproc=%u\n\n"
 			"6. Restart application or re-login.",
 			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
 		);
@@ -209,23 +216,23 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	#elif ___NetBSD__
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"NetBSD uses login.conf and sysctl for tuning limits.\n\n"
 			"🔧 How to increase the limit on NetBSD:\n\n"
 			"1. Temporary increase:\n"
-			"   ulimit -n %llu\n\n"
+			"   ulimit -n %u\n\n"
 			"2. Permanent increase:\n"
 			"   Edit: /etc/login.conf\n"
 			"   In target class (e.g., \"default:\"), add:\n"
-			"      :openfiles=%llu:\n\n"
+			"      :openfiles=%u:\n\n"
 			"3. Rebuild database:\n"
 			"   cap_mkdb /etc/login.conf\n\n"
 			"4. Increase system limits:\n"
-			"   sysctl kern.maxfiles=%llu\n"
-			"   sysctl kern.maxfilesperproc=%llu\n\n"
+			"   sysctl kern.maxfiles=%u\n"
+			"   sysctl kern.maxfilesperproc=%u\n\n"
 			"   For permanent change, add to /etc/sysctl.conf:\n"
-			"      kern.maxfiles=%llu\n"
-			"      kern.maxfilesperproc=%llu\n\n"
+			"      kern.maxfiles=%u\n"
+			"      kern.maxfilesperproc=%u\n\n"
 			"5. Restart application or re-login.\n\n"
 			"💡 Tip: Use `sysctl -a | grep maxfiles` to view current system limits.",
 			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
@@ -236,11 +243,11 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	#elif __APPLE__ || __MACH__
 		// Выполняем формирование лога
 		this->_log->print(
-			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"
+			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"MacOS X default limits are often too low for server applications.\n\n"
 			"🔧 How to increase the limit on MacOS X:\n\n"
 			"1. Temporary increase (in current terminal):\n"
-			"   ulimit -n %llu\n\n"
+			"   ulimit -n %u\n\n"
 			"2. Permanent increase:\n"
 			"   Create file: /Library/LaunchDaemons/limit.maxfiles.plist\n"
 			"   Paste content:\n\n"
@@ -255,8 +262,8 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 			"         <string>launchctl</string>\n"
 			"         <string>limit</string>\n"
 			"         <string>maxfiles</string>\n"
-			"         <string>%llu</string>\n"
-			"         <string>%llu</string>\n"
+			"         <string>%u</string>\n"
+			"         <string>%u</string>\n"
 			"       </array>\n"
 			"       <key>RunAtLoad</key>\n"
 			"       <true/>\n"
@@ -280,19 +287,19 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
  * @param limit желаемое количество файловых дескрипторов
  * @return      результат установки
  */
-bool awh::FDS::limit(const uint64_t limit) const noexcept {
+bool awh::FDS::limit(const uint32_t limit) const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// SetHandleCount — рекомендация системе, не гарантирует лимит
-		if(::SetHandleCount(static_cast <uint32_t> (limit))){
+		if(::SetHandleCount(limit)){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим информационное сообщение
-				this->_log->print("Called SetHandleCount(%llu) successfully", log_t::flag_t::INFO, limit);
+				this->_log->print("Called SetHandleCount(%u) successfully", log_t::flag_t::INFO, limit);
 			#endif
 			// Выводим положительный результат
 			return true;
@@ -303,13 +310,13 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("SetHandleCount(%llu) failed", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit);
+				this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit);
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("SetHandleCount(%llu) failed", log_t::flag_t::WARNING, limit);
+				this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, limit);
 			#endif
 		}
 	/**
@@ -339,15 +346,15 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			return false;
 		}
 		// Получаем мягкие значения
-		const uint64_t currentSoft = static_cast <uint64_t> (rl.rlim_cur);
+		const uint32_t currentSoft = static_cast <uint32_t> (rl.rlim_cur);
 		// Получаем жесткие значения
-		const uint64_t currentHard = static_cast <uint64_t> (rl.rlim_max);
+		const uint32_t currentHard = static_cast <uint32_t> (rl.rlim_max);
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим информационное сообщение
-			this->_log->print("Current FD limits: soft=%llu, hard=%llu", log_t::flag_t::INFO, currentSoft, currentHard);
+			this->_log->print("Current FD limits: soft=%u, hard=%u", log_t::flag_t::INFO, currentSoft, currentHard);
 		#endif
 		// Если soft лимит уже >= target — ничего не делаем
 		if(currentSoft >= limit)
@@ -364,7 +371,7 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим информационное сообщение
-				this->_log->print("Successfully raised soft FD limit to %llu", log_t::flag_t::INFO, static_cast <uint64_t> (soft));
+				this->_log->print("Successfully raised soft FD limit to %u", log_t::flag_t::INFO, static_cast <uint32_t> (soft));
 			#endif
 			// (Опционально) Пытаемся поднять hard лимит — если есть права
 			if(currentHard < limit){
@@ -381,7 +388,7 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим информационное сообщение
-						this->_log->print("Successfully raised hard FD limit to %llu", log_t::flag_t::INFO, limit);
+						this->_log->print("Successfully raised hard FD limit to %u", log_t::flag_t::INFO, limit);
 					#endif
 				// Если ничего не получилось
 				} else {
@@ -390,13 +397,13 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to raise hard FD limit to %llu (need root?): %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
+						this->_log->debug("Failed to raise hard FD limit to %u (need root?): %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Failed to raise hard FD limit to %llu (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
+						this->_log->print("Failed to raise hard FD limit to %u (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
 					#endif
 				}
 			}
@@ -409,13 +416,13 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Failed to raise soft FD limit to %llu: %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint64_t> (soft), ::strerror(errno));
+				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Failed to raise soft FD limit to %llu: %s", log_t::flag_t::WARNING, static_cast <uint64_t> (soft), ::strerror(errno));
+				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
 			#endif
 		}
 	#endif
@@ -427,9 +434,9 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
  *
  * @return количество файловых дескрипторов установленных в файловой системе
  */
-std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
+std::pair <uint32_t, uint32_t> awh::FDS::limit() const noexcept {
 	// Результат работы функции
-	std::pair <uint64_t, uint64_t> result = {0, 0};
+	std::pair <uint32_t, uint32_t> result = {0, 0};
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -449,7 +456,7 @@ std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим информационное сообщение
-					this->_log->print("Called SetHandleCount(%llu) successfully", log_t::flag_t::INFO, result.first);
+					this->_log->print("Called SetHandleCount(%u) successfully", log_t::flag_t::INFO, result.first);
 				#endif
 			// Если ничего не получилось
 			} else {
@@ -458,13 +465,13 @@ std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("SetHandleCount(%llu) failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, result.first);
+					this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, result.first);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("SetHandleCount(%llu) failed", log_t::flag_t::WARNING, result.first);
+					this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, result.first);
 				#endif
 				// Выходим из функции
 				return std::make_pair(0, 0);
@@ -476,7 +483,7 @@ std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
 			// Сокет для инициализации
 			SOCKET sock = INVALID_SOCKET;
 			// Выполняем создание 100000 сокетов
-			for(uint64_t i = 0; i < result.second; ++i){
+			for(uint32_t i = 0; i < result.second; ++i){
 				// Выполняем инициализацию сокетов
 				if((sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET){
 					// Выполняем закрытие открытых сокетов
@@ -552,9 +559,9 @@ std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
 				return result;
 			}
 			// Выполняем установку текущего значения количества доступных файловых дескрипторов
-			result.first = static_cast <uint64_t> (rl.rlim_cur);
+			result.first = static_cast <uint32_t> (rl.rlim_cur);
 			// Выполняем установку максимального значения количества доступных файловых дескрипторов
-			result.second = static_cast <uint64_t> (rl.rlim_max);
+			result.second = static_cast <uint32_t> (rl.rlim_max);
 		/**
 		 * Если возникает ошибка
 		 */

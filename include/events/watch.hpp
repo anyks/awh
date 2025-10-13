@@ -72,9 +72,9 @@ namespace awh {
 			notifier_t _notifier;
 		private:
 			// Список активных таймеров
-			std::multimap <uint64_t, uint64_t> _timers;
+			std::multimap <uint64_t, uint32_t> _timers;
 			// Очередь таймеров ожидающих активацию
-			std::queue <std::pair <uint64_t, uint64_t>> _items;
+			std::queue <std::pair <uint32_t, uint64_t>> _items;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -117,21 +117,21 @@ namespace awh {
 			 *
 			 * @return идентификатор события
 			 */
-			uint64_t event() noexcept;
+			uint32_t event() noexcept;
 		public:
 			/**
 			 * @brief Метод убрать таймер из отслеживания
 			 *
 			 * @param id идентификатор таймера
 			 */
-			void away(const uint64_t id) noexcept;
+			void away(const uint32_t id) noexcept;
 			/**
 			 * @brief Метод ожидания указанного промежутка времени
 			 *
 			 * @param id    идентификатор таймера
 			 * @param delay задержка времени в миллисекундах
 			 */
-			void wait(const uint64_t id, const uint32_t delay) noexcept;
+			void wait(const uint32_t id, const uint32_t delay) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

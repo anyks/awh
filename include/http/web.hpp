@@ -1,6 +1,6 @@
 /**
  * @file: web.hpp
- * @date: 2021-12-19
+ * @date: 2025-10-04
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <cinttypes>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -29,6 +30,7 @@
  * Наши модули
  */
 #include "errors.hpp"
+#include "headers.hpp"
 #include "../net/uri.hpp"
 #include "../net/net.hpp"
 #include "../sys/fmk.hpp"
@@ -60,24 +62,24 @@ namespace awh {
 				SERVER = 0x02  // HTTP-модуль является сервером
 			};
 			/**
+			 * Типы HTTP-юнитов
+			 */
+			enum class unit_t : uint8_t {
+				NONE    = 0x00, // Значение юнита не установлено
+				BODY    = 0x01, // Юинт является телом сообщения
+				HEADERS = 0x02  // Юнит является заголовками сообщения
+			};
+			/**
 			 * Версии протоколов соответствия
 			 */
 			enum class proto_t : uint8_t {
 				NONE      = 0x00, // Протокол не установлен
-				HTTP1     = 0x01, // Протокол принадлежит HTTP/1.0
-				HTTP2     = 0x02, // Протокол принадлежит HTTP/2
-				HTTP1_1   = 0x03, // Протокол принадлежит HTTP/1.1
-				PROXY     = 0x04, // Протокол принадлежит Proxy
-				WEBSOCKET = 0x05  // Протокол принадлежит Websocket
-			};
-			/**
-			 * Стейты работы модуля
-			 */
-			enum class state_t : uint8_t {
-				END     = 0x01, // Режим завершения сбора данных
-				BODY    = 0x02, // Режим чтения тела сообщения
-				QUERY   = 0x03, // Режим ожидания получения запроса
-				HEADERS = 0x04  // Режим чтения заголовков
+				UNKNOWN   = 0x01, // Протокол неизвестный
+				HTTP1     = 0x02, // Протокол принадлежит HTTP/1.0
+				HTTP2     = 0x03, // Протокол принадлежит HTTP/2
+				HTTP1_1   = 0x04, // Протокол принадлежит HTTP/1.1
+				PROXY     = 0x05, // Протокол принадлежит Proxy
+				WEBSOCKET = 0x06  // Протокол принадлежит Websocket
 			};
 			/**
 			 * Методы HTTP-запроса
@@ -328,30 +330,62 @@ namespace awh {
 					 */
 					~Response() noexcept {}
 			} res_t;
-		private:
+		public:
 			/**
-			 * Идентификаторы актуального процесса парсинга
+			 * Стейты работы модуля
 			 */
-			enum class process_t : uint8_t {
-				SIZE      = 0x01, // Ожидание получения размера
-				BODY      = 0x02, // Ожидание сбора тела данных
-				TRAILERS  = 0x03, // Ожидание получения трейлера
-				END_SIZE  = 0x04, // Ожидание получения перевода строки после получения размера чанка
-				END_BODY  = 0x05, // Ожидание получения перевода строки после получения тела чанка
-				STOP_BODY = 0x06  // Ожидание получения возврата каретки после получения тела чанка
+			enum class state_t : uint8_t {
+				END     = 0x01, // Режим завершения сбора данных
+				BODY    = 0x02, // Режим чтения тела сообщения
+				QUERY   = 0x03, // Режим ожидания получения запроса
+				HEADERS = 0x04  // Режим чтения заголовков
 			};
 			/**
-			 * @brief Структура собираемого чанка
+			 * @brief Структура рабочих параметров
+			 *
+			 */
+			typedef struct Work {
+				// Сепаратор для детекции в буфере
+				int8_t delim;
+				// Стейт текущего запроса
+				state_t state;
+				// Протокол на который выполняется переключение
+				proto_t upgrade;
+				// Массив позиций в буфере сепаратора
+				int32_t pos[2];
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				Work() noexcept :
+				 delim(static_cast <int8_t> ('\0')),
+				 state(state_t::QUERY), upgrade(proto_t::NONE) {}
+			} __attribute__((packed)) work_t;
+		private:
+			/**
+			 * @brief Структура чанка тела HTTP-протокола
 			 *
 			 */
 			typedef class AWH_SHARED_EXPORT Chunk {
 				public:
+					/**
+					 * Стейты процесса парсинга
+					 */
+					enum class state_t : uint8_t {
+						SIZE      = 0x01, // Ожидание получения размера
+						BODY      = 0x02, // Ожидание сбора тела данных
+						TRAILERS  = 0x03, // Ожидание получения трейлера
+						END_SIZE  = 0x04, // Ожидание получения перевода строки после получения размера чанка
+						END_BODY  = 0x05, // Ожидание получения перевода строки после получения тела чанка
+						STOP_BODY = 0x06  // Ожидание получения возврата каретки после получения тела чанка
+					};
+				public:
 					// Размер чанка
 					size_t size;
 					// Стейт чанка
-					process_t state;
+					state_t state;
 					// Промежуточный временный буфер
-					vector <char> buffer;
+					buffer_t buffer;
 				public:
 					/**
 					 * @brief Метод очистки данных чанка
@@ -362,53 +396,75 @@ namespace awh {
 					/**
 					 * @brief Конструктор
 					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					Chunk() noexcept;
+					Chunk(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
 					~Chunk() noexcept;
 			} chunk_t;
+			/**
+			 * @brief Структура тела HTTP-протокола
+			 *
+			 */
+			typedef class AWH_SHARED_EXPORT Body {
+				public:
+					// Размер тела запроса/ответа
+					int32_t size;
+					// Объект собираемого чанка
+					chunk_t chunk;
+					// Данные тела HTTP-протокола
+					buffer_t data;
+				public:
+					/**
+					 * @brief Метод очистки данных тела сообщения
+					 *
+					 */
+					void clear() noexcept;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Body(const fmk_t * fmk, const log_t * log) noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Body() noexcept;
+			} body_t;
+		private:
+			// Тип используемого HTTP-модуля
+			hid_t _hid;
 		private:
 			// Идентификатор объекта
-			uint64_t _id;
+			uint32_t _id;
 		private:
 			// Объект запроса
 			req_t _request;
 			// Объект ответа
 			res_t _response;
 		private:
-			// Сепаратор для детекции в буфере
-			char _separator;
-		private:
-			// Массив позиций в буфере сепаратора
-			int64_t _pos[2];
-			// Размер тела сообщения
-			int64_t _bodySize;
-		private:
 			// Объект работы с URI
 			uri_t _uri;
-			// Объект собираемого чанка
-			chunk_t _chunk;
+			// Объект рабочих параметров
+			work_t _work;
+			// Тело HTTP-протокола
+			body_t _body;
+			// Объект работы с временным буфером
+			buffer_t _buffer;
+			// Заголовки HTTP-протокола
+			headers_t _headers;
 			// Хранилище функций обратного вызова
 			callback_t _callback;
 		private:
-			// Тип используемого HTTP-модуля
-			hid_t _hid;
-			// Стейт текущего запроса
-			state_t _state;
-		private:
-			// Полученное тело HTTP-запроса
-			buffer_t _body;
-		private:
-			// Протокол на который выполняется переключение
-			string _upgrade;
-		private:
 			// Загруженные трейлеры
 			std::unordered_set <string> _trailers;
-			// Полученные HTTP заголовки
-			std::unordered_multimap <string, string> _headers;
 			// Список стандартных заголовков
 			std::unordered_map <string, std::set <proto_t>> _standards;
 		private:
@@ -418,37 +474,99 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * @brief Метод извлечения полезной нагрузки
-			 *
-			 * @param buffer буфер данных для чтения
-			 * @param size   размер буфера данных для чтения
-			 * @return       размер обработанных данных
+			 * @brief Метод инициализации модуля
+			 * 
 			 */
-			size_t readPayload(const char * buffer, const size_t size) noexcept;
-			/**
-			 * @brief Метод извлечения заголовков
-			 *
-			 * @param buffer буфер данных для чтения
-			 * @param size   размер буфера данных для чтения
-			 * @return       размер обработанных данных
-			 */
-			size_t readHeaders(const char * buffer, const size_t size) noexcept;
+			void init() noexcept;
 		private:
 			/**
-			 * @brief Метод препарирования HTTP заголовков
+			 * @brief Метод извлечения полученных данных
 			 *
-			 * @param buffer   буфер данных для парсинга
-			 * @param size     размер буфера данных для парсинга
-			 * @param callback функция обратного вызова
+			 * @param buffer буфер данных для чтения
+			 * @param size   размер буфера данных для чтения
+			 * @param unit   HTTP-юнит с которым производится работа
+			 * @return       размер обработанных данных
 			 */
-			void prepare(const char * buffer, const size_t size, function <void (const char *, const size_t, const size_t, const bool)> callback) noexcept;
+			size_t extraction(const char * buffer, const size_t size, const unit_t unit) noexcept;
+		public:
+			/**
+			 * @brief Метод фиксирования добавленных данных
+			 *
+			 */
+			void commit() noexcept;
+		public:
+			/**
+			 * @brief Метод сброса стейтов парсера
+			 *
+			 */
+			void reset() noexcept;
+		public:
+			/**
+			 * @brief Метод очистки собранных данных
+			 *
+			 */
+			void clear() noexcept;
+			/**
+			 * @brief Метод очистки данных HTTP-юнита
+			 *
+			 * @param unit HTTP-юнит данные которого очищаются
+			 */
+			void clear(const unit_t unit) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки существования данных
+			 * 
+			 * @param unit HTTP-юнит наличие данных которого проверяются
+			 * @return     результат проверки
+			 */
+			bool empty(const unit_t unit) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки завершения обработки
+			 *
+			 * @return результат проверки
+			 */
+			bool finish() const noexcept;
+			/**
+			 * @brief Проверка заголовка HTTP-протокола является ли он стандартным
+			 *
+			 * @param name название заголовка HTTP-протокола для проверки
+			 * @return     результат проверки
+			 */
+			bool standard(const string key) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения идентификатора объекта
+			 *
+			 * @return идентификатор объекта
+			 */
+			uint32_t id() const noexcept;
+			/**
+			 * @brief Метод установки идентификатора объекта
+			 *
+			 * @param id идентификатор объекта
+			 */
+			void id(const uint32_t id) noexcept;
+		public:
+			/**
+			 * @brief Метод вывода идентификатора модуля
+			 *
+			 * @return тип используемого HTTP-модуля
+			 */
+			const hid_t hid() const noexcept;
+			/**
+			 * @brief Метод установки идентификатора модуля
+			 *
+			 * @param hid тип используемого HTTP-модуля
+			 */
+			void hid(const hid_t hid) noexcept;
 		public:
 			/**
 			 * @brief Метод получения бинарного дампа
 			 *
 			 * @return бинарный дамп данных
 			 */
-			buffer_t dump() const noexcept;
+			buffer_t & dump() noexcept;
 			/**
 			 * @brief Метод установки бинарного дампа
 			 *
@@ -471,17 +589,6 @@ namespace awh {
 			 * @return       размер обработанных данных
 			 */
 			size_t parse(const char * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод очистки собранных данных
-			 *
-			 */
-			void clear() noexcept;
-			/**
-			 * @brief Метод сброса стейтов парсера
-			 *
-			 */
-			void reset() noexcept;
 		public:
 			/**
 			 * @brief Метод получения объекта запроса на сервер
@@ -522,144 +629,97 @@ namespace awh {
 			void response(const res_t & response) noexcept;
 		public:
 			/**
-			 * @brief Метод проверки завершения обработки
+			 * @brief Метод получения данных тела HTTP-протокола
 			 *
-			 * @return результат проверки
+			 * @return буфер данных тела HTTP-протокола
 			 */
-			bool isEnd() const noexcept;
+			buffer_t & body() noexcept;
 			/**
-			 * @brief Метод проверки существования заголовка
+			 * @brief Метод переноса данных тела HTTP-протокола
 			 *
-			 * @param key ключ заголовка для проверки
-			 * @return    результат проверки
+			 * @param body буфер тела HTTP-протокола для переноса
 			 */
-			bool isHeader(const string & key) const noexcept;
+			void body(buffer_t && body) noexcept;
 			/**
-			 * @brief Проверка заголовка является ли он стандартным
+			 * @brief Метод установки данных тела HTTP-протокола
 			 *
-			 * @param key ключ заголовка для проверки
-			 * @return    результат проверки
+			 * @param body буфер тела HTTP-протокола для установки
 			 */
-			bool isStandard(const string & key) const noexcept;
-		public:
+			void body(const buffer_t & body) noexcept;
 			/**
-			 * @brief Метод очистки данных тела
+			 * @brief Метод перемещения данных тела HTTP-протокола
 			 *
+			 * @param body буфер тела HTTP-протокола для установки
 			 */
-			void clearBody() noexcept;
+			void body(vector <char> && body) noexcept;
 			/**
-			 * @brief Метод очистки списка заголовков
+			 * @brief Метод установки данных тела HTTP-протокола
 			 *
-			 */
-			void clearHeaders() noexcept;
-		public:
-			/**
-			 * @brief Метод получения данных тела запроса
-			 *
-			 * @return буфер данных тела запроса
-			 */
-			const buffer_t & body() const noexcept;
-			/**
-			 * @brief Метод добавления данных тела
-			 *
-			 * @param body буфер тела для добавления
+			 * @param body буфер тела HTTP-протокола для установки
 			 */
 			void body(const vector <char> & body) noexcept;
 			/**
-			 * @brief Метод добавления данных тела
+			 * @brief Метод добавления данных тела HTTP-протокола
 			 *
-			 * @param buffer буфер тела для добавления
-			 * @param size   размер буфера теля для добавления
+			 * @param buffer буфер тела HTTP-протокола для добавления
+			 * @param size   размер буфера теля HTTP-протокола для добавления
 			 */
 			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * @brief Метод получение названия протокола для переключения
+			 * @brief Метод получения списка заголовков HTTP-протокола
 			 *
-			 * @return название протокола для переключения
+			 * @return список существующих заголовков HTTP-протокола
 			 */
-			const string & upgrade() const noexcept;
+			headers_t & headers() noexcept;
 			/**
-			 * @brief Метод установки название протокола для переключения
+			 * @brief Метод переноса списка заголовков HTTP-протокола
 			 *
-			 * @param upgrade название протокола для переключения
+			 * @param headers список заголовков HTTP-протокола для переноса
 			 */
-			void upgrade(const string & upgrade) noexcept;
+			void headers(headers_t && headers) noexcept;
+			/**
+			 * @brief Метод установки списка заголовков HTTP-протокола
+			 *
+			 * @param headers список заголовков HTTP-протокола для установки
+			 */
+			void headers(const headers_t & headers) noexcept;
 		public:
 			/**
-			 * @brief Метод извлечения список протоколов к которому принадлежит заголовок
+			 * @brief Метод получения данных заголовка HTTP-протокола
 			 *
-			 * @param key ключ заголовка
-			 * @return    список протоколов
+			 * @param name название заголовка HTTP-протокола
+			 * @return     содержимое заголовка HTTP-протокола
 			 */
-			std::set <proto_t> proto(const string & key) const noexcept;
+			const string & header(const string & name) const noexcept;
+			/**
+			 * @brief Метод добавления заголовка HTTP-протокола
+			 *
+			 * @param name    название заголовка HTTP-протокола
+			 * @param content содержимое заголовка HTTP-протокола
+			 */
+			void header(const string & name, const string & content) noexcept;
 		public:
 			/**
-			 * @brief Метод удаления заголовка
+			 * @brief Метод получение типа протокола для переключения
 			 *
-			 * @param key ключ заголовка
+			 * @return тип протокола для переключения
 			 */
-			void delHeader(const string & key) noexcept;
+			const proto_t upgrade() const noexcept;
 			/**
-			 * @brief Метод получения данных заголовка
+			 * @brief Метод установки типа протокола для переключения
 			 *
-			 * @param key ключ заголовка
-			 * @return    значение заголовка
+			 * @param upgrade тип протокола для переключения
 			 */
-			string header(const string & key) const noexcept;
-			/**
-			 * @brief Метод добавления заголовка
-			 *
-			 * @param key ключ заголовка
-			 * @param val значение заголовка
-			 */
-			void header(const string & key, const string & val) noexcept;
+			void upgrade(const proto_t upgrade) noexcept;
 		public:
 			/**
-			 * @brief Метод получения списка заголовков
+			 * @brief Метод извлечения список протоколов к которому принадлежит заголовок HTTP-протокола
 			 *
-			 * @return список существующих заголовков
+			 * @param name название заголовка HTTP-протокола
+			 * @return     список соответствующих протоколов
 			 */
-			const std::unordered_multimap <string, string> & headers() const noexcept;
-			/**
-			 * @brief Метод установки списка заголовков
-			 *
-			 * @param headers список заголовков для установки
-			 */
-			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
-		public:
-			/**
-			 * @brief Метод получения идентификатора объекта
-			 *
-			 * @return идентификатор объекта
-			 */
-			uint64_t id() const noexcept;
-			/**
-			 * @brief Метод установки идентификатора объекта
-			 *
-			 * @param id идентификатор объекта
-			 */
-			void id(const uint64_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод вывода идентификатора модуля
-			 *
-			 * @return тип используемого HTTP-модуля
-			 */
-			const hid_t hid() const noexcept;
-			/**
-			 * @brief Метод установки идентификатора модуля
-			 *
-			 * @param hid тип используемого HTTP-модуля
-			 */
-			void hid(const hid_t hid) noexcept;
-		public:
-			/**
-			 * @brief Метод установки стейта ожидания данных
-			 *
-			 * @param state стейт ожидания данных для установки
-			 */
-			void state(const state_t state) noexcept;
+			const std::set <proto_t> & proto(const string name) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки функций обратного вызова
@@ -682,7 +742,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const char * name, Args... args) noexcept -> uint64_t {
+			auto on(const char * name, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(name != nullptr)
 					// Выполняем установку функции обратного вызова
@@ -704,7 +764,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const string & name, Args... args) noexcept -> uint64_t {
+			auto on(const string & name, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(!name.empty())
 					// Выполняем установку функции обратного вызова
@@ -726,7 +786,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+			auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 				// Если мы получили название функции обратного вызова
 				if(fid > 0)
 					// Выполняем установку функции обратного вызова
@@ -749,11 +809,11 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			auto on(const A fid, Args... args) noexcept -> uint64_t {
+			auto on(const A fid, Args... args) noexcept -> uint32_t {
 				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем установку функции обратного вызова
-					return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+					return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
 				// Выводим результат по умолчанию
 				return 0;
 			}
@@ -765,6 +825,14 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Web(const fmk_t * fmk, const log_t * log) noexcept;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param hid тип используемого HTTP-модуля
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 */
+			Web(const hid_t hid, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

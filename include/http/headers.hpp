@@ -100,6 +100,13 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
+					 * @brief Оператор преобразования в сырой итератор
+					 * 
+					 * @return iterator итератор для преобразования
+					 */
+					operator iterator() noexcept;
+				public:
+					/**
 					 * @brief Оператор извлечения указателя заголовка
 					 *
 					 * @return указатель заголовка
@@ -227,6 +234,13 @@ namespace awh {
 			 * @param name название удаляемого заголовка
 			 */
 			void erase(const string & name) noexcept;
+			/**
+			 * @brief erase Метод удаления заголовка
+			 * 
+			 * @param it идетартор заголовка для удаления
+			 * @return   следующий итератор
+			 */
+			iterator_t erase(const iterator_t & it) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки существования заголовка

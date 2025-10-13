@@ -1,6 +1,6 @@
 /**
  * @file: client.cpp
- * @date: 2024-03-09
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -60,7 +60,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Переходим по всему списку брокера
 					for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 						// Если блокировка брокера не установлена
-						if(this->_busy.find(i->first) == this->_busy.end()){
+						if(auto lock = this->_guard.lock(i->first)){
 							// Создаём бъект активного брокера подключения
 							awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 							// Выполняем остановку работы событий
@@ -200,7 +200,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если функция обратного вызова активации шифрованного SSL канала установлена
 							if(!shm->isProxy() && this->_callback.is("ssl"))
 								// Выполняем активацию шифрованного SSL канала
-								this->_engine.encrypted(this->_callback.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", url, broker->id(), sid), broker->ectx);
+								this->_engine.encrypted(this->_callback.call <bool (const uri_t::url_t &, const uint32_t, const uint16_t)> ("ssl", url, broker->id(), sid), broker->ectx);
 							// Выполняем активацию контекста подключения
 							this->_engine.wrap(broker->ectx, &broker->addr, host);
 						// Если хост сервера не получен
@@ -222,7 +222,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint64_t, const uint16_t)> ("disconnect", 0, sid);
+								this->_callback.call <void (const uint32_t, const uint16_t)> ("disconnect", 0, sid);
 							// Выходим из функции
 							return;
 						}
@@ -248,7 +248,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const uint64_t, const uint16_t)> ("disconnect", 0, sid);
+								this->_callback.call <void (const uint32_t, const uint16_t)> ("disconnect", 0, sid);
 							// Выходим из функции
 							return;
 						}
@@ -272,16 +272,12 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Выходим из функции
 						return;
 					}
-					// Выполняем блокировку потока
-					this->_mtx.connect.lock();
 					// Выполняем установку базы событий
 					broker->base(this->base());
 					// Добавляем созданного брокера в список брокеров
 					auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 					// Добавляем брокера в список подключений
 					this->_brokers.emplace(ret.first->first, ret.first->second.get());
-					// Выполняем блокировку потока
-					this->_mtx.connect.unlock();
 					// Если подключение к серверу не выполнено
 					if(!ret.first->second->addr.connect()){
 						// Разрешаем выполнение работы
@@ -345,11 +341,11 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если статус подключения не изменился
 					if(shm->status.real == scheme_t::mode_t::PRECONNECT){
 						// Выполняем установку функции обратного вызова на получении сообщений
-						ret.first->second->on <void (const uint64_t)> ("read", &core_t::read, this, _1);
+						ret.first->second->on <void (const uint32_t)> ("read", &core_t::read, this, _1);
 						// Выполняем установку функции обратного вызова на отправку сообщений
-						ret.first->second->on <void (const uint64_t)> ("write", static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1);
+						ret.first->second->on <void (const uint32_t)> ("write", static_cast <void (core_t::*)(const uint32_t)> (&core_t::write), this, _1);
 						// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
-						ret.first->second->on <void (const uint64_t)> ("close", static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, _1);
+						ret.first->second->on <void (const uint32_t)> ("close", static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, _1);
 						// Выполняем запуск работы события
 						ret.first->second->start();
 						// Активируем ожидание подключения
@@ -445,7 +441,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("disconnect"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const uint16_t)> ("disconnect", 0, sid);
+						this->_callback.call <void (const uint32_t, const uint16_t)> ("disconnect", 0, sid);
 				}
 			/**
 			 * Если возникает ошибка
@@ -580,19 +576,9 @@ void awh::client::Core::launching(const bool mode, const bool status) noexcept {
 		// Переходим по всему списку схем сети
 		for(auto & scheme : this->_schemes){
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("open")){
-				
-				/*
-				auto open_fn = this->_callback.get<void(const uint16_t)>("open");
-				callback.on <void ()> (scheme.first, [open_fn, port = scheme.first]() {
-					open_fn(port);
-				});
-				*/
-				
+			if(this->_callback.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				// callback.on <void (const uint16_t)> (scheme.first, this->_callback.get <void (const uint16_t)> ("open"), scheme.first);
 				callback.on <void ()> (scheme.first, this->_callback.get <void (const uint16_t)> ("open"), scheme.first);
-			}
 		}
 		// Выполняем все функции обратного вызова
 		callback.call();
@@ -652,9 +638,7 @@ void awh::client::Core::timeout(const uint16_t sid, const scheme_t::mode_t mode)
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::clearTimeout(const uint64_t bid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+void awh::client::Core::clearTimeout(const uint32_t bid) noexcept {
 	// Выполняем поиск активных таймаутов
 	auto i = this->_receive.find(bid);
 	// Если таймаут найден
@@ -671,8 +655,6 @@ void awh::client::Core::clearTimeout(const uint64_t bid) noexcept {
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
 	// Выполняем поиск активных таймаутов
 	auto i = this->_timeouts.find(sid);
 	// Если таймаут найден
@@ -689,7 +671,7 @@ void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
  * @param bid  идентификатор брокера
  * @param msec время ожидания получения данных в миллисекундах
  */
-void awh::client::Core::createTimeout(const uint64_t bid, const uint32_t msec) noexcept {
+void awh::client::Core::createTimeout(const uint32_t bid, const uint32_t msec) noexcept {
 	// Если идентификатор брокера найден
 	if(this->has(bid) && (msec > 0)){
 		// Идентификатор таймера
@@ -702,15 +684,10 @@ void awh::client::Core::createTimeout(const uint64_t bid, const uint32_t msec) n
 			this->_timer.clear(i->second);
 			// Выполняем создание нового таймаута
 			i->second = tid = this->_timer.timeout(msec);
-		// Если таймаут ещё не создан
-		} else {
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
-			// Выполняем создание нового таймаута
-			this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
-		}
+		// Выполняем создание нового таймаута
+		} else this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
 		// Выполняем добавление функции обратного вызова
-		this->_timer.on(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid);
+		this->_timer.on <void (const uint32_t)> (tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, bid);
 	}
 }
 /**
@@ -732,15 +709,10 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 			this->_timer.clear(i->second);
 			// Выполняем создание нового таймаута на 5 секунд
 			i->second = tid = this->_timer.timeout(5000);
-		// Если таймаут ещё не создан
-		} else {
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
-			// Выполняем создание нового таймаута на 5 секунд
-			this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
-		}
+		// Выполняем создание нового таймаута на 5 секунд
+		} else this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
 		// Выполняем добавление функции обратного вызова
-		this->_timer.on(tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
+		this->_timer.on <void (const uint32_t, const scheme_t::mode_t)>  (tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
 	}
 }
 /**
@@ -771,17 +743,15 @@ void awh::client::Core::start() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::reset(const uint64_t bid) noexcept {
+void awh::client::Core::reset(const uint32_t bid) noexcept {
 	// Если блокировка брокера не установлена
-	if(this->_busy.find(bid) == this->_busy.end()){
+	if(auto lock = this->_guard.lock(bid)){
 		// Если брокер существует
 		if(this->has(bid))
 			// Выполняем отключение от сервера
 			this->close(bid);
 		// Если брокер не существует
 		else if(!this->_schemes.empty()) {
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx.reset);
 			// Переходим по всему списку схем сети
 			for(auto & item : this->_schemes){
 				// Получаем объект схемы сети
@@ -827,24 +797,12 @@ void awh::client::Core::reset(const uint64_t bid) noexcept {
  *
  */
 void awh::client::Core::close() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock1(this->_mtx.close);
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
-	const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
 	// Останавливаем работу таймера
 	this->_timer.clear();
-	{
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
-		// Очищаем список таймаутов
-		this->_timeouts.clear();
-	}{
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
-		// Очищаем список таймаутов ожидания получения данных
-		this->_receive.clear();
-	}
+	// Очищаем список таймаутов
+	this->_timeouts.clear();
+	// Очищаем список таймаутов ожидания получения данных
+	this->_receive.clear();
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Объект работы с функциями обратного вызова
@@ -862,15 +820,13 @@ void awh::client::Core::close() noexcept {
 				// Если прокси-сервер активирован но уже переключён на работу с сервером
 				if((shm->proxy.type != proxy_t::type_t::NONE) && !shm->isProxy())
 					/**
-					shm-> * Выполняем переключение обратно на прокси-сервер
-					shm-> */
+					 * Выполняем переключение обратно на прокси-сервер
+					 */
 					shm->switchConnect();
 				// Переходим по всему списку брокера
 				for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(i->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(i->first);
+					if(auto lock = this->_guard.lock(i->first)){
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 						// Выполняем остановку работы событий
@@ -892,24 +848,9 @@ void awh::client::Core::close() noexcept {
 							// Выполняем удаление записи используемой памяти полезной нагрузки
 							this->_available.erase(k);
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("disconnect")){
+						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							// callback.on <void (const uint64_t, const uint16_t)> (i->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
-
-							/*
-							auto open_fn = this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect");
-					
-							callback.on<void()>(
-								i->first,
-								[open_fn, bid = i->first, port = item.first]() { open_fn(bid, port); }
-							);
-							*/
-							
-							callback.on <void ()> (i->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), i->first, item.first);
-
-						}
-						// Удаляем блокировку брокера
-						this->_busy.erase(i->first);
+							callback.on <void ()> (i->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), i->first, item.first);
 						// Удаляем брокера из списка
 						i = shm->_brokers.erase(i);
 					// Иначе продолжаем дальше
@@ -926,24 +867,12 @@ void awh::client::Core::close() noexcept {
  *
  */
 void awh::client::Core::remove() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock1(this->_mtx.close);
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
-	const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
 	// Останавливаем работу таймера
 	this->_timer.clear();
-	{
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
-		// Очищаем список таймаутов
-		this->_timeouts.clear();
-	}{
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
-		// Очищаем список таймаутов ожидания получения данных
-		this->_receive.clear();
-	}
+	// Очищаем список таймаутов
+	this->_timeouts.clear();
+	// Очищаем список таймаутов ожидания получения данных
+	this->_receive.clear();
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Объект работы с функциями обратного вызова
@@ -961,9 +890,7 @@ void awh::client::Core::remove() noexcept {
 				// Переходим по всему списку брокера
 				for(auto j = shm->_brokers.begin(); j!= shm->_brokers.end();){
 					// Если блокировка брокера не установлена
-					if(this->_busy.find(j->first) == this->_busy.end()){
-						// Выполняем блокировку брокера
-						this->_busy.emplace(j->first);
+					if(auto lock = this->_guard.lock(j->first)){
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 						// Выполняем остановку работы событий
@@ -987,9 +914,7 @@ void awh::client::Core::remove() noexcept {
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.on <void (const uint64_t, const uint16_t)> (j->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
-						// Удаляем блокировку брокера
-						this->_busy.erase(j->first);
+							callback.on <void ()> (j->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), j->first, i->first);
 						// Удаляем брокера из списка
 						j = shm->_brokers.erase(j);
 					// Иначе продолжаем дальше
@@ -1089,13 +1014,9 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::close(const uint64_t bid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
+void awh::client::Core::close(const uint32_t bid) noexcept {
 	// Если блокировка брокера не установлена
-	if(this->_busy.find(bid) == this->_busy.end()){
-		// Выполняем блокировку брокера
-		this->_busy.emplace(bid);
+	if(auto lock = this->_guard.lock(bid)){
 		// Объект работы с функциями обратного вызова
 		callback_t callback(this->_log);
 		// Если идентификатор брокера подключений существует
@@ -1131,29 +1052,15 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				// Устанавливаем статус сетевого ядра
 				shm->status.real = scheme_t::mode_t::DISCONNECT;
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("disconnect")){
+				if(this->_callback.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
-					// callback.on <void (const uint64_t, const uint16_t)> ("disconnect", this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
-					
-					callback.on <void ()> ("disconnect", this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, i->first);
-
-					/*
-					auto open_fn = this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect");
-					
-					callback.on<void()>(
-						"disconnect",
-						[open_fn, bid, port = i->first]() { open_fn(bid, port); }
-					);
-					*/
-				}
+					callback.on <void ()> ("disconnect", this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), bid, i->first);
 				// Если активированно постоянное подключение
 				if(shm->alive)
 					// Устанавливаем функцию обратного вызова
-					callback.on <void (const uint16_t)> ("reconnect", &core_t::reconnect, this, i->first);
+					callback.on <void ()> ("reconnect", &core_t::reconnect, this, i->first);
 			}
 		}
-		// Удаляем блокировку брокера
-		this->_busy.erase(bid);
 		// Если функция дисконнекта установлена
 		if(callback.is("disconnect")){
 			// Если разрешено выводить информационные сообщения
@@ -1161,11 +1068,11 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 			// Выполняем функцию обратного вызова дисконнекта
-			callback.call <void (void)> ("disconnect");
+			callback.call <void ()> ("disconnect");
 			// Если функция реконнекта установлена
 			if(callback.is("reconnect"))
 				// Выполняем автоматическое переподключение
-				callback.call <void (void)> ("reconnect");
+				callback.call <void ()> ("reconnect");
 		}
 	}
 }
@@ -1175,11 +1082,6 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::remove(const uint16_t sid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock1(this->_mtx.close);
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
-	const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
 	// Выполняем поиск схемы сети
 	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -1203,9 +1105,7 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 					// Выполняем удаление таймаута
 					this->clearTimeout(j->first);
 				// Если блокировка брокера не установлена
-				if(this->_busy.find(j->first) == this->_busy.end()){
-					// Выполняем блокировку брокера
-					this->_busy.emplace(j->first);
+				if(auto lock = this->_guard.lock(j->first)){
 					// Получаем бъект активного брокера подключения
 					awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 					// Выполняем остановку работы событий
@@ -1229,9 +1129,7 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("disconnect"))
 						// Устанавливаем полученную функцию обратного вызова
-						callback.on <void (const uint64_t, const uint16_t)> (j->first, this->_callback.get <void (const uint64_t, const uint16_t)> ("disconnect"), j->first, i->first);
-					// Удаляем блокировку брокера
-					this->_busy.erase(j->first);
+						callback.on <void ()> (j->first, this->_callback.get <void (const uint32_t, const uint16_t)> ("disconnect"), j->first, i->first);
 					// Удаляем брокера из списка
 					j = shm->_brokers.erase(j);
 				// Иначе продолжаем дальше
@@ -1249,7 +1147,7 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
+void awh::client::Core::switchProxy(const uint32_t bid) noexcept {
 	/**
 	 * Определяем тип производимого подключения
 	 */
@@ -1263,8 +1161,6 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 		// Если активирован любой другой протокол, выходим из функции
 		default: return;
 	}
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.proxy);
 	// Если идентификатор брокера подключений существует
 	if(this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -1278,8 +1174,8 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 			// Если прокси-сервер активирован но ещё не переключён на работу с сервером
 			if((shm->proxy.type != proxy_t::type_t::NONE) && shm->isProxy()){
 				/**
-				shm-> * Выполняем переключение на работу с сервером
-				shm-> */
+				 * Выполняем переключение на работу с сервером
+				 */
 				shm->switchConnect();
 				// Хост сервера для подклчюения
 				const char * host = nullptr;
@@ -1296,7 +1192,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 					// Если функция обратного вызова активации шифрованного SSL канала установлена
 					if(this->_callback.is("ssl"))
 						// Выполняем активацию шифрованного SSL канала
-						this->_engine.encrypted(this->_callback.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", shm->url, bid, i->first), broker->ectx);
+						this->_engine.encrypted(this->_callback.call <bool (const uri_t::url_t &, const uint32_t, const uint16_t)> ("ssl", shm->url, bid, i->first), broker->ectx);
 					// Выполняем получение контекста сертификата
 					this->_engine.wrap(broker->ectx, broker->ectx, host);
 					// Если подключение не обёрнуто
@@ -1334,7 +1230,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::connected(const uint64_t bid) noexcept {
+void awh::client::Core::connected(const uint32_t bid) noexcept {
 	// Если идентификатор брокера подключений существует
 	if(this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -1432,11 +1328,11 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 					// Если функция обратного вызова для прокси-сервера установлена
 					if(this->_callback.is("connectProxy"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const uint16_t)> ("connectProxy", bid, i->first);
+						this->_callback.call <void (const uint32_t, const uint16_t)> ("connectProxy", bid, i->first);
 				// Если функция обратного вызова установлена
 				} else if(this->_callback.is("connect"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint64_t, const uint16_t)> ("connect", bid, i->first);
+					this->_callback.call <void (const uint32_t, const uint16_t)> ("connect", bid, i->first);
 				// Выходим из функции
 				return;
 			}
@@ -1453,7 +1349,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
  * @param bid    идентификатор брокера
  * @return       результат отправки сообщения
  */
-bool awh::client::Core::send(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+bool awh::client::Core::send(const char * buffer, const size_t size, const uint32_t bid) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1508,7 +1404,7 @@ bool awh::client::Core::send(const char * buffer, const size_t size, const uint6
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::read(const uint64_t bid) noexcept {
+void awh::client::Core::read(const uint32_t bid) noexcept {
 	// Если данные переданы
 	if(this->working() && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -1571,11 +1467,11 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 									// Если функция обратного вызова для вывода записи существует
 									if(this->_callback.is("readProxy"))
 										// Выводим функцию обратного вызова
-										this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", broker->payload.buffer.get(), static_cast <size_t> (bytes), bid, i->first);
+										this->_callback.call <void (const char *, const size_t, const uint32_t, const uint16_t)> ("readProxy", broker->payload.buffer.get(), static_cast <size_t> (bytes), bid, i->first);
 								// Если прокси-сервер не используется
 								} else if(this->_callback.is("read"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->payload.buffer.get(), static_cast <size_t> (bytes), bid, i->first);
+									this->_callback.call <void (const char *, const size_t, const uint32_t, const uint16_t)> ("read", broker->payload.buffer.get(), static_cast <size_t> (bytes), bid, i->first);
 							// Если данные небыли получены
 							} else if(bytes <= 0) {
 								// Если чтение не выполнена, закрываем подключение
@@ -1636,7 +1532,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Core::write(const uint64_t bid) noexcept {
+void awh::client::Core::write(const uint32_t bid) noexcept {
 	// Если данные переданы
 	if(this->working() && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -1706,7 +1602,7 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
  * @param bid    идентификатор брокера
  * @return       количество отправленных байт
  */
-size_t awh::client::Core::write(const char * buffer, const size_t size, const uint64_t bid) noexcept {
+size_t awh::client::Core::write(const char * buffer, const size_t size, const uint32_t bid) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если данные переданы
@@ -1845,11 +1741,11 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 								// Если функция обратного вызова для вывода записи существует
 								if(this->_callback.is("writeProxy"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("writeProxy", buffer, static_cast <size_t> (bytes), bid, i->first);
+									this->_callback.call <void (const char *, const size_t, const uint32_t, const uint16_t)> ("writeProxy", buffer, static_cast <size_t> (bytes), bid, i->first);
 							// Если функция обратного вызова на запись данных установлена
 							} else if(this->_callback.is("write"))
 								// Выводим функцию обратного вызова
-								this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", buffer, static_cast <size_t> (bytes), bid, i->first);
+								this->_callback.call <void (const char *, const size_t, const uint32_t, const uint16_t)> ("write", buffer, static_cast <size_t> (bytes), bid, i->first);
 						}
 					}
 				// Если подключение завершено
@@ -1943,7 +1839,7 @@ void awh::client::Core::work(const uint16_t sid, const string & ip, const int32_
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("disconnect"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint64_t, const uint16_t)> ("disconnect", 0, sid);
+			this->_callback.call <void (const uint32_t, const uint16_t)> ("disconnect", 0, sid);
 	}
 }
 /**
@@ -1961,11 +1857,9 @@ void awh::client::Core::transferRule(const transfer_t transfer) noexcept {
  * @param bid идентификатор брокера
  * @param sec интервал времени в секундах
  */
-void awh::client::Core::waitMessage(const uint64_t bid, const uint16_t sec) noexcept {
+void awh::client::Core::waitMessage(const uint32_t bid, const uint16_t sec) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 		// Выполняем удаление таймаута
 		this->clearTimeout(bid);
 		// Создаём бъект активного брокера подключения
@@ -1984,11 +1878,9 @@ void awh::client::Core::waitMessage(const uint64_t bid, const uint16_t sec) noex
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
+void awh::client::Core::waitTimeDetect(const uint32_t bid, const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 		// Выполняем удаление таймаута
 		this->clearTimeout(bid);
 		// Создаём бъект активного брокера подключения
@@ -2017,7 +1909,7 @@ awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_timer.verbose(false);
 	// Выполняем биндинг сетевого ядра таймера
-	this->bind(dynamic_cast <awh::core_t *> (&this->_timer));
+	this->bind(dynamic_cast <awh::core_t &> (this->_timer));
 }
 /**
  * @brief Конструктор
@@ -2033,5 +1925,5 @@ awh::client::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_timer.verbose(false);
 	// Выполняем биндинг сетевого ядра таймера
-	this->bind(dynamic_cast <awh::core_t *> (&this->_timer));
+	this->bind(dynamic_cast <awh::core_t &> (this->_timer));
 }

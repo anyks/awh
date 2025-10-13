@@ -1,6 +1,6 @@
 /**
  * @file: server.cpp
- * @date: 2021-12-19
+ * @date: 2025-10-07
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -23,13 +23,13 @@
 using namespace std;
 
 /**
- * @brief Метод проверки текущего статуса
+ * @brief Метод проверки выполнения рукопожатия
  *
- * @return результат проверки текущего статуса
+ * @return результат выполнения рукопожатия
  */
-awh::Http::status_t awh::server::Http::status() noexcept {
+awh::Http::handshake_t awh::server::Http::handshake() noexcept {
 	// Результат работы функции
-	status_t result = status_t::FAULT;
+	handshake_t result = handshake_t::FAULT;
 	// Если авторизация требуется
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Параметры авторизации
@@ -37,18 +37,18 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 		/**
 		 * Определяем идентичность сервера
 		 */
-		switch(static_cast <uint8_t> (this->_identity)){
+		switch(static_cast <uint8_t> (this->_session.identity)){
 			// Если сервер соответствует WebSocket-серверу
 			case static_cast <uint8_t> (identity_t::WS):
 			// Если сервер соответствует HTTP-серверу
 			case static_cast <uint8_t> (identity_t::HTTP):
 				// Получаем параметры авторизации
-				auth = this->_web.header("authorization");
+				auth = this->_web.header("Authorization");
 			break;
 			// Если сервер соответствует PROXY-серверу
 			case static_cast <uint8_t> (identity_t::PROXY):
 				// Получаем параметры авторизации
-				auth = this->_web.header("proxy-authorization");
+				auth = this->_web.header("Proxy-Authorization");
 			break;
 		}
 		// Если параметры авторизации найдены
@@ -110,10 +110,10 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 			// Выполняем проверку авторизации
 			if(this->_auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
-				result = http_t::status_t::GOOD;
+				result = handshake_t::GOOD;
 		}
 	// Сообщаем, что авторизация прошла успешно
-	} else result = http_t::status_t::GOOD;
+	} else result = handshake_t::GOOD;
 	// Выводим результат
 	return result;
 }
@@ -140,29 +140,29 @@ void awh::server::Http::opaque(const string & opaque) noexcept {
 		this->_auth.server.opaque(opaque);
 }
 /**
- * @brief Метод извлечения данных авторизации
+ * @brief Метод извлечения параметров авторизации
  *
- * @return данные модуля авторизации
+ * @return параметры модуля авторизации
  */
-awh::server::auth_t::data_t awh::server::Http::authorization() const noexcept {
-	// Выполняем извлечение данных авторизации
-	return this->_auth.server.data();
+awh::server::auth_t::settings_t awh::server::Http::authorization() const noexcept {
+	// Выполняем извлечение параметров авторизации
+	return this->_auth.server.settings();
 }
 /**
- * @brief Метод установки данных авторизации
+ * @brief Метод установки параметров авторизации
  *
- * @param data данные авторизации для установки
+ * @param settings параметры авторизации для установки
  */
-void awh::server::Http::authorization(const server::auth_t::data_t & data) noexcept {
-	// Выполняем установку данных авторизации
-	this->_auth.server.data(data);
+void awh::server::Http::authorization(const server::auth_t::settings_t & settings) noexcept {
+	// Выполняем установку параметров авторизации
+	this->_auth.server.settings(settings);
 }
 /**
  * @brief Метод добавления функции извлечения пароля
  *
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Http::extractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::server::Http::authCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
 	this->_auth.server.callback(::move(callback));
 }
@@ -191,9 +191,8 @@ void awh::server::Http::authType(const awh::auth_t::type_t type, const awh::auth
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log) {
-	// Выполняем установку идентичность сервера к протоколу HTTP
-	this->_identity = identity_t::HTTP;
+awh::server::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::http_t(identity_t::HTTP, fmk, log) {
 	// Устанавливаем тип HTTP-парсера
 	this->_web.hid(web_t::hid_t::SERVER);
 }

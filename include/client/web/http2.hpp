@@ -1,6 +1,6 @@
 /**
  * @file: http2.hpp
- * @date: 2023-09-18
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -43,6 +43,24 @@ namespace awh {
 		typedef class AWH_SHARED_EXPORT Http2 : public web2_t {
 			private:
 				/**
+				 * @brief Структура куска
+				 * 
+				 */
+				typedef struct Chunk {
+					// Буфер куска запроса
+					buffer_t request;
+					// Буфер куска ответа
+					buffer_t response;
+					/**
+					 * @brief Конструктор
+					 * 
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Chunk(const fmk_t * fmk, const log_t * log) noexcept :
+					 request(fmk, log), response(fmk, log) {}
+				} chunk_t;
+				/**
 				 * @brief Структура сервиса
 				 *
 				 */
@@ -65,11 +83,11 @@ namespace awh {
 				 *
 				 */
 				typedef struct Worker {
-					uint64_t id;             // Идентификатор запроса
+					uint32_t id;             // Идентификатор запроса
 					bool update;             // Флаг обновления параметров запроса
 					http_t http;             // Объект для работы с HTTP
 					callback_t callback;     // Хранилище функций обратного вызова
-					agent_t agent;           // Агент воркера
+					web_t::agent_t agent;    // Агент воркера
 					engine_t::proto_t proto; // Активный прототип интернета
 					/**
 					 * @brief Конструктор
@@ -79,7 +97,7 @@ namespace awh {
 					 */
 					Worker(const fmk_t * fmk, const log_t * log) noexcept :
 					 id(0), update(false), http(fmk, log), callback(log),
-					 agent(agent_t::HTTP), proto(engine_t::proto_t::HTTP1_1) {}
+					 agent(web_t::agent_t::HTTP), proto(engine_t::proto_t::HTTP1_1) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -94,14 +112,13 @@ namespace awh {
 			private:
 				// Объект для работы с HTTP-протколом
 				http_t _http;
+				// Буфер одного чанка
+				chunk_t _chunk;
 				// Объект параметров сервиса
 				service_t _service;
 			private:
 				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
-			private:
-				// Количество активных ядер
-				int16_t _threads;
 			private:
 				// Список активных маршрутов запросов
 				std::unordered_map <string, string> _route;
@@ -117,14 +134,14 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при отключении от сервера
 				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvent(const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при чтении сообщения с сервера
 				 *
@@ -133,7 +150,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 				/**
 				 * @brief Метод обратного вызова при записи сообщения на клиенте
 				 *
@@ -142,7 +159,7 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод отлавливания событий контейнера функций обратного вызова
@@ -151,7 +168,7 @@ namespace awh {
 				 * @param fid   идентификатор функции обратного вызова
 				 * @param fn    функция обратного вызова в чистом виде
 				 */
-				void callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept;
+				void callbackEvent(const callback_t::event_t event, const uint32_t fid, const callback_t::fn_t & fn) noexcept;
 			private:
 				/**
 				 * @brief Метод обратного вызова при получении чанка с сервера HTTP/2
@@ -206,15 +223,15 @@ namespace awh {
 				 * @param rid    идентификатор запроса
 				 * @param direct направление передачи данных
 				 */
-				void end(const int32_t sid, const uint64_t rid, const direct_t direct) noexcept;
+				void end(const int32_t sid, const uint32_t rid, const direct_t direct) noexcept;
 				/**
-				 * @brief Метод получение статуса ответа сервера
+				 * @brief Метод получение статуса рукопожатия с сервером
 				 *
-				 * @param sid    идентификатор потока
-				 * @param rid    идентификатор запроса
-				 * @param status статус ответа сервера
+				 * @param sid       идентификатор потока
+				 * @param rid       идентификатор запроса
+				 * @param handshake статус рукопожатия с сервером
 				 */
-				void answer(const int32_t sid, const uint64_t rid, const awh::http_t::status_t status) noexcept;
+				void answer(const int32_t sid, const uint32_t rid, const http_t::handshake_t handshake) noexcept;
 			private:
 				/**
 				 * @brief Метод выполнения смены потоков
@@ -230,7 +247,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    результат выполнения редиректа
 				 */
-				bool redirect(const uint64_t bid, const uint16_t sid) noexcept;
+				bool redirect(const uint32_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод сброса параметров запроса
@@ -252,7 +269,7 @@ namespace awh {
 				 * @param sid идентификатор потока
 				 * @param rid идентификатор запроса
 				 */
-				void result(const int32_t sid, const uint64_t rid) noexcept;
+				void result(const int32_t sid, const uint32_t rid) noexcept;
 			private:
 				/**
 				 * @brief Метод таймера выполнения пинга удалённого сервера
@@ -268,7 +285,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    результат препарирования
 				 */
-				status_t prepare(const int32_t sid, const uint64_t bid) noexcept;
+				status_t prepare(const int32_t sid, const uint32_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод вывода статус потока
@@ -341,7 +358,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const headers_t & headers, const bool end) noexcept;
 			public:
 				/**
 				 * @brief Метод HTTP/2 отправки сообщения на сервер
@@ -426,7 +443,7 @@ namespace awh {
 				 *
 				 * @param size размер чанка для установки
 				 */
-				void chunk(const size_t size) noexcept;
+				void chunkSize(const size_t size) noexcept;
 				/**
 				 * @brief Метод установки размеров сегментов фрейма
 				 *
@@ -458,7 +475,7 @@ namespace awh {
 				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void userAgent(const string & userAgent) noexcept;
+				void agent(const string & userAgent) noexcept;
 				/**
 				 * @brief Метод установки идентификации клиента
 				 *
@@ -466,15 +483,7 @@ namespace awh {
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void ident(const string & id, const string & name, const string & ver) noexcept;
-			public:
-				/**
-				 * @brief Метод активации многопоточности
-				 *
-				 * @param count количество потоков для активации
-				 * @param mode  флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
+				void agent(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации прокси-склиента

@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2021-12-19
+ * @date: 2025-10-07
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -18,8 +18,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
-#include "../auth/server.hpp"
+#include "http.hpp"
 
 /**
  * @brief основное пространство имён
@@ -36,17 +35,17 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * @brief Класс для работы с REST сервером
+		 * @brief Класс для работы сервера HTTP-протокола
 		 *
 		 */
 		typedef class AWH_SHARED_EXPORT Http : public awh::http_t {
 			private:
 				/**
-				 * @brief Метод проверки текущего статуса
+				 * @brief Метод проверки выполнения рукопожатия
 				 *
-				 * @return результат проверки текущего статуса
+				 * @return результат выполнения рукопожатия
 				 */
-				status_t status() noexcept;
+				handshake_t handshake() noexcept;
 			public:
 				/**
 				 * @brief Метод установки название сервера
@@ -62,24 +61,24 @@ namespace awh {
 				void opaque(const string & opaque) noexcept;
 			public:
 				/**
-				 * @brief Метод извлечения данных авторизации
+				 * @brief Метод извлечения параметров авторизации
 				 *
-				 * @return данные модуля авторизации
+				 * @return параметры модуля авторизации
 				 */
-				server::auth_t::data_t authorization() const noexcept;
+				server::auth_t::settings_t authorization() const noexcept;
 				/**
-				 * @brief Метод установки данных авторизации
+				 * @brief Метод установки параметров авторизации
 				 *
-				 * @param data данные авторизации для установки
+				 * @param settings параметры авторизации для установки
 				 */
-				void authorization(const server::auth_t::data_t & data) noexcept;
+				void authorization(const server::auth_t::settings_t & settings) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления функции извлечения пароля
 				 *
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */
-				void extractPassCallback(function <string (const string &)> callback) noexcept;
+				void authCallback(function <string (const string &)> callback) noexcept;
 				/**
 				 * @brief Метод добавления функции обработки авторизации
 				 *

@@ -1,6 +1,6 @@
 /**
  * @file: client.cpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -22,6 +22,19 @@
  */
 using namespace std;
 
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::client::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
+ mode(false), type(type_t::NONE),
+ family(scheme_t::family_t::IPV4),
+ net(log), socks5(log), http(fmk, log) {
+	// Устанавливаем идентичность протокола к прокси-серверу
+	this->http.identity(http_t::identity_t::PROXY);
+}
 /**
  * @brief Метод очистки
  *
@@ -73,9 +86,9 @@ bool awh::client::Scheme::isProxy() const noexcept {
  *
  * @return идентификатор брокера
  */
-uint64_t awh::client::Scheme::bid() const noexcept {
+uint32_t awh::client::Scheme::bid() const noexcept {
 	// Результат работы функции
-	uint64_t result = 0;
+	uint32_t result = 0;
 	// Если список брокеров получен
 	if(!this->_brokers.empty()){
 		// Получаем первого брокера из списка
@@ -112,3 +125,12 @@ void awh::client::Scheme::activateProxy(const work_t work) noexcept {
 		} break;
 	}
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::client::Scheme::Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::scheme_t(fmk, log), receiving(false),
+ proxy(fmk, log), _connect(connect_t::SERVER) {}

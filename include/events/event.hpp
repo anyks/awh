@@ -52,7 +52,7 @@ namespace awh {
 			SOCKET _sock;
 		private:
 			// Идентификатор события
-			uint64_t _id;
+			uint32_t _id;
 		private:
 			// Тип события таймера
 			type_t _type;

@@ -35,6 +35,15 @@
 using namespace std;
 
 /**
+ * @brief Оператор преобразования в сырой итератор
+ * 
+ * @return iterator итератор для преобразования
+ */
+awh::Headers::Iterator::operator awh::Headers::Iterator::iterator() noexcept {
+	// Выводим текущее значение итератора
+	return this->_it;
+}
+/**
  * @brief Оператор извлечения указателя заголовка
  *
  * @return указатель заголовка
@@ -541,6 +550,18 @@ void awh::Headers::erase(const string & name) noexcept {
 			}
 		}
 	}
+}
+/**
+ * @brief erase Метод удаления заголовка
+ * 
+ * @param it идетартор заголовка для удаления
+ * @return   следующий итератор
+ */
+awh::Headers::iterator_t awh::Headers::erase(const iterator_t & it) noexcept {
+	// Выполняем удаление указанного заголовка
+	auto i = this->_items.erase(static_cast <iterator_t::iterator> (const_cast <iterator_t &> (it)));
+	// Выводим результат
+	return iterator_t(i, this->_fmk, this->_log);
 }
 /**
  * @brief Метод проверки существования заголовка

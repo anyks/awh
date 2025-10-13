@@ -25,12 +25,12 @@
 /**
  * Наши модули
  */
-#include "web2.hpp"
+#include "web.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
 #include "../sys/hash.hpp"
-#include "../auth/client2.hpp"
-#include "../auth/server2.hpp"
+#include "../auth/client.hpp"
+#include "../auth/server.hpp"
 
 /**
  * @brief основное пространство имён
@@ -237,6 +237,8 @@ namespace awh {
 			hash_t _hash;
 			// Объект агента подключения
 			agent_t _agent;
+			// Объект работы с временным буфером
+			buffer_t _buffer;
 			// Параметры шифрования
 			encrypt_t _encrypt;
 			// Объект работы сессии
@@ -506,7 +508,7 @@ namespace awh {
 			 *
 			 * @return бинарный дамп данных
 			 */
-			buffer_t dump() const noexcept;
+			buffer_t & dump() noexcept;
 			/**
 			 * @brief Метод установки бинарного дампа
 			 *
@@ -564,7 +566,7 @@ namespace awh {
 			 *
 			 * @return актуальный чанк полезной нагрузки
 			 */
-			buffer_t chunk() noexcept;
+			buffer_t & chunk() noexcept;
 			/**
 			 * @brief Метод добавления чанка полезной нагрузки
 			 *
@@ -684,7 +686,7 @@ namespace awh {
 			 *
 			 * @return буфер данных ответа в бинарном виде
 			 */
-			buffer_t trailers() const noexcept;
+			buffer_t & trailers() noexcept;
 			/**
 			 * @brief Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
 			 *
@@ -722,7 +724,7 @@ namespace awh {
 			 * @param req объект параметров HTTP-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			virtual buffer_t proxy(const web_t::req_t & req) noexcept;
+			virtual buffer_t & proxy(const web_t::req_t & req) noexcept;
 			/**
 			 * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
 			 *
@@ -737,7 +739,7 @@ namespace awh {
 			 * @param res объект параметров HTTP-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			virtual buffer_t reject(const web_t::res_t & res) noexcept;
+			virtual buffer_t & reject(const web_t::res_t & res) noexcept;
 			/**
 			 * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
 			 *
@@ -753,7 +755,7 @@ namespace awh {
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
 			 */
-			virtual buffer_t process(const process_t flag, const web_t::provider_t & prov) noexcept;
+			virtual buffer_t & process(const process_t flag, const web_t::provider_t & prov) noexcept;
 			/**
 			 * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
 			 *

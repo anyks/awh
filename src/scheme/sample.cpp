@@ -1,6 +1,6 @@
 /**
  * @file: sample.cpp
- * @date: 2022-09-01
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -39,9 +39,9 @@ void awh::server::scheme::Sample::clear() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::Sample::set(const uint64_t bid) noexcept {
+void awh::server::scheme::Sample::set(const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (this->_clients.count(bid) < 1))
+	if(bid > 0)
 		// Создаём объект параметров активного клиента
 		this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
 }
@@ -50,7 +50,7 @@ void awh::server::scheme::Sample::set(const uint64_t bid) noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::Sample::rm(const uint64_t bid) noexcept {
+void awh::server::scheme::Sample::rm(const uint32_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
@@ -76,7 +76,7 @@ const awh::server::scheme::Sample::clients_t & awh::server::scheme::Sample::get(
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
-const awh::server::scheme::Sample::options_t * awh::server::scheme::Sample::get(const uint64_t bid) const noexcept {
+const awh::server::scheme::Sample::options_t * awh::server::scheme::Sample::get(const uint32_t bid) const noexcept {
 	// Результат работы функции
 	options_t * result = nullptr;
 	// Если идентификатор брокера передан
@@ -91,3 +91,11 @@ const awh::server::scheme::Sample::options_t * awh::server::scheme::Sample::get(
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::server::scheme::Sample::Sample(const fmk_t * fmk, const log_t * log) noexcept :
+ scheme_t(fmk, log), _fmk(fmk), _log(log) {}

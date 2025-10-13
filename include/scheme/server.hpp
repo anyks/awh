@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
+#include "scheme.hpp"
 #include "../net/engine.hpp"
 
 /**
@@ -72,11 +72,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log),
-				 _host(SERVER_HOST), _port(SERVER_PORT),
-				 _total(SERVER_TOTAL_CONNECT),
-				 _ectx(fmk, log), _addr(fmk, log) {}
+				Scheme(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

@@ -43,7 +43,7 @@ awh::Event::type_t awh::Event::type() const noexcept {
  */
 void awh::Event::set(base_t * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Устанавливаем базу данных событий
 	this->_base = base;
 }
@@ -66,7 +66,7 @@ void awh::Event::set(const SOCKET sock) noexcept {
 		// Если тип является обычным событием
 		case static_cast <uint8_t> (type_t::EVENT): {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Устанавливаем файловый дескриптор
 			this->_sock = sock;
 		} break;
@@ -88,9 +88,9 @@ void awh::Event::set(const SOCKET sock) noexcept {
  */
 void awh::Event::set(base_t::callback_t callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
-	this->_callback = callback;
+	this->_callback = ::move(callback);
 }
 /**
  * Метод удаления типа события
@@ -102,7 +102,7 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
 		// Если событие является стандартным
 		if((this->_sock != INVALID_SOCKET) || (this->_delay > 0)){
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем удаление события
 			this->_base->del(this->_id, this->_sock, type);
 		// Выводим сообщение об ошибке
@@ -128,7 +128,7 @@ void awh::Event::timeout(const uint32_t delay, const bool series) noexcept {
 		// Если тип события является таймером
 		case static_cast <uint8_t> (type_t::TIMER): {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Устанавливаем задержки времени в миллисекундах
 			this->_delay = delay;
 			// Выполняем установку флага серийности таймера
@@ -147,7 +147,7 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
 	// Если работа базы событий активированна
 	if((this->_base != nullptr) && ((this->_sock != INVALID_SOCKET) || (this->_delay > 0))){
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard lock(this->_mtx);
 		// Выполняем установку режима работы модуля
 		return this->_base->mode(this->_id, this->_sock, type, mode);
 	}
@@ -166,7 +166,7 @@ void awh::Event::stop() noexcept {
 			// Снимаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Выполняем удаление всех событий
 			this->_base->del(this->_id, this->_sock);
 		// Выводим сообщение об ошибке
@@ -185,7 +185,7 @@ void awh::Event::start() noexcept {
 			// Устанавливаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем генерацию идентификатора записи
-			this->_id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+			this->_id = const_cast <fmk_t *> (this->_fmk)->identifier();
 			/**
 			 * Определяем тип установленного события
 			 */
@@ -193,7 +193,7 @@ void awh::Event::start() noexcept {
 				// Если тип является обычным событием
 				case static_cast <uint8_t> (type_t::EVENT): {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем добавление события в базу событий
 					if(!this->_base->add(this->_id, this->_sock, this->_callback))
 						// Выводим сообщение что событие не вышло активировать
@@ -202,7 +202,7 @@ void awh::Event::start() noexcept {
 				// Если тип события является таймером
 				case static_cast <uint8_t> (type_t::TIMER): {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard lock(this->_mtx);
 					// Выполняем добавление события в базу событий
 					if(!this->_base->add(this->_id, this->_sock, this->_callback, this->_delay, this->_series))
 						// Выводим сообщение что событие не вышло активировать
@@ -256,7 +256,7 @@ awh::Event & awh::Event::operator = (const uint32_t delay) noexcept {
 		// Если тип события является таймером
 		case static_cast <uint8_t> (type_t::TIMER): {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard lock(this->_mtx);
 			// Устанавливаем задержки времени в миллисекундах
 			this->_delay = delay;
 		} break;

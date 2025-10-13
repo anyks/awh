@@ -1,6 +1,6 @@
 /**
  * @file: web2.cpp
- * @date: 2023-09-12
+ * @date: 2025-10-11
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -67,7 +67,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					#if DEBUG_MODE
 						{
 							// Если тело ответа существует
-							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
+							if(!this->_scheme.proxy.http.empty(awh::web_t::unit_t::BODY))
 								// Выводим сообщение о выводе чанка тела
 								std::cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << std::endl << std::endl << std::flush;
 							// Иначе устанавливаем перенос строки
@@ -88,17 +88,17 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Получаем параметры запроса
 					const auto & response = this->_scheme.proxy.http.response();
 					// Если функция обратного вызова установлена, выводим сообщение
-					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && web_t::_callback.is("entity"))
+					if(web_t::_callback.is("entity") && !this->_scheme.proxy.http.empty(awh::web_t::unit_t::BODY))
 						// Выполняем функцию обратного вызова дисконнекта
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
+						web_t::_callback.call <void (const int32_t, const uint32_t, const uint32_t, const string, const buffer_t)> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(web_t::_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+						web_t::_callback.call <void (const int32_t, const uint32_t, const uint32_t, const string &, const buffer_t &, const headers_t &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 					// Если установлена функция отлова завершения запроса
 					if(web_t::_callback.is("end"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
+						web_t::_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
 				}
 			} break;
 			// Если мы получили входящие данные заголовков ответа
@@ -115,7 +115,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 							// Если параметры ответа получены
 							if(!response.empty())
 								// Выводим параметры ответа
-								std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+								std::cout << response << std::endl << std::endl << std::flush;
 						}
 					#endif
 					// Получаем параметры запроса
@@ -123,11 +123,11 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 					if(web_t::_callback.is("response"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", sid, 0, response.code, response.message);
+						web_t::_callback.call <void (const int32_t, const uint32_t, const uint32_t, const string &)> ("response", sid, 0, response.code, response.message);
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 					if(web_t::_callback.is("headers"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+						web_t::_callback.call <void (const int32_t, const uint32_t, const uint32_t, const string &, const headers_t &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Если мы получили флаг завершения потока
 					if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 						// Выполняем коммит полученного результата
@@ -150,7 +150,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если установлена функция отлова завершения запроса
 					if(web_t::_callback.is("end"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
+						web_t::_callback.call <void (const int32_t, const uint32_t, const direct_t)> ("end", sid, 0, direct_t::RECV);
 				}
 			}
 		}
@@ -200,7 +200,7 @@ int32_t awh::client::Web2::headerProxySignal(const int32_t sid, const string & k
 	// Если идентификатор сессии клиента совпадает
 	if(this->_proxy.sid == sid)
 		// Устанавливаем полученные заголовки
-		this->_scheme.proxy.http.header2(key, val);
+		this->_scheme.proxy.http.header(key, val);
 	// Выводим результат
 	return 0;
 }
@@ -223,7 +223,7 @@ void awh::client::Web2::statusEvent(const awh::core_t::status_t status) noexcept
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::client::Web2::connectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Web2::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -237,7 +237,7 @@ void awh::client::Web2::connectEvent(const uint64_t bid, const uint16_t sid) noe
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Web2::proxyConnectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -282,7 +282,7 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 									// Получаем бинарные данные HTTP-запроса
 									const auto & buffer = this->_scheme.proxy.http.proxy(request);
 									// Выводим параметры запроса
-									std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
+									std::cout << buffer << std::endl << std::endl << std::flush;
 								#endif
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(request);
@@ -334,7 +334,7 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, const uint32_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
@@ -397,7 +397,7 @@ void awh::client::Web2::altsvcCallback(const string & origin, const string & fie
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Web2::implementation(const uint64_t bid) noexcept {
+void awh::client::Web2::implementation(const uint32_t bid) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
 	if(!this->_http2.initialized() && (this->_core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
@@ -421,7 +421,7 @@ void awh::client::Web2::implementation(const uint64_t bid) noexcept {
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			callback.on <int32_t (const int32_t, const string &, const string &)> ("header", &web2_t::headerSignal, this, _1, _2, _3);
 			// Выполняем установку функции обратного вызова получения фрейма
-			callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, _2, _3, _4);
+			callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const std::set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, _2, _3, _4);
 			// Выполняем установку функции обратного вызова
 			this->_http2.callback(callback);
 			// Выполняем инициализацию модуля NgHttp2
@@ -436,26 +436,26 @@ void awh::client::Web2::implementation(const uint64_t bid) noexcept {
  * @param bid идентификатор брокера
  * @return    результат препарирования
  */
-awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, const uint64_t bid) noexcept {
+awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, const uint32_t bid) noexcept {
 	// Получаем параметры запроса
 	const auto & response = this->_scheme.proxy.http.response();
 	// Получаем статус ответа
-	awh::http_t::status_t status = this->_scheme.proxy.http.auth();
+	http_t::handshake_t status = this->_scheme.proxy.http.status();
 	// Устанавливаем ответ прокси-сервера
 	this->_proxy.answer = response.code;
 	// Если выполнять редиректы запрещено
-	if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
+	if(!this->_redirects && (status == http_t::handshake_t::RETRY)){
 		// Если ответом сервера не является запросом авторизации
 		if(response.code != 407)
 			// Запрещаем выполнять редирект
-			status = awh::http_t::status_t::GOOD;
+			status = http_t::handshake_t::GOOD;
 	}
 	/**
 	 * Выполняем проверку авторизации
 	 */
 	switch(static_cast <uint8_t> (status)){
 		// Если нужно попытаться ещё раз
-		case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
+		case static_cast <uint8_t> (http_t::handshake_t::RETRY): {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if((response.code == 407) && web_t::_callback.is("error"))
 				// Выполняем функцию обратного вызова
@@ -465,7 +465,7 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 				// Если адрес запроса получен
 				if(!this->_scheme.proxy.url.empty()){
 					// Если соединение является постоянным
-					if(this->_scheme.proxy.http.is(http_t::state_t::ALIVE)){
+					if(this->_scheme.proxy.http.state(http_t::state_t::ALIVE)){
 						// Увеличиваем количество попыток
 						this->_attempt++;
 						// Устанавливаем новый экшен выполнения
@@ -478,10 +478,10 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 			}
 		} break;
 		// Если запрос выполнен удачно
-		case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
+		case static_cast <uint8_t> (http_t::handshake_t::GOOD): {
 			/**
-			this->_scheme. * Выполняем переключение на работу с сервером
-			this->_scheme. */
+			 * Выполняем переключение на работу с сервером
+			 */
 			this->_scheme.switchConnect();
 			// Выполняем запуск работы основного модуля
 			this->connectEvent(bid, this->_scheme.id);
@@ -489,7 +489,7 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 			return status_t::NEXT;
 		} break;
 		// Если запрос неудачный
-		case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
+		case static_cast <uint8_t> (http_t::handshake_t::FAULT):
 			// Устанавливаем флаг принудительной остановки
 			this->_stopped = true;
 		break;
@@ -519,9 +519,9 @@ bool awh::client::Web2::ping() noexcept {
  *
  * @param bid идентификатор брокера
  */
-void awh::client::Web2::close(const uint64_t bid) noexcept {
+void awh::client::Web2::close(const uint32_t bid) noexcept {
 	// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-	this->_http2.on <void (void)> (1, static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid);
+	this->_http2.on <void (void)> (1, static_cast <void (client::core_t::*)(const uint32_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid);
 }
 /**
  * @brief Метод отправки сообщения на сервер
@@ -637,7 +637,7 @@ void awh::client::Web2::settings(const std::map <http2_t::settings_t, uint32_t> 
  *
  * @param size размер чанка для установки
  */
-void awh::client::Web2::chunk(const size_t size) noexcept {
+void awh::client::Web2::chunkSize(const size_t size) noexcept {
 	// Если размер чанка передан
 	if(size >= 100)
 		// Выполняем установку размера чанка
@@ -667,20 +667,6 @@ void awh::client::Web2::mode(const std::set <flag_t> & flags) noexcept {
 		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
- * @brief Метод установки User-Agent для HTTP-запроса
- *
- * @param userAgent агент пользователя для HTTP-запроса
- */
-void awh::client::Web2::userAgent(const string & userAgent) noexcept {
-	// Устанавливаем UserAgent
-	if(!userAgent.empty()){
-		// Устанавливаем пользовательского агента у родительского класса
-		web_t::userAgent(userAgent);
-		// Устанавливаем пользовательского агента
-		this->_userAgent = userAgent;
-	}
-}
-/**
  * @brief Метод установки параметров авторизации
  *
  * @param login    логин пользователя для авторизации на сервере
@@ -697,23 +683,37 @@ void awh::client::Web2::user(const string & login, const string & password) noex
 		this->_password = password;
 }
 /**
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
+ * @param userAgent агент пользователя для HTTP-запроса
+ */
+void awh::client::Web2::agent(const string & userAgent) noexcept {
+	// Устанавливаем UserAgent
+	if(!userAgent.empty()){
+		// Устанавливаем пользовательского агента у родительского класса
+		web_t::agent(userAgent);
+		// Устанавливаем пользовательского агента
+		this->_sign.user = userAgent;
+	}
+}
+/**
  * @brief Метод установки идентификации клиента
  *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Web2::ident(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Web2::agent(const string & id, const string & name, const string & ver) noexcept {
 	// Если данные сервиса переданы
 	if(!id.empty() && !name.empty() && !ver.empty()){
 		// Выполняем установку данных сервиса у родительского класса
-		web_t::ident(id, name, ver);
+		web_t::agent(id, name, ver);
 		// Запоминаем идентификатор сервиса
-		this->_ident.id = id;
+		this->_sign.id = id;
 		// Запоминаем версию сервиса
-		this->_ident.ver = ver;
+		this->_sign.ver = ver;
 		// Запоминаем название сервиса
-		this->_ident.name = name;
+		this->_sign.name = name;
 	}
 }
 /**
@@ -723,7 +723,7 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
  * @param log объект для работы с логами
  */
 awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(AWH_CHUNK_SIZE) {
+ web_t(fmk, log), _http2(fmk, log), _login{""}, _password{""}, _chunkSize(AWH_CHUNK_SIZE) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }
@@ -735,7 +735,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(AWH_CHUNK_SIZE) {
+ web_t(core, fmk, log), _http2(fmk, log), _login{""}, _password{""}, _chunkSize(AWH_CHUNK_SIZE) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }

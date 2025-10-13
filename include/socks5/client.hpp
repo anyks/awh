@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include "core.hpp"
+#include "socks5.hpp"
 
 /**
  * @brief основное пространство имён
@@ -93,8 +93,7 @@ namespace awh {
 				 *
 				 * @param log объект для работы с логами
 				 */
-				Socks5(const log_t * log) noexcept :
-				 awh::socks5_t(log), _pass{""}, _login{""} {}
+				Socks5(const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

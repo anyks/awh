@@ -106,6 +106,9 @@ namespace awh {
 		protected:
 			// Флаг зашифрованных данных
 			bool _encryption;
+		private:
+			// Объект работы с временным буфером
+			buffer_t _buffer;
 		protected:
 			// Ключ клиента
 			mutable string _key;
@@ -179,7 +182,7 @@ namespace awh {
 			 *
 			 * @return бинарный дамп данных
 			 */
-			buffer_t dump() const noexcept;
+			buffer_t & dump() noexcept;
 			/**
 			 * @brief Метод установки бинарного дампа
 			 *
@@ -290,7 +293,7 @@ namespace awh {
 			 * @param res объект параметров HTTP-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			buffer_t reject(const web_t::res_t & res) noexcept;
+			buffer_t & reject(const web_t::res_t & res) noexcept;
 			/**
 			 * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
 			 *
@@ -306,7 +309,7 @@ namespace awh {
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
 			 */
-			buffer_t process(const process_t flag, const web_t::provider_t & prov) noexcept;
+			buffer_t & process(const process_t flag, const web_t::provider_t & prov) noexcept;
 			/**
 			 * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
 			 *
