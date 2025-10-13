@@ -132,10 +132,9 @@ namespace awh {
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
 			 *
-			 * @tparam T    тип функции обратного вызова
 			 * @tparam Args аргументы функции обратного вызова
 			 */
-			template <typename T, class... Args>
+			template <class... Args>
 			/**
 			 * @brief Метод подключения финкции обратного вызова
 			 *
@@ -147,7 +146,7 @@ namespace awh {
 				// Если мы получили название функции обратного вызова
 				if(tid > 0)
 					// Выполняем установку функции обратного вызова
-					return static_cast <uint16_t> (this->_callback.on <T> (static_cast <uint32_t> (tid), args...));
+					return static_cast <uint16_t> (this->_callback.on <void ()> (static_cast <uint32_t> (tid), args...));
 				// Выводим результат по умолчанию
 				return 0;
 			}

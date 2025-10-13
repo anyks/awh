@@ -1071,7 +1071,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint32_t bid, co
 					// Выполняем создание нового таймаута
 					} else this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					// Выполняем добавление функции обратного вызова
-					this->_timer->on <void (const uint32_t)> (tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::read), this, bid);
+					this->_timer->on(tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::read), this, bid);
 				}
 			} break;
 			// Если необходимо создать таймер на разрешение подключения
@@ -1091,7 +1091,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint32_t bid, co
 					// Выполняем создание нового таймаута
 					} else this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					// Выполняем добавление функции обратного вызова
-					this->_timer->on <void (const uint16_t, const uint32_t)> (tid, static_cast <void (core_t::*)(const uint16_t, const uint32_t)> (&core_t::accept), this, sid, bid);
+					this->_timer->on(tid, static_cast <void (core_t::*)(const uint16_t, const uint32_t)> (&core_t::accept), this, sid, bid);
 				}
 			} break;
 			// Если необходимо создать таймер на ожидание входящих данных
@@ -1111,7 +1111,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint32_t bid, co
 					// Выполняем создание нового таймаута
 					} else this->_receive.emplace(bid, (tid = this->_timer->timeout(msec)));
 					// Выполняем добавление функции обратного вызова
-					this->_timer->on <void (const uint32_t)> (tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, bid);
+					this->_timer->on(tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, bid);
 				}
 			} break;
 		}

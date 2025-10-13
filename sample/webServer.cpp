@@ -203,7 +203,7 @@ class WebServer {
 		 * @param text   тип буфера сообщения
 		 * @param awh    объект веб-сервера
 		 */
-		void message(const uint64_t bid, const vector <char> & buffer, const bool text, server::awh_t * awh){
+		void message(const uint64_t bid, const buffer_t & buffer, const bool text, server::awh_t * awh){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
@@ -215,7 +215,7 @@ class WebServer {
 					// Выполняем получение выбранного сабпротокола
 					subprotocol = (* subprotocols.begin());
 				// Выводим информацию в лог
-				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, static_cast <string> (buffer).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
 				awh->sendMessage(bid, buffer, text);
 			}
@@ -275,8 +275,12 @@ class WebServer {
 					awh->trailer(sid, bid, "Anyks", "Best of the best");
 					awh->trailer(sid, bid, "Checksum", md5);
 				}
+				// Создаём буфер полезной нагрузки
+				buffer_t buffer(this->_fmk, this->_log);
+				// Выполняем добавление в буфер тело ответа
+				buffer = body;
 				// Отправляем сообщение клиенту
-				awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
+				awh->send(sid, bid, 200, "OK", buffer);
 			}
 		}
 		/**
@@ -307,18 +311,20 @@ class WebServer {
 		 * @param headers заголовки запроса
 		 * @param awh     объект веб-сервера
 		 */
-		void complete(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
-			// Переходим по всем заголовкам
-			for(auto & header : headers)
-				// Выводим информацию в лог
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+		void complete(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const buffer_t & entity, const headers_t & headers, server::awh_t * awh){
+			// Выводим информацию в лог
+			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
 
 			// Если данные запроса получены
 			if(!entity.empty()){
 				// Выводим информацию о входящих данных
-				cout << " ================ " << url << " == " << string(entity.begin(), entity.end()) << endl;
+				cout << " ================ " << url << " == " << entity << endl;
+				// Создаём объект заголовков
+				headers_t headers(this->_fmk, this->_log);
+				// Добавляем заголовки загкрытия
+				headers.emplace("Connection", "close");
 				// Отправляем сообщение клиенту
-				awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
+				awh->send(sid, bid, 200, "OK", entity, headers);
 			}
 		}
 	public:
@@ -399,8 +405,6 @@ int32_t main(int32_t argc, char * argv[]){
 	// core.clusterAutoRestart(true);
 	// Активируем максимальное количество рабочих процессов
 	core.cluster(awh::scheme_t::mode_t::ENABLED);
-	// Устанавливаем режим мультипоточной обработки
-	// core.multiThreads(22);
 	// Устанавливаем название сервера
 	// awh.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -467,13 +471,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	awh.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &WebServer::error, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	awh.on <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", &WebServer::message, &executor, _1, _2, _3, &awh);
+	awh.on <void (const uint64_t, const buffer_t &, const bool)> ("messageWebsocket", &WebServer::message, &executor, _1, _2, _3, &awh);
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
 	awh.on <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", &WebServer::handshake, &executor, _1, _2, _3, &awh);
 	// Установливаем функцию обратного вызова на событие получения запроса
 	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", &WebServer::request, &executor, _1, _2, _3, _4, &awh);
 	// Установливаем функцию обратного вызова на событие получения полного запроса клиента
-	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const buffer_t &, const headers_t &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат

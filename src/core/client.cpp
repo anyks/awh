@@ -687,7 +687,7 @@ void awh::client::Core::createTimeout(const uint32_t bid, const uint32_t msec) n
 		// Выполняем создание нового таймаута
 		} else this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
 		// Выполняем добавление функции обратного вызова
-		this->_timer.on <void (const uint32_t)> (tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, bid);
+		this->_timer.on(tid, static_cast <void (core_t::*)(const uint32_t)> (&core_t::close), this, bid);
 	}
 }
 /**
@@ -712,7 +712,7 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 		// Выполняем создание нового таймаута на 5 секунд
 		} else this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
 		// Выполняем добавление функции обратного вызова
-		this->_timer.on <void (const uint32_t, const scheme_t::mode_t)>  (tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
+		this->_timer.on(tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
 	}
 }
 /**

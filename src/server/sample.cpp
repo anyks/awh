@@ -60,11 +60,11 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 				// Устанавливаем интервал времени на выполнения пинга клиента
 				uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on <void (const uint16_t)> (tid, &sample_t::pinging, this, tid);
+				this->_timer.on(tid, &sample_t::pinging, this, tid);
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on <void (const uint16_t)> (tid, &sample_t::erase, this, tid);
+				this->_timer.on(tid, &sample_t::erase, this, tid);
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {

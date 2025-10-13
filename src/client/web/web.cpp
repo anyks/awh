@@ -177,7 +177,7 @@ void awh::client::Web::statusEvent(const awh::core_t::status_t status) noexcept 
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				const uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.on <void (const uint16_t)> (tid, &web_t::pinging, this, tid);
+				this->_timer.on(tid, &web_t::pinging, this, tid);
 			}
 		} break;
 		// Если система остановлена

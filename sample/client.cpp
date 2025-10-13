@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <client/sample2.hpp>
+#include <client/sample.hpp>
 
 /**
  * Подписываемся на пространство имён AWH

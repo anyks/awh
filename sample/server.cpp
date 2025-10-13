@@ -79,11 +79,11 @@ class Server {
 		 * @param buffer буфер входящих данных
 		 * @param sample объект активного сервера
 		 */
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const buffer_t & buffer, server::sample_t * sample){
 			// Выводим информацию в лог
-			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
+			this->_log->print("%s", log_t::flag_t::INFO, static_cast <string> (buffer).c_str());
 			// Отправляем сообщение обратно
-			sample->send(bid, buffer.data(), buffer.size());
+			sample->send(bid, static_cast <const char *> (buffer), static_cast <size_t> (buffer));
 		}
 	public:
 		/**
@@ -163,7 +163,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
+	sample.on <void (const uint64_t, const buffer_t &)> ("message", &Server::message, &executor, _1, _2, &sample);
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

@@ -3300,7 +3300,39 @@ void awh::Base::start() noexcept {
 				baseDelay.tv_nsec = ((this->_rate % 1000) * 1000000L);
 			}
 		#endif
-		// Запускаем работу часов
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+
+		/**
+		 * Для операционной системы Sun Solaris
+		 */
+		#elif __sun__
+
+		/**
+		 * Для операционной системы Linux
+		 */
+		#elif __linux__
+
+		/**
+		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+		 */
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			// Устанавливаем новый объект для изменений события
+			this->_change.push_back((struct kevent){});
+			// Устанавливаем новый объект для отслеживания события
+			this->_events.push_back((struct kevent){});
+			// Выполняем заполнение нулями всю структуру изменений
+			::memset(&this->_change.back(), 0, sizeof(this->_change.back()));
+			// Выполняем заполнение нулями всю структуру событий
+			::memset(&this->_events.back(), 0, sizeof(this->_events.back()));
+			// Устанавливаем идентификатор файлового дескриптора
+			this->_change.back().ident = this->_timer;
+			// Выполняем смену режима работы отлова события
+			EV_SET(&this->_change.back(), this->_change.back().ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, nullptr);
+		#endif
+		// Запускаем работу таймеров
 		this->_watch.start();
 		// Получаем идентификатор потока
 		this->_wid = this->wid();
@@ -4224,6 +4256,36 @@ void awh::Base::start() noexcept {
 					std::this_thread::sleep_for(100ms);
 				#endif
 			}
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+
+			/**
+			 * Для операционной системы Sun Solaris
+			 */
+			#elif __sun__
+
+			/**
+			 * Для операционной системы Linux
+			 */
+			#elif __linux__
+
+			/**
+			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+			 */
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				// Выполняем поиск файлового дескриптора из списка событий
+				for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
+					// Если сокет найден
+					if(k->ident == this->_timer){
+						// Выполняем смену режима работы отлова события
+						EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, nullptr);
+						// Выходим из цикла
+						break;
+					}
+				}
+			#endif
 			// Останавливаем работу таймеров скрина
 			this->_watch.stop();
 			// Снимаем флаг запущенного опроса базы событий

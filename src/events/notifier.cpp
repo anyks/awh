@@ -550,8 +550,8 @@ uint32_t awh::Notifier::event() noexcept {
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
-			// Выполняем блокирование потока
-			this->_mtx.lock();
+			// Выполняем блокировку потока
+			const lock_guard lock(this->_mtx);
 			// Если очередь событий не пустая
 			if(!this->_events.empty()){
 				// Выполняем извлечение из очереди события
@@ -559,8 +559,6 @@ uint32_t awh::Notifier::event() noexcept {
 				// Удаляем извлечённое событие
 				this->_events.pop();
 			}
-			// Выполняем разблокирование потока
-			this->_mtx.unlock();
 			// Если сообщений больше нет, удаляем событие
 			if(this->_events.empty()){
 				// Создаём объект события
@@ -701,12 +699,10 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
-				// Выполняем блокирование потока
-				this->_mtx.lock();
+				// Выполняем блокировку потока
+				const lock_guard lock(this->_mtx);
 				// Удаляем извлечённое событие
 				this->_events.push(id);
-				// Выполняем разблокирование потока
-				this->_mtx.unlock();
 				// Создаём событие триггера
 				struct kevent trigger;
 				// Выполняем установку события триггера

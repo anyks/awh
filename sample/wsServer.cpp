@@ -180,7 +180,7 @@ class Executor {
 		 * @param text   тип буфера сообщения
 		 * @param ws     объект Websocket-сервера
 		 */
-		void message(const uint64_t bid, const vector <char> & buffer, const bool text, server::websocket_t * ws){
+		void message(const uint64_t bid, const buffer_t & buffer, const bool text, server::websocket_t * ws){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
@@ -192,7 +192,7 @@ class Executor {
 					// Выполняем получение выбранного сабпротокола
 					subprotocol = (* subprotocols.begin());
 				// Выводим информацию в лог
-				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), subprotocol.c_str());
+				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, static_cast <string> (buffer).c_str(), subprotocol.c_str());
 				// Отправляем сообщение обратно
 				ws->sendMessage(bid, buffer, text);
 			}
@@ -206,15 +206,13 @@ class Executor {
 		 * @param url     адрес входящего запроса
 		 * @param headers заголовки запроса
 		 */
-		void headers([[maybe_unused]] const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+		void headers([[maybe_unused]] const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const headers_t & headers){
 			// Создаём объект URI
 			uri_t uri(this->_fmk, this->_log);
 			// Выводим информацию в лог
 			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
-			// Переходим по всем заголовкам
-			for(auto & header : headers)
-				// Выводим информацию в лог
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+			// Выводим информацию в лог
+			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
 		}
 	public:
 		/**
@@ -330,9 +328,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения ошибок
 	ws.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &Executor::error, &executor, _1, _2, _3, &ws);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.on <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, _3, &ws);
+	ws.on <void (const uint64_t, const buffer_t &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, _3, &ws);
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
-	ws.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", &Executor::headers, &executor, _1, _2, _3, _4, _5);
+	ws.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const headers_t &)> ("headers", &Executor::headers, &executor, _1, _2, _3, _4, _5);
 	// Выполняем запуск Websocket сервер
 	ws.start();
 	// Выводим результат
