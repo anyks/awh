@@ -212,7 +212,7 @@ class Executor {
 			// Выводим информацию в лог
 			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
 			// Выводим информацию в лог
-			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
+			this->_log->print("\n%s", log_t::flag_t::INFO, static_cast <string> (headers).c_str());
 		}
 	public:
 		/**

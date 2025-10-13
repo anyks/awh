@@ -116,7 +116,7 @@ class WebClient {
 		 */
 		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint32_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const awh::headers_t & headers){
 			// Выводим информацию в лог
-			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
+			this->_log->print("%s", log_t::flag_t::INFO, static_cast <string> (headers).c_str());
 		}
 		/**
 		 * @brief Метод получения ответа с сервера
@@ -313,8 +313,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// headers.emplace("Connection", "close");
 	// const auto & body = awh.GET(url, headers);
 	// Добавляем заголовки
-	headers.emplace("User-Agent", "curl/7.64.1");
-	// headers.emplace("te", "trailers, gzip;q=0.5");
+	headers = {{"User-Agent","curl/7.64.1"},{"te","trailers, gzip;q=0.5"}};
 	// Выполняем запрос на сервер
 	const awh::buffer_t & body = awh.GET(url, headers);
 	// Подготавливаем тело запроса

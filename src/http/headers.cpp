@@ -1623,124 +1623,6 @@ awh::Headers & awh::Headers::operator = (const headers_t & headers) noexcept {
  * @param headers заголовки для копирования
  * @return        текущий контейнер заголовков
  */
-awh::Headers & awh::Headers::operator = (const vector <item_t> & headers) noexcept {
-	// Выполняем очистку текущего контейнера
-	this->clear();
-	// Если заголовки переданы
-	if(!headers.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем перебор списка заголовков
-			for(auto & header : headers)
-				// Выполняем добавление заголовка
-				this->emplace(header.first, header.second);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
-	// Выводим результат
-	return (* this);
-}
-/**
- * @brief Оператор копирования
- *
- * @param headers заголовки для копирования
- * @return        текущий контейнер заголовков
- */
-awh::Headers & awh::Headers::operator = (const std::unordered_map <string, string> & headers) noexcept {
-	// Выполняем очистку текущего контейнера
-	this->clear();
-	// Если заголовки переданы
-	if(!headers.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем перебор списка заголовков
-			for(auto & header : headers)
-				// Выполняем добавление заголовка
-				this->emplace(header.first, header.second);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
-	// Выводим результат
-	return (* this);
-}
-/**
- * @brief Оператор копирования
- *
- * @param headers заголовки для копирования
- * @return        текущий контейнер заголовков
- */
 awh::Headers & awh::Headers::operator = (const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем очистку текущего контейнера
 	this->clear();
@@ -1993,6 +1875,60 @@ awh::Headers::Headers(const headers_t & headers) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
+		}
+	}
+}
+/**
+ * @brief Конструктор
+ * 
+ * @param headers список заголовков инициализации
+ */
+awh::Headers::Headers(const std::unordered_multimap <string, string> & headers) noexcept {
+	// Если заголовки переданы
+	if(!headers.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем перебор списка заголовков
+			for(auto & header : headers)
+				// Выполняем добавление заголовка
+				this->emplace(header.first, header.second);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если объект лога установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 }

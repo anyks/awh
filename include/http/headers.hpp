@@ -448,21 +448,6 @@ namespace awh {
 			 * @param headers заголовки для копирования
 			 * @return        текущий контейнер заголовков
 			 */
-			Headers & operator = (const vector <item_t> & headers) noexcept;
-		public:
-			/**
-			 * @brief Оператор копирования
-			 *
-			 * @param headers заголовки для копирования
-			 * @return        текущий контейнер заголовков
-			 */
-			Headers & operator = (const std::unordered_map <string, string> & headers) noexcept;
-			/**
-			 * @brief Оператор копирования
-			 *
-			 * @param headers заголовки для копирования
-			 * @return        текущий контейнер заголовков
-			 */
 			Headers & operator = (const std::unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
@@ -478,6 +463,7 @@ namespace awh {
 			 * 
 			 */
 			Headers() = default;
+		public:
 			/**
 			 * @brief Конструктор перемещения
 			 *
@@ -490,6 +476,14 @@ namespace awh {
 			 * @param headers заголовки для копирования
 			 */
 			Headers(const Headers & headers) noexcept;
+		public:
+			/**
+			 * @brief Конструктор
+			 * 
+			 * @param headers список заголовков инициализации
+			 */
+			Headers(const std::unordered_multimap <string, string> & headers) noexcept;
+		public:
 			/**
 			 * @brief Конструктор
 			 *

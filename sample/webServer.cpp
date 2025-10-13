@@ -313,8 +313,7 @@ class WebServer {
 		 */
 		void complete(const int32_t sid, const uint32_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const buffer_t & entity, const headers_t & headers, server::awh_t * awh){
 			// Выводим информацию в лог
-			this->_log->print("%s", log_t::flag_t::INFO, headers.print().c_str());
-
+			this->_log->print("\n%s", log_t::flag_t::INFO, static_cast <string> (headers).c_str());
 			// Если данные запроса получены
 			if(!entity.empty()){
 				// Выводим информацию о входящих данных
