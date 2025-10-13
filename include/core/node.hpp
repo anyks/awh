@@ -28,10 +28,10 @@
  * Наши модули
  */
 #include "core.hpp"
-#include "guard.hpp"
 #include "../net/uri.hpp"
 #include "../net/dns.hpp"
 #include "../net/engine.hpp"
+#include "../sys/guard.hpp"
 #include "../sys/buffer.hpp"
 
 /**
