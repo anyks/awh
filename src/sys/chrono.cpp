@@ -114,7 +114,7 @@ void awh::Chrono::clear() noexcept {
 		// Выполняем очистку списка временных зон
 		this->clearTimeZones();
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx.date);
+		const lock_guard lock(this->_mtx.date);
 		// Выполняем сброс локального объекта даты и времени
 		this->_dt = dt_t();
 		// Получаем текущий штамп времени
@@ -432,7 +432,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 		// Если регулярное выражение получено
 		if(i != this->_expressions.end()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
+			const lock_guard lock(this->_mtx.parse);
 			// Создаём объект матчинга
 			regmatch_t match[i->second.re_nsub + 1];
 			// Выполняем разбор регулярного выражения
@@ -3525,7 +3525,7 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
+				const lock_guard lock(this->_mtx.parse);
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
@@ -4029,7 +4029,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.date);
+			const lock_guard lock(this->_mtx.date);
 			/**
 			 * Определяем элементы устанавливаемых данных
 			 */
@@ -5700,7 +5700,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.date);
+	const lock_guard lock(this->_mtx.date);
 	// Устанавливаем временную зону в секундах
 	this->_dt.offset = zone;
 	// Устанавливаем идентификатор временной зоны
@@ -5715,7 +5715,7 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.date);
+	const lock_guard lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone;
 	// Устанавливаем временную зону в секундах
@@ -5730,7 +5730,7 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const string & zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.date);
+	const lock_guard lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = this->matchTimeZone(zone);
 	// Устанавливаем временную зону в секундах
@@ -5758,7 +5758,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
+				const lock_guard lock(this->_mtx.parse);
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
@@ -7101,7 +7101,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
+				const lock_guard lock(this->_mtx.parse);
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
@@ -8117,7 +8117,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx.tz);
+		const lock_guard lock(this->_mtx.tz);
 		// Выполняем очистку списка временных зон
 		this->_timeZones.clear();
 		// Выполняем освобождение выделенной памяти
@@ -8153,7 +8153,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx.tz);
+		const lock_guard lock(this->_mtx.tz);
 		// Выполняем добавление временной зоны в список временных зон
 		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), offset);
 	/**
@@ -8182,7 +8182,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
  */
 void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx.tz);
+	const lock_guard lock(this->_mtx.tz);
 	// Название временной зоны
 	string name = "";
 	// Выполняем перебор всего списка временных зон
@@ -8268,7 +8268,7 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				} break;
 			}
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx.date);
+			const lock_guard lock(this->_mtx.date);
 			// Устанавливаем количество миллисекунд
 			this->makeDate(stamp, this->_dt);
 		/**
@@ -8570,7 +8570,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx.date);
+				const lock_guard lock(this->_mtx.date);
 				// Выполняем сброс временной зоны
 				this->_dt.offset = 0;
 				// Выполняем сброс количества наносекунд
@@ -8679,7 +8679,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Выполняем блокировку потока
-								const lock_guard <std::mutex> lock(this->_mtx.date);
+								const lock_guard lock(this->_mtx.date);
 								/**
 								 * Определяем символ парсинга
 								 */
@@ -9104,7 +9104,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx.date);
+				const lock_guard lock(this->_mtx.date);
 				// Если флаг смещения временной зоны не передан
 				if(!flags[0]){
 					// Устанавливаем идентификатор временной зоны

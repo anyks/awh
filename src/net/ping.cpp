@@ -238,7 +238,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 		// Если запрос на сервер успешно отправлен
 		if((result = static_cast <int64_t> (::sendto(this->_sock, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 			// Буфер для получения данных
-			array <char, 1024> buffer;
+			std::array <char, 1024> buffer;
 			// Результат полученных данных
 			auto * icmpResponseHeader = reinterpret_cast <struct IcmpHeader *> (buffer.data());
 			// Выполняем чтение ответа сервера

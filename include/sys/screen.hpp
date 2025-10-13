@@ -95,7 +95,7 @@ namespace awh {
 			/**
 			 * Функция обратного вызова при активации триггера
 			 */
-			function <void (void)> _trigger;
+			function <void ()> _trigger;
 			/**
 			 * Функция обратного вызова которая срабатывает при передачи данных в дочерний поток
 			 */
@@ -245,7 +245,7 @@ namespace awh {
 			 *
 			 * @param callback функция обратного вызова для установки
 			 */
-			void on(function <void (void)> callback) noexcept {
+			void on(function <void ()> callback) noexcept {
 				/**
 				 * Выполняем отлов ошибок
 				 */
@@ -592,7 +592,7 @@ namespace awh {
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 */
-			Screen & operator = (function <void (void)> callback) noexcept {
+			Screen & operator = (function <void ()> callback) noexcept {
 				// Выполняем установку функции обратного вызова
 				this->on(callback);
 				// Выводим значение текущего объекта

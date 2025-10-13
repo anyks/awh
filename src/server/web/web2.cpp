@@ -133,7 +133,7 @@ void awh::server::Web2::close(const uint32_t bid) noexcept {
 		// Если активная сессия найдена
 		if(i != this->_sessions.end())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			i->second->on <void (void)> (1, static_cast <void (server::core_t::*)(const uint32_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid);
+			i->second->on <void ()> (1, static_cast <void (server::core_t::*)(const uint32_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid);
 		// Завершаем работу
 		else const_cast <server::core_t *> (this->_core)->close(bid);
 	}

@@ -1024,7 +1024,7 @@ void awh::Http2::completed(const event_t event) noexcept {
 		// Если функция обратного вызова на тригер установлена
 		if(this->_callback.is(1)){
 			// Выполняем функцию триггера
-			this->_callback.call <void (void)> (1);
+			this->_callback.call <void ()> (1);
 			// Выполняем удаление функции триггера
 			this->_callback.erase(1);
 		}
@@ -2113,7 +2113,7 @@ void awh::Http2::callback(const callback_t & callback) noexcept {
 		// Если активное событие не установлено
 		if(this->_event == event_t::NONE)
 			// Выполняем функцию обратного вызова
-			callback.call <void (void)> (1);
+			callback.call <void ()> (1);
 		// Устанавливаем функцию обратного вызова
 		else this->_callback.set(1, callback);
 	// Если триггерная функция не установлена

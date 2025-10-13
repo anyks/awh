@@ -55,7 +55,7 @@ namespace awh {
 				/**
 				 * Функция обратного вызова
 				 */
-				function <void (void)> callback;
+				function <void ()> callback;
 				/**
 				 * @brief Конструктор
 				 *
@@ -95,7 +95,7 @@ namespace awh {
 			 * @param delay    интервал задержки времени в миллисекундах
 			 * @return         идентификатор таймаута
 			 */
-			uint32_t setTimeout(function <void (void)> callback, const uint32_t delay) noexcept {
+			uint32_t setTimeout(function <void ()> callback, const uint32_t delay) noexcept {
 				// Выполняем получение идентификатора таймаута
 				const uint32_t tid = (this->_timers.size() + 1);
 				// Выполняем блокировку потока
@@ -171,7 +171,7 @@ namespace awh {
 			 * @param interval интервал времени выполнения функции в миллисекундах
 			 * @return         идентификатор таймаута
 			 */
-			uint32_t setInterval(function <void (void)> callback, const uint32_t interval) noexcept {
+			uint32_t setInterval(function <void ()> callback, const uint32_t interval) noexcept {
 				// Выполняем получение идентификатора таймаута
 				const uint32_t tid = (this->_timers.size() + 1);
 				// Выполняем блокировку потока

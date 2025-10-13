@@ -521,7 +521,7 @@ bool awh::client::Web2::ping() noexcept {
  */
 void awh::client::Web2::close(const uint32_t bid) noexcept {
 	// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-	this->_http2.on <void (void)> (1, static_cast <void (client::core_t::*)(const uint32_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid);
+	this->_http2.on <void ()> (1, static_cast <void (client::core_t::*)(const uint32_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid);
 }
 /**
  * @brief Метод отправки сообщения на сервер
