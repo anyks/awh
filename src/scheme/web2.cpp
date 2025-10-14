@@ -49,7 +49,7 @@ void awh::server::scheme::WEB2::set(const uint32_t bid) noexcept {
 		// Если новый клиент добавлен удачно
 		if(ret.second)
 			// Устанавливаем контрольную точку
-			ret.first->second->respPong = this->_fmk->timestamp <uint32_t> (fmk_t::chrono_t::MILLISECONDS);
+			ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
 }
 /**
