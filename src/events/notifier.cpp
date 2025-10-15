@@ -281,7 +281,7 @@ SOCKET awh::Notifier::init() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокеты ещё не инициализированны
-			if((this->_socks[0] == INVALID_SOCKET) && (this->_socks[1] == INVALID_SOCKET)){
+			if((this->_socks[0] == INVALID_SOCKET) || (this->_socks[1] == INVALID_SOCKET)){
 				// Выполняем инициализацию сокета события
 				if(::socketpair(this->_socks) == INVALID_SOCKET){
 					// Создаём буфер сообщения ошибки
@@ -305,18 +305,20 @@ SOCKET awh::Notifier::init() noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 					#endif
+				// Если сокеты созданы удачно
+				} else {
+					// Делаем сокет неблокирующим
+					this->_socket.blocking(this->_socks[0], socket_t::mode_t::DISABLED);
+					// Делаем блокирующим сокет на запись
+					this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
+					// Устанавливаем размер буфера на чтение
+					this->_socket.bufferSize(this->_socks[0], 4096, socket_t::mode_t::READ);
+					// Устанавливаем размер буфера на запись
+					this->_socket.bufferSize(this->_socks[1], 4096, socket_t::mode_t::WRITE);
 				}
 			}
 			// Устанавливаем данные сокета на чтение
 			result = this->_socks[0];
-			// Делаем сокет неблокирующим
-			this->_socket.blocking(this->_socks[0], socket_t::mode_t::DISABLED);
-			// Делаем блокирующим сокет на запись
-			this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
-			// Устанавливаем размер буфера на чтение
-			this->_socket.bufferSize(this->_socks[0], 4096, socket_t::mode_t::READ);
-			// Устанавливаем размер буфера на запись
-			this->_socket.bufferSize(this->_socks[1], 4096, socket_t::mode_t::WRITE);
 		/**
 		 * Для операционной системы Linux
 		 */
@@ -349,7 +351,7 @@ SOCKET awh::Notifier::init() noexcept {
 		 */
 		#elif __OpenBSD__ || __sun__
 			// Если сокеты ещё не инициализированны
-			if((this->_socks[0] == INVALID_SOCKET) && (this->_socks[1] == INVALID_SOCKET)){
+			if((this->_socks[0] == INVALID_SOCKET) || (this->_socks[1] == INVALID_SOCKET)){
 				// Выполняем инициализацию сокета события
 				if(::pipe(this->_socks) == INVALID_SOCKET){
 					// Сбрасываем значение сокета на чтение
@@ -369,15 +371,18 @@ SOCKET awh::Notifier::init() noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
-				// Установим неблокирующий режим на чтение
-				} else ::fcntl(this->_socks[0], F_SETFL, O_NONBLOCK);
+				// Если сокеты созданы удачно
+				} else {
+					// Установим неблокирующий режим на чтение
+					::fcntl(this->_socks[0], F_SETFL, O_NONBLOCK);
+					// Делаем сокет неблокирующим
+					this->_socket.blocking(this->_socks[0], socket_t::mode_t::DISABLED);
+					// Делаем блокирующим сокет на запись
+					this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
+				}
 			}
 			// Устанавливаем данные сокета на чтение
 			result = this->_socks[0];
-			// Делаем сокет неблокирующим
-			this->_socket.blocking(this->_socks[0], socket_t::mode_t::DISABLED);
-			// Делаем блокирующим сокет на запись
-			this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
@@ -401,35 +406,34 @@ SOCKET awh::Notifier::init() noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
-				}
-			}
-			// Если сокет уже инициализирован
-			if(this->_sock != INVALID_SOCKET){
-				// Создаём объект события
-				struct kevent event;
-				// Выполняем удаление события
-				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
-				// Выполняем обновления ядра операционной системы
-				::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
-				// Выполняем зануление объекта события
-				::memset(&event, 0, sizeof(event));
-				// Выполняем активацию события
-				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, nullptr);
-				// Выполняем активацию нашего события
-				if(::kevent(this->_sock, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
+				// Если сокет инициализирован удачно
+				} else {
+					// Создаём объект события
+					struct kevent event;
+					// Выполняем удаление события
+					EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
+					// Выполняем обновления ядра операционной системы
+					::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
+					// Выполняем зануление объекта события
+					::memset(&event, 0, sizeof(event));
+					// Выполняем активацию события
+					EV_SET(&event, USER_EVENT, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, nullptr);
+					// Выполняем активацию нашего события
+					if(::kevent(this->_sock, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
 				}
 			}
 			// Устанавливаем данные сокета на чтение

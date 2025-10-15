@@ -22,46 +22,55 @@ message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 # Сборка модуля AWH_IDN
 if (CMAKE_BUILD_IDN)
     add_compile_definitions(AWH_IDN)
-    message(STATUS "Build AWH IDN: YES\n")
+    message(STATUS "Build with IDN: YES\n")
 # Сборка модуля AWH_IDN не требуется
 else (CMAKE_BUILD_IDN)
-    message(STATUS "Build AWH IDN: NO\n")
+    message(STATUS "Build with IDN: NO\n")
 endif (CMAKE_BUILD_IDN)
 
-# Сборка установкой количества доступных файловых дескрипторов
+# Сборка с установкой количества доступных файловых дескрипторов
 if (CMAKE_MAX_COUNT_FDS)
     add_compile_definitions(AWH_MAX_COUNT_FDS=${CMAKE_MAX_COUNT_FDS})
-    message(STATUS "Build AWH MAX FDS: ${CMAKE_MAX_COUNT_FDS}\n")
+    message(STATUS "Build with max FDs: ${CMAKE_MAX_COUNT_FDS}\n")
 endif (CMAKE_MAX_COUNT_FDS)
 
 # Если активирован флаг оптимизации операционной системы
 if (CMAKE_BOOSTING_NET)
     add_compile_definitions(AWH_BOOSTING_NET)
-    message(STATUS "Build AWH BOOSTING NET: YES\n")
+    message(STATUS "Build with NET boosting: YES\n")
 endif (CMAKE_BOOSTING_NET)
+
+# Если операционной системой является Solaris
+if (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    # Если активирован флаг оптимизации операционной системы
+    if (CMAKE_USING_SOLARIS_PORTS)
+        add_compile_definitions(AWH_USING_EVENTS_PORTS)
+        message(STATUS "Build with using Event Ports: YES\n")
+    endif (CMAKE_USING_SOLARIS_PORTS)
+endif()
 
 # Если активирован флаг установки максимального размера HTTP-тела запроса/ответа
 if (CMAKE_MAX_HTTP_BODY_SIZE)
     add_compile_definitions(AWH_MAX_BODY_SIZE=${CMAKE_MAX_HTTP_BODY_SIZE})
-    message(STATUS "Build AWH MAX BODY SIZE: ${CMAKE_MAX_HTTP_BODY_SIZE}\n")
+    message(STATUS "Build with max body size: ${CMAKE_MAX_HTTP_BODY_SIZE}\n")
 endif (CMAKE_MAX_HTTP_BODY_SIZE)
 
 # Если активирован флаг установки максимального размера очереди
 if (CMAKE_MAX_RECORDS_QUEUE)
     add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})
-    message(STATUS "Build AWH MAX RECORDS QUEUE: ${CMAKE_MAX_RECORDS_QUEUE}\n")
+    message(STATUS "Build with max count records queue: ${CMAKE_MAX_RECORDS_QUEUE}\n")
 endif (CMAKE_MAX_RECORDS_QUEUE)
 
 # Если активирован флаг установки максимального размера потребления памяти очередью
 if (CMAKE_MAX_MEMORY_QUEUE)
     add_compile_definitions(AWH_MAX_MEMORY_QUEUE=${CMAKE_MAX_MEMORY_QUEUE})
-    message(STATUS "Build AWH MAX MEMORY QUEUE: ${CMAKE_MAX_MEMORY_QUEUE}\n")
+    message(STATUS "Build with max memory queue usage size: ${CMAKE_MAX_MEMORY_QUEUE}\n")
 endif (CMAKE_MAX_MEMORY_QUEUE)
 
 # Если активирован флаг установки максимального размера потребления памяти буфера
 if (CMAKE_MAX_MEMORY_BUFFER)
     add_compile_definitions(AWH_MAX_MEMORY_BUFFER=${CMAKE_MAX_MEMORY_BUFFER})
-    message(STATUS "Build AWH MAX MEMORY BUFFER: ${CMAKE_MAX_MEMORY_BUFFER}\n")
+    message(STATUS "Build with max memory buffer usage size: ${CMAKE_MAX_MEMORY_BUFFER}\n")
 endif (CMAKE_MAX_MEMORY_BUFFER)
 
 # Выводим информацию каталога где выполняется сброка
@@ -340,6 +349,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/fds.cpp"
+    "${CMAKE_SOURCE_DIR}/src/events/poll.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/base.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/event.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/watch.cpp"

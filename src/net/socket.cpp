@@ -564,36 +564,6 @@ bool awh::Socket::nodelay(const SOCKET sock, const mode_t mode) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения кода ошибки
- *
- * @param sock сетевой сокет
- * @return     код ошибки на сокете если присутствует
- */
-int32_t awh::Socket::error(const SOCKET sock) const noexcept {
-	// Результат работы функции
-	int32_t result = 0;
-	// Размер кода ошибки
-	socklen_t size = sizeof(result);
-	// Если мы получили ошибку, выходим сообщение
-	if(static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выполняем извлечение кода ошибки
-			result = AWH_ERROR();
-			// Если код ошибки получен
-			if(result > 0)
-				// Выводим в лог информацию
-				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message(result).c_str());
-		#endif
-		// Выходим из функции
-		return -1;
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод получения текста описания ошибки
  *
  * @param code код ошибки для получения сообщения
@@ -869,7 +839,7 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET sock, const int3
  * @param port   номер порта для проверки
  * @return       результат проверки
  */
-bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_t port) const noexcept {
+bool awh::Socket::binding(const int32_t family, const int32_t type, const uint32_t port) const noexcept {
 	// Резульатат работы функции
 	bool result = false;
 	// Если порт установлен
@@ -887,7 +857,7 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 			// Устанавливаем порт
 			sd.sin_port = htons(port);
 			// Выполняем биндинг порта
-			result = (::bind(sock, reinterpret_cast <struct sockaddr *> (&sd), sizeof(sd)) != INVALID_SOCKET);
+			result = (::bind(sock, reinterpret_cast <struct sockaddr *> (&sd), sizeof(sd)) != -1);
 		// Выводим сообщение об ошибке
 		} else this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->message(AWH_ERROR()).c_str());
 		/**
@@ -1076,6 +1046,53 @@ bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t 
 	return result;
 }
 /**
+ * @brief Метод проверки валидности сокета
+ * 
+ * @param sock сетевой сокет
+ * @return     результат проверки сокета
+ */
+bool awh::Socket::valid(const SOCKET sock) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Формируем флаг разблокировки
+		u_long flag = 0;
+		// Выполняем разблокировку сокета
+		if(!(result = !static_cast <bool> (::ioctlsocket(sock, FIONREAD, &flag)))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим в лог информацию
+				this->_log->print("Cannot check valid on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+			#endif
+		}
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		// Флаги сетевого сокета
+		int32_t flags = 0;
+		// Получаем флаги сетевого сокета
+		if(!(result = (::ioctl(sock, FIONREAD, &flags) != -1))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим в лог информацию
+				this->_log->print("Cannot check valid on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+			#endif
+			// Выходим из функции
+			return result;
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод проверки сокета на прослушиваемость
  *
  * @param sock сетевой сокет
@@ -1103,6 +1120,36 @@ bool awh::Socket::listen(const SOCKET sock) const noexcept {
 		}
 		// Устанавливаем результат
 		result = (option > 0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения кода ошибки
+ *
+ * @param sock сетевой сокет
+ * @return     код ошибки на сокете если присутствует
+ */
+int32_t awh::Socket::error(const SOCKET sock) const noexcept {
+	// Результат работы функции
+	int32_t result = 0;
+	// Размер кода ошибки
+	socklen_t size = sizeof(result);
+	// Если мы получили ошибку, выходим сообщение
+	if(static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выполняем извлечение кода ошибки
+			result = AWH_ERROR();
+			// Если код ошибки получен
+			if(result > 0)
+				// Выводим в лог информацию
+				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message(result).c_str());
+		#endif
+		// Выходим из функции
+		return INVALID_SOCKET;
 	}
 	// Выводим результат
 	return result;

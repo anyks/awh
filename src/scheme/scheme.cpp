@@ -60,8 +60,6 @@ uint32_t awh::Scheme::Broker::port() const noexcept {
  * @param порт подключения для установки
  */
 void awh::Scheme::Broker::port(const uint32_t port) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Если порт передан
 	if(port > 0)
 		// Выполняем установку порта
@@ -82,8 +80,6 @@ const string & awh::Scheme::Broker::ip() const noexcept {
  * @param ip адрес для установки
  */
 void awh::Scheme::Broker::ip(const string & ip) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Если IP-адрес передан
 	if(!ip.empty())
 		// Выполняем установку IP-адреса
@@ -104,8 +100,6 @@ const string & awh::Scheme::Broker::mac() const noexcept {
  * @param mac адрес для установки
  */
 void awh::Scheme::Broker::mac(const string & mac) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Если MAC-адрес передан
 	if(!mac.empty())
 		// Выполняем установку MAC-адреса
@@ -117,8 +111,6 @@ void awh::Scheme::Broker::mac(const string & mac) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::Scheme::Broker::callback(const callback_t & callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Выполняем установку функции обратного вызова при активации сокета на чтение
 	this->_callback.set("read", callback);
 	// Выполняем установку функции обратного вызова при готовности сокета к записи
@@ -134,8 +126,6 @@ void awh::Scheme::Broker::callback(const callback_t & callback) noexcept {
  * @param sonet тип сокета подключения
  */
 void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Выполняем установку типа сокета подключения
 	this->_sonet = sonet;
 }
@@ -180,8 +170,6 @@ void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const bas
  *
  */
 void awh::Scheme::Broker::stop() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Выполняем остановку работы события
 	this->_event.stop();
 }
@@ -190,8 +178,6 @@ void awh::Scheme::Broker::stop() noexcept {
  *
  */
 void awh::Scheme::Broker::start() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Устанавливаем базу данных событий
 	this->_event = this->_base;
 	// Устанавливаем тип события
@@ -208,8 +194,6 @@ void awh::Scheme::Broker::start() noexcept {
  * @param method метод режима работы
  */
 void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t method) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
 	if((this->addr.sock != INVALID_SOCKET) && (this->_base != nullptr)){
 		/**
@@ -270,8 +254,6 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
  * @param method  метод режима работы
  */
 void awh::Scheme::Broker::timeout(const uint16_t seconds, const engine_t::method_t method) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	/**
 	 * Определяем метод режима работы
 	 */
@@ -299,8 +281,6 @@ void awh::Scheme::Broker::timeout(const uint16_t seconds, const engine_t::method
  * @param base база событий для установки
  */
 void awh::Scheme::Broker::base(base_t * base) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Выполняем установку базы событий
 	this->_base = base;
 }
@@ -311,8 +291,6 @@ void awh::Scheme::Broker::base(base_t * base) noexcept {
  * @return     текущий объект
  */
 awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
 	// Выполняем установку базы событий
 	this->_base = base;
 	// Выводим текущий объект

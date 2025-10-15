@@ -136,13 +136,6 @@ namespace awh {
 			bool nodelay(const SOCKET sock, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения кода ошибки
-			 *
-			 * @param sock сетевой сокет
-			 * @return     код ошибки на сокете если присутствует
-			 */
-			int32_t error(const SOCKET sock) const noexcept;
-			/**
 			 * @brief Метод получения текста описания ошибки
 			 *
 			 * @param code код ошибки для получения сообщения
@@ -187,7 +180,7 @@ namespace awh {
 			 * @param port   номер порта для проверки
 			 * @return       результат проверки
 			 */
-			bool isBind(const int32_t family, const int32_t type, const uint32_t port) const noexcept;
+			bool binding(const int32_t family, const int32_t type, const uint32_t port) const noexcept;
 		public:
 			/**
 			 * @brief Метод устанавливает постоянное подключение на сокет
@@ -201,12 +194,28 @@ namespace awh {
 			bool keepAlive(const SOCKET sock, const int32_t cnt = 0, const int32_t idle = 0, const int32_t intvl = 0) const noexcept;
 		public:
 			/**
+			 * @brief Метод проверки валидности сокета
+			 * 
+			 * @param sock сетевой сокет
+			 * @return     результат проверки сокета
+			 */
+			bool valid(const SOCKET sock) const noexcept;
+		public:
+			/**
 			 * @brief Метод проверки сокета на прослушиваемость
 			 *
 			 * @param sock сетевой сокет
 			 * @return     результат проверки сокета
 			 */
 			bool listen(const SOCKET sock) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения кода ошибки
+			 *
+			 * @param sock сетевой сокет
+			 * @return     код ошибки на сокете если присутствует
+			 */
+			int32_t error(const SOCKET sock) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки количества находящихся байт в сокете

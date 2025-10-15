@@ -193,9 +193,6 @@ namespace awh {
 					// Объект подключения клиента
 					engine_t::addr_t addr;
 				private:
-					// Мютекс для блокировки потока
-					std::recursive_mutex _mtx;
-				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
 					// Объект работы с логами
