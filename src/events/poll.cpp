@@ -2127,7 +2127,8 @@ bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec
 			if(events != AWH_STREAM){
 				// Результат работы функции
 				bool result = false;
-				{
+				// Если время задержки таймера установлено
+				if(msec > 0){
 					// Выполняем блокировку потока
 					const lock_guard lock(::__awh_main_mtx__);
 					/**
@@ -2182,9 +2183,9 @@ bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec
 							// Устанавливаем тип события
 							ret.first->second.events = AWH_TIMER;
 					#endif
+					// Выполняем активацию таймера на указанное время
+					this->_watch.wait(id, msec);
 				}
-				// Выполняем активацию таймера на указанное время
-				this->_watch.wait(id, msec);
 				// Выводим удачный результат
 				return result;
 			// Если необходимо установить поток
