@@ -38,7 +38,6 @@
 /**
  * Стандартная библиотека
  */
-#include <map>
 #include <mutex>
 #include <vector>
 #include <cstdint>
@@ -89,7 +88,7 @@ namespace awh {
 					/**
 					 * Создаём тип данных итератора
 					 */
-					using iterator = std::multimap <uint32_t, item_t>::iterator;
+					using iterator = std::unordered_multimap <uint32_t, item_t>::iterator;
 				private:
 					// Текущее значение итератора
 					iterator _it;
@@ -125,12 +124,6 @@ namespace awh {
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator ++ () noexcept;
-					/**
-					 * @brief Оператор смещения назад
-					 *
-					 * @return значение текущего итератора
-					 */
-					Iterator & operator -- () noexcept;
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
@@ -180,7 +173,7 @@ namespace awh {
 			mutable std::mutex _mtx;
 		private:
 			// Набор установленных HTTP-заголовков
-			std::multimap <uint32_t, item_t> _items;
+			std::unordered_multimap <uint32_t, item_t> _items;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk = nullptr;

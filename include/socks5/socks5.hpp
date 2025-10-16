@@ -18,10 +18,10 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <unordered_map>
 
 /**
  * Для операционной системы MS Windows
@@ -58,7 +58,7 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Socks5 {
 		private:
 			// Список ответов сервера
-			std::map <uint8_t, string> _responses;
+			std::unordered_map <uint8_t, string> _responses;
 		public:
 			/**
 			 * Коды ответа socks5 сервера

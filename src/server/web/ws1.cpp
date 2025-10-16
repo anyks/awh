@@ -1483,7 +1483,7 @@ void awh::server::Websocket1::keepAlive(const int32_t cnt, const int32_t idle, c
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Websocket1::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::Websocket1::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Активируем выполнение пинга
 	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля

@@ -39,7 +39,7 @@ class Executor {
 		const log_t * _log;
 	private:
 		// Буферы отправляемой полезной нагрузки
-		std::map <uint64_t, std::queue <vector <char>>> _payloads;
+		std::unordered_map <uint64_t, std::queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * @brief Метод извлечения пароля (для авторизации методом Digest)

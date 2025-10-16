@@ -463,19 +463,19 @@ static struct RomanNumerals {
 static class Symbols {
 	private:
 		// Контейнер римских чисел
-		std::map <char, uint16_t> _romes;
+		std::unordered_map <char, uint16_t> _romes;
 		// Контейнер арабских чисел
-		std::map <char, uint8_t> _arabics;
+		std::unordered_map <char, uint8_t> _arabics;
 	private:
 		// Контейнер латинских символов
-		std::map <char, wchar_t> _letters;
+		std::unordered_map <char, wchar_t> _letters;
 		// Контейнер латинских символов для UTF-8
-		std::map <wchar_t, char> _wideLetters;
+		std::unordered_map <wchar_t, char> _wideLetters;
 	private:
 		// Контейнер римских чисел для UTF-8
-		std::map <wchar_t, uint16_t> _wideRomes;
+		std::unordered_map <wchar_t, uint16_t> _wideRomes;
 		// Контейнер арабских чисел для UTF-8
-		std::map <wchar_t, uint8_t> _wideArabics;
+		std::unordered_map <wchar_t, uint8_t> _wideArabics;
 	public:
 		/**
 		 * @brief Метод проверки соответствия римской цифре
@@ -4876,7 +4876,7 @@ void awh::Framework::domainZone(const string & zone) noexcept {
  *
  * @param zones список доменных зон интернета
  */
-void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
+void awh::Framework::domainZones(const std::unordered_set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty())
 		// Устанавливаем список пользовательских зон
@@ -4887,7 +4887,7 @@ void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
  *
  * @return список доменных зон
  */
-const std::set <string> & awh::Framework::domainZones() const noexcept {
+const std::unordered_set <string> & awh::Framework::domainZones() const noexcept {
 	// Выводим список доменных зон интернета
 	return this->_nwt.zones();
 }
@@ -4965,9 +4965,9 @@ void awh::Framework::setLocale(const string & locale) noexcept {
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
-std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
+std::unordered_map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 	// Результат работы функции
-	std::map <size_t, size_t> result;
+	std::unordered_map <size_t, size_t> result;
 	// Если текст передан
 	if(!text.empty()){
 		/**

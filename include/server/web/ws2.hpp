@@ -171,7 +171,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const uint32_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const uint32_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::unordered_set <http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * @brief Метод вывода сообщений об ошибках работы брокера
@@ -414,14 +414,14 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * @brief Модуль установки настроек протокола HTTP/2
 				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::unordered_map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод установки долгоживущего подключения

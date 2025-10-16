@@ -119,9 +119,9 @@ namespace awh {
 				size_t _brokerAvailableSize;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				std::map <uint32_t, std::unique_ptr <queue_t>> _payloads;
+				std::unordered_map <uint32_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
-				std::map <uint32_t, std::unique_ptr <client::core_t>> _clients;
+				std::unordered_map <uint32_t, std::unique_ptr <client::core_t>> _clients;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -520,7 +520,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * @brief Метод загрузки файла со списком хостов

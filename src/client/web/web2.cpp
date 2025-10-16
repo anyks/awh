@@ -48,7 +48,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept {
+int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::unordered_set <http2_t::flag_t> & flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if((this->_core != nullptr) && (this->_proxy.sid == sid)){
 		/**
@@ -421,7 +421,7 @@ void awh::client::Web2::implementation(const uint32_t bid) noexcept {
 			// Выполняем установку функции обратного вызова при получении данных заголовка
 			callback.on <int32_t (const int32_t, const string &, const string &)> ("header", &web2_t::headerSignal, this, _1, _2, _3);
 			// Выполняем установку функции обратного вызова получения фрейма
-			callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const std::set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, _2, _3, _4);
+			callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const std::unordered_set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, _2, _3, _4);
 			// Выполняем установку функции обратного вызова
 			this->_http2.callback(callback);
 			// Выполняем инициализацию модуля NgHttp2
@@ -589,7 +589,7 @@ int32_t awh::client::Web2::send(const int32_t sid, const vector <std::pair <stri
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::client::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::client::Web2::settings(const std::unordered_map <http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Если список настроек протокола HTTP/2 передан
 	if(!settings.empty())
 		// Выполняем установку списка настроек
@@ -648,7 +648,7 @@ void awh::client::Web2::chunkSize(const size_t size) noexcept {
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Web2::mode(const std::set <flag_t> & flags) noexcept {
+void awh::client::Web2::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Активируем выполнение пинга
 	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Если установлен флаг запрещающий переключение контекста SSL

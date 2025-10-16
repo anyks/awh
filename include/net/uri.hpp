@@ -18,11 +18,11 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <string>
 #include <vector>
 #include <cinttypes>
 #include <functional>
+#include <unordered_map>
 
 /**
  * Для операционной системы MS Windows
@@ -295,7 +295,7 @@ namespace awh {
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI
 			 */
-			std::map <flag_t, string> split(const string & uri) const noexcept;
+			std::unordered_map <flag_t, string> split(const string & uri) const noexcept;
 			/**
 			 * @brief Метод выполнения сплита параметров URI
 			 *

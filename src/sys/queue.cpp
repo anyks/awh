@@ -164,7 +164,7 @@ void awh::Queue::pop() noexcept {
 			// Размер верхней записи в очереди
 			size_t size = 0;
 			// Извлекаем текущее значение размера записи
-			::memcpy(&size, this->_buffer.data() + this->_range.begin, sizeof(size));
+			::memcpy(&size, &this->_buffer[this->_range.begin], sizeof(size));
 			// Если размер записи получен
 			if(size > 0){
 				// Уменьшаем количество записей в очереди
@@ -393,7 +393,7 @@ size_t awh::Queue::size() const noexcept {
 		 */
 		try {
 			// Извлекаем текущее значение размера записи
-			::memcpy(&result, this->_buffer.data() + this->_range.begin, sizeof(result));
+			::memcpy(&result, &this->_buffer[this->_range.begin], sizeof(result));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -607,11 +607,11 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				// Увеличиваем количество записей в очереди
 				this->_range.count++;
 				// Выполняем запись данных в буфер
-				::memcpy(this->_buffer.data() + this->_range.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
+				::memcpy(&this->_buffer[this->_range.end], reinterpret_cast <const uint8_t *> (&size), sizeof(size));
 				// Увеличиваем смещение конца данных буфера
 				this->_range.end += sizeof(size);
 				// Выполняем добавление самих данных полезной нагрузки
-				::memcpy(this->_buffer.data() + this->_range.end, buffer, size);
+				::memcpy(&this->_buffer[this->_range.end], buffer, size);
 				// Увеличиваем смещение конца данных буфера
 				this->_range.end += size;
 				// Отправляем сообщение, что очередь готова на чтение
@@ -705,13 +705,13 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 				// Увеличиваем количество записей в очереди
 				this->_range.count++;
 				// Выполняем запись данных в буфер
-				::memcpy(this->_buffer.data() + this->_range.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
+				::memcpy(&this->_buffer[this->_range.end], reinterpret_cast <const uint8_t *> (&size), sizeof(size));
 				// Увеличиваем смещение конца данных буфера
 				this->_range.end += sizeof(size);
 				// Выполняем перебор всех записей
 				for(auto & record : records){
 					// Выполняем добавление самих данных полезной нагрузки
-					::memcpy(this->_buffer.data() + this->_range.end, record.first, record.second);
+					::memcpy(&this->_buffer[this->_range.end], record.first, record.second);
 					// Увеличиваем смещение конца данных буфера
 					this->_range.end += record.second;
 				}

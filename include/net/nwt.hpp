@@ -18,7 +18,7 @@
 /**
  * Стандартные модули
  */
-#include <set>
+#include <unordered_set>
 #include <sys/types.h>
 
 /**
@@ -135,11 +135,11 @@ namespace awh {
 			regexp_t::exp_t _email;
 		private:
 			// Список пользовательских доменных зон интернета
-			std::set <string> _user;
+			std::unordered_set <string> _user;
 			// Список основных доменных зон интернета
-			std::set <string> _general;
+			std::unordered_set <string> _general;
 			// Список интернациональных доменных зон интернета
-			std::set <string> _national;
+			std::unordered_set <string> _national;
 		private:
 			/**
 			 * @brief Метод инициализации
@@ -158,13 +158,13 @@ namespace awh {
 			 * @brief Метод извлечения списка пользовательских зон интернета
 			 *
 			 */
-			const std::set <string> & zones() const noexcept;
+			const std::unordered_set <string> & zones() const noexcept;
 			/**
 			 * @brief Метод установки списка пользовательских зон
 			 *
 			 * @param zones список доменных зон интернета
 			 */
-			void zones(const std::set <string> & zones) noexcept;
+			void zones(const std::unordered_set <string> & zones) noexcept;
 		public:
 			/**
 			 * @brief Метод парсинга URI-строки

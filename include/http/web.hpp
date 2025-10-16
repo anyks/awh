@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <set>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -466,7 +465,7 @@ namespace awh {
 			// Загруженные трейлеры
 			std::unordered_set <string> _trailers;
 			// Список стандартных заголовков
-			std::unordered_map <string, std::set <proto_t>> _standards;
+			std::unordered_map <string, std::unordered_set <proto_t>> _standards;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -719,7 +718,7 @@ namespace awh {
 			 * @param name название заголовка HTTP-протокола
 			 * @return     список соответствующих протоколов
 			 */
-			const std::set <proto_t> & proto(const string name) const noexcept;
+			const std::unordered_set <proto_t> & proto(const string name) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки функций обратного вызова

@@ -18,9 +18,9 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -435,7 +435,7 @@ namespace awh {
 			engine_t::alive_t keepAlive;
 		protected:
 			// Список подключённых брокеров
-			std::map <uint32_t, std::unique_ptr <broker_t>> _brokers;
+			std::unordered_map <uint32_t, std::unique_ptr <broker_t>> _brokers;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;

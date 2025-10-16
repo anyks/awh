@@ -18,9 +18,9 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <vector>
 #include <atomic>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -208,7 +208,7 @@ namespace awh {
 					/**
 					 * Тип данных для хранения опций активных клиентов
 					 */
-					using clients_t = std::map <uint32_t, std::unique_ptr <options_t>>;
+					using clients_t = std::unordered_map <uint32_t, std::unique_ptr <options_t>>;
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;

@@ -1138,7 +1138,7 @@ void awh::client::AWH::bandwidth(const string & read, const string & write) noex
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
+void awh::client::AWH::mode(const std::unordered_set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_http.mode(flags);
 }
@@ -1147,7 +1147,7 @@ void awh::client::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::client::AWH::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::client::AWH::settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку списока настроек протокола HTTP/2
 	this->_http.settings(settings);
 }

@@ -301,7 +301,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <web_t::flag_t> & flags) noexcept;
 				/**
 				 * @brief Метод установки параметров авторизации
 				 *

@@ -291,7 +291,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame")){
 		// Выполняем создание флага по умолчанию
-		std::set <flag_t> flags;
+		std::unordered_set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
 		frame_t type = frame_t::NONE;
 		// Идентификатор активного потока
@@ -440,7 +440,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", sid, direct_t::RECV, type, flags);
+		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const std::unordered_set <flag_t> &)> ("frame", sid, direct_t::RECV, type, flags);
 	}
 	// Выводим результат
 	return 0;
@@ -459,7 +459,7 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame")){
 		// Выполняем создание флага по умолчанию
-		std::set <flag_t> flags;
+		std::unordered_set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
 		frame_t type = frame_t::NONE;
 		// Если мы получили флаг PADDED
@@ -549,7 +549,7 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, flags);
+		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const std::unordered_set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, flags);
 	}
 	// Выводим результат
 	return 0;
@@ -2165,7 +2165,7 @@ void awh::Http2::altsvc(const std::unordered_multimap <string, string> & origins
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept {
+bool awh::Http2::init(const mode_t mode, const std::unordered_map <settings_t, uint32_t> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы

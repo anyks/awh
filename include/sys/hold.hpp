@@ -18,9 +18,9 @@
 /**
  * Стандартные модули
  */
-#include <set>
 #include <mutex>
 #include <stack>
+#include <unordered_set>
 
 /**
  * @brief основное пространство имён
@@ -59,7 +59,7 @@ namespace awh {
 			 * @param equal флаг эквивалентности
 			 * @return      результат проверки
 			 */
-			bool access(const std::set <T> & comp, const T hold, const bool equal = true) noexcept {
+			bool access(const std::unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Определяем есть ли фиксированные статусы
 				this->_flag = this->_status.empty();
 				// Если результат не получен

@@ -18,13 +18,13 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <mutex>
 #include <memory>
 #include <string>
 #include <cstring>
 #include <functional>
 #include <type_traits>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -114,7 +114,7 @@ namespace awh {
 					/**
 					 * Создаём тип данных итератора
 					 */
-					using iterator = std::map <uint32_t, fn_t>::iterator;
+					using iterator = std::unordered_map <uint32_t, fn_t>::iterator;
 				private:
 					// Текущее значение итератора
 					iterator _it;
@@ -174,39 +174,6 @@ namespace awh {
 						// Выводим результат
 						return (* this);
 					}
-					/**
-					 * @brief Оператор смещения назад
-					 *
-					 * @return значение текущего итератора
-					 */
-					Iterator & operator -- () noexcept {
-						/**
-						 * Выполняем отлов ошибок
-						 */
-						try {
-							// Выполняем смещение итератора
-							--this->_it;
-						/**
-						 * Если возникает ошибка
-						 */
-						} catch(const exception & error) {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-							#endif
-						}
-						// Выводим результат
-						return (* this);
-					}
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
@@ -242,7 +209,7 @@ namespace awh {
 			mutable std::recursive_mutex _mtx;
 		private:
 			// Хранилище распределения по названиям
-			std::map <uint32_t, fn_t> _callbacks;
+			std::unordered_map <uint32_t, fn_t> _callbacks;
 		private:
 			/**
 			 * Функция обратного вызова при получении события установки или удаления функции
@@ -316,7 +283,7 @@ namespace awh {
 			 *
 			 * @return выводим созданный блок дампа контейнера
 			 */
-			const std::map <uint32_t, fn_t> & dump() const noexcept {
+			const std::unordered_map <uint32_t, fn_t> & dump() const noexcept {
 				// Выводим дамп функций обратного вызова
 				return this->_callbacks;
 			}
@@ -325,7 +292,7 @@ namespace awh {
 			 *
 			 * @param callbacks дамп данных функций обратного вызова
 			 */
-			void dump(const std::map <uint32_t, fn_t> & callbacks) noexcept {
+			void dump(const std::unordered_map <uint32_t, fn_t> & callbacks) noexcept {
 				// Если данные функций обратного вызова переданы
 				if(!callbacks.empty()){
 					/**

@@ -1339,7 +1339,7 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Http1::mode(const std::set <flag_t> & flags) noexcept {
+void awh::client::Http1::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws1.mode(flags);
 	// Активируем выполнение пинга

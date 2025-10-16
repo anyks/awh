@@ -501,7 +501,7 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint32_t bid, c
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint32_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept {
+int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint32_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::unordered_set <awh::http2_t::flag_t> & flags) noexcept {
 	/**
 	 * Определяем направление передачи фрейма
 	 */
@@ -3105,7 +3105,7 @@ void awh::server::Http2::keepAlive(const int32_t cnt, const int32_t idle, const 
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Http2::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::Http2::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws2.mode(flags);
 	// Устанавливаем флаги настроек модуля для HTTP-сервера

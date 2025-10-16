@@ -1813,9 +1813,9 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
  * @param wid идентификатор воркера
  * @return    список дочерних процессов
  */
-std::set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
+std::unordered_set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
-	std::set <pid_t> result;
+	std::unordered_set <pid_t> result;
 	// Выполняем поиск брокеров
 	auto i = this->_brokers.find(wid);
 	// Если брокер найден
@@ -2069,7 +2069,7 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем очистку списка брокеров
 		this->_brokers.clear();
 		// Выполняем освобождение выделенной памяти брокеров подключения
-		std::map <decltype(this->_brokers)::key_type, decltype(this->_brokers)::mapped_type> ().swap(this->_brokers);
+		std::unordered_map <decltype(this->_brokers)::key_type, decltype(this->_brokers)::mapped_type> ().swap(this->_brokers);
 	}
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
@@ -2078,11 +2078,11 @@ void awh::Cluster::clear() noexcept {
 	// Выполняем очистку списка объектов энкодеров для отправки сообщений
 	this->_encoders.clear();
 	// Выполняем освобождение памяти активных клиентов
-	std::map <decltype(this->_clients)::key_type, decltype(this->_clients)::mapped_type> ().swap(this->_clients);
+	std::unordered_map <decltype(this->_clients)::key_type, decltype(this->_clients)::mapped_type> ().swap(this->_clients);
 	// Выполняем освобождение выделенной памяти
-	std::map <decltype(this->_workers)::key_type, decltype(this->_workers)::mapped_type> ().swap(this->_workers);
+	std::unordered_map <decltype(this->_workers)::key_type, decltype(this->_workers)::mapped_type> ().swap(this->_workers);
 	// Выполняем освобождение памяти энкодера
-	std::map <decltype(this->_encoders)::key_type, decltype(this->_encoders)::mapped_type> ().swap(this->_encoders);
+	std::unordered_map <decltype(this->_encoders)::key_type, decltype(this->_encoders)::mapped_type> ().swap(this->_encoders);
 }
 /**
  * @brief Метод закрытия всех подключений

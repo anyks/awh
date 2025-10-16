@@ -34,11 +34,11 @@
 /**
  * Стандартные модули
  */
-#include <set>
 #include <tuple>
 #include <string>
 #include <vector>
 #include <functional>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -191,10 +191,10 @@ namespace awh {
 			string _filename;
 		private:
 			// Список доступных флагов
-			std::set <mode_t> _mode;
+			std::unordered_set <mode_t> _mode;
 		private:
 			// Список проинициализированных процессов
-			mutable std::set <pid_t> _initialized;
+			mutable std::unordered_set <pid_t> _initialized;
 		private:
 			// Мютекс для блокировки потока
 			mutable std::recursive_mutex _mtx;
@@ -511,13 +511,13 @@ namespace awh {
 			 *
 			 * @return список режимов вывода логов
 			 */
-			const std::set <mode_t> & mode() const noexcept;
+			const std::unordered_set <mode_t> & mode() const noexcept;
 			/**
 			 * @brief Метод добавления режимов вывода логов
 			 *
 			 * @param mode список режимов вывода логов
 			 */
-			void mode(const std::set <mode_t> & mode) noexcept;
+			void mode(const std::unordered_set <mode_t> & mode) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения установленного формата лога

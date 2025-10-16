@@ -124,9 +124,9 @@ namespace awh {
 				std::unordered_map <string, string> _route;
 			private:
 				// Список активных воркеров
-				std::map <int32_t, std::unique_ptr <worker_t>> _workers;
+				std::unordered_map <int32_t, std::unique_ptr <worker_t>> _workers;
 				// Список активых запросов
-				std::map <int32_t, std::unique_ptr <request_t>> _requests;
+				std::unordered_map <int32_t, std::unique_ptr <request_t>> _requests;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу
@@ -188,7 +188,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::unordered_set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * @brief Метод завершения работы потока
@@ -461,7 +461,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <flag_t> & flags) noexcept;
 				/**
 				 * @brief Метод установки параметров авторизации
 				 *

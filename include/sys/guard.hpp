@@ -18,10 +18,10 @@
 /**
  * Стандартные модули
  */
-#include <set>
 #include <mutex>
 #include <atomic>
 #include <cinttypes>
+#include <unordered_set>
 
 /**
  * Наши модули
@@ -106,7 +106,7 @@ namespace awh {
 			mutable std::mutex _mtx;
 		private:
 			// Список активных идентификаторов
-			std::set <uint32_t> _ids;
+			std::unordered_set <uint32_t> _ids;
 		public:
 			/**
 			 * @brief Метод проверки на доступ к функции

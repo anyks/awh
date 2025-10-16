@@ -18,9 +18,9 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <vector>
 #include <atomic>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -79,14 +79,14 @@ namespace awh {
 					 */
 					typedef class Options {
 						public:
-							bool alive;                                             // Флаг долгоживущего подключения
-							uint32_t requests;                                      // Количество выполненных запросов
-							uint64_t respPong;                                      // Контрольная точка ответа на пинг
-							uint64_t sendPing;                                      // Время отправленного пинга
-							std::atomic_bool close;                                 // Флаг требования закрыть подключение
-							std::atomic_bool stopped;                               // Флаг принудительной остановки
-							engine_t::proto_t proto;                                // Активный прототип интернета
-							std::map <int32_t, std::unique_ptr <stream_t>> streams; // Список активных потоков
+							bool alive;                                                       // Флаг долгоживущего подключения
+							uint32_t requests;                                                // Количество выполненных запросов
+							uint64_t respPong;                                                // Контрольная точка ответа на пинг
+							uint64_t sendPing;                                                // Время отправленного пинга
+							std::atomic_bool close;                                           // Флаг требования закрыть подключение
+							std::atomic_bool stopped;                                         // Флаг принудительной остановки
+							engine_t::proto_t proto;                                          // Активный прототип интернета
+							std::unordered_map <int32_t, std::unique_ptr <stream_t>> streams; // Список активных потоков
 						public:
 							// Объект фреймворка
 							const fmk_t * fmk;
@@ -113,7 +113,7 @@ namespace awh {
 					/**
 					 * Тип данных для хранения опций активных клиентов
 					 */
-					using clients_t = std::map <uint32_t, std::unique_ptr <options_t>>;
+					using clients_t = std::unordered_map <uint32_t, std::unique_ptr <options_t>>;
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;

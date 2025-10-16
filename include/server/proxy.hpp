@@ -18,10 +18,9 @@
 /**
  * Стандартные модули
  */
-#include <set>
-#include <map>
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <unordered_map>
 
 /**
@@ -253,7 +252,7 @@ namespace awh {
 					// Временные заголовки
 					awh::headers_t headers;
 					// Список доступных потоков
-					std::map <uint32_t, int32_t> streams;
+					std::unordered_map <uint32_t, int32_t> streams;
 					/**
 					 * @brief Конструктор
 					 *
@@ -332,12 +331,12 @@ namespace awh {
 				http_t::compressor_t _compressor;
 			private:
 				// Список флагов приложения
-				std::set <flag_t> _flags;
+				std::unordered_set <flag_t> _flags;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				std::map <uint32_t, std::unique_ptr <queue_t>> _payloads;
+				std::unordered_map <uint32_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
-				std::map <uint32_t, std::unique_ptr <client_t>> _clients;
+				std::unordered_map <uint32_t, std::unique_ptr <client_t>> _clients;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -823,7 +822,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления разрешённого источника
@@ -857,7 +856,7 @@ namespace awh {
 				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод установки название сервера

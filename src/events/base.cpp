@@ -3194,7 +3194,7 @@ void awh::Base::kick() noexcept {
 			// Выполняем активацию блокировки
 			this->_locker = static_cast <bool> (this->_works);
 			// Запоминаем список активных событий
-			std::map <SOCKET, peer_t> items = this->_peers;
+			std::unordered_map <SOCKET, peer_t> items = this->_peers;
 			// Выполняем очистку всех параметров
 			this->clear();
 			// Выполняем деинициализацию базы событий
@@ -4332,7 +4332,7 @@ void awh::Base::rebase() noexcept {
 			// Если работа базы событий запущена
 			if(this->_works){
 				// Запоминаем список активных событий
-				std::map <SOCKET, peer_t> items = this->_peers;
+				std::unordered_map <SOCKET, peer_t> items = this->_peers;
 				// Выполняем остановку работы базы событий
 				this->stop();
 				// Если список активных событий не пустой

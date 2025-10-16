@@ -18,9 +18,11 @@
 /**
  * Стандартные модули
  */
+#include <map>
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -250,12 +252,12 @@ namespace awh {
 		protected:
 			// Хранилище функций обратного вызова
 			callback_t _callback;
-		private:
-			// Список HTTP-ответов
-			std::map <uint16_t, string> _responses;
 		protected:
 			// Список отправляемых трейлеров
 			std::unordered_map <string, string> _trailers;
+		private:
+			// Список HTTP-ответов
+			std::unordered_map <uint16_t, string> _responses;
 		protected:
 			// Чёрный список заголовков
 			mutable std::unordered_set <string> _blacklist;
@@ -716,7 +718,7 @@ namespace awh {
 			 * @param name название заголовка HTTP-протокола
 			 * @return     список соответствующих протоколов
 			 */
-			const std::set <web_t::proto_t> & proto(const string & name) const noexcept;
+			const std::unordered_set <web_t::proto_t> & proto(const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Метод создания запроса для авторизации на прокси-сервере

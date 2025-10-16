@@ -1900,9 +1900,9 @@ void awh::Web::upgrade(const proto_t upgrade) noexcept {
  * @param name название заголовка HTTP-протокола
  * @return     список соответствующих протоколов
  */
-const std::set <awh::Web::proto_t> & awh::Web::proto(const string name) const noexcept {
+const std::unordered_set <awh::Web::proto_t> & awh::Web::proto(const string name) const noexcept {
 	// Результат работы функции
-	static const std::set <awh::Web::proto_t> result;
+	static const std::unordered_set <awh::Web::proto_t> result;
 	// Если название заголовка HTTP-протокола передано
 	if(!name.empty()){
 		// Выполняем поиск заголовка HTTP-протокола

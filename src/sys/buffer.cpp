@@ -67,7 +67,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 								// Если нам есть чего перемещать
 								if(bytes > 0)
 									// Выполняем перемещение верхней границы памяти
-									::memcpy(this->_buffer.data(), this->_buffer.data() + this->_range.begin, bytes);
+									::memmove(this->_buffer.data(), &this->_buffer[this->_range.begin], bytes);
 								// Выполняем смещение верхней границы буфера
 								this->_range.begin = 0;
 								// Выполняем смещение нижней границы буфера
@@ -98,7 +98,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 							// Если нам есть чего перемещать
 							if(bytes > 0)
 								// Выполняем перемещение верхней границы памяти
-								::memcpy(this->_buffer.data(), this->_buffer.data() + this->_range.begin, bytes);
+								::memmove(this->_buffer.data(), &this->_buffer[this->_range.begin], bytes);
 							// Выполняем смещение верхней границы буфера
 							this->_range.begin = 0;
 							// Выполняем смещение нижней границы буфера
@@ -561,7 +561,7 @@ T awh::Buffer::back() const noexcept {
 		// Если данных достаточно в буфере
 		if(this->_range.end > size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + (this->_range.end - size), size);
+			::memcpy(&result, &this->_buffer[this->_range.end - size], size);
 	}
 	// Выводим результат
 	return result;
@@ -613,7 +613,7 @@ T awh::Buffer::front() const noexcept {
 		// Если данные есть в буфере
 		if((this->_range.end - this->_range.begin) >= size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + this->_range.begin, size);
+			::memcpy(&result, &this->_buffer[this->_range.begin], size);
 	}
 	// Выводим результат
 	return result;
@@ -663,10 +663,12 @@ T awh::Buffer::at(const size_t index) const noexcept {
 	if(!this->empty() && (index < this->count <T> ())){
 		// Получаем размер данных
 		const size_t size = sizeof(result);
+		// Определяем смещение в буфере
+		const size_t offset = (this->_range.begin + (index * size));
 		// Если в буфере данных есть данные
-		if(((this->_range.begin + (index * size)) + size) <= this->_range.end)
+		if((offset + size) <= this->_range.end)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + (this->_range.begin + (index * size)), size);
+			::memcpy(&result, &this->_buffer[offset], size);
 		// Если данных нет в буфере
 		else if(this->_log != nullptr) {
 			/**
@@ -747,10 +749,12 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 	if(!this->empty() && (index < this->count <T> ())){
 		// Получаем размер данных
 		const size_t size = sizeof(value);
+		// Определяем смещение в буфере
+		const size_t offset = (this->_range.begin + (index * size));
 		// Если в буфере данных есть данные
-		if(((this->_range.begin + (index * size)) + size) <= this->_range.end)
+		if((offset + size) <= this->_range.end)
 			// Выполняем установку значения
-			::memcpy(const_cast <char *> (this->_buffer.data() + (this->_range.begin + (index * size))), &value, size);
+			::memcpy(const_cast <char *> (&this->_buffer[offset]), &value, size);
 		// Если данных нет в буфере
 		else if(this->_log != nullptr) {
 			/**
@@ -1121,7 +1125,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем выделение памяти
 				if((result = this->rss(size))){
 					// Выполняем добавление самих данных полезной нагрузки
-					::memcpy(this->_buffer.data() + this->_range.end, buffer, size);
+					::memcpy(&this->_buffer[this->_range.end], buffer, size);
 					// Увеличиваем смещение конца данных буфера
 					this->_range.end += size;
 				// Выполняем сброс буфера

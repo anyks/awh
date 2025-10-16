@@ -473,7 +473,7 @@ void awh::server::AWH::keepAlive(const int32_t cnt, const int32_t idle, const in
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
+void awh::server::AWH::mode(const std::unordered_set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_http.mode(flags);
 }
@@ -519,7 +519,7 @@ void awh::server::AWH::setAltSvc(const std::unordered_multimap <string, string> 
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::AWH::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::AWH::settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку списка настроек протокола HTTP/2
 	this->_http.settings(settings);
 }

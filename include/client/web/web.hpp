@@ -18,10 +18,11 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <stack>
 #include <string>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -610,7 +611,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
+				virtual void mode(const std::unordered_set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * @brief Метод установки размера чанка
@@ -731,7 +732,7 @@ namespace awh {
 				size_t _chunkSize;
 			protected:
 				// Список параметров настроек протокола HTTP/2
-				std::map <http2_t::settings_t, uint32_t> _settings;
+				std::unordered_map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				/**
 				 * @brief Метод обратного вызова при отправки данных HTTP/2
@@ -750,7 +751,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::unordered_set <http2_t::flag_t> & flags) noexcept;
 				/**
 				 * @brief Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 *
@@ -760,7 +761,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::unordered_set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
 				 * @brief Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
@@ -925,14 +926,14 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const std::set <flag_t> & flags) noexcept;
+				virtual void mode(const std::unordered_set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * @brief Модуль установки настроек протокола HTTP/2
 				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				virtual void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				virtual void settings(const std::unordered_map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод установки размера чанка

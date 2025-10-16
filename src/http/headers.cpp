@@ -113,57 +113,6 @@ awh::Headers::Iterator & awh::Headers::Iterator::operator ++ () noexcept {
 	return (* this);
 }
 /**
- * @brief Оператор смещения назад
- *
- * @return значение текущего итератора
- */
-awh::Headers::Iterator & awh::Headers::Iterator::operator -- () noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Выполняем смещение итератора
-		--this->_it;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return (* this);
-}
-/**
  * @brief Оператор сравнения соответствия итератора
  *
  * @param other итератор для сравнения
@@ -310,7 +259,7 @@ void awh::Headers::reset() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		// Выполняем освобождение памяти индекса
-		std::multimap <decltype(this->_items)::key_type, decltype(this->_items)::mapped_type> ().swap(this->_items);
+		std::unordered_multimap <decltype(this->_items)::key_type, decltype(this->_items)::mapped_type> ().swap(this->_items);
 	/**
 	 * Если возникает ошибка
 	 */

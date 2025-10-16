@@ -2133,9 +2133,9 @@ uint32_t awh::server::Core::port(const uint16_t sid) const noexcept {
  * @param sid идентификатор схемы сети
  * @return    список доступных воркеров
  */
-std::set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
+std::unordered_set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
 	// Результат работы функции
-	std::set <pid_t> result;
+	std::unordered_set <pid_t> result;
 	// Если список дочерних воркеров получен
 	if(!this->_workers.empty()){
 		// Выполняем перебор списка дочерних воркеров

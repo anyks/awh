@@ -325,7 +325,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
 				 * @brief Метод установки название сервера
@@ -407,7 +407,7 @@ namespace awh {
 				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * @brief Метод установки идентификации сервера

@@ -271,7 +271,7 @@ void awh::server::AWH_Websocket::keepAlive(const int32_t cnt, const int32_t idle
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::AWH_Websocket::mode(const std::set <web_t::flag_t> & flags) noexcept {
+void awh::server::AWH_Websocket::mode(const std::unordered_set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_ws.mode(flags);
 }
@@ -381,7 +381,7 @@ void awh::server::AWH_Websocket::setAltSvc(const std::unordered_multimap <string
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::AWH_Websocket::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::AWH_Websocket::settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку настроек протокола HTTP/2
 	this->_ws.settings(settings);
 }

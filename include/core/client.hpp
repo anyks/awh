@@ -66,9 +66,9 @@ namespace awh {
 				transfer_t _transfer;
 			private:
 				// Список таймаутов на получение данных
-				std::map <uint32_t, uint16_t> _receive;
+				std::unordered_map <uint32_t, uint16_t> _receive;
 				// Список активных таймаутов
-				std::map <uint16_t, uint16_t> _timeouts;
+				std::unordered_map <uint16_t, uint16_t> _timeouts;
 			private:
 				/**
 				 * @brief Метод создания подключения к удаленному серверу

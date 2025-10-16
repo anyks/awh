@@ -44,13 +44,13 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <mutex>
 #include <vector>
 #include <string>
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -167,7 +167,7 @@ namespace awh {
 				// Функция обратного вызова
 				callback_t callback;
 				// Список соответствия типов событий режиму работы
-				std::map <event_type_t, event_mode_t> mode;
+				std::unordered_map <event_type_t, event_mode_t> mode;
 				/**
 				 * @brief Конструктор
 				 *
@@ -247,12 +247,12 @@ namespace awh {
 			std::recursive_mutex _mtx;
 		private:
 			// Список активных таймеров
-			std::map <uint32_t, timer_t> _timers;
+			std::unordered_map <uint32_t, timer_t> _timers;
 		private:
 			// Список отслеживаемых участников
-			std::map <SOCKET, peer_t> _peers;
+			std::unordered_map <SOCKET, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
-			std::map <SOCKET, std::unique_ptr <upstream_t>> _upstream;
+			std::unordered_map <SOCKET, std::unique_ptr <upstream_t>> _upstream;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

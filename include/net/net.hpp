@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <array>
 #include <cmath>
 #include <mutex>
@@ -30,6 +29,7 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <unordered_map>
 #include <sys/types.h>
 
 /**
@@ -154,7 +154,7 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
-			std::multimap <type_t, localNet_t> _localsNet;
+			std::unordered_multimap <type_t, localNet_t> _localsNet;
 		private:
 			// Объект для работы с логами
 			const log_t * _log;

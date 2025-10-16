@@ -514,7 +514,7 @@ int32_t awh::server::Websocket2::chunkSignal(const int32_t sid, const uint32_t b
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint32_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept {
+int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint32_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::unordered_set <http2_t::flag_t> & flags) noexcept {
 	/**
 	 * Определяем направление передачи фрейма
 	 */
@@ -1936,7 +1936,7 @@ void awh::server::Websocket2::keepAlive(const int32_t cnt, const int32_t idle, c
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Websocket2::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::Websocket2::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Активируем выполнение пинга
@@ -1959,7 +1959,7 @@ void awh::server::Websocket2::mode(const std::set <flag_t> & flags) noexcept {
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Websocket2::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Websocket2::settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку основных настроек протокола HTTP/2
 	web2_t::settings(settings);
 	// Если метод CONNECT не установлен, разрешаем его по умолчанию

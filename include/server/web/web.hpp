@@ -18,9 +18,10 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <string>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -178,7 +179,7 @@ namespace awh {
 				uint32_t _pingInterval;
 			protected:
 				// Список мусорных брокеров
-				std::map <uint32_t, uint64_t> _disconected;
+				std::unordered_map <uint32_t, uint64_t> _disconected;
 			protected:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -506,7 +507,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
+				virtual void mode(const std::unordered_set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * @brief Метод ожидания входящих сообщений
@@ -629,10 +630,10 @@ namespace awh {
 				std::unordered_multimap <string, string> _altsvc;
 			protected:
 				// Список параметров настроек протокола HTTP/2
-				std::map <http2_t::settings_t, uint32_t> _settings;
+				std::unordered_map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
-				std::map <uint32_t, std::shared_ptr <http2_t>> _sessions;
+				std::unordered_map <uint32_t, std::shared_ptr <http2_t>> _sessions;
 			protected:
 				/**
 				 * @brief Метод инициализации сессии
@@ -706,7 +707,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int32_t frameSignal(const int32_t sid, const uint32_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const uint32_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::unordered_set <http2_t::flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * @brief Метод выполнения закрытия подключения
@@ -828,7 +829,7 @@ namespace awh {
 				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::unordered_map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

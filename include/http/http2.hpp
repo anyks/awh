@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <queue>
 #include <string>
 #include <vector>
@@ -214,9 +213,9 @@ namespace awh {
 			std::unordered_multimap <string, string> _altsvc;
 		private:
 			// Буферы отправляемой полезной нагрузки
-			std::map <int32_t, std::unique_ptr <buffer_t>> _payloads;
+			std::unordered_map <int32_t, std::unique_ptr <buffer_t>> _payloads;
 			// Список подготовленных для отправки записей
-			std::map <int32_t, std::queue <std::pair <size_t, flag_t>>> _records;
+			std::unordered_map <int32_t, std::queue <std::pair <size_t, flag_t>>> _records;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
@@ -612,7 +611,7 @@ namespace awh {
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
 			 */
-			bool init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept;
+			bool init(const mode_t mode, const std::unordered_map <settings_t, uint32_t> & settings) noexcept;
 		public:
 			/**
 			 * @brief Оператор [=] зануления фрейма Http2

@@ -18,13 +18,13 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <queue>
 #include <mutex>
 #include <chrono>
 #include <thread>
 #include <atomic>
 #include <cinttypes>
+#include <unordered_map>
 #include <condition_variable>
 
 /**
@@ -71,10 +71,10 @@ namespace awh {
 			// Объект работы с уведомителем
 			notifier_t _notifier;
 		private:
-			// Список активных таймеров
-			std::multimap <uint64_t, uint32_t> _timers;
 			// Очередь таймеров ожидающих активацию
 			std::queue <std::pair <uint32_t, uint64_t>> _items;
+			// Список активных таймеров
+			std::unordered_multimap <uint64_t, uint32_t> _timers;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

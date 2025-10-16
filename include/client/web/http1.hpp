@@ -72,7 +72,7 @@ namespace awh {
 				callback_t _callback;
 			private:
 				// Список активых запросов
-				std::map <int32_t, std::unique_ptr <request_t>> _requests;
+				std::unordered_map <int32_t, std::unique_ptr <request_t>> _requests;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу
@@ -349,7 +349,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <flag_t> & flags) noexcept;
 				/**
 				 * @brief Метод установки параметров авторизации
 				 *

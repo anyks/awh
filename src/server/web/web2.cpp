@@ -62,7 +62,7 @@ bool awh::server::Web2::session(const uint32_t bid, const uint16_t sid) noexcept
 				// Выполняем установку функции обратного вызова при получении данных заголовка
 				callback.on <int32_t (const int32_t, const string &, const string &)> ("header", &web2_t::headerSignal, this, _1, bid, _2, _3);
 				// Выполняем установку функции обратного вызова получения фрейма
-				callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const std::set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, bid, _2, _3, _4);
+				callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const std::unordered_set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, bid, _2, _3, _4);
 				// Если функция обратного вызова на на вывод ошибок установлена
 				if(this->_callback.is("error"))
 					// Устанавливаем функцию обработки вызова на событие получения ошибок
@@ -404,7 +404,7 @@ void awh::server::Web2::setAltSvc(const std::unordered_multimap <string, string>
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Web2::settings(const std::unordered_map <http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Если список настроек протокола HTTP/2 передан
 	if(!settings.empty())
 		// Выполняем установку списка настроек

@@ -1495,7 +1495,7 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Websocket1::mode(const std::set <flag_t> & flags) noexcept {
+void awh::client::Websocket1::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг разрешающий вывод информационных сообщений
 	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
 	// Активируем выполнение пинга

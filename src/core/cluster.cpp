@@ -149,7 +149,7 @@ awh::cluster_t::family_t awh::cluster::Core::family() const noexcept {
  *
  * @return список дочерних процессов
  */
-std::set <pid_t> awh::cluster::Core::pids() const noexcept {
+std::unordered_set <pid_t> awh::cluster::Core::pids() const noexcept {
 	// Выполняем извлечение списка доступных идентификаторов процессов
 	return this->_cluster.pids(0);
 }

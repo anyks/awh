@@ -15,13 +15,13 @@
 #ifndef __AWH_TIMEOUT__
 #define __AWH_TIMEOUT__
 
-#include <map>
 #include <mutex>
 #include <thread>
 #include <chrono>
 #include <atomic>
 #include <iostream>
 #include <functional>
+#include <unordered_map>
 #include <condition_variable>
 
 /**
@@ -67,7 +67,7 @@ namespace awh {
 			mutable std::mutex _mtx;
 		private:
 			// Список активных воркеров таймера
-			std::map <uint32_t, std::unique_ptr <wrk_t>> _timers;
+			std::unordered_map <uint32_t, std::unique_ptr <wrk_t>> _timers;
 		private:
 			/**
 			 * @brief Метод проверки на существование данных

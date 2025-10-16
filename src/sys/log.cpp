@@ -789,7 +789,7 @@ void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring>
  *
  * @return список режимов вывода логов
  */
-const std::set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
+const std::unordered_set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
 	// Выводим список режимов вывода логов
 	return this->_mode;
 }
@@ -798,7 +798,7 @@ const std::set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
  *
  * @param mode список режимов вывода логов
  */
-void awh::Log::mode(const std::set <mode_t> & mode) noexcept {
+void awh::Log::mode(const std::unordered_set <mode_t> & mode) noexcept {
 	// Выполняем установку списка режимов вывода логов
 	this->_mode = mode;
 }

@@ -46,7 +46,7 @@ static struct Params {
 	// Названия месяцев
 	vector <std::pair <string, string>> nameMonths;
 	// Таблица множителей високосных годов
-	std::map <uint16_t, uint8_t> rateLeapYears;
+	std::unordered_map <uint16_t, uint8_t> rateLeapYears;
 	/**
 	 * @brief Конструктор
 	 *

@@ -137,30 +137,30 @@ namespace awh {
 			/**
 			 * @brief Метод удаления событий
 			 *
-			 * @param sock сетевой сокет для удаления
 			 * @param id   идентификатор события
+			 * @param sock сетевой сокет для удаления
 			 * @return     результат удаления
 			 */
-			bool del(const SOCKET sock, const uint32_t id) noexcept;
+			bool del(const uint32_t id, const SOCKET sock = INVALID_SOCKET) noexcept;
 		public:
+			/**
+			 * @brief Метод добавления сетевого события
+			 *
+			 * @param id     идентификатор сетевого события
+			 * @param sock   сетевой сокет для добавления
+			 * @param events поддерживаемые типы событий
+			 * @return       результат добавления
+			 */
+			bool add(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept;
 			/**
 			 * @brief Метод добавления несетевых событий
 			 *
 			 * @param id     идентификатор несетевого события
+			 * @param events поддерживаемые типы событий
 			 * @param msec   время ожидания срабатывания в миллисекундах
-			 * @param events поддерживаемые типы событий
 			 * @return       результат добавления
 			 */
-			bool add(const uint32_t id, const uint32_t msec, const uint8_t events) noexcept;
-			/**
-			 * @brief Метод добавления сетевого события
-			 *
-			 * @param sock   сетевой сокет для добавления
-			 * @param id     идентификатор сетевого события
-			 * @param events поддерживаемые типы событий
-			 * @return       результат добавления
-			 */
-			bool add(const SOCKET sock, const uint32_t id, const uint8_t events) noexcept;
+			bool add(const uint32_t id, const uint8_t events, const uint32_t msec = 0) noexcept;
 		public:
 			/**
 			 * @brief Метод ожидания получения событий

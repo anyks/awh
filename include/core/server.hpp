@@ -92,15 +92,15 @@ namespace awh {
 				std::unique_ptr <timer_t> _timer;
 			private:
 				// Список активных дочерних процессов
-				std::multimap <uint16_t, pid_t> _workers;
+				std::unordered_multimap <uint16_t, pid_t> _workers;
 			private:
 				// Список таймаутов на получение данных
-				std::map <uint32_t, uint16_t> _receive;
+				std::unordered_map <uint32_t, uint16_t> _receive;
 				// Список активных таймаутов
-				std::map <uint16_t, uint16_t> _timeouts;
+				std::unordered_map <uint16_t, uint16_t> _timeouts;
 			private:
 				// Список подключённых брокеров
-				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
+				std::unordered_map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
 			private:
 				/**
 				 * @brief Метод вызова при подключении к серверу
@@ -282,7 +282,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    список доступных воркеров
 				 */
-				std::set <pid_t> workers(const uint16_t sid) const noexcept;
+				std::unordered_set <pid_t> workers(const uint16_t sid) const noexcept;
 			public:
 				/**
 				 * @brief Метод асинхронной отправки буфера данных в сокет

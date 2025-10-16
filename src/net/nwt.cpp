@@ -549,7 +549,7 @@ void awh::NWT::zone(const string & zone) noexcept {
  * @brief Метод извлечения списка пользовательских зон интернета
  *
  */
-const std::set <string> & awh::NWT::zones() const noexcept {
+const std::unordered_set <string> & awh::NWT::zones() const noexcept {
 	// Выводим список пользовательских зон интернета
 	return this->_user;
 }
@@ -558,7 +558,7 @@ const std::set <string> & awh::NWT::zones() const noexcept {
  *
  * @param zones список доменных зон интернета
  */
-void awh::NWT::zones(const std::set <string> & zones) noexcept {
+void awh::NWT::zones(const std::unordered_set <string> & zones) noexcept {
 	// Если список зон не пустой
 	if(!zones.empty())
 		// Выводим список пользовательских зон

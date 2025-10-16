@@ -923,7 +923,7 @@ void awh::server::ProxySocks5::broadcastToProcess(const uint16_t sid, const char
  *
  * @param flags список флагов модуля для установки
  */
-void awh::server::ProxySocks5::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::ProxySocks5::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_core.verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }

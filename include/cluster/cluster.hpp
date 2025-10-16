@@ -18,13 +18,14 @@
 /**
  * Стандартные библиотеки
  */
-#include <map>
 #include <vector>
 #include <thread>
 #include <string>
 #include <cstring>
 #include <csignal>
 #include <cinttypes>
+#include <unordered_set>
+#include <unordered_map>
 #include <sys/types.h>
 
 /**
@@ -135,7 +136,7 @@ namespace awh {
 					payload_t _payload;
 				private:
 					// Список декодеров для декодирования сообщений
-					std::map <SOCKET, std::unique_ptr <cmp::decoder_t>> _decoders;
+					std::unordered_map <SOCKET, std::unique_ptr <cmp::decoder_t>> _decoders;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -346,17 +347,17 @@ namespace awh {
 			#endif
 		private:
 			// Список активных дочерних процессов
-			std::map <pid_t, uint16_t> _pids;
+			std::unordered_map <pid_t, uint16_t> _pids;
 			// Список активных сокетов привязанных к процессам
-			std::map <SOCKET, pid_t> _sockets;
+			std::unordered_map <SOCKET, pid_t> _sockets;
 			// Список активных клиентов дочерних процессов
-			std::map <SOCKET, std::unique_ptr <client_t>> _clients;
+			std::unordered_map <SOCKET, std::unique_ptr <client_t>> _clients;
 			// Список активных воркеров
-			std::map <uint16_t, std::unique_ptr <worker_t>> _workers;
+			std::unordered_map <uint16_t, std::unique_ptr <worker_t>> _workers;
 			// Список энкодеров для кодирования сообщений
-			std::map <pid_t, std::unique_ptr <cmp::encoder_t>> _encoders;
+			std::unordered_map <pid_t, std::unique_ptr <cmp::encoder_t>> _encoders;
 			// Список дочерних брокеров
-			std::map <uint16_t, vector <std::unique_ptr <broker_t>>> _brokers;
+			std::unordered_map <uint16_t, vector <std::unique_ptr <broker_t>>> _brokers;
 		private:
 			// Объект сетевого ядра
 			core_t * _core;
@@ -467,7 +468,7 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 * @return    список дочерних процессов
 			 */
-			std::set <pid_t> pids(const uint16_t wid) const noexcept;
+			std::unordered_set <pid_t> pids(const uint16_t wid) const noexcept;
 		public:
 			/**
 			 * @brief Метод отправки сообщения родительскому процессу

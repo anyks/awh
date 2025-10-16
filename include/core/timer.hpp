@@ -69,7 +69,7 @@ namespace awh {
 			callback_t _callback;
 		private:
 			// Список активных брокеров
-			std::map <uint16_t, std::unique_ptr <broker_t>> _brokers;
+			std::unordered_map <uint16_t, std::unique_ptr <broker_t>> _brokers;
 		private:
 			/**
 			 * @brief Метод генерации уникального идентификатора

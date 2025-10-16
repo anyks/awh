@@ -3192,7 +3192,7 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) noe
  * @param name название заголовка HTTP-протокола
  * @return     список соответствующих протоколов
  */
-const std::set <awh::web_t::proto_t> & awh::Http::proto(const string & name) const noexcept {
+const std::unordered_set <awh::web_t::proto_t> & awh::Http::proto(const string & name) const noexcept {
 	// Выполняем извлечение списка протоколов к которому принадлежит заголовок
 	return this->_web.proto(name);
 }

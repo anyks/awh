@@ -238,7 +238,7 @@ void awh::client::AWH_Websocket::hosts(const string & filename) noexcept {
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::AWH_Websocket::mode(const std::set <web_t::flag_t> & flags) noexcept {
+void awh::client::AWH_Websocket::mode(const std::unordered_set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_ws.mode(flags);
 }

@@ -466,7 +466,7 @@ void awh::server::Sample::total(const uint16_t total) noexcept {
  *
  * @param flag флаг модуля для установки
  */
-void awh::server::Sample::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::Sample::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Активируем выполнение пинга

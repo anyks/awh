@@ -18,11 +18,10 @@
 /**
  * Стандартные модули
  */
-#include <set>
-#include <map>
 #include <queue>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -182,13 +181,13 @@ namespace awh {
 			size_t _brokerAvailableSize;
 		protected:
 			// Список свободной памяти хранения полезной нагрузки
-			std::map <uint32_t, size_t> _available;
+			std::unordered_map <uint32_t, size_t> _available;
 			// Список активных схем сети
-			std::map <uint16_t, const scheme_t *> _schemes;
+			std::unordered_map <uint16_t, const scheme_t *> _schemes;
 			// Список брокеров подключения
-			std::map <uint32_t, const scheme_t::broker_t *> _brokers;
+			std::unordered_map <uint32_t, const scheme_t::broker_t *> _brokers;
 			// Буферы отправляемой полезной нагрузки
-			std::map <uint32_t, std::unique_ptr <buffer_t>> _payloads;
+			std::unordered_map <uint32_t, std::unique_ptr <buffer_t>> _payloads;
 		protected:
 			// Объект DNS-резолвера
 			const dns_t * _dns;

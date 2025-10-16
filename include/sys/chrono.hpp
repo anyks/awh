@@ -18,7 +18,6 @@
 /**
  * Подключаем зависимые заголовки
  */
-#include <map>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -394,10 +393,10 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutable mtx_t _mtx;
 		private:
-			// Список скомпилированных регулярных выражений
-			std::map <format_t, regex_t> _expressions;
 			// Список внутренних временных зон
 			std::unordered_map <string, int32_t> _timeZones;
+			// Список скомпилированных регулярных выражений
+			std::unordered_map <format_t, regex_t> _expressions;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

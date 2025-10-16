@@ -71,7 +71,7 @@ namespace awh {
 				scheme::web_t _scheme;
 			private:
 				// Список активных агентов
-				std::map <uint32_t, agent_t> _agents;
+				std::unordered_map <uint32_t, agent_t> _agents;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу
@@ -393,7 +393,7 @@ namespace awh {
 				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const std::unordered_set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * @brief Метод установки долгоживущего подключения

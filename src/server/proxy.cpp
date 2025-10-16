@@ -936,7 +936,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint32_t bid, const 
 							// Помечаем, что сервер занят
 							i->second->busy = !i->second->busy;
 							// Создаём список флагов клиента
-							std::set <client::web_t::flag_t> flags = {
+							std::unordered_set <client::web_t::flag_t> flags = {
 								client::web_t::flag_t::NOT_STOP,
 								client::web_t::flag_t::NOT_INFO,
 								client::web_t::flag_t::WEBSOCKET_ENABLE
@@ -1043,7 +1043,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint32_t bid, const 
 									// Помечаем, что сервер занят
 									i->second->busy = !i->second->busy;
 									// Создаём список флагов клиента
-									std::set <client::web_t::flag_t> flags = {
+									std::unordered_set <client::web_t::flag_t> flags = {
 										client::web_t::flag_t::NOT_STOP,
 										client::web_t::flag_t::NOT_INFO,
 										client::web_t::flag_t::WEBSOCKET_ENABLE
@@ -1154,7 +1154,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint32_t bid, const 
 										return;
 									}
 									// Создаём список флагов клиента
-									std::set <client::web_t::flag_t> flags = {
+									std::unordered_set <client::web_t::flag_t> flags = {
 										client::web_t::flag_t::NOT_STOP,
 										client::web_t::flag_t::NOT_INFO,
 										client::web_t::flag_t::WEBSOCKET_ENABLE
@@ -1693,11 +1693,11 @@ void awh::server::Proxy::total(const uint16_t total) noexcept {
  *
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Proxy::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::Proxy::mode(const std::unordered_set <flag_t> & flags) noexcept {
 	// Выполняем установку флагов приложения
 	this->_flags = flags;
 	// Создаём список флагов сервера
-	std::set <server::web_t::flag_t> server;
+	std::unordered_set <server::web_t::flag_t> server;
 	// Если флаг запрета выполнения пингов установлен
 	if(flags.find(flag_t::NOT_PING) != flags.end())
 		// Устанавливаем флаг запрета выполнения пингов
@@ -1763,7 +1763,7 @@ void awh::server::Proxy::setAltSvc(const awh::headers_t & origins) noexcept {
  *
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Proxy::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Proxy::settings(const std::unordered_map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку настроек протокола HTTP/2
 	this->_server.settings(settings);
 }

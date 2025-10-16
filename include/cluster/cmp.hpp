@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <mutex>
 #include <string>
 #include <vector>

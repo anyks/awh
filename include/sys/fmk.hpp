@@ -18,8 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <set>
-#include <map>
 #include <locale>
 #include <string>
 #include <vector>
@@ -29,6 +27,7 @@
 #include <cstdarg>
 #include <cstdlib>
 #include <type_traits>
+#include <unordered_set>
 #include <unordered_map>
 
 /**
@@ -771,13 +770,13 @@ namespace awh {
 			 *
 			 * @param zones список доменных зон интернета
 			 */
-			void domainZones(const std::set <string> & zones) noexcept;
+			void domainZones(const std::unordered_set <string> & zones) noexcept;
 			/**
 			 * @brief Метод извлечения списка пользовательских зон интернета
 			 *
 			 * @return список доменных зон
 			 */
-			const std::set <string> & domainZones() const noexcept;
+			const std::unordered_set <string> & domainZones() const noexcept;
 		public:
 			/**
 			 * @brief Метод установки системной локали
@@ -792,7 +791,7 @@ namespace awh {
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
 			 */
-			std::map <size_t, size_t> urls(const string & text) const noexcept;
+			std::unordered_map <size_t, size_t> urls(const string & text) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения иконки
