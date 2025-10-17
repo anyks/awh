@@ -135,6 +135,15 @@ namespace awh {
 			bool notify(const uint32_t id, const uint32_t data) noexcept;
 		public:
 			/**
+			 * @brief Метод ожидания получения событий
+			 *
+			 * @param pollers список сработавших событий
+			 * @param msec    время ожидания события в миллисекундах
+			 * @return        количество полученных событий
+			 */
+			uint32_t wait(poller_t * pollers, const int32_t msec = -1) noexcept;
+		public:
+			/**
 			 * @brief Метод удаления событий
 			 *
 			 * @param id   идентификатор события
@@ -154,15 +163,6 @@ namespace awh {
 			bool modify(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept;
 		public:
 			/**
-			 * @brief Метод добавления сетевого события
-			 *
-			 * @param id     идентификатор сетевого события
-			 * @param sock   сетевой сокет для добавления
-			 * @param events поддерживаемые типы событий
-			 * @return       результат добавления
-			 */
-			bool add(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept;
-			/**
 			 * @brief Метод добавления несетевых событий
 			 *
 			 * @param id     идентификатор несетевого события
@@ -171,16 +171,15 @@ namespace awh {
 			 * @return       результат добавления
 			 */
 			bool add(const uint32_t id, const uint8_t events, const uint32_t msec = 0) noexcept;
-		public:
 			/**
-			 * @brief Метод ожидания получения событий
+			 * @brief Метод добавления сетевого события
 			 *
-			 * @param pollers список сработавших событий
-			 * @param max     максимальное количество ожидаемых событий
-			 * @param msec    время ожидания события в миллисекундах
-			 * @return        количество полученных событий
+			 * @param id     идентификатор сетевого события
+			 * @param sock   сетевой сокет для добавления
+			 * @param events поддерживаемые типы событий
+			 * @return       результат добавления
 			 */
-			uint32_t wait(poller_t * pollers, const uint16_t max, const int32_t msec = -1) noexcept;
+			bool add(const uint32_t id, const SOCKET sock, const uint8_t events = AWH_NONE) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
