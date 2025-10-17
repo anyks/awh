@@ -144,6 +144,16 @@ namespace awh {
 			bool del(const uint32_t id, const SOCKET sock = INVALID_SOCKET) noexcept;
 		public:
 			/**
+			 * @brief Метод модификации события сокета
+			 *
+			 * @param id     идентификатор события
+			 * @param sock   сетевой сокет для модификации
+			 * @param events модифицированные типы событий
+			 * @return       результат модификации
+			 */
+			bool modify(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept;
+		public:
+			/**
 			 * @brief Метод добавления сетевого события
 			 *
 			 * @param id     идентификатор сетевого события
@@ -170,7 +180,7 @@ namespace awh {
 			 * @param msec   время ожидания события в миллисекундах
 			 * @return       количество полученных событий
 			 */
-			uint32_t wait(event_t * events, const uint16_t max, const int32_t msec) noexcept;
+			uint32_t wait(event_t * events, const uint16_t max, const int32_t msec = -1) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

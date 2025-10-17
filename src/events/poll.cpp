@@ -102,11 +102,6 @@ static uint64_t __awh_wid__;
  */
 static mutex __awh_main_mtx__;
 /**
- * @brief Мютекс блокировки потока для таймера
- *
- */
-static mutex __awh_timer_mtx__;
-/**
  * @brief Мютекс блокировки потока для уведомителя
  *
  */
@@ -232,17 +227,21 @@ static uint64_t wid() noexcept {
 	struct EventLoop {
 		// Сокет связи с ядром операционной системы
 		int32_t wfd;
+		// Флаг фиксации изменений
+		std::atomic_bool commit;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		EventLoop() noexcept : wfd(0) {}
+		EventLoop() noexcept : wfd(0), commit(false) {}
 	};
 	/**
 	 * @brief Структура событийной модели для Event Ports
 	 *
 	 */
 	struct EventLoop1 : public EventLoop {
+		// Количество актуальных сокетов
+		uint32_t count;
 		// Список активных событий
 		vector <port_event_t> events;
 		// Список активных пиров
@@ -251,15 +250,15 @@ static uint64_t wid() noexcept {
 		 * @brief Конструктор
 		 *
 		 */
-		EventLoop1() noexcept {}
+		EventLoop1() noexcept : count(0) {}
 	};
 	/**
 	 * @brief Структура событийной модели для /dev/poll
 	 *
 	 */
 	struct EventLoop2 : public EventLoop {
-		// Флаг фиксации изменений
-		std::atomic_bool commit;
+		// Создаем объект опроса
+		struct dvpoll dop;
 		// Список активных событий
 		vector <struct pollfd> events;
 		// Список активных пиров
@@ -270,7 +269,7 @@ static uint64_t wid() noexcept {
 		 * @brief Конструктор
 		 *
 		 */
-		EventLoop2() noexcept : commit(false) {}
+		EventLoop2() noexcept {}
 	};
 /**
  * Для операционной системы Linux
@@ -283,6 +282,10 @@ static uint64_t wid() noexcept {
 	struct EventLoop {
 		// Сокет связи с ядром операционной системы
 		int32_t efd;
+		// Количество актуальных сокетов
+		uint32_t count;
+		// Флаг фиксации изменений
+		std::atomic_bool commit;
 		// Список активных событий
 		vector <struct epoll_event> events;
 		// Список активных пиров
@@ -291,7 +294,7 @@ static uint64_t wid() noexcept {
 		 * @brief Конструктор
 		 *
 		 */
-		EventLoop() noexcept : efd(0) {}
+		EventLoop() noexcept : efd(0), count(0), commit(false) {}
 	};
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
@@ -304,6 +307,10 @@ static uint64_t wid() noexcept {
 	struct EventLoop {
 		// Сокет связи с ядром операционной системы
 		int32_t kq;
+		// Количество актуальных сокетов
+		uint32_t count;
+		// Список временных событий ожидающих активации
+		vector <struct kevent> change;
 		// Список активных событий
 		vector <struct kevent> events;
 		// Список активных пиров
@@ -312,7 +319,7 @@ static uint64_t wid() noexcept {
 		 * @brief Конструктор
 		 *
 		 */
-		EventLoop() noexcept : kq(0) {}
+		EventLoop() noexcept : kq(0), count(0) {}
 	};
 #endif
 
@@ -916,6 +923,8 @@ bool awh::Poll::init() noexcept {
 		::__awh_loop__->sockets.push_back(::__awh_timer__);
 		// Выполняем установку пустого значения пира
 		::__awh_loop__->peers.push_back(poll_t::event_t{});
+		// Устанавливаем тип события
+		::__awh_loop__->peers.back().events = AWH_TIMER;
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
@@ -924,8 +933,12 @@ bool awh::Poll::init() noexcept {
 		if(::__awh_event_ports__){
 			// Выполняем получение объекта Event Loop
 			EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
+			// Выполняем добавление пира
+			auto ret = loop->peers.emplace(0, poll_t::event_t{});
+			// Устанавливаем тип события
+			ret.first->second.events = AWH_TIMER;
 			// Выполняем активацию работы таймера
-			if(::port_associate(loop->wfd, PORT_SOURCE_FD, ::__awh_timer__, POLLIN, nullptr) != 0){
+			if(::port_associate(loop->wfd, PORT_SOURCE_FD, ::__awh_timer__, POLLIN | POLLERR | POLLHUP, &ret.first->second) != 0){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -946,8 +959,10 @@ bool awh::Poll::init() noexcept {
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}
-			// Увеличиваем количество событий
-			loop->events.push_back(port_event_t{});
+			// Устанавливаем количество активных сокетов
+			loop->count = 1;
+			// Устанавливаем флаг фиксации изменений
+			loop->commit = true;
 		// Если активированна поддержка /dev/poll
 		} else {
 			// Выполняем создание объекта события
@@ -955,7 +970,7 @@ bool awh::Poll::init() noexcept {
 			// Устанавливаем файловый дескриптор таймера
 			event.fd = ::__awh_timer__;
 			// Выполняем сброс всех событий
-			event.events = 0;
+			event.events = AWH_NONE;
 			// Активируем событие на чтение
 			event.events |= POLLIN;
 			// Активируем событие на получение ошибки
@@ -964,34 +979,14 @@ bool awh::Poll::init() noexcept {
 			event.events |= POLLHUP;
 			// Выполняем получение объекта Event Loop
 			EventLoop2 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
+			// Устанавливаем флаг фиксации изменений
+			loop->commit = true;
 			// Устанавливаем наше новое событие в список событий
 			loop->events.push_back(::move(event));
 			// Выполняем установку пустого значения пира
 			loop->peers.push_back(poll_t::event_t{});
-			// Получаем размер записываемых данных
-			const size_t size = (sizeof(struct pollfd) * loop->events.size());
-			// Отправляем ядру операционной системы только активные сокеты
-			if(::write(loop->wfd, &loop->events[0], size) != size){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-				#endif
-				// Выполняем закрытие сокета
-				::close(::__awh_timer__);
-				// Очищаем объект порта
-				::__awh_loop__.reset(nullptr);
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
+			// Устанавливаем тип события
+			loop->peers.back().events = AWH_TIMER;
 		}
 	/**
 	 * Для операционной системы Linux
@@ -1000,7 +995,7 @@ bool awh::Poll::init() noexcept {
 		// Выполняем создание объекта события
 		struct epoll_event event = {0};
 		// Выполняем сброс всех событий
-		event.events = 0;
+		event.events = AWH_NONE;
 		// Активируем событие на чтение
 		event.events |= EPOLLIN;
 		// Активируем событие на получение ошибки
@@ -1009,8 +1004,12 @@ bool awh::Poll::init() noexcept {
 		event.events |= EPOLLHUP;
 		// Устанавливаем файловый дескриптор таймера
 		event.data.fd = ::__awh_timer__;
-		// Устанавливаем наше новое событие в список событий
-		::__awh_loop__->events.push_back((struct epoll_event){});
+		// Выполняем добавление пира
+		auto ret = ::__awh_loop__->peers.emplace(0, poll_t::event_t{});
+		// Устанавливаем тип события
+		ret.first->second.events = AWH_TIMER;
+		// Выполняем установку указателя на основное событие
+		event.data.ptr = &ret.first->second;
 		// Выполняем изменение параметров события
 		if(::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_ADD, ::__awh_timer__, &event) != 0){
 			/**
@@ -1033,36 +1032,24 @@ bool awh::Poll::init() noexcept {
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
+		// Устанавливаем количество активных сокетов
+		::__awh_loop__->count = 1;
+		// Устанавливаем флаг фиксации изменений
+		::__awh_loop__->commit = true;
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		// Устанавливаем количество активных сокетов
+		::__awh_loop__->count = 1;
+		// Выполняем добавление пира
+		auto ret = ::__awh_loop__->peers.emplace(0, poll_t::event_t{});
+		// Устанавливаем тип события
+		ret.first->second.events = AWH_TIMER;
 		// Устанавливаем наше новое событие в список событий
-		::__awh_loop__->events.push_back((struct kevent){});
+		::__awh_loop__->change.push_back((struct kevent){});
 		// Выполняем активацию работы таймера
-		EV_SET(&::__awh_loop__->events.back(), ::__awh_timer__, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, nullptr);
-		// Выполняем активацию события таймера
-		if(::kevent(::__awh_loop__->kq, &::__awh_loop__->events.back(), 1, nullptr, 0, nullptr) == INVALID_SOCKET){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Выполняем закрытие сокета
-			::close(::__awh_timer__);
-			// Очищаем объект порта
-			::__awh_loop__.reset(nullptr);
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
+		EV_SET(&::__awh_loop__->change.back(), ::__awh_timer__, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, &ret.first->second);
 	#endif
 	// Запускаем работу таймера
 	this->_watch.start();
@@ -1323,7 +1310,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Event loop model is corrupted, SOCKET=%d does not match SOCKET=%d", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::WARNING, sock, ::__awh_loop__->sockets[i]);
+									this->_log->debug("Event loop model is corrupted, SOCKET=%d does not match SOCKET=%d", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::WARNING, sock, ::__awh_loop__->sockets[i]);
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1387,7 +1374,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1402,12 +1389,12 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 							::__awh_ids__.erase(sock);
 							// Выполняем удаление уведомителя
 							::__awh_notifiers__.erase(j);
+							// Уменьшаем количество активных сокетов
+							loop->count--;
+							// Устанавливаем флаг фиксации изменений
+							loop->commit = true;
 							// Выполняем удаление пира
 							loop->peers.erase(i);
-							// Удаляем лишнее событие
-							loop->events.pop_back();
-							// Выполняем заполнение нулями всю структуру событий
-							::memset(&loop->events[0], 0, loop->events.size() * sizeof(port_event_t));
 						}
 					// Если сокет передан верно
 					} else if(sock != INVALID_SOCKET) {
@@ -1418,7 +1405,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1431,12 +1418,12 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 						}
 						// Выполняем удаление активного сокета
 						::__awh_ids__.erase(sock);
+						// Уменьшаем количество активных сокетов
+						loop->count--;
+						// Устанавливаем флаг фиксации изменений
+						loop->commit = true;
 						// Выполняем удаление пира
 						loop->peers.erase(i);
-						// Удаляем лишнее событие
-						loop->events.pop_back();
-						// Выполняем заполнение нулями всю структуру событий
-						::memset(&loop->events[0], 0, loop->events.size() * sizeof(port_event_t));
 					}
 				}
 			// Если активированна поддержка /dev/poll
@@ -1489,7 +1476,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1545,7 +1532,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1560,12 +1547,12 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 						::__awh_ids__.erase(sock);
 						// Выполняем удаление уведомителя
 						::__awh_notifiers__.erase(j);
+						// Уменьшаем количество активных сокетов
+						::__awh_loop__->count--;
+						// Устанавливаем флаг фиксации изменений
+						::__awh_loop__->commit = true;
 						// Выполняем удаление пира
 						::__awh_loop__->peers.erase(i);
-						// Удаляем лишнее событие
-						::__awh_loop__->events.pop_back();
-						// Выполняем заполнение нулями всю структуру событий
-						::memset(&::__awh_loop__->events[0], 0, ::__awh_loop__->events.size() * sizeof(struct epoll_event));
 					}
 				// Если сокет передан верно
 				} else if(sock != INVALID_SOCKET) {
@@ -1576,7 +1563,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1589,12 +1576,12 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 					}
 					// Выполняем удаление активного сокета
 					::__awh_ids__.erase(sock);
+					// Уменьшаем количество активных сокетов
+					::__awh_loop__->count--;
+					// Устанавливаем флаг фиксации изменений
+					::__awh_loop__->commit = true;
 					// Выполняем удаление пира
 					::__awh_loop__->peers.erase(i);
-					// Удаляем лишнее событие
-					::__awh_loop__->events.pop_back();
-					// Выполняем заполнение нулями всю структуру событий
-					::memset(&::__awh_loop__->events[0], 0, ::__awh_loop__->events.size() * sizeof(struct epoll_event));
 				}
 			}
 		/**
@@ -1619,113 +1606,37 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 					auto j = ::__awh_notifiers__.find(i->first);
 					// Если нужный нам уведомитель найден
 					if(j != ::__awh_notifiers__.end()){
-						// Создаём объект события
-						struct kevent event;
+						// Уменьшаем количество активных сокетов
+						::__awh_loop__->count--;
+						// Добавляем новое событие в список событий
+						::__awh_loop__->change.resize(2);
 						// Извлекаем сокет события
 						const_cast <SOCKET &> (sock) = j->second->init();
 						// Снимаем событие ожидания сокета готовности на чтение
-						EV_SET(&event, sock, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-						// Выполняем изменение параметров события
-						if(::kevent(::__awh_loop__->kq, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-							#endif
-							// Выполняем сброс результата
-							result = false;
-						}
+						EV_SET(&::__awh_loop__->change[0], sock, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
 						// Снимаем событие ожидания сокета готовности на запись
-						EV_SET(&event, sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-						// Выполняем изменение параметров события
-						if(::kevent(::__awh_loop__->kq, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-							#endif
-							// Выполняем сброс результата
-							result = false;
-						}
+						EV_SET(&::__awh_loop__->change[1], sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
 						// Выполняем удаление активного сокета
 						::__awh_ids__.erase(sock);
 						// Выполняем удаление уведомителя
 						::__awh_notifiers__.erase(j);
 						// Выполняем удаление пира
 						::__awh_loop__->peers.erase(i);
-						// Удаляем лишнее событие
-						::__awh_loop__->events.pop_back();
-						// Выполняем заполнение нулями всю структуру событий
-						::memset(&::__awh_loop__->events[0], 0, ::__awh_loop__->events.size() * sizeof(struct kevent));
 					}
 				// Если сокет передан верно
 				} else if(sock != INVALID_SOCKET) {
-					// Создаём объект события
-					struct kevent event;
+					// Уменьшаем количество активных сокетов
+					::__awh_loop__->count--;
+					// Добавляем новое событие в список событий
+					::__awh_loop__->change.resize(2);
 					// Снимаем событие ожидания сокета готовности на чтение
-					EV_SET(&event, sock, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-					// Выполняем изменение параметров события
-					if(::kevent(::__awh_loop__->kq, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Выполняем сброс результата
-						result = false;
-					}
+					EV_SET(&::__awh_loop__->change[0], sock, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
 					// Снимаем событие ожидания сокета готовности на запись
-					EV_SET(&event, sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-					// Выполняем изменение параметров события
-					if(::kevent(::__awh_loop__->kq, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Выполняем сброс результата
-						result = false;
-					}
+					EV_SET(&::__awh_loop__->change[1], sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
 					// Выполняем удаление активного сокета
 					::__awh_ids__.erase(sock);
 					// Выполняем удаление пира
 					::__awh_loop__->peers.erase(i);
-					// Удаляем лишнее событие
-					::__awh_loop__->events.pop_back();
-					// Выполняем заполнение нулями всю структуру событий
-					::memset(&::__awh_loop__->events[0], 0, ::__awh_loop__->events.size() * sizeof(struct kevent));
 				}
 			}
 		#endif
@@ -1738,7 +1649,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Event with ID=%d could not be delete from the event database loop", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::WARNING, id);
+			this->_log->debug("Event with ID=%d could not be delete from the event database loop", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::WARNING, id);
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1751,6 +1662,330 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 	return false;
 }
 /**
+ * @brief Метод модификации события сокета
+ *
+ * @param id     идентификатор события
+ * @param sock   сетевой сокет для модификации
+ * @param events модифицированные типы событий
+ * @return       результат модификации
+ */
+bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные для установки переданы и база событий инициализированна
+	if((sock != INVALID_SOCKET) && (id > 0) && (::__awh_loop__ != nullptr)){
+		// Если сокет уже добавлен в список для отслеживания
+		if(::__awh_ids__.find(sock) != ::__awh_ids__.end()){
+			// Если передано событие потока
+			if(events & AWH_STREAM){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Stream tracking event cannot be activated for a network socket", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::WARNING);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Stream tracking event cannot be activated for a network socket", log_t::flag_t::WARNING);
+				#endif
+				// Выходим из функции
+				return false;
+			// Если переданы события таймеров
+			} else if((events & AWH_TIMER) || (events & AWH_INTERVAL)) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Timer tracking event cannot be activated for a network socket", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::WARNING);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Timer tracking event cannot be activated for a network socket", log_t::flag_t::WARNING);
+				#endif
+				// Выходим из функции
+				return false;
+			}
+			// Выполняем блокировку потока
+			const lock_guard lock(::__awh_main_mtx__);
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Выполняем поск необходимого нам пира
+				for(uint32_t i = 0; i < ::__awh_loop__->peers.size(); i++){
+					// Если нужный нам пир найден
+					if((result = (id == ::__awh_loop__->peers[i].id))){
+						// Сонимаем регистрацию для события
+						::WSACloseEvent(::__awh_loop__->events[i]);
+						// Опции событий для установки
+						long options = AWH_NONE;
+						// Если установлен флаг ожидания получения данных
+						if(events & AWH_READ)
+							// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
+							options |= (FD_READ | FD_CLOSE | FD_ACCEPT);
+						// Если сокет не активирован на прослушку
+						if(!this->_socket.listen(sock)){
+							// Если установлен флаг ожидания сокета на запись
+							if(events & AWH_WRITE)
+								// Ставим флаги ожидания готовности на запись
+								options |= (FD_WRITE | FD_CONNECT);
+						}
+						// Устанавливаем новое значение событий
+						::__awh_loop__->peers[i].events = events;
+						// Если события необходимо установить
+						if(options != AWH_NONE){
+							// Выполняем активацию работы таймера
+							if(::WSAEventSelect(sock, ::__awh_loop__->events[i], options) == SOCKET_ERROR){
+								// Создаём буфер сообщения ошибки
+								wchar_t message[256] = {0};
+								// Выполняем формирование текста ошибки
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, message);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								#endif
+								// Выходим из функции
+								return false;
+							}
+						}
+						// Выходим из цикла
+						break;
+					}
+				}
+			/**
+			 * Для операционной системы Sun Solaris
+			 */
+			#elif __sun__
+				// Если активирована поддержка Event Ports
+				if(::__awh_event_ports__){
+					// Выполняем получение объекта Event Loop
+					EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
+					// Выполняем поск необходимого нам пира
+					auto i = loop->peers.find(id);
+					// Если нужный нам пир найден
+					if((result = (i != loop->peers.end()))){
+						// Выполняем деактивацию события сокета
+						::port_dissociate(loop->wfd, PORT_SOURCE_FD, sock);
+						// Опции событий для установки
+						int32_t options = AWH_NONE;
+						// Если установлен флаг ожидания получения данных
+						if(events & AWH_READ)
+							// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
+							options |= (POLLIN | POLLERR | POLLHUP);
+						// Если сокет не активирован на прослушку
+						if(!this->_socket.listen(sock)){
+							// Если установлен флаг ожидания сокета на запись
+							if(events & AWH_WRITE)
+								// Ставим флаг ожидания готовности на запись
+								options |= POLLOUT;
+						}
+						// Устанавливаем тип события
+						i->second.events = events;
+						// Если события необходимо установить
+						if(options != AWH_NONE){
+							// Выполняем активацию отслеживания событий для сокета
+							if(::port_associate(loop->wfd, PORT_SOURCE_FD, sock, options, &i->second) != 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+								// Выходим из функции
+								return false;
+							}
+							// Устанавливаем флаг фиксации изменений
+							loop->commit = true;
+						}
+					}
+				// Если активированна поддержка /dev/poll
+				} else {
+					// Выполняем получение объекта Event Loop
+					EventLoop2 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
+					// Выполняем поск необходимого нам пира
+					for(uint32_t i = 0; i < loop->peers.size(); i++){
+						// Если нужный нам пир найден
+						if((result = (id == loop->peers[i].id))){
+							// Закрываем старый дескриптор
+							::close(loop->wfd);
+							// Получаем параметры события
+							struct epoll_event & event = loop->events[i];
+							// Выполняем сброс всех событий
+							event.events = AWH_NONE;
+							// Если установлен флаг ожидания получения данных
+							if(events & AWH_READ)
+								// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
+								event.events |= (POLLIN | POLLERR | POLLHUP);
+							// Если сокет не активирован на прослушку
+							if(!this->_socket.listen(sock)){
+								// Если установлен флаг ожидания сокета на запись
+								if(events & AWH_WRITE)
+									// Ставим флаг ожидания готовности на запись
+									event.events |= POLLOUT;
+							}
+							// Устанавливаем флаг фиксации изменений
+							loop->commit = true;
+							// Устанавливаем тип события
+							loop->peers[i].events = events;
+							// Выполняем инициализацию /dev/poll
+							if((loop->wfd = ::open("/dev/poll", O_RDWR, 0)) == INVALID_SOCKET){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+								// Выходим из приложения
+								::exit(EXIT_FAILURE);
+							}
+							// Устанавливаем флаг автозакрытия файлового дескриптора
+							::fcntl(loop->wfd, F_SETFD, FD_CLOEXEC);
+							// Выходим из цикла
+							break;
+						}
+					}
+				}
+			/**
+			 * Для операционной системы Linux
+			 */
+			#elif __linux__
+				// Выполняем поск необходимого нам пира
+				auto i = ::__awh_loop__->peers.find(id);
+				// Если нужный нам пир найден
+				if((result = (i != ::__awh_loop__->peers.end()))){
+					// Выполняем деактивацию события сокета
+					::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_DEL, sock, nullptr);
+					// Выполняем создание объекта события
+					struct epoll_event event = {0};
+					// Выполняем сброс всех событий
+					event.events = AWH_NONE;
+					// Если установлен флаг ожидания получения данных
+					if(events & AWH_READ)
+						// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
+						event.events |= (EPOLLIN | EPOLLERR | EPOLLHUP);
+					// Если сокет не активирован на прослушку
+					if(!this->_socket.listen(sock)){
+						// Если установлен флаг ожидания сокета на запись
+						if(events & AWH_WRITE)
+							// Ставим флаг ожидания готовности на запись
+							event.events |= EPOLLOUT;
+					}
+					// Устанавливаем тип события
+					i->second.events = events;
+					// Если события необходимо установить
+					if(event.events != AWH_NONE){
+						// Выполняем установку указателя на основное событие
+						event.data.ptr = &i->second;
+						// Выполняем изменение параметров события
+						if(::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_ADD, sock, &event) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+							// Выходим из функции
+							return false;
+						}
+						// Устанавливаем флаг фиксации изменений
+						::__awh_loop__->commit = true;
+					}
+				}
+			/**
+			 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+			 */
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				// Выполняем поск необходимого нам пира
+				auto i = ::__awh_loop__->peers.find(id);
+				// Если нужный нам пир найден
+				if((result = (i != ::__awh_loop__->peers.end()))){
+					// Если было установлено событие готовности на чтение, а сейчас его необходимо отключить
+					if(static_cast <bool> (i->second.events & AWH_READ) && !static_cast <bool> (events & AWH_READ)){
+						// Выполняем добавление нового события
+						::__awh_loop__->change.push_back((struct kevent){});
+						// Выполняем отключение события готовности на чтение
+						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_READ, EV_DISABLE, 0, 0, &i->second);
+					// Если события готовности на чтения небыло установлено, а сейчас требуется установить
+					} else if(!static_cast <bool> (i->second.events & AWH_READ) && static_cast <bool> (events & AWH_READ)) {
+						// Выполняем добавление нового события
+						::__awh_loop__->change.push_back((struct kevent){});
+						// Выполняем активацию события готовности на чтение
+						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_READ, EV_ENABLE, 0, 0, &i->second);
+					}
+					// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
+					if(static_cast <bool> (i->second.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE)){
+						// Выполняем добавление нового события
+						::__awh_loop__->change.push_back((struct kevent){});
+						// Выполняем отключение события готовности на запись
+						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_DISABLE, 0, 0, &i->second);
+					// Если события готовности на запись небыло установлено, а сейчас требуется установить
+					} else if(!static_cast <bool> (i->second.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE)) {
+						// Выполняем добавление нового события
+						::__awh_loop__->change.push_back((struct kevent){});
+						// Выполняем активацию события готовности на запись
+						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_ENABLE, 0, 0, &i->second);
+					}
+					// Устанавливаем тип события
+					i->second.events = events;
+				}
+			#endif
+		}
+	// Если произошла ошибка добавления сокета для отслеживания
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Socket %d with ID=%d could not be added to the event database loop", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::WARNING, sock, id);
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Socket %d with ID=%d could not be added to the event database loop", log_t::flag_t::WARNING, sock, id);
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод добавления сетевого события
  *
  * @param id     идентификатор сетевого события
@@ -1760,27 +1995,9 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
  */
 bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept {
 	// Если данные для установки переданы и база событий инициализированна
-	if((sock != INVALID_SOCKET) && (id > 0) && (events != AWH_NONE) && (::__awh_loop__ != nullptr)){
+	if((sock != INVALID_SOCKET) && (id > 0) && (::__awh_loop__ != nullptr)){
 		// Если сокет ещё не добавлен в список для отслеживания
 		if(::__awh_ids__.find(sock) == ::__awh_ids__.end()){
-			// Если событие для отслеживания не передано
-			if(events == AWH_NONE){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("For socket %d with ID=%d, no event was passed for tracking", __PRETTY_FUNCTION__, std::make_tuple(sock, id, events), log_t::flag_t::WARNING, sock, id);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("For socket %d with ID=%d, no event was passed for tracking", log_t::flag_t::WARNING, sock, id);
-				#endif
-				// Выходим из функции
-				return false;
-			}
 			// Если переданы события таймеров
 			if((events & AWH_TIMER) || (events & AWH_INTERVAL)){
 				/**
@@ -1788,7 +2005,7 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Timer tracking event cannot be activated for a network socket", __PRETTY_FUNCTION__, std::make_tuple(sock, id, events), log_t::flag_t::WARNING);
+					this->_log->debug("Timer tracking event cannot be activated for a network socket", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::WARNING);
 				/**
 				* Если режим отладки не включён
 				*/
@@ -1810,7 +2027,7 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Socket %d with ID=%d can no longer be added to the event loop database because it is already there", __PRETTY_FUNCTION__, std::make_tuple(sock, id, events), log_t::flag_t::WARNING, sock, id);
+				this->_log->debug("Socket %d with ID=%d can no longer be added to the event loop database because it is already there", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::WARNING, sock, id);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1840,7 +2057,7 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, events), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, message);
 				/**
 				* Если режим отладки не включён
 				*/
@@ -1852,42 +2069,48 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				return false;
 			}
 			// Опции событий для установки
-			long options = 0;
-			// Если установлен флаг ожидания закрытия подключения
-			if(events & AWH_CLOSE)
-				// Ставим флаг ожидания закрытия подключения
-				options |= FD_CLOSE;
+			long options = AWH_NONE;
 			// Если установлен флаг ожидания получения данных
 			if(events & AWH_READ)
+				// Ставим флаг ожидания закрытия подключения
+				options |= (FD_CLOSE | FD_ACCEPT);
+			// Если установлен флаг ожидания получения данных или событие потока
+			if((events & AWH_READ) || (events & AWH_STREAM))
 				// Ставим флаги ожидания готовности на чтение
-				options |= (FD_READ | FD_ACCEPT);
-			// Если установлен флаг ожидания сокета на запись
-			if(events & AWH_WRITE)
-				// Ставим флаги ожидания готовности на запись
-				options |= (FD_WRITE | FD_CONNECT);
-			// Выполняем активацию работы таймера
-			if(::WSAEventSelect(sock, event, options) == SOCKET_ERROR){
-				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
-				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuplesock, id, events), log_t::flag_t::CRITICAL, message);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
-				#endif
-				// Очищаем инициализированный объект события
-				::WSACloseEvent(event);
-				// Выходим из функции
-				return false;
+				options |= FD_READ;
+			// Если сокет не активирован на прослушку
+			if(!this->_socket.listen(sock)){
+				// Если установлен флаг ожидания сокета на запись
+				if(events & AWH_WRITE)
+					// Ставим флаги ожидания готовности на запись
+					options |= (FD_WRITE | FD_CONNECT);
+			}
+			// Если события необходимо установить
+			if(options != AWH_NONE){
+				// Выполняем активацию работы таймера
+				if(::WSAEventSelect(sock, event, options) == SOCKET_ERROR){
+					// Создаём буфер сообщения ошибки
+					wchar_t message[256] = {0};
+					// Выполняем формирование текста ошибки
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, message);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+					#endif
+					// Очищаем инициализированный объект события
+					::WSACloseEvent(event);
+					// Выходим из функции
+					return false;
+				}
 			}
 			// Устанавливаем наш таймер в список активных сокетов
 			::__awh_loop__->sockets.push_back(sock);
@@ -1897,10 +2120,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 			::__awh_loop__->peers.push_back(poll_t::event_t{});
 			// Устанавливаем идентификатор события
 			::__awh_loop__->peers.back().id = id;
-			// Если событие является потоком
-			if(events & AWH_STREAM)
-				// Устанавливаем тип события
-				::__awh_loop__->peers.back().events = AWH_STREAM;
+			// Устанавливаем тип события
+			::__awh_loop__->peers.back().events = events;
 			// Устанавливаем соответствие идентификатора сокету
 			return ::__awh_ids__.emplace(sock, id).second;
 		/**
@@ -1910,17 +2131,13 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 			// Если активирована поддержка Event Ports
 			if(::__awh_event_ports__){
 				// Опции событий для установки
-				int32_t options = 0;
-				// Если установлен флаг ожидания закрытия подключения
-				if(events & AWH_CLOSE)
-					// Ставим флаг ожидания закрытия подключения
-					options |= POLLHUP;
-				// Если установлен флаг ожидания появления ошибки
-				if(events & AWH_CLOSE)
-					// Ставим флаг ожидания появления ошибки
-					options |= POLLERR;
+				int32_t options = AWH_NONE;
 				// Если установлен флаг ожидания получения данных
 				if(events & AWH_READ)
+					// Ставим флаг ожидания появления ошибки или закрытия подключения
+					options |= (POLLERR | POLLHUP);
+				// Если установлен флаг ожидания получения данных или событие потока
+				if((events & AWH_READ) || (events & AWH_STREAM))
 					// Ставим флаг ожидания готовности на чтение
 					options |= POLLIN;
 				// Если сокет не активирован на прослушку
@@ -1934,32 +2151,35 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
 				// Выполняем добавление пира
 				auto ret = loop->peers.emplace(id, poll_t::event_t{});
-				// Если событие является потоком
-				if(events & AWH_STREAM)
-					// Устанавливаем тип события
-					ret.first->second.events = AWH_STREAM;
-				// Выполняем активацию отслеживания событий для сокета
-				if(::port_associate(loop->wfd, PORT_SOURCE_FD, sock, options, &ret.first->second) != 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuplesock, id, events), log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
-					// Удаляем добавленного пира
-					loop->peers.erase(id);
-					// Выходим из функции
-					return false;
+				// Устанавливаем тип события
+				ret.first->second.events = events;
+				// Если события необходимо установить
+				if(options != AWH_NONE){
+					// Выполняем активацию отслеживания событий для сокета
+					if(::port_associate(loop->wfd, PORT_SOURCE_FD, sock, options, &ret.first->second) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Удаляем добавленного пира
+						loop->peers.erase(id);
+						// Выходим из функции
+						return false;
+					}
 				}
-				// Увеличиваем количество событий
-				loop->events.push_back(port_event_t{});
+				// Устанавливаем количество активных сокетов
+				loop->count++;
+				// Устанавливаем флаг фиксации изменений
+				loop->commit = true;
 			// Если активированна поддержка /dev/poll
 			} else {
 				// Выполняем создание объекта события
@@ -1967,17 +2187,13 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				// Устанавливаем файловый дескриптор таймера
 				event.fd = sock;
 				// Выполняем сброс всех событий
-				event.events = 0;
-				// Если установлен флаг ожидания закрытия подключения
-				if(events & AWH_CLOSE)
-					// Ставим флаг ожидания закрытия подключения
-					event.events |= POLLHUP;
-				// Если установлен флаг ожидания появления ошибки
-				if(events & AWH_CLOSE)
-					// Ставим флаг ожидания появления ошибки
-					event.events |= POLLERR;
+				event.events = AWH_NONE;
 				// Если установлен флаг ожидания получения данных
 				if(events & AWH_READ)
+					// Ставим флаг ожидания появления ошибки или закрытия подключения
+					event.events |= (POLLERR | POLLHUP);
+				// Если установлен флаг ожидания получения данных или событие потока
+				if((events & AWH_READ) || (events & AWH_STREAM))
 					// Ставим флаг ожидания готовности на чтение
 					event.events |= POLLIN;
 				// Если сокет не активирован на прослушку
@@ -1997,10 +2213,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				loop->peers.push_back(poll_t::event_t{});
 				// Устанавливаем идентификатор события
 				loop->peers.back().id = id;
-				// Если событие является потоком
-				if(events & AWH_STREAM)
-					// Устанавливаем тип события
-					loop->peers.back().events = AWH_STREAM;
+				// Устанавливаем тип события
+				loop->peers.back().events = events;
 			}
 			// Устанавливаем соответствие идентификатора сокету
 			return ::__awh_ids__.emplace(sock, id).second;
@@ -2011,17 +2225,13 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 			// Выполняем создание объекта события
 			struct epoll_event event = {0};
 			// Выполняем сброс всех событий
-			event.events = 0;
-			// Если установлен флаг ожидания закрытия подключения
-			if(events & AWH_CLOSE)
-				// Ставим флаг ожидания закрытия подключения
-				event.events |= EPOLLHUP;
-			// Если установлен флаг ожидания появления ошибки
-			if(events & AWH_CLOSE)
-				// Ставим флаг ожидания появления ошибки
-				event.events |= EPOLLERR;
+			event.events = AWH_NONE;
 			// Если установлен флаг ожидания получения данных
 			if(events & AWH_READ)
+				// Ставим флаг ожидания появления ошибки или закрытия подключения
+				event.events |= (EPOLLERR | EPOLLHUP);
+			// Если установлен флаг ожидания получения данных или событие потока
+			if((events & AWH_READ) || (events & AWH_STREAM))
 				// Ставим флаг ожидания готовности на чтение
 				event.events |= EPOLLIN;
 			// Если сокет не активирован на прослушку
@@ -2033,61 +2243,83 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 			}
 			// Выполняем добавление пира
 			auto ret = loop->peers.emplace(id, poll_t::event_t{});
-			// Если событие является потоком
-			if(events & AWH_STREAM)
-				// Устанавливаем тип события
-				ret.first->second.events = AWH_STREAM;
-			// Выполняем установку указателя на основное событие
-			event.data.ptr = &ret.first->second;
-			// Выполняем изменение параметров события
-			if(::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_ADD, sock, &event) != 0){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuplesock, id, events), log_t::flag_t::CRITICAL, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-				#endif
-				// Удаляем добавленного пира
-				::__awh_loop__->peers.erase(id);
-				// Выходим из функции
-				return false;
+			// Устанавливаем тип события
+			ret.first->second.events = events;
+			// Если события необходимо установить
+			if(event.events != AWH_NONE){
+				// Выполняем установку указателя на основное событие
+				event.data.ptr = &ret.first->second;
+				// Выполняем изменение параметров события
+				if(::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_ADD, sock, &event) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Удаляем добавленного пира
+					::__awh_loop__->peers.erase(id);
+					// Выходим из функции
+					return false;
+				}
 			}
-			// Увеличиваем количество событий
-			::__awh_loop__->events.push_back((struct epoll_event){});
+			// Устанавливаем количество активных сокетов
+			::__awh_loop__->count++;
+			// Устанавливаем флаг фиксации изменений
+			::__awh_loop__->commit = true;
 			// Устанавливаем соответствие идентификатора сокету
 			return ::__awh_ids__.emplace(sock, id).second;
 		/**
 		 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Создаём объект события
-			struct kevent event;
 			// Выполняем добавление пира
 			auto ret = ::__awh_loop__->peers.emplace(id, poll_t::event_t{});
-			// Если событие является потоком
-			if(events & AWH_STREAM)
-				// Устанавливаем тип события
-				ret.first->second.events = AWH_STREAM;
+			// Устанавливаем событие по умолчанию
+			ret.first->second.events = AWH_NONE;
 			// Если установлен флаг ожидания получения данных
-			if(events & AWH_READ)
+			if((events & AWH_READ) || (events & AWH_STREAM)){
+				// Если установлен флаг на чтение
+				if(events & AWH_READ)
+					// Устанавливаем тип события
+					ret.first->second.events |= AWH_READ;
+				// Если установлен флаг потока
+				if(events & AWH_STREAM)
+					// Устанавливаем тип события
+					ret.first->second.events |= (AWH_READ | AWH_STREAM);
+				// Выделяем новое событие
+				::__awh_loop__->change.push_back((struct kevent){});
 				// Ставим флаг ожидания готовности на чтение
-				EV_SET(&event, sock, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &ret.first->second);
+				EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, &ret.first->second);
+			}
 			// Если сокет не активирован на прослушку
 			if(!this->_socket.listen(sock)){
-				// Если установлен флаг ожидания сокета на запись
-				if(events & AWH_WRITE)
-					// Ставим флаг ожидания готовности на запись
-					EV_SET(&event, sock, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &ret.first->second);
+				// Если установлен флаг ожидания готовности на запись
+				if(events & AWH_WRITE){
+					// Устанавливаем тип события
+					ret.first->second.events |= AWH_WRITE;
+					// Выделяем новое событие
+					::__awh_loop__->change.push_back((struct kevent){});
+					// Ставим флаг ожидания готовности на чтение
+					EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, &ret.first->second);
+				}
 			}
-			// Устанавливаем наше новое событие в список событий
-			::__awh_loop__->events.push_back(::move(event));
+			// Если события для сокета не установлены
+			if(ret.first->second.events == AWH_NONE){
+				// Выделяем новое событие
+				::__awh_loop__->change.push_back((struct kevent){});
+				// Устанавливаем событие но отключаем его
+				EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &ret.first->second);
+			}
+			// Уменьшаем количество активных сокетов
+			::__awh_loop__->count++;
 			// Устанавливаем соответствие идентификатора сокету
 			return ::__awh_ids__.emplace(sock, id).second;
 		#endif
@@ -2098,7 +2330,7 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Socket %d with ID=%d could not be added to the event database loop", __PRETTY_FUNCTION__, std::make_tuple(sock, id, events), log_t::flag_t::WARNING, sock, id);
+			this->_log->debug("Socket %d with ID=%d could not be added to the event database loop", __PRETTY_FUNCTION__, std::make_tuple(id, sock, events), log_t::flag_t::WARNING, sock, id);
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2217,7 +2449,7 @@ bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec
 				// Если уведомитель инициализирован правильно
 				if(sock != INVALID_SOCKET)
 					// Выполняем отслеживание сокета на чтение
-					return this->add(id, sock, AWH_READ | AWH_STREAM);
+					return this->add(id, sock, AWH_STREAM);
 			}
 		// Если нам передали для установки событие для сетевого сокета
 		} else {
@@ -2267,46 +2499,77 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 	 * Для операционной системы Sun Solaris
 	 */
 	#if __sun__
-		// Если активированна поддержка /dev/poll
-		if(!::__awh_event_ports__){
+		// Если активирована поддержка Event Ports
+		if(::__awh_event_ports__){
 			// Выполняем получение объекта Event Loop
-			EventLoop2 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-			// Если перед началом работы необходимо зафиксировать изменения
-			if(!loop->events.empty() && loop->commit){
+			EventLoop1 * loop = dynamic_cast <EventLoop1 *> (::__awh_loop__.get());
+			// Если необходимо выполнить переинициализацию списка событий
+			if(loop->commit){
 				// Снимаем флаг фиксации изменений
 				loop->commit = false;
-				// Выполняем блокировку потока
-				const lock_guard lock(::__awh_main_mtx__);
-				// Получаем размер записываемых данных
-				const size_t size = (sizeof(struct pollfd) * loop->events.size());
-				// Отправляем ядру операционной системы только активные сокеты
-				if(::write(loop->wfd, &loop->events[0], size) != size){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(max, msec), log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
+				// Выполняем очистку списка доступных событий
+				loop->events.clear();
+				// Если установлено количество активных событий
+				if(loop->count > 0)
+					// Выполняем реализацию нового списка доступных соыбтий
+					loop->events.resize(loop->count + 128);
+			}
+		// Если активированна поддержка /dev/poll
+		} else {
+			// Выполняем получение объекта Event Loop
+			EventLoop2 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
+			// Если необходимо выполнить переинициализацию списка событий
+			if(loop->commit){
+				// Снимаем флаг фиксации изменений
+				loop->commit = false;
+				// Если перед началом работы необходимо зафиксировать изменения
+				if(!loop->events.empty()){
+					// Получаем размер записываемых данных
+					const size_t size = (sizeof(struct pollfd) * loop->events.size());
+					// Отправляем ядру операционной системы только активные сокеты
+					if(::write(loop->wfd, &loop->events[0], size) != size){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(max, msec), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
 				}
 			}
+		}
+	/**
+	 * Для операционной системы Linux
+	 */
+	#elif __linux__
+		// Если необходимо выполнить переинициализацию списка событий
+		if(::__awh_loop__->commit){
+			// Снимаем флаг фиксации изменений
+			::__awh_loop__->commit = false;
+			// Выполняем очистку списка доступных событий
+			::__awh_loop__->events.clear();
+			// Если установлено количество активных событий
+			if(::__awh_loop__->count > 0)
+				// Выполняем реализацию нового списка доступных соыбтий
+				::__awh_loop__->events.resize(::__awh_loop__->count + 128);
 		}
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Если в базе событий есть добавленные сокеты
-		if(!::__awh_loop__->events.empty()){
+		if(!::__awh_loop__->change.empty()){
 			// Выполняем блокировку потока
 			const lock_guard lock(::__awh_main_mtx__);
 			// Выполняем изменение параметров события
-			if(::kevent(::__awh_loop__->kq, &::__awh_loop__->events[0], ::__awh_loop__->events.size(), nullptr, 0, nullptr) == INVALID_SOCKET){
+			if(::kevent(::__awh_loop__->kq, &::__awh_loop__->change[0], ::__awh_loop__->change.size(), nullptr, 0, nullptr) == INVALID_SOCKET){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2321,6 +2584,14 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
+			// Выполняем очистку временного списка событий
+			::__awh_loop__->change.clear();
+			// Выполняем очистку списка доступных событий
+			::__awh_loop__->events.clear();
+			// Если установлено количество активных событий
+			if(::__awh_loop__->count > 0)
+				// Выполняем реализацию нового списка доступных соыбтий
+				::__awh_loop__->events.resize(::__awh_loop__->count);
 		}
 	#endif
 	/**
@@ -2354,10 +2625,10 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 			const SOCKET sock = ::__awh_loop__->sockets[offset];
 			// Если сокет соответствует таймеру
 			if(sock == ::__awh_timer__){
-				// Получаем идентификатор таймера
-				events[0].id = this->_watch.event();
 				// Устанавливаем событие Таймера
 				events[0].events = AWH_TIMER;
+				// Получаем идентификатор таймера
+				events[0].id = this->_watch.event();
 				// Выполняем блокировку потока
 				const lock_guard lock(::__awh_main_mtx__);
 				// Выполняем проверку является ли таймер персистентным
@@ -2428,17 +2699,510 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 	 * Для операционной системы Sun Solaris
 	 */
 	#elif __sun__
-
+		// Если активирована поддержка Event Ports
+		if(::__awh_event_ports__){
+			// Выполняем получение объекта Event Loop
+			EventLoop1 * loop = dynamic_cast <EventLoop1 *> (::__awh_loop__.get());
+			// Если у нас есть сокеты ожидающие получения событий
+			if(loop->count > 0){
+				// Создаём объект таймаута
+				timespec_t ts, * tsp = nullptr;
+				// Если установлено время ожидания
+				if(msec >= 0){
+					// Устанавливаем количество секунд
+					ts.tv_sec = (msec / 1000);
+					// Устанавливаем количество наносекунд
+					ts.tv_nsec = ((msec % 1000) * 1000000);
+					// Активируем параметры таймера
+					tsp = &ts;
+				}
+				// Текущее количество активных сокетов
+				uint32_t count = loop->count;
+				// Выполняем опрос ядра на наличие событий сокетов
+				if((::port_getn(loop->wfd, &loop->events[0], loop->count + 128, &count, tsp) == INVALID_SOCKET) && (count == 0)){
+					// Если у нас просто вышло время
+					if(errno == ETIME)
+						// Устанавливаем событие таймаута
+						events[0].events = AWH_TIMEOUT;
+					// Если мы получили другую ошибку
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(max, msec), log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+						// Устанавливаем событие ошибки
+						events[0].events = AWH_ERROR;
+					}
+					// Выводим значение ошибки
+					return 1;
+				}
+				// Сетевой сокет событие которого мы поймали
+				SOCKET sock = INVALID_SOCKET;
+				// Смещение в буфере событий и флаги текущих событий
+				uint32_t offset = 0, revents = 0;
+				// Объект пира который относится к событию
+				poll_t::event_t * event = nullptr;
+				// Выполняем перебор всех полученных событий
+				for(uint32_t i = 0; i < count; i++){
+					// Если мы получили событие сокета
+					if(loop->events[i].portev_source == PORT_SOURCE_FD){
+						// Получаем сетевой сокет
+						sock = loop->events[i].portev_object;
+						// Если сокет соответствует таймеру
+						if(sock == ::__awh_timer__){
+							// Устанавливаем событие Таймера
+							events[offset].events = AWH_TIMER;
+							// Получаем идентификатор таймера
+							events[offset].id = this->_watch.event();
+							// Выполняем блокировку потока
+							const lock_guard lock(::__awh_main_mtx__);
+							// Выполняем проверку является ли таймер персистентным
+							auto i = loop->peers.find(events[offset].id);
+							// Если мы нашли нужный нам таймер
+							if(i != loop->peers.end()){
+								// Если таймер является персистентным
+								if(i->second.events & AWH_INTERVAL){
+									// Устанавливаем событие таймера как Интервал
+									events[offset].events = AWH_INTERVAL;
+									// Выполняем активацию таймера на указанное время
+									this->_watch.wait(i->first, i->second.id);
+								// Если таймер является обычным
+								} else {
+									// Выполняем остановку работы таймера
+									this->_watch.away(i->first);
+									// Выполняем удаление таймера
+									loop->peers.erase(i);
+								}
+							}
+							// Увеличиваем количество полученных событий
+							offset++;
+						// Если событие не является таймером
+						} else {
+							// Выполняем получение пира к которому относится событие
+							event = reinterpret_cast <poll_t::event_t *> (loop->events[i].portev_user);
+							// Если пир события не получен, значит пир уже удалён
+							if(event == nullptr)
+								// Пропускаем событие
+								continue;
+							// Устанавливаем идентификатор события
+							events[offset].id = event->id;
+							// Если событие является потоком
+							if(event->events & AWH_STREAM)
+								// Заменяем флаг события
+								events[offset].events = AWH_STREAM;
+							// Если мы получили обычное событие
+							else {
+								// Получаем события сетевого сокета
+								revents = loop->events[i].portev_events;
+								// Выполняем сброс событий
+								events[offset].events = AWH_NONE;
+								// Если мы детектировали закрытие подключения
+								if((revents & POLLHUP) || (revents & POLLNVAL))
+									// Устанавливаем флаг события
+									events[offset].events |= AWH_CLOSE;
+								// Если мы детектировали событие готовности сокета на чтение данных
+								if(revents & POLLIN)
+									// Устанавливаем флаг события
+									events[offset].events |= AWH_READ;
+								// Если мы детектировали событие готовности сокета на запись данных
+								if(revents & POLLOUT)
+									// Устанавливаем флаг события
+									events[offset].events |= AWH_WRITE;
+								// Если мы детектировали наличие ошибки
+								if(revents & POLLERR)
+									// Устанавливаем флаг события
+									events[offset].events |= AWH_ERROR;
+							}
+							// Увеличиваем количество полученных событий
+							offset++;
+						}
+					}
+				}
+				// Выводим результат
+				return offset;
+			}
+		// Если активированна поддержка /dev/poll
+		} else {
+			// Выполняем получение объекта Event Loop
+			EventLoop2 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
+			// Если перед началом работы необходимо зафиксировать изменения
+			if(!loop->events.empty()){
+				// Устанавливаем время ожидания событий в миллисекундах
+				loop->dop.dp_timeout = msec;
+				// Устанавливаем список опрашиваемых событий
+				loop->dop.dp_fds = &loop->events[0];
+				// Устанавливаем количество опрашиваемых событий
+				loop->dop.dp_nfds = loop->events.size();
+				// Выполняем ожидание получения событий сокета
+				int32_t count = ::ioctl(loop->wfd, DP_POLL, &loop->dop);
+				// Если события не получены
+				if(count <= 0){
+					// Если у нас просто вышло время
+					if(count == 0)
+						// Устанавливаем событие таймаута
+						events[0].events = AWH_TIMEOUT;
+					// Если мы получили другую ошибку
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(max, msec), log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+						// Устанавливаем событие ошибки
+						events[0].events = AWH_ERROR;
+					}
+					// Выводим значение ошибки
+					return 1;
+				}
+				// Сетевой сокет событие которого мы поймали
+				SOCKET sock = INVALID_SOCKET;
+				// Смещение в буфере событий и флаги текущих событий
+				uint32_t offset = 0, revents = 0;
+				// Выполняем перебор всех полученных событий
+				for(int32_t i = 0; i < count; i++){
+					// Получаем сетевой сокет
+					sock = loop->dop.dp_fds[i].fd;
+					// Если сокет соответствует таймеру
+					if(sock == ::__awh_timer__){
+						// Устанавливаем событие Таймера
+						events[offset].events = AWH_TIMER;
+						// Получаем идентификатор таймера
+						events[offset].id = this->_watch.event();
+						// Выполняем блокировку потока
+						const lock_guard lock(::__awh_main_mtx__);
+						// Выполняем проверку является ли таймер персистентным
+						auto i = loop->timers.find(events[0].id);
+						// Если мы нашли нужный нам таймер
+						if(i != loop->timers.end()){
+							// Если таймер является персистентным
+							if(i->second.second){
+								// Устанавливаем событие таймера как Интервал
+								events[0].events = AWH_INTERVAL;
+								// Выполняем активацию таймера на указанное время
+								this->_watch.wait(i->first, i->second.first);
+							// Если таймер является обычным
+							} else {
+								// Выполняем остановку работы таймера
+								this->_watch.away(i->first);
+								// Выполняем удаление таймера
+								loop->timers.erase(i);
+							}
+						}
+						// Увеличиваем количество полученных событий
+						offset++;
+					// Если событие не является таймером
+					} else {
+						// Получаем события сетевого сокета
+						revents = loop->dop.dp_fds[i].revents;
+						// Если сокет давным-давно уже закрыт
+						if(revents == 0)
+							// Не добавляем в результат
+							continue;
+						// Получаем объект события
+						poll_t::event_t & event = loop->peers[i];
+						// Устанавливаем идентификатор события
+						events[offset].id = event->id;
+						// Если событие является потоком
+						if(event->events & AWH_STREAM)
+							// Заменяем флаг события
+							events[offset].events = AWH_STREAM;
+						// Если мы получили обычное событие
+						else {
+							// Выполняем сброс событий
+							events[offset].events = AWH_NONE;
+							// Если мы детектировали закрытие подключения
+							if((revents & POLLHUP) || (revents & POLLNVAL))
+								// Устанавливаем флаг события
+								events[offset].events |= AWH_CLOSE;
+							// Если мы детектировали событие готовности сокета на чтение данных
+							if(revents & POLLIN)
+								// Устанавливаем флаг события
+								events[offset].events |= AWH_READ;
+							// Если мы детектировали событие готовности сокета на запись данных
+							if(revents & POLLOUT)
+								// Устанавливаем флаг события
+								events[offset].events |= AWH_WRITE;
+							// Если мы детектировали наличие ошибки
+							if(revents & POLLERR)
+								// Устанавливаем флаг события
+								events[offset].events |= AWH_ERROR;
+						}
+						// Увеличиваем количество полученных событий
+						offset++;
+					}
+				}
+				// Выводим результат
+				return offset;
+			}
+		}
 	/**
 	 * Для операционной системы Linux
 	 */
 	#elif __linux__
-
+		// Если у нас есть сокеты ожидающие получения событий
+		if(::__awh_loop__->count > 0){
+			// Текущее количество активных сокетов
+			int32_t count = 0;
+			/**
+			 * Выполняем проверку событий для сокетов
+			 */
+			do {
+				// Выполняем опрос ядра на наличие событий сокетов
+				count = ::epoll_wait(::__awh_loop__->efd, &::__awh_loop__->events[0], ::__awh_loop__->count + 128, msec);
+			/**
+			 * Если необходимо повторить проверку
+			 */
+			} while((count == INVALID_SOCKET) && (errno == EINTR));
+			// Если мы не получили событий
+			if(count <= 0){
+				// Если у нас просто вышло время
+				if(count == 0)
+					// Устанавливаем событие таймаута
+					events[0].events = AWH_TIMEOUT;
+				// Если мы получили другую ошибку
+				else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(max, msec), log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+					// Устанавливаем событие ошибки
+					events[0].events = AWH_ERROR;
+				}
+				// Выводим значение ошибки
+				return 1;
+			}
+			// Сетевой сокет событие которого мы поймали
+			SOCKET sock = INVALID_SOCKET;
+			// Смещение в буфере событий и флаги текущих событий
+			uint32_t offset = 0, revents = 0;
+			// Объект пира который относится к событию
+			poll_t::event_t * event = nullptr;
+			// Выполняем перебор всех полученных событий
+			for(int32_t i = 0; i < count; i++){
+				// Получаем сетевой сокет
+				sock = ::__awh_loop__->events[i].data.fd;
+				// Если сокет соответствует таймеру
+				if(sock == ::__awh_timer__){
+					// Устанавливаем событие Таймера
+					events[offset].events = AWH_TIMER;
+					// Получаем идентификатор таймера
+					events[offset].id = this->_watch.event();
+					// Выполняем блокировку потока
+					const lock_guard lock(::__awh_main_mtx__);
+					// Выполняем проверку является ли таймер персистентным
+					auto i = ::__awh_loop__->peers.find(events[offset].id);
+					// Если мы нашли нужный нам таймер
+					if(i != ::__awh_loop__->peers.end()){
+						// Если таймер является персистентным
+						if(i->second.events & AWH_INTERVAL){
+							// Устанавливаем событие таймера как Интервал
+							events[offset].events = AWH_INTERVAL;
+							// Выполняем активацию таймера на указанное время
+							this->_watch.wait(i->first, i->second.id);
+						// Если таймер является обычным
+						} else {
+							// Выполняем остановку работы таймера
+							this->_watch.away(i->first);
+							// Выполняем удаление таймера
+							::__awh_loop__->peers.erase(i);
+						}
+					}
+					// Увеличиваем количество полученных событий
+					offset++;
+				// Если событие не является таймером
+				} else {
+					// Выполняем получение пира к которому относится событие
+					event = reinterpret_cast <poll_t::event_t *> (::__awh_loop__->events[i].data.ptr);
+					// Если пир события не получен, значит пир уже удалён
+					if(event == nullptr)
+						// Пропускаем событие
+						continue;
+					// Устанавливаем идентификатор события
+					events[offset].id = event->id;
+					// Если событие является потоком
+					if(event->events & AWH_STREAM)
+						// Заменяем флаг события
+						events[offset].events = AWH_STREAM;
+					// Если мы получили обычное событие
+					else {
+						// Получаем события сетевого сокета
+						revents = ::__awh_loop__->events[i].events;
+						// Выполняем сброс событий
+						events[offset].events = AWH_NONE;
+						// Если мы детектировали закрытие подключения
+						if((revents & EPOLLHUP) || (revents & EPOLLNVAL))
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_CLOSE;
+						// Если мы детектировали событие готовности сокета на чтение данных
+						if(revents & EPOLLIN)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_READ;
+						// Если мы детектировали событие готовности сокета на запись данных
+						if(revents & EPOLLOUT)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_WRITE;
+						// Если мы детектировали наличие ошибки
+						if(revents & EPOLLERR)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_ERROR;
+					}
+					// Увеличиваем количество полученных событий
+					offset++;
+				}
+			}
+			// Выводим результат
+			return offset;
+		}
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-
+		// Если у нас есть сокеты ожидающие получения событий
+		if(::__awh_loop__->count > 0){
+			// Создаём объект таймаута
+			struct timespec ts, * tsp = nullptr;
+			// Если установлено время ожидания
+			if(msec >= 0){
+				// Устанавливаем количество секунд
+				ts.tv_sec = (msec / 1000);
+				// Устанавливаем количество наносекунд
+				ts.tv_nsec = ((msec % 1000) * 1000000);
+				// Активируем параметры таймера
+				tsp = &ts;
+			}
+			// Выполняем опрос ядра на наличие событий сокетов
+			int32_t count = ::kevent(::__awh_loop__->kq, nullptr, 0, &::__awh_loop__->events[0], ::__awh_loop__->count, tsp);
+			// Если мы не получили событий
+			if(count <= 0){
+				// Если у нас просто вышло время
+				if(count == 0)
+					// Устанавливаем событие таймаута
+					events[0].events = AWH_TIMEOUT;
+				// Если мы получили другую ошибку
+				else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(max, msec), log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+					// Устанавливаем событие ошибки
+					events[0].events = AWH_ERROR;
+				}
+				// Выводим значение ошибки
+				return 1;
+			}
+			// Смещение в буфере событий
+			uint32_t offset = 0;
+			// Объект пира который относится к событию
+			poll_t::event_t * event = nullptr;
+			// Выполняем перебор всех полученных событий
+			for(int32_t i = 0; i < count; i++){
+				// Получаем текущее значение события
+				struct kevent & ev = ::__awh_loop__->events[i];
+				// Выполняем получение пира к которому относится событие
+				event = reinterpret_cast <poll_t::event_t *> (ev.udata);
+				// Если пир события не получен, значит пир уже удалён
+				if(event == nullptr)
+					// Пропускаем событие
+					continue;
+				// Если сокет соответствует таймеру
+				if(event->events & AWH_TIMER){
+					// Устанавливаем событие Таймера
+					events[offset].events = AWH_TIMER;
+					// Получаем идентификатор таймера
+					events[offset].id = this->_watch.event();
+					// Выполняем блокировку потока
+					const lock_guard lock(::__awh_main_mtx__);
+					// Выполняем проверку является ли таймер персистентным
+					auto i = ::__awh_loop__->peers.find(events[offset].id);
+					// Если мы нашли нужный нам таймер
+					if(i != ::__awh_loop__->peers.end()){
+						// Если таймер является персистентным
+						if(i->second.events & AWH_INTERVAL){
+							// Устанавливаем событие таймера как Интервал
+							events[offset].events = AWH_INTERVAL;
+							// Выполняем активацию таймера на указанное время
+							this->_watch.wait(i->first, i->second.id);
+						// Если таймер является обычным
+						} else {
+							// Выполняем остановку работы таймера
+							this->_watch.away(i->first);
+							// Выполняем удаление таймера
+							::__awh_loop__->peers.erase(i);
+						}
+					}
+					// Увеличиваем количество полученных событий
+					offset++;
+				// Если событие не является таймером
+				} else {
+					// Устанавливаем идентификатор события
+					events[offset].id = event->id;
+					// Если событие является потоком
+					if(event->events & AWH_STREAM)
+						// Заменяем флаг события
+						events[offset].events = AWH_STREAM;
+					// Если мы получили обычное событие
+					else {
+						// Выполняем сброс событий
+						events[offset].events = AWH_NONE;
+						// Если мы детектировали закрытие подключения
+						if(ev.flags & EV_EOF)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_CLOSE;
+						// Если мы детектировали событие готовности сокета на чтение данных
+						if(ev.filter == EVFILT_READ)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_READ;
+						// Если мы детектировали событие готовности сокета на запись данных
+						if(ev.filter == EVFILT_WRITE)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_WRITE;
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR)
+							// Устанавливаем флаг события
+							events[offset].events |= AWH_ERROR;
+					}
+					// Увеличиваем количество полученных событий
+					offset++;
+				}
+			}
+			// Выводим результат
+			return offset;
+		}
 	#endif
 	// Если время таймаута передано
 	if(msec > 0)
