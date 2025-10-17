@@ -1723,21 +1723,37 @@ bool awh::Reactor::modify(const uint32_t id, const SOCKET sock, const uint8_t ev
 					if((result = (id == ::__awh_loop__->pollers[i].id))){
 						// Сонимаем регистрацию для события
 						::WSACloseEvent(::__awh_loop__->events[i]);
+						// Получаем текущее значение поллера
+						react_t::poller_t & poller = ::__awh_loop__->pollers[i];
+						// Если было установлено событие готовности на чтение, а сейчас его необходимо отключить
+						if(static_cast <bool> (poller.events & AWH_READ) && !static_cast <bool> (events & AWH_READ))
+							// Снимаем флаг ожидания готовности на чтение
+							poller.events ^= AWH_READ;
+						// Если события готовности на чтения небыло установлено, а сейчас требуется установить
+						else if(!static_cast <bool> (poller.events & AWH_READ) && static_cast <bool> (events & AWH_READ))
+							// Устанавливаем флаг ожидания готовности на чтение
+							poller.events |= AWH_READ;
+						// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
+						if(static_cast <bool> (poller.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE))
+							// Снимаем флаг ожидания готовности на запись
+							poller.events ^= AWH_WRITE;
+						// Если события готовности на запись небыло установлено, а сейчас требуется установить
+						else if(!static_cast <bool> (poller.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE))
+							// Устанавливаем флаг готовности на запись
+							poller.events |= AWH_WRITE;
 						// Опции событий для установки
 						long options = AWH_NONE;
 						// Если установлен флаг ожидания получения данных
-						if(events & AWH_READ)
+						if(poller.events & AWH_READ)
 							// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
 							options |= (FD_READ | FD_CLOSE | FD_ACCEPT);
 						// Если сокет не активирован на прослушку
 						if(!this->_socket.listen(sock)){
 							// Если установлен флаг ожидания сокета на запись
-							if(events & AWH_WRITE)
+							if(poller.events & AWH_WRITE)
 								// Ставим флаги ожидания готовности на запись
 								options |= (FD_WRITE | FD_CONNECT);
 						}
-						// Устанавливаем новое значение событий
-						::__awh_loop__->pollers[i].events = events;
 						// Если события необходимо установить
 						if(options != AWH_NONE){
 							// Выполняем активацию работы таймера
@@ -1781,21 +1797,35 @@ bool awh::Reactor::modify(const uint32_t id, const SOCKET sock, const uint8_t ev
 					if((result = (i != loop->pollers.end()))){
 						// Выполняем деактивацию события сокета
 						::port_dissociate(loop->wfd, PORT_SOURCE_FD, sock);
+						// Если было установлено событие готовности на чтение, а сейчас его необходимо отключить
+						if(static_cast <bool> (i->second.events & AWH_READ) && !static_cast <bool> (events & AWH_READ))
+							// Снимаем флаг ожидания готовности на чтение
+							i->second.events ^= AWH_READ;
+						// Если события готовности на чтения небыло установлено, а сейчас требуется установить
+						else if(!static_cast <bool> (i->second.events & AWH_READ) && static_cast <bool> (events & AWH_READ))
+							// Устанавливаем флаг ожидания готовности на чтение
+							i->second.events |= AWH_READ;
+						// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
+						if(static_cast <bool> (i->second.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE))
+							// Снимаем флаг ожидания готовности на запись
+							i->second.events ^= AWH_WRITE;
+						// Если события готовности на запись небыло установлено, а сейчас требуется установить
+						else if(!static_cast <bool> (i->second.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE))
+							// Устанавливаем флаг готовности на запись
+							i->second.events |= AWH_WRITE;
 						// Опции событий для установки
 						int32_t options = AWH_NONE;
 						// Если установлен флаг ожидания получения данных
-						if(events & AWH_READ)
+						if(i->second.events & AWH_READ)
 							// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
 							options |= (POLLIN | POLLERR | POLLHUP);
 						// Если сокет не активирован на прослушку
 						if(!this->_socket.listen(sock)){
 							// Если установлен флаг ожидания сокета на запись
-							if(events & AWH_WRITE)
+							if(i->second.events & AWH_WRITE)
 								// Ставим флаг ожидания готовности на запись
 								options |= POLLOUT;
 						}
-						// Устанавливаем тип события
-						i->second.events = events;
 						// Если события необходимо установить
 						if(options != AWH_NONE){
 							// Выполняем активацию отслеживания событий для сокета
@@ -1830,25 +1860,41 @@ bool awh::Reactor::modify(const uint32_t id, const SOCKET sock, const uint8_t ev
 						if((result = (id == loop->pollers[i].id))){
 							// Закрываем старый дескриптор
 							::close(loop->wfd);
+							// Получаем текущее значение поллера
+							react_t::poller_t & poller = loop->pollers[i];
+							// Если было установлено событие готовности на чтение, а сейчас его необходимо отключить
+							if(static_cast <bool> (poller.events & AWH_READ) && !static_cast <bool> (events & AWH_READ))
+								// Снимаем флаг ожидания готовности на чтение
+								poller.events ^= AWH_READ;
+							// Если события готовности на чтения небыло установлено, а сейчас требуется установить
+							else if(!static_cast <bool> (poller.events & AWH_READ) && static_cast <bool> (events & AWH_READ))
+								// Устанавливаем флаг ожидания готовности на чтение
+								poller.events |= AWH_READ;
+							// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
+							if(static_cast <bool> (poller.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE))
+								// Снимаем флаг ожидания готовности на запись
+								poller.events ^= AWH_WRITE;
+							// Если события готовности на запись небыло установлено, а сейчас требуется установить
+							else if(!static_cast <bool> (poller.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE))
+								// Устанавливаем флаг готовности на запись
+								poller.events |= AWH_WRITE;
 							// Получаем параметры события
 							struct epoll_event & event = loop->events[i];
 							// Выполняем сброс всех событий
 							event.events = AWH_NONE;
 							// Если установлен флаг ожидания получения данных
-							if(events & AWH_READ)
+							if(poller.events & AWH_READ)
 								// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
 								event.events |= (POLLIN | POLLERR | POLLHUP);
 							// Если сокет не активирован на прослушку
 							if(!this->_socket.listen(sock)){
 								// Если установлен флаг ожидания сокета на запись
-								if(events & AWH_WRITE)
+								if(poller.events & AWH_WRITE)
 									// Ставим флаг ожидания готовности на запись
 									event.events |= POLLOUT;
 							}
 							// Устанавливаем флаг фиксации изменений
 							loop->commit = true;
-							// Устанавливаем тип события
-							loop->pollers[i].events = events;
 							// Выполняем инициализацию /dev/poll
 							if((loop->wfd = ::open("/dev/poll", O_RDWR, 0)) == INVALID_SOCKET){
 								/**
@@ -1884,23 +1930,37 @@ bool awh::Reactor::modify(const uint32_t id, const SOCKET sock, const uint8_t ev
 				if((result = (i != ::__awh_loop__->pollers.end()))){
 					// Выполняем деактивацию события сокета
 					::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_DEL, sock, nullptr);
+					// Если было установлено событие готовности на чтение, а сейчас его необходимо отключить
+					if(static_cast <bool> (i->second.events & AWH_READ) && !static_cast <bool> (events & AWH_READ))
+						// Снимаем флаг ожидания готовности на чтение
+						i->second.events ^= AWH_READ;
+					// Если события готовности на чтения небыло установлено, а сейчас требуется установить
+					else if(!static_cast <bool> (i->second.events & AWH_READ) && static_cast <bool> (events & AWH_READ))
+						// Устанавливаем флаг ожидания готовности на чтение
+						i->second.events |= AWH_READ;
+					// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
+					if(static_cast <bool> (i->second.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE))
+						// Снимаем флаг ожидания готовности на запись
+						i->second.events ^= AWH_WRITE;
+					// Если события готовности на запись небыло установлено, а сейчас требуется установить
+					else if(!static_cast <bool> (i->second.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE))
+						// Устанавливаем флаг готовности на запись
+						i->second.events |= AWH_WRITE;
 					// Выполняем создание объекта события
 					struct epoll_event event = {0};
 					// Выполняем сброс всех событий
 					event.events = AWH_NONE;
 					// Если установлен флаг ожидания получения данных
-					if(events & AWH_READ)
+					if(i->second.events & AWH_READ)
 						// Ставим флаг ожидания получения данных, появления ошибки или закрытия подключения
 						event.events |= (EPOLLIN | EPOLLERR | EPOLLHUP);
 					// Если сокет не активирован на прослушку
 					if(!this->_socket.listen(sock)){
 						// Если установлен флаг ожидания сокета на запись
-						if(events & AWH_WRITE)
+						if(i->second.events & AWH_WRITE)
 							// Ставим флаг ожидания готовности на запись
 							event.events |= EPOLLOUT;
 					}
-					// Устанавливаем тип события
-					i->second.events = events;
 					// Если события необходимо установить
 					if(event.events != AWH_NONE){
 						// Выполняем установку указателя на основное событие
@@ -1948,18 +2008,21 @@ bool awh::Reactor::modify(const uint32_t id, const SOCKET sock, const uint8_t ev
 						// Выполняем активацию события готовности на чтение
 						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_READ, EV_ENABLE, 0, 0, &i->second);
 					}
-					// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
-					if(static_cast <bool> (i->second.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE)){
-						// Выполняем добавление нового события
-						::__awh_loop__->change.push_back((struct kevent){});
-						// Выполняем отключение события готовности на запись
-						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_DISABLE, 0, 0, &i->second);
-					// Если события готовности на запись небыло установлено, а сейчас требуется установить
-					} else if(!static_cast <bool> (i->second.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE)) {
-						// Выполняем добавление нового события
-						::__awh_loop__->change.push_back((struct kevent){});
-						// Выполняем активацию события готовности на запись
-						EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_ENABLE, 0, 0, &i->second);
+					// Если сокет не активирован на прослушку
+					if(!this->_socket.listen(sock)){
+						// Если было установлено событие готовности на запись, а сейчас его необходимо отключить
+						if(static_cast <bool> (i->second.events & AWH_WRITE) && !static_cast <bool> (events & AWH_WRITE)){
+							// Выполняем добавление нового события
+							::__awh_loop__->change.push_back((struct kevent){});
+							// Выполняем отключение события готовности на запись
+							EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_DISABLE, 0, 0, &i->second);
+						// Если события готовности на запись небыло установлено, а сейчас требуется установить
+						} else if(!static_cast <bool> (i->second.events & AWH_WRITE) && static_cast <bool> (events & AWH_WRITE)) {
+							// Выполняем добавление нового события
+							::__awh_loop__->change.push_back((struct kevent){});
+							// Выполняем активацию события готовности на запись
+							EV_SET(&::__awh_loop__->change.back(), sock, EVFILT_WRITE, EV_ENABLE, 0, 0, &i->second);
+						}
 					}
 					// Устанавливаем тип события
 					i->second.events = events;
