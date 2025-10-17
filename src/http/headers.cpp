@@ -120,7 +120,7 @@ awh::Headers::Iterator & awh::Headers::Iterator::operator ++ () noexcept {
  */
 bool awh::Headers::Iterator::operator == (const iterator_t & other) const noexcept {
 	// Выводим результат
-	return (this->_it->first == other._it->first);
+	return (this->_it == other._it);
 }
 /**
  * @brief Оператора сравнения несоответствия итератора
@@ -130,7 +130,7 @@ bool awh::Headers::Iterator::operator == (const iterator_t & other) const noexce
  */
 bool awh::Headers::Iterator::operator != (const iterator_t & other) const noexcept {
 	// Выводим результат
-	return (this->_it->first != other._it->first);
+	return (this->_it != other._it);
 }
 /**
  * @brief Метод генерации идентификатора заголовка

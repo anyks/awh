@@ -1754,7 +1754,7 @@ void awh::server::Proxy::addAltSvc(const string & origin, const string & field) 
  *
  * @param origins список альтернативных сервисов
  */
-void awh::server::Proxy::setAltSvc(const awh::headers_t & origins) noexcept {
+void awh::server::Proxy::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка разрешённых источников
 	this->_server.setAltSvc(origins);
 }

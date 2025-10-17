@@ -849,7 +849,7 @@ namespace awh {
 				 *
 				 * @param origins список альтернативных сервисов
 				 */
-				void setAltSvc(const awh::headers_t & origins) noexcept;
+				void setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * @brief Модуль установки настроек протокола HTTP/2
