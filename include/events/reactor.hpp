@@ -1,5 +1,5 @@
 /**
- * @file: poll.hpp
+ * @file: reactor.hpp
  * @date: 2025-10-14
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_EVENT_POLL_BASE__
-#define __AWH_EVENT_POLL_BASE__
+#ifndef __AWH_EVENT_REACTOR__
+#define __AWH_EVENT_REACTOR__
 
 /**
  * Стандартные модули
@@ -36,10 +36,10 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * @brief Класс движка Events Loop
+	 * @brief Класс реактора для модели Event Loop
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Poll {
+	typedef class AWH_SHARED_EXPORT Reactor {
 		public:
 			/**
 			 * Флаг событие не инициализированно
@@ -79,10 +79,10 @@ namespace awh {
 			static constexpr uint8_t AWH_STREAM = 0x80;
 		public:
 			/**
-			 * @brief Структура события
+			 * @brief Структура полера
 			 *
 			 */
-			typedef struct Event {
+			typedef struct Poller {
 				// Идентификатор сокета
 				uint32_t id;
 				// События сокета
@@ -91,8 +91,8 @@ namespace awh {
 				 * @brief Конструктор
 				 * 
 				 */
-				Event() noexcept : id(0), events(0) {}
-			} __attribute__((packed)) event_t;
+				Poller() noexcept : id(0), events(0) {}
+			} __attribute__((packed)) poller_t;
 		private:
 			// Объект работы с часами
 			watch_t _watch;
@@ -175,12 +175,12 @@ namespace awh {
 			/**
 			 * @brief Метод ожидания получения событий
 			 *
-			 * @param events список сработавших событий
-			 * @param max    максимальное количество ожидаемых событий
-			 * @param msec   время ожидания события в миллисекундах
-			 * @return       количество полученных событий
+			 * @param pollers список сработавших событий
+			 * @param max     максимальное количество ожидаемых событий
+			 * @param msec    время ожидания события в миллисекундах
+			 * @return        количество полученных событий
 			 */
-			uint32_t wait(event_t * events, const uint16_t max, const int32_t msec = -1) noexcept;
+			uint32_t wait(poller_t * pollers, const uint16_t max, const int32_t msec = -1) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
@@ -188,13 +188,13 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Poll(const fmk_t * fmk, const log_t * log) noexcept;
+			Reactor(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Poll() noexcept;
-	} poll_t;
+			~Reactor() noexcept;
+	} react_t;
 };
 
-#endif // __AWH_EVENT_POLL_BASE__
+#endif // __AWH_EVENT_REACTOR__

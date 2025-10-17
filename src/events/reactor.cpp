@@ -1,5 +1,5 @@
 /**
- * @file: poll.cpp
+ * @file: reactor.cpp
  * @date: 2025-10-14
  * @license: GPL-3.0
  *
@@ -85,7 +85,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <events/poll.hpp>
+#include <events/reactor.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -206,8 +206,8 @@ static uint64_t wid() noexcept {
 		vector <SOCKET> sockets;
 		// Список активных событий
 		vector <WSAEVENT> events;
-		// Список активных пиров
-		vector <awh::poll_t::event_t> peers;
+		// Список активных поллеров
+		vector <awh::react_t::poller_t> pollers;
 		// Список активных таймеров
 		unordered_map <uint32_t, pair <uint32_t, bool>> timers;
 		/**
@@ -244,8 +244,8 @@ static uint64_t wid() noexcept {
 		uint32_t count;
 		// Список активных событий
 		vector <port_event_t> events;
-		// Список активных пиров
-		unordered_map <uint32_t, awh::poll_t::event_t> peers;
+		// Список активных поллеров
+		unordered_map <uint32_t, awh::react_t::poller_t> pollers;
 		/**
 		 * @brief Конструктор
 		 *
@@ -261,8 +261,8 @@ static uint64_t wid() noexcept {
 		struct dvpoll dop;
 		// Список активных событий
 		vector <struct pollfd> events;
-		// Список активных пиров
-		vector <awh::poll_t::event_t> peers;
+		// Список активных поллеров
+		vector <awh::react_t::poller_t> pollers;
 		// Список активных таймеров
 		unordered_map <uint32_t, pair <uint32_t, bool>> timers;
 		/**
@@ -288,8 +288,8 @@ static uint64_t wid() noexcept {
 		std::atomic_bool commit;
 		// Список активных событий
 		vector <struct epoll_event> events;
-		// Список активных пиров
-		unordered_map <uint32_t, awh::poll_t::event_t> peers;
+		// Список активных поллеров
+		unordered_map <uint32_t, awh::react_t::poller_t> pollers;
 		/**
 		 * @brief Конструктор
 		 *
@@ -313,8 +313,8 @@ static uint64_t wid() noexcept {
 		vector <struct kevent> change;
 		// Список активных событий
 		vector <struct kevent> events;
-		// Список активных пиров
-		unordered_map <uint32_t, awh::poll_t::event_t> peers;
+		// Список активных поллеров
+		unordered_map <uint32_t, awh::react_t::poller_t> pollers;
 		/**
 		 * @brief Конструктор
 		 *
@@ -660,7 +660,7 @@ static void boostingNetwork([[maybe_unused]] const awh::fmk_t * fmk, const awh::
  *
  * @return результат инициализации
  */
-bool awh::Poll::init() noexcept {
+bool awh::Reactor::init() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard lock(::__awh_main_mtx__);
 	/**
@@ -921,10 +921,10 @@ bool awh::Poll::init() noexcept {
 		::__awh_loop__->events.push_back(::move(event));
 		// Выполняем установку сокета таймера
 		::__awh_loop__->sockets.push_back(::__awh_timer__);
-		// Выполняем установку пустого значения пира
-		::__awh_loop__->peers.push_back(poll_t::event_t{});
+		// Выполняем установку пустого значения поллера
+		::__awh_loop__->pollers.push_back(react_t::poller_t{});
 		// Устанавливаем тип события
-		::__awh_loop__->peers.back().events = AWH_TIMER;
+		::__awh_loop__->pollers.back().events = AWH_TIMER;
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
@@ -933,8 +933,8 @@ bool awh::Poll::init() noexcept {
 		if(::__awh_event_ports__){
 			// Выполняем получение объекта Event Loop
 			EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-			// Выполняем добавление пира
-			auto ret = loop->peers.emplace(0, poll_t::event_t{});
+			// Выполняем добавление поллера
+			auto ret = loop->pollers.emplace(0, react_t::poller_t{});
 			// Устанавливаем тип события
 			ret.first->second.events = AWH_TIMER;
 			// Выполняем активацию работы таймера
@@ -983,10 +983,10 @@ bool awh::Poll::init() noexcept {
 			loop->commit = true;
 			// Устанавливаем наше новое событие в список событий
 			loop->events.push_back(::move(event));
-			// Выполняем установку пустого значения пира
-			loop->peers.push_back(poll_t::event_t{});
+			// Выполняем установку пустого значения поллера
+			loop->pollers.push_back(react_t::poller_t{});
 			// Устанавливаем тип события
-			loop->peers.back().events = AWH_TIMER;
+			loop->pollers.back().events = AWH_TIMER;
 		}
 	/**
 	 * Для операционной системы Linux
@@ -1004,8 +1004,8 @@ bool awh::Poll::init() noexcept {
 		event.events |= EPOLLHUP;
 		// Устанавливаем файловый дескриптор таймера
 		event.data.fd = ::__awh_timer__;
-		// Выполняем добавление пира
-		auto ret = ::__awh_loop__->peers.emplace(0, poll_t::event_t{});
+		// Выполняем добавление поллера
+		auto ret = ::__awh_loop__->pollers.emplace(0, react_t::poller_t{});
 		// Устанавливаем тип события
 		ret.first->second.events = AWH_TIMER;
 		// Выполняем установку указателя на основное событие
@@ -1042,8 +1042,8 @@ bool awh::Poll::init() noexcept {
 	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Устанавливаем количество активных сокетов
 		::__awh_loop__->count = 1;
-		// Выполняем добавление пира
-		auto ret = ::__awh_loop__->peers.emplace(0, poll_t::event_t{});
+		// Выполняем добавление поллера
+		auto ret = ::__awh_loop__->pollers.emplace(0, react_t::poller_t{});
 		// Устанавливаем тип события
 		ret.first->second.events = AWH_TIMER;
 		// Устанавливаем наше новое событие в список событий
@@ -1061,7 +1061,7 @@ bool awh::Poll::init() noexcept {
  *
  * @return результат разрушения
  */
-bool awh::Poll::destroy() noexcept {
+bool awh::Reactor::destroy() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard lock(::__awh_main_mtx__);
 	// Если событийная модель ктивированна
@@ -1134,7 +1134,7 @@ bool awh::Poll::destroy() noexcept {
  * @param id идентификатор события
  * @return   данные уведомления
  */
-uint32_t awh::Poll::notifications(const uint32_t id) noexcept {
+uint32_t awh::Reactor::notifications(const uint32_t id) noexcept {
 	// Если данные для установки переданы и база событий инициализированна
 	if((id > 0) && (::__awh_loop__ != nullptr)){
 		// Если метод запущен в дочернем потоке
@@ -1190,7 +1190,7 @@ uint32_t awh::Poll::notifications(const uint32_t id) noexcept {
  * @param data данные уведомления для отправки
  * @return     результат выполнения уведомления
  */
-bool awh::Poll::notify(const uint32_t id, const uint32_t data) noexcept {
+bool awh::Reactor::notify(const uint32_t id, const uint32_t data) noexcept {
 	// Если данные для установки переданы и база событий инициализированна
 	if((id > 0) && (::__awh_loop__ != nullptr)){
 		// Если метод запущен в основном потоке
@@ -1248,7 +1248,7 @@ bool awh::Poll::notify(const uint32_t id, const uint32_t data) noexcept {
  * @param sock сетевой сокет для удаления
  * @return     результат удаления
  */
-bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
+bool awh::Reactor::del(const uint32_t id, const SOCKET sock) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные для установки переданы и база событий инициализированна
@@ -1269,12 +1269,12 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 				::__awh_loop__->timers.erase(i);
 			// Если событие не является таймером
 			} else {
-				// Объект найденного пира
-				poll_t::event_t * peer = nullptr;
-				// Выполняем перебор всего списка пиров
-				for(size_t i = 0; i < ::__awh_loop__->peers.size(); i++){
-					// Получаем текущее значение пира
-					peer = &::__awh_loop__->peers[i];
+				// Объект найденного поллера
+				react_t::poller_t * peer = nullptr;
+				// Выполняем перебор всего списка поллеров
+				for(size_t i = 0; i < ::__awh_loop__->pollers.size(); i++){
+					// Получаем текущее значение поллера
+					peer = &::__awh_loop__->pollers[i];
 					// Если мы нашли нужный нам идентификатор
 					if((result = (id == peer->id))){
 						// Выполняем очистку события сокета
@@ -1332,8 +1332,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 								}
 							}
 						}
-						// Выполняем удаление пира
-						::__awh_loop__->peers.erase(::__awh_loop__->peers.begin() + i);
+						// Выполняем удаление поллера
+						::__awh_loop__->pollers.erase(::__awh_loop__->pollers.begin() + i);
 						// Выходим из цикла
 						break;
 					}
@@ -1347,16 +1347,16 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 			if(::__awh_event_ports__){
 				// Выполняем получение объекта Event Loop
 				EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-				// Выполняем поиск нужного нам пира
-				auto i = loop->peers.find(id);
-				// Если нужный нам пир найден
-				if((result = (i != loop->peers.end()))){
+				// Выполняем поиск нужного нам поллера
+				auto i = loop->pollers.find(id);
+				// Если нужный нам поллер найден
+				if((result = (i != loop->pollers.end()))){
 					// Выполняем проверку является ли событие таймером
 					if((i->second.events & AWH_TIMER) || (i->second.events &  AWH_INTERVAL)){
 						// Выполняем остановку работы таймера
 						this->_watch.away(id);
-						// Выполняем удаление пира
-						loop->peers.erase(i);
+						// Выполняем удаление поллера
+						loop->pollers.erase(i);
 					// Если идентификатор принадлежит потоковому событию
 					} else if(i->second.events & AWH_STREAM) {
 						// Выполняем блокировку потока
@@ -1393,8 +1393,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 							loop->count--;
 							// Устанавливаем флаг фиксации изменений
 							loop->commit = true;
-							// Выполняем удаление пира
-							loop->peers.erase(i);
+							// Выполняем удаление поллера
+							loop->pollers.erase(i);
 						}
 					// Если сокет передан верно
 					} else if(sock != INVALID_SOCKET) {
@@ -1422,8 +1422,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 						loop->count--;
 						// Устанавливаем флаг фиксации изменений
 						loop->commit = true;
-						// Выполняем удаление пира
-						loop->peers.erase(i);
+						// Выполняем удаление поллера
+						loop->pollers.erase(i);
 					}
 				}
 			// Если активированна поддержка /dev/poll
@@ -1440,12 +1440,12 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 					loop->timers.erase(i);
 				// Если событие не является таймером
 				} else {
-					// Объект найденного пира
-					poll_t::event_t * peer = nullptr;
-					// Выполняем перебор всего списка пиров
-					for(size_t i = 0; i < loop->peers.size(); i++){
-						// Получаем текущее значение пира
-						peer = &loop->peers[i];
+					// Объект найденного поллера
+					react_t::poller_t * peer = nullptr;
+					// Выполняем перебор всего списка поллеров
+					for(size_t i = 0; i < loop->pollers.size(); i++){
+						// Получаем текущее значение поллера
+						peer = &loop->pollers[i];
 						// Если мы нашли нужный нам идентификатор
 						if((result = (id == peer->id))){
 							// Закрываем старый дескриптор
@@ -1467,8 +1467,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 							} else if(sock != INVALID_SOCKET)
 								// Выполняем удаление активного сокета
 								::__awh_ids__.erase(sock);
-							// Выполняем удаление пира
-							loop->peers.erase(loop->peers.begin() + i);
+							// Выполняем удаление поллера
+							loop->pollers.erase(loop->pollers.begin() + i);
 							// Выполняем инициализацию /dev/poll
 							if((loop->wfd = ::open("/dev/poll", O_RDWR, 0)) == INVALID_SOCKET){
 								/**
@@ -1505,16 +1505,16 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
-			// Выполняем поиск нужного нам пира
-			auto i = ::__awh_loop__->peers.find(id);
-			// Если нужный нам пир найден
-			if((result = (i != ::__awh_loop__->peers.end()))){
+			// Выполняем поиск нужного нам поллера
+			auto i = ::__awh_loop__->pollers.find(id);
+			// Если нужный нам поллер найден
+			if((result = (i != ::__awh_loop__->pollers.end()))){
 				// Выполняем проверку является ли событие таймером
 				if((i->second.events & AWH_TIMER) || (i->second.events &  AWH_INTERVAL)){
 					// Выполняем остановку работы таймера
 					this->_watch.away(id);
-					// Выполняем удаление пира
-					::__awh_loop__->peers.erase(i);
+					// Выполняем удаление поллера
+					::__awh_loop__->pollers.erase(i);
 				// Если идентификатор принадлежит потоковому событию
 				} else if(i->second.events & AWH_STREAM) {
 					// Выполняем блокировку потока
@@ -1551,8 +1551,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 						::__awh_loop__->count--;
 						// Устанавливаем флаг фиксации изменений
 						::__awh_loop__->commit = true;
-						// Выполняем удаление пира
-						::__awh_loop__->peers.erase(i);
+						// Выполняем удаление поллера
+						::__awh_loop__->pollers.erase(i);
 					}
 				// Если сокет передан верно
 				} else if(sock != INVALID_SOCKET) {
@@ -1580,24 +1580,24 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 					::__awh_loop__->count--;
 					// Устанавливаем флаг фиксации изменений
 					::__awh_loop__->commit = true;
-					// Выполняем удаление пира
-					::__awh_loop__->peers.erase(i);
+					// Выполняем удаление поллера
+					::__awh_loop__->pollers.erase(i);
 				}
 			}
 		/**
 		 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Выполняем поиск нужного нам пира
-			auto i = ::__awh_loop__->peers.find(id);
-			// Если нужный нам пир найден
-			if((result = (i != ::__awh_loop__->peers.end()))){
+			// Выполняем поиск нужного нам поллера
+			auto i = ::__awh_loop__->pollers.find(id);
+			// Если нужный нам поллер найден
+			if((result = (i != ::__awh_loop__->pollers.end()))){
 				// Выполняем проверку является ли событие таймером
 				if((i->second.events & AWH_TIMER) || (i->second.events &  AWH_INTERVAL)){
 					// Выполняем остановку работы таймера
 					this->_watch.away(id);
-					// Выполняем удаление пира
-					::__awh_loop__->peers.erase(i);
+					// Выполняем удаление поллера
+					::__awh_loop__->pollers.erase(i);
 				// Если идентификатор принадлежит потоковому событию
 				} else if(i->second.events & AWH_STREAM) {
 					// Выполняем блокировку потока
@@ -1620,8 +1620,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 						::__awh_ids__.erase(sock);
 						// Выполняем удаление уведомителя
 						::__awh_notifiers__.erase(j);
-						// Выполняем удаление пира
-						::__awh_loop__->peers.erase(i);
+						// Выполняем удаление поллера
+						::__awh_loop__->pollers.erase(i);
 					}
 				// Если сокет передан верно
 				} else if(sock != INVALID_SOCKET) {
@@ -1635,8 +1635,8 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
 					EV_SET(&::__awh_loop__->change[1], sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
 					// Выполняем удаление активного сокета
 					::__awh_ids__.erase(sock);
-					// Выполняем удаление пира
-					::__awh_loop__->peers.erase(i);
+					// Выполняем удаление поллера
+					::__awh_loop__->pollers.erase(i);
 				}
 			}
 		#endif
@@ -1669,7 +1669,7 @@ bool awh::Poll::del(const uint32_t id, const SOCKET sock) noexcept {
  * @param events модифицированные типы событий
  * @return       результат модификации
  */
-bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept {
+bool awh::Reactor::modify(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные для установки переданы и база событий инициализированна
@@ -1717,10 +1717,10 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
-				// Выполняем поск необходимого нам пира
-				for(uint32_t i = 0; i < ::__awh_loop__->peers.size(); i++){
-					// Если нужный нам пир найден
-					if((result = (id == ::__awh_loop__->peers[i].id))){
+				// Выполняем поск необходимого нам поллера
+				for(uint32_t i = 0; i < ::__awh_loop__->pollers.size(); i++){
+					// Если нужный нам поллер найден
+					if((result = (id == ::__awh_loop__->pollers[i].id))){
 						// Сонимаем регистрацию для события
 						::WSACloseEvent(::__awh_loop__->events[i]);
 						// Опции событий для установки
@@ -1737,7 +1737,7 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 								options |= (FD_WRITE | FD_CONNECT);
 						}
 						// Устанавливаем новое значение событий
-						::__awh_loop__->peers[i].events = events;
+						::__awh_loop__->pollers[i].events = events;
 						// Если события необходимо установить
 						if(options != AWH_NONE){
 							// Выполняем активацию работы таймера
@@ -1775,10 +1775,10 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 				if(::__awh_event_ports__){
 					// Выполняем получение объекта Event Loop
 					EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-					// Выполняем поск необходимого нам пира
-					auto i = loop->peers.find(id);
-					// Если нужный нам пир найден
-					if((result = (i != loop->peers.end()))){
+					// Выполняем поск необходимого нам поллера
+					auto i = loop->pollers.find(id);
+					// Если нужный нам поллер найден
+					if((result = (i != loop->pollers.end()))){
 						// Выполняем деактивацию события сокета
 						::port_dissociate(loop->wfd, PORT_SOURCE_FD, sock);
 						// Опции событий для установки
@@ -1824,10 +1824,10 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 				} else {
 					// Выполняем получение объекта Event Loop
 					EventLoop2 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-					// Выполняем поск необходимого нам пира
-					for(uint32_t i = 0; i < loop->peers.size(); i++){
-						// Если нужный нам пир найден
-						if((result = (id == loop->peers[i].id))){
+					// Выполняем поск необходимого нам поллера
+					for(uint32_t i = 0; i < loop->pollers.size(); i++){
+						// Если нужный нам поллер найден
+						if((result = (id == loop->pollers[i].id))){
 							// Закрываем старый дескриптор
 							::close(loop->wfd);
 							// Получаем параметры события
@@ -1848,7 +1848,7 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 							// Устанавливаем флаг фиксации изменений
 							loop->commit = true;
 							// Устанавливаем тип события
-							loop->peers[i].events = events;
+							loop->pollers[i].events = events;
 							// Выполняем инициализацию /dev/poll
 							if((loop->wfd = ::open("/dev/poll", O_RDWR, 0)) == INVALID_SOCKET){
 								/**
@@ -1878,10 +1878,10 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 			 * Для операционной системы Linux
 			 */
 			#elif __linux__
-				// Выполняем поск необходимого нам пира
-				auto i = ::__awh_loop__->peers.find(id);
-				// Если нужный нам пир найден
-				if((result = (i != ::__awh_loop__->peers.end()))){
+				// Выполняем поск необходимого нам поллера
+				auto i = ::__awh_loop__->pollers.find(id);
+				// Если нужный нам поллер найден
+				if((result = (i != ::__awh_loop__->pollers.end()))){
 					// Выполняем деактивацию события сокета
 					::epoll_ctl(::__awh_loop__->efd, EPOLL_CTL_DEL, sock, nullptr);
 					// Выполняем создание объекта события
@@ -1931,10 +1931,10 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
 			 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-				// Выполняем поск необходимого нам пира
-				auto i = ::__awh_loop__->peers.find(id);
-				// Если нужный нам пир найден
-				if((result = (i != ::__awh_loop__->peers.end()))){
+				// Выполняем поск необходимого нам поллера
+				auto i = ::__awh_loop__->pollers.find(id);
+				// Если нужный нам поллер найден
+				if((result = (i != ::__awh_loop__->pollers.end()))){
 					// Если было установлено событие готовности на чтение, а сейчас его необходимо отключить
 					if(static_cast <bool> (i->second.events & AWH_READ) && !static_cast <bool> (events & AWH_READ)){
 						// Выполняем добавление нового события
@@ -1993,7 +1993,7 @@ bool awh::Poll::modify(const uint32_t id, const SOCKET sock, const uint8_t event
  * @param events поддерживаемые типы событий
  * @return       результат добавления
  */
-bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept {
+bool awh::Reactor::add(const uint32_t id, const SOCKET sock, const uint8_t events) noexcept {
 	// Если данные для установки переданы и база событий инициализированна
 	if((sock != INVALID_SOCKET) && (id > 0) && (::__awh_loop__ != nullptr)){
 		// Если сокет ещё не добавлен в список для отслеживания
@@ -2116,12 +2116,12 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 			::__awh_loop__->sockets.push_back(sock);
 			// Устанавливаем наше новое событие в список событий
 			::__awh_loop__->events.push_back(::move(event));
-			// Выполняем установку пустого значения пира
-			::__awh_loop__->peers.push_back(poll_t::event_t{});
+			// Выполняем установку пустого значения поллера
+			::__awh_loop__->pollers.push_back(react_t::poller_t{});
 			// Устанавливаем идентификатор события
-			::__awh_loop__->peers.back().id = id;
+			::__awh_loop__->pollers.back().id = id;
 			// Устанавливаем тип события
-			::__awh_loop__->peers.back().events = events;
+			::__awh_loop__->pollers.back().events = events;
 			// Устанавливаем соответствие идентификатора сокету
 			return ::__awh_ids__.emplace(sock, id).second;
 		/**
@@ -2149,8 +2149,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				}
 				// Выполняем получение объекта Event Loop
 				EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-				// Выполняем добавление пира
-				auto ret = loop->peers.emplace(id, poll_t::event_t{});
+				// Выполняем добавление поллера
+				auto ret = loop->pollers.emplace(id, react_t::poller_t{});
 				// Устанавливаем тип события
 				ret.first->second.events = events;
 				// Если события необходимо установить
@@ -2170,8 +2170,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Удаляем добавленного пира
-						loop->peers.erase(id);
+						// Удаляем добавленного поллера
+						loop->pollers.erase(id);
 						// Выходим из функции
 						return false;
 					}
@@ -2209,12 +2209,12 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 				loop->commit = true;
 				// Устанавливаем наше новое событие в список событий
 				loop->events.push_back(::move(event));
-				// Выполняем установку пустого значения пира
-				loop->peers.push_back(poll_t::event_t{});
+				// Выполняем установку пустого значения поллера
+				loop->pollers.push_back(react_t::poller_t{});
 				// Устанавливаем идентификатор события
-				loop->peers.back().id = id;
+				loop->pollers.back().id = id;
 				// Устанавливаем тип события
-				loop->peers.back().events = events;
+				loop->pollers.back().events = events;
 			}
 			// Устанавливаем соответствие идентификатора сокету
 			return ::__awh_ids__.emplace(sock, id).second;
@@ -2241,8 +2241,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 					// Ставим флаг ожидания готовности на запись
 					event.events |= EPOLLOUT;
 			}
-			// Выполняем добавление пира
-			auto ret = loop->peers.emplace(id, poll_t::event_t{});
+			// Выполняем добавление поллера
+			auto ret = loop->pollers.emplace(id, react_t::poller_t{});
 			// Устанавливаем тип события
 			ret.first->second.events = events;
 			// Если события необходимо установить
@@ -2264,8 +2264,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
-					// Удаляем добавленного пира
-					::__awh_loop__->peers.erase(id);
+					// Удаляем добавленного поллера
+					::__awh_loop__->pollers.erase(id);
 					// Выходим из функции
 					return false;
 				}
@@ -2280,8 +2280,8 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
 		 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Выполняем добавление пира
-			auto ret = ::__awh_loop__->peers.emplace(id, poll_t::event_t{});
+			// Выполняем добавление поллера
+			auto ret = ::__awh_loop__->pollers.emplace(id, react_t::poller_t{});
 			// Устанавливаем событие по умолчанию
 			ret.first->second.events = AWH_NONE;
 			// Если установлен флаг ожидания получения данных
@@ -2350,7 +2350,7 @@ bool awh::Poll::add(const uint32_t id, const SOCKET sock, const uint8_t events) 
  * @param msec   время ожидания срабатывания в миллисекундах
  * @return       результат добавления
  */
-bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec) noexcept {
+bool awh::Reactor::add(const uint32_t id, const uint8_t events, const uint32_t msec) noexcept {
 	// Если данные для установки переданы и база событий инициализированна
 	if((id > 0) && (events != AWH_NONE) && (::__awh_loop__ != nullptr)){
 		// Если переданы события таймеров или потока
@@ -2377,8 +2377,8 @@ bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec
 						if(::__awh_event_ports__){
 							// Выполняем получение объекта Event Loop
 							EventLoop1 * loop = dynamic_cast <EventLoop2 *> (::__awh_loop__.get());
-							// Выполняем добавление пира
-							auto ret = loop->peers.emplace(id, poll_t::event_t{});
+							// Выполняем добавление поллера
+							auto ret = loop->pollers.emplace(id, react_t::poller_t{});
 							// Устанавливаем результат
 							result = ret.second;
 							// Устанавливаем интервал времени таймера
@@ -2402,8 +2402,8 @@ bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec
 					 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
 					 */
 					#elif __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-						// Выполняем добавление пира
-						auto ret = ::__awh_loop__->peers.emplace(id, poll_t::event_t{});
+						// Выполняем добавление поллера
+						auto ret = ::__awh_loop__->pollers.emplace(id, react_t::poller_t{});
 						// Устанавливаем интервал времени таймера
 						ret.first->second.id = msec;
 						// Если событие является интервалом
@@ -2489,12 +2489,12 @@ bool awh::Poll::add(const uint32_t id, const uint8_t events, const uint32_t msec
 /**
  * @brief Метод ожидания получения событий
  *
- * @param events список сработавших событий
- * @param max    максимальное количество ожидаемых событий
- * @param msec   время ожидания события в миллисекундах
- * @return       количество полученных событий
+ * @param pollers список сработавших событий
+ * @param max     максимальное количество ожидаемых событий
+ * @param msec    время ожидания события в миллисекундах
+ * @return        количество полученных событий
  */
-uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t msec) noexcept {
+uint32_t awh::Reactor::wait(poller_t * pollers, const uint16_t max, const int32_t msec) noexcept {
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
@@ -2608,14 +2608,14 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 			// Если мы получили таймаут
 			if(index == WSA_WAIT_TIMEOUT){
 				// Устанавливаем событие таймаута
-				events[0].events = AWH_TIMEOUT;
+				pollers[0].events = AWH_TIMEOUT;
 				// Выводим событие таймаута
 				return 1;
 			}
 			// Если мы получили ошибку сокета
 			if(index == WSA_WAIT_FAILED){
 				// Устанавливаем событие ошибки
-				events[0].events = AWH_ERROR;
+				pollers[0].events = AWH_ERROR;
 				// Выводим значение ошибки
 				return 1;
 			}
@@ -2626,19 +2626,19 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 			// Если сокет соответствует таймеру
 			if(sock == ::__awh_timer__){
 				// Устанавливаем событие Таймера
-				events[0].events = AWH_TIMER;
+				pollers[0].events = AWH_TIMER;
 				// Получаем идентификатор таймера
-				events[0].id = this->_watch.event();
+				pollers[0].id = this->_watch.event();
 				// Выполняем блокировку потока
 				const lock_guard lock(::__awh_main_mtx__);
 				// Выполняем проверку является ли таймер персистентным
-				auto i = ::__awh_loop__->timers.find(events[0].id);
+				auto i = ::__awh_loop__->timers.find(pollers[0].id);
 				// Если мы нашли нужный нам таймер
 				if(i != ::__awh_loop__->timers.end()){
 					// Если таймер является персистентным
 					if(i->second.second){
 						// Устанавливаем событие таймера как Интервал
-						events[0].events = AWH_INTERVAL;
+						pollers[0].events = AWH_INTERVAL;
 						// Выполняем активацию таймера на указанное время
 						this->_watch.wait(i->first, i->second.first);
 					// Если таймер является обычным
@@ -2652,13 +2652,13 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 			// Если событие не является таймером
 			} else {
 				// Получаем объект события
-				poll_t::event_t & event = ::__awh_loop__->peers[offset];
+				react_t::poller_t & event = ::__awh_loop__->pollers[offset];
 				// Устанавливаем идентификатор события
-				events[0].id = event.id;
+				pollers[0].id = event.id;
 				// Если событие является потоком
 				if(event.events & AWH_STREAM)
 					// Заменяем флаг события
-					events[0].events = AWH_STREAM;
+					pollers[0].events = AWH_STREAM;
 				// Если мы получили обычное событие
 				else {
 					// Объект статуса события сокета
@@ -2666,27 +2666,27 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 					// Если мы статус событий не смогли прочитать
 					if(::WSAEnumNetworkEvents(sock, ::__awh_loop__->events[offset], &status) == SOCKET_ERROR)
 						// Устанавливаем событие ошибки
-						events[0].events = AWH_ERROR;
+						pollers[0].events = AWH_ERROR;
 					// Если мы удачно извлекли события
 					else {
 						// Выполняем сброс событий
-						events[0].events = AWH_NONE;
+						pollers[0].events = AWH_NONE;
 						// Если мы детектировали закрытие подключения
 						if(status.lNetworkEvents & FD_CLOSE)
 							// Устанавливаем флаг события
-							events[0].events |= AWH_CLOSE;
+							pollers[0].events |= AWH_CLOSE;
 						// Если мы детектировали событие готовности сокета на чтение данных
 						if(status.lNetworkEvents & (FD_READ | FD_ACCEPT))
 							// Устанавливаем флаг события
-							events[0].events |= AWH_READ;
+							pollers[0].events |= AWH_READ;
 						// Если мы детектировали событие готовности сокета на запись данных
 						if(status.lNetworkEvents & (FD_WRITE | FD_CONNECT))
 							// Устанавливаем флаг события
-							events[0].events |= AWH_WRITE;
+							pollers[0].events |= AWH_WRITE;
 						// Если мы детектировали наличие ошибки
 						if(status.iErrorCode[FD_CLOSE_BIT] != 0)
 							// Устанавливаем флаг события
-							events[0].events |= AWH_ERROR;
+							pollers[0].events |= AWH_ERROR;
 					}
 				}
 			}
@@ -2723,7 +2723,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 					// Если у нас просто вышло время
 					if(errno == ETIME)
 						// Устанавливаем событие таймаута
-						events[0].events = AWH_TIMEOUT;
+						pollers[0].events = AWH_TIMEOUT;
 					// Если мы получили другую ошибку
 					else {
 						/**
@@ -2740,7 +2740,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 						// Устанавливаем событие ошибки
-						events[0].events = AWH_ERROR;
+						pollers[0].events = AWH_ERROR;
 					}
 					// Выводим значение ошибки
 					return 1;
@@ -2749,8 +2749,8 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 				SOCKET sock = INVALID_SOCKET;
 				// Смещение в буфере событий и флаги текущих событий
 				uint32_t offset = 0, revents = 0;
-				// Объект пира который относится к событию
-				poll_t::event_t * event = nullptr;
+				// Объект поллера который относится к событию
+				react_t::poller_t * event = nullptr;
 				// Выполняем перебор всех полученных событий
 				for(uint32_t i = 0; i < count; i++){
 					// Если мы получили событие сокета
@@ -2760,19 +2760,19 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 						// Если сокет соответствует таймеру
 						if(sock == ::__awh_timer__){
 							// Устанавливаем событие Таймера
-							events[offset].events = AWH_TIMER;
+							pollers[offset].events = AWH_TIMER;
 							// Получаем идентификатор таймера
-							events[offset].id = this->_watch.event();
+							pollers[offset].id = this->_watch.event();
 							// Выполняем блокировку потока
 							const lock_guard lock(::__awh_main_mtx__);
 							// Выполняем проверку является ли таймер персистентным
-							auto i = loop->peers.find(events[offset].id);
+							auto i = loop->pollers.find(pollers[offset].id);
 							// Если мы нашли нужный нам таймер
-							if(i != loop->peers.end()){
+							if(i != loop->pollers.end()){
 								// Если таймер является персистентным
 								if(i->second.events & AWH_INTERVAL){
 									// Устанавливаем событие таймера как Интервал
-									events[offset].events = AWH_INTERVAL;
+									pollers[offset].events = AWH_INTERVAL;
 									// Выполняем активацию таймера на указанное время
 									this->_watch.wait(i->first, i->second.id);
 								// Если таймер является обычным
@@ -2780,47 +2780,47 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 									// Выполняем остановку работы таймера
 									this->_watch.away(i->first);
 									// Выполняем удаление таймера
-									loop->peers.erase(i);
+									loop->pollers.erase(i);
 								}
 							}
 							// Увеличиваем количество полученных событий
 							offset++;
 						// Если событие не является таймером
 						} else {
-							// Выполняем получение пира к которому относится событие
-							event = reinterpret_cast <poll_t::event_t *> (loop->events[i].portev_user);
-							// Если пир события не получен, значит пир уже удалён
+							// Выполняем получение поллера к которому относится событие
+							event = reinterpret_cast <react_t::poller_t *> (loop->events[i].portev_user);
+							// Если поллер события не получен, значит поллер уже удалён
 							if(event == nullptr)
 								// Пропускаем событие
 								continue;
 							// Устанавливаем идентификатор события
-							events[offset].id = event->id;
+							pollers[offset].id = event->id;
 							// Если событие является потоком
 							if(event->events & AWH_STREAM)
 								// Заменяем флаг события
-								events[offset].events = AWH_STREAM;
+								pollers[offset].events = AWH_STREAM;
 							// Если мы получили обычное событие
 							else {
 								// Получаем события сетевого сокета
 								revents = loop->events[i].portev_events;
 								// Выполняем сброс событий
-								events[offset].events = AWH_NONE;
+								pollers[offset].events = AWH_NONE;
 								// Если мы детектировали закрытие подключения
 								if((revents & POLLHUP) || (revents & POLLNVAL))
 									// Устанавливаем флаг события
-									events[offset].events |= AWH_CLOSE;
+									pollers[offset].events |= AWH_CLOSE;
 								// Если мы детектировали событие готовности сокета на чтение данных
 								if(revents & POLLIN)
 									// Устанавливаем флаг события
-									events[offset].events |= AWH_READ;
+									pollers[offset].events |= AWH_READ;
 								// Если мы детектировали событие готовности сокета на запись данных
 								if(revents & POLLOUT)
 									// Устанавливаем флаг события
-									events[offset].events |= AWH_WRITE;
+									pollers[offset].events |= AWH_WRITE;
 								// Если мы детектировали наличие ошибки
 								if(revents & POLLERR)
 									// Устанавливаем флаг события
-									events[offset].events |= AWH_ERROR;
+									pollers[offset].events |= AWH_ERROR;
 							}
 							// Увеличиваем количество полученных событий
 							offset++;
@@ -2849,7 +2849,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 					// Если у нас просто вышло время
 					if(count == 0)
 						// Устанавливаем событие таймаута
-						events[0].events = AWH_TIMEOUT;
+						pollers[0].events = AWH_TIMEOUT;
 					// Если мы получили другую ошибку
 					else {
 						/**
@@ -2866,7 +2866,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 						// Устанавливаем событие ошибки
-						events[0].events = AWH_ERROR;
+						pollers[0].events = AWH_ERROR;
 					}
 					// Выводим значение ошибки
 					return 1;
@@ -2882,19 +2882,19 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 					// Если сокет соответствует таймеру
 					if(sock == ::__awh_timer__){
 						// Устанавливаем событие Таймера
-						events[offset].events = AWH_TIMER;
+						pollers[offset].events = AWH_TIMER;
 						// Получаем идентификатор таймера
-						events[offset].id = this->_watch.event();
+						pollers[offset].id = this->_watch.event();
 						// Выполняем блокировку потока
 						const lock_guard lock(::__awh_main_mtx__);
 						// Выполняем проверку является ли таймер персистентным
-						auto i = loop->timers.find(events[0].id);
+						auto i = loop->timers.find(pollers[0].id);
 						// Если мы нашли нужный нам таймер
 						if(i != loop->timers.end()){
 							// Если таймер является персистентным
 							if(i->second.second){
 								// Устанавливаем событие таймера как Интервал
-								events[0].events = AWH_INTERVAL;
+								pollers[0].events = AWH_INTERVAL;
 								// Выполняем активацию таймера на указанное время
 								this->_watch.wait(i->first, i->second.first);
 							// Если таймер является обычным
@@ -2916,33 +2916,33 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 							// Не добавляем в результат
 							continue;
 						// Получаем объект события
-						poll_t::event_t & event = loop->peers[i];
+						react_t::poller_t & event = loop->pollers[i];
 						// Устанавливаем идентификатор события
-						events[offset].id = event->id;
+						pollers[offset].id = event->id;
 						// Если событие является потоком
 						if(event->events & AWH_STREAM)
 							// Заменяем флаг события
-							events[offset].events = AWH_STREAM;
+							pollers[offset].events = AWH_STREAM;
 						// Если мы получили обычное событие
 						else {
 							// Выполняем сброс событий
-							events[offset].events = AWH_NONE;
+							pollers[offset].events = AWH_NONE;
 							// Если мы детектировали закрытие подключения
 							if((revents & POLLHUP) || (revents & POLLNVAL))
 								// Устанавливаем флаг события
-								events[offset].events |= AWH_CLOSE;
+								pollers[offset].events |= AWH_CLOSE;
 							// Если мы детектировали событие готовности сокета на чтение данных
 							if(revents & POLLIN)
 								// Устанавливаем флаг события
-								events[offset].events |= AWH_READ;
+								pollers[offset].events |= AWH_READ;
 							// Если мы детектировали событие готовности сокета на запись данных
 							if(revents & POLLOUT)
 								// Устанавливаем флаг события
-								events[offset].events |= AWH_WRITE;
+								pollers[offset].events |= AWH_WRITE;
 							// Если мы детектировали наличие ошибки
 							if(revents & POLLERR)
 								// Устанавливаем флаг события
-								events[offset].events |= AWH_ERROR;
+								pollers[offset].events |= AWH_ERROR;
 						}
 						// Увеличиваем количество полученных событий
 						offset++;
@@ -2975,7 +2975,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 				// Если у нас просто вышло время
 				if(count == 0)
 					// Устанавливаем событие таймаута
-					events[0].events = AWH_TIMEOUT;
+					pollers[0].events = AWH_TIMEOUT;
 				// Если мы получили другую ошибку
 				else {
 					/**
@@ -2992,7 +2992,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Устанавливаем событие ошибки
-					events[0].events = AWH_ERROR;
+					pollers[0].events = AWH_ERROR;
 				}
 				// Выводим значение ошибки
 				return 1;
@@ -3001,8 +3001,8 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 			SOCKET sock = INVALID_SOCKET;
 			// Смещение в буфере событий и флаги текущих событий
 			uint32_t offset = 0, revents = 0;
-			// Объект пира который относится к событию
-			poll_t::event_t * event = nullptr;
+			// Объект поллера который относится к событию
+			react_t::poller_t * event = nullptr;
 			// Выполняем перебор всех полученных событий
 			for(int32_t i = 0; i < count; i++){
 				// Получаем сетевой сокет
@@ -3010,19 +3010,19 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 				// Если сокет соответствует таймеру
 				if(sock == ::__awh_timer__){
 					// Устанавливаем событие Таймера
-					events[offset].events = AWH_TIMER;
+					pollers[offset].events = AWH_TIMER;
 					// Получаем идентификатор таймера
-					events[offset].id = this->_watch.event();
+					pollers[offset].id = this->_watch.event();
 					// Выполняем блокировку потока
 					const lock_guard lock(::__awh_main_mtx__);
 					// Выполняем проверку является ли таймер персистентным
-					auto i = ::__awh_loop__->peers.find(events[offset].id);
+					auto i = ::__awh_loop__->pollers.find(pollers[offset].id);
 					// Если мы нашли нужный нам таймер
-					if(i != ::__awh_loop__->peers.end()){
+					if(i != ::__awh_loop__->pollers.end()){
 						// Если таймер является персистентным
 						if(i->second.events & AWH_INTERVAL){
 							// Устанавливаем событие таймера как Интервал
-							events[offset].events = AWH_INTERVAL;
+							pollers[offset].events = AWH_INTERVAL;
 							// Выполняем активацию таймера на указанное время
 							this->_watch.wait(i->first, i->second.id);
 						// Если таймер является обычным
@@ -3030,47 +3030,47 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 							// Выполняем остановку работы таймера
 							this->_watch.away(i->first);
 							// Выполняем удаление таймера
-							::__awh_loop__->peers.erase(i);
+							::__awh_loop__->pollers.erase(i);
 						}
 					}
 					// Увеличиваем количество полученных событий
 					offset++;
 				// Если событие не является таймером
 				} else {
-					// Выполняем получение пира к которому относится событие
-					event = reinterpret_cast <poll_t::event_t *> (::__awh_loop__->events[i].data.ptr);
-					// Если пир события не получен, значит пир уже удалён
+					// Выполняем получение поллера к которому относится событие
+					event = reinterpret_cast <react_t::poller_t *> (::__awh_loop__->events[i].data.ptr);
+					// Если поллер события не получен, значит поллер уже удалён
 					if(event == nullptr)
 						// Пропускаем событие
 						continue;
 					// Устанавливаем идентификатор события
-					events[offset].id = event->id;
+					pollers[offset].id = event->id;
 					// Если событие является потоком
 					if(event->events & AWH_STREAM)
 						// Заменяем флаг события
-						events[offset].events = AWH_STREAM;
+						pollers[offset].events = AWH_STREAM;
 					// Если мы получили обычное событие
 					else {
 						// Получаем события сетевого сокета
 						revents = ::__awh_loop__->events[i].events;
 						// Выполняем сброс событий
-						events[offset].events = AWH_NONE;
+						pollers[offset].events = AWH_NONE;
 						// Если мы детектировали закрытие подключения
 						if((revents & EPOLLHUP) || (revents & EPOLLNVAL))
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_CLOSE;
+							pollers[offset].events |= AWH_CLOSE;
 						// Если мы детектировали событие готовности сокета на чтение данных
 						if(revents & EPOLLIN)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_READ;
+							pollers[offset].events |= AWH_READ;
 						// Если мы детектировали событие готовности сокета на запись данных
 						if(revents & EPOLLOUT)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_WRITE;
+							pollers[offset].events |= AWH_WRITE;
 						// Если мы детектировали наличие ошибки
 						if(revents & EPOLLERR)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_ERROR;
+							pollers[offset].events |= AWH_ERROR;
 					}
 					// Увеличиваем количество полученных событий
 					offset++;
@@ -3103,7 +3103,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 				// Если у нас просто вышло время
 				if(count == 0)
 					// Устанавливаем событие таймаута
-					events[0].events = AWH_TIMEOUT;
+					pollers[0].events = AWH_TIMEOUT;
 				// Если мы получили другую ошибку
 				else {
 					/**
@@ -3120,41 +3120,41 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Устанавливаем событие ошибки
-					events[0].events = AWH_ERROR;
+					pollers[0].events = AWH_ERROR;
 				}
 				// Выводим значение ошибки
 				return 1;
 			}
 			// Смещение в буфере событий
 			uint32_t offset = 0;
-			// Объект пира который относится к событию
-			poll_t::event_t * event = nullptr;
+			// Объект поллера который относится к событию
+			react_t::poller_t * event = nullptr;
 			// Выполняем перебор всех полученных событий
 			for(int32_t i = 0; i < count; i++){
 				// Получаем текущее значение события
 				struct kevent & ev = ::__awh_loop__->events[i];
-				// Выполняем получение пира к которому относится событие
-				event = reinterpret_cast <poll_t::event_t *> (ev.udata);
-				// Если пир события не получен, значит пир уже удалён
+				// Выполняем получение поллера к которому относится событие
+				event = reinterpret_cast <react_t::poller_t *> (ev.udata);
+				// Если поллер события не получен, значит поллер уже удалён
 				if(event == nullptr)
 					// Пропускаем событие
 					continue;
 				// Если сокет соответствует таймеру
 				if(event->events & AWH_TIMER){
 					// Устанавливаем событие Таймера
-					events[offset].events = AWH_TIMER;
+					pollers[offset].events = AWH_TIMER;
 					// Получаем идентификатор таймера
-					events[offset].id = this->_watch.event();
+					pollers[offset].id = this->_watch.event();
 					// Выполняем блокировку потока
 					const lock_guard lock(::__awh_main_mtx__);
 					// Выполняем проверку является ли таймер персистентным
-					auto i = ::__awh_loop__->peers.find(events[offset].id);
+					auto i = ::__awh_loop__->pollers.find(pollers[offset].id);
 					// Если мы нашли нужный нам таймер
-					if(i != ::__awh_loop__->peers.end()){
+					if(i != ::__awh_loop__->pollers.end()){
 						// Если таймер является персистентным
 						if(i->second.events & AWH_INTERVAL){
 							// Устанавливаем событие таймера как Интервал
-							events[offset].events = AWH_INTERVAL;
+							pollers[offset].events = AWH_INTERVAL;
 							// Выполняем активацию таймера на указанное время
 							this->_watch.wait(i->first, i->second.id);
 						// Если таймер является обычным
@@ -3162,7 +3162,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 							// Выполняем остановку работы таймера
 							this->_watch.away(i->first);
 							// Выполняем удаление таймера
-							::__awh_loop__->peers.erase(i);
+							::__awh_loop__->pollers.erase(i);
 						}
 					}
 					// Увеличиваем количество полученных событий
@@ -3170,31 +3170,31 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 				// Если событие не является таймером
 				} else {
 					// Устанавливаем идентификатор события
-					events[offset].id = event->id;
+					pollers[offset].id = event->id;
 					// Если событие является потоком
 					if(event->events & AWH_STREAM)
 						// Заменяем флаг события
-						events[offset].events = AWH_STREAM;
+						pollers[offset].events = AWH_STREAM;
 					// Если мы получили обычное событие
 					else {
 						// Выполняем сброс событий
-						events[offset].events = AWH_NONE;
+						pollers[offset].events = AWH_NONE;
 						// Если мы детектировали закрытие подключения
 						if(ev.flags & EV_EOF)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_CLOSE;
+							pollers[offset].events |= AWH_CLOSE;
 						// Если мы детектировали событие готовности сокета на чтение данных
 						if(ev.filter == EVFILT_READ)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_READ;
+							pollers[offset].events |= AWH_READ;
 						// Если мы детектировали событие готовности сокета на запись данных
 						if(ev.filter == EVFILT_WRITE)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_WRITE;
+							pollers[offset].events |= AWH_WRITE;
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR)
 							// Устанавливаем флаг события
-							events[offset].events |= AWH_ERROR;
+							pollers[offset].events |= AWH_ERROR;
 					}
 					// Увеличиваем количество полученных событий
 					offset++;
@@ -3211,7 +3211,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
 	// Если время таймаута не передано, замораживаем на 100 миллисекунд
 	else this_thread::sleep_for(100ms);
 	// Устанавливаем событие таймаута
-	events[0].events = AWH_TIMEOUT;
+	pollers[0].events = AWH_TIMEOUT;
 	// Выводим событие таймаута
 	return 1;
 }
@@ -3221,7 +3221,7 @@ uint32_t awh::Poll::wait(event_t * events, const uint16_t max, const int32_t mse
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Poll::Poll(const fmk_t * fmk, const log_t * log) noexcept :
+awh::Reactor::Reactor(const fmk_t * fmk, const log_t * log) noexcept :
  _watch(fmk, log), _socket(fmk, log), _fmk(fmk), _log(log) {
 	// Устанавливаем текущий идентификатор потока
 	::__awh_wid__ = ::wid();
@@ -3230,7 +3230,7 @@ awh::Poll::Poll(const fmk_t * fmk, const log_t * log) noexcept :
  * @brief Деструктор
  *
  */
-awh::Poll::~Poll() noexcept {
+awh::Reactor::~Reactor() noexcept {
 	// Выполняем разрушение событийной модели
 	this->destroy();
 }
