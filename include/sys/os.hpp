@@ -163,18 +163,40 @@ namespace awh {
 			family_t family() const noexcept;
 		public:
 			/**
-			 * @brief Метод очистки выделенной памяти
-			 * 
-			 */
-			void releaseFreeMemory() const noexcept;
-		public:
-			/**
 			 * @brief Метод определения текущего расхода памяти
 			 *
 			 * @param mode режим потребления памяти
 			 * @return     размер расхода памяти
 			 */
 			size_t rss(const rss_t mode) const noexcept;
+		public:
+			/**
+			 * @brief Метод вывода статистики расхода памяти
+			 *
+			 */
+			void printStatsMemory() const noexcept;
+		public:
+			/**
+			 * @brief Метод очистки выделенной памяти
+			 *
+			 */
+			void releaseFreeMemory() const noexcept;
+		public:
+			/**
+			 * @brief Метод резервирования нужного размера памяти для всего приложения
+			 *
+			 * @param size размер резервированной памяти
+			 * @return     результат выполнения операции
+			 */
+			bool warmup(const size_t size) const noexcept;
+		public:
+			/**
+			 * @brief Метод блокировки возвращения оперативной памяти системе
+			 *
+			 * @param mode флаг активации/деактивации
+			 * @return     результат выполнения операции
+			 */
+			bool disableReturnMemory(const bool mode) const noexcept;
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */

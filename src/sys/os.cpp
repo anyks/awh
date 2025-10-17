@@ -19,13 +19,14 @@
 #include <cstring>
 #include <cstddef>
 #include <cstdlib>
+#include <iostream>
 
 /**
  * Если используется аллокатор TcMalloc
  */
 #if __AWH_USE_TCMALLOC__
 	// Подключаем заголовки аллокатора
-	#include <tcmalloc/malloc_extension.h>
+	#include <gperftools/malloc_extension.h>
 /**
  * Если используется аллокатор Glibc
  */
@@ -558,73 +559,6 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	#endif
 }
 /**
- * @brief Метод очистки выделенной памяти
- * 
- */
-void awh::OS::releaseFreeMemory() const noexcept {
-	/**
-	 * Если используется аллокатор TcMalloc
-	 */
-	#if __AWH_USE_TCMALLOC__
-		// Выполняем сброс памяти
-		::tcmalloc::MallocExtension::instance()->ReleaseFreeMemory();
-	/**
-	 * Если используется аллокатор Glibc
-	 */
-	#elif __GLIBC__
-		// Выполняем сброс памяти
-		::malloc_trim(0);
-	/**
-	 * Операционной системой является MacOS X
-	 */
-	#elif __APPLE__ || __MACH__
-		/**
-		 * MacOS X: нет malloc_trim, но можно использовать malloc_zone.
-		 * В новых версиях достаточно madvise, но явного API нет.
-		 * Альтернатива: malloc_zone_pressure_relief (доступна в macOS 11+)
-		 */
-		#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 110000
-			// Выполняем сброс памяти
-			::malloc_zone_pressure_relief(nullptr, 0);
-		#endif
-	/**
-	 * Если операционной системой является FreeBSD, NetBSD и OpenBSD
-	 */
-	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-		/**
-		 * BSD: можно попробовать malloc_trim (FreeBSD 13+)
-		 */
-		#if __FreeBSD__ && __FreeBSD__ >= 13
-			// Выполняем сброс памяти
-			::malloc_trim(0);
-		#endif
-	/**
-	 * Для операционной системы MS Windows
-	 */
-	#elif _WIN32 || _WIN64
-		/**
-		 * Если активирован компилятор MS Visual Studio
-		 */
-		#if _MSC_VER
-			// Выполняем сброс памяти
-			::_heapmin();
-		/**
-		 * Если активирован компилятор MinGW
-		 */
-		#elif __MINGW32__ || __MINGW64__
-			/**
-			 * MinGW: нет стандартного trim, но можно попробовать
-			 */
-			#if _UCRT || __MSVCRT_VERSION__
-				// Экспортируем нужную нам функцию
-				extern "C" int _heap_trim(size_t);
-				// Выполняем сброс памяти
-				_heap_trim(0);
-			#endif
-		#endif
-	#endif
-}
-/**
  * @brief Метод определения текущего расхода памяти
  *
  * @param mode режим потребления памяти
@@ -644,190 +578,201 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 			// Если необходимо получить текущее потребление памяти
 			case static_cast <uint8_t> (rss_t::CURRENT): {
 				/**
-				 * Для операционной системы MS Windows
+				 * Если используется аллокатор TcMalloc
 				 */
-				#if _WIN32 || _WIN64
-					// Создаём объект информации о памяти
-					PROCESS_MEMORY_COUNTERS info;
-					// Выполняем извлечение данных текущего процесса
-					if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
-						// Создаём буфер сообщения ошибки
-						wchar_t message[256] = {0};
-						// Выполняем формирование текста ошибки
-						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
-						#endif
-					// Выполняем извлечение размера пика потребляемой памяти
-					} else result = static_cast <size_t> (info.WorkingSetSize);
+				#if __AWH_USE_TCMALLOC__
+					// Выполняем получение занятой памяти выделенной аллокатором
+					MallocExtension::instance()->GetNumericProperty("generic.current_allocated_bytes", &result);
 				/**
-				 * Для операционной системы MacOS X
+				 * Если используются стандартные аллокаторы
 				 */
-				#elif __APPLE__ || __MACH__
-					// Создаём объект информации о памяти
-					struct mach_task_basic_info info;
-					// Устанавливаем количество извлекаемой информации
-					mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-					// Выполняем извлечение информации о текущем потреблении памяти
-					if(::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast <task_info_t> (&info), &count) != KERN_SUCCESS){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Unable to access to determine memory consumption");
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", "Unable to access to determine memory consumption");
-						#endif
-						// Выводим пустой результат
-						return result;
-					}
-					// Выполняем извлечение размера пика потребляемой памяти
-					return static_cast <size_t> (info.resident_size);
-				/**
-				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
-				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-					// Создаём объект информации о памяти
-					struct kinfo_proc info;
-					// Получаем размер объекта информации
-					size_t size = sizeof(info);
-					// Устанавливаем флаги для необходимых нам процессов
-					int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
-					// Выполняем извлечение данных о потреблении памяти
-					if(::sysctl(mib, 4, &info, &size, nullptr, 0) != 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
-						#endif
-						// Выводим пустой результат
-						return result;
-					}
-					// RSS в страницах; переводим в байты
-					return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
-				/**
-				 * Для операционной системы Linux
-				 */
-				#elif __linux__ || __linux || linux || __gnu_linux__
-					// Размер потребления памяти
-					long rss = 0L;
-					// Создаём указатель файла
-					FILE * file = nullptr;
-					// Открываем файловый дескриптор для чтения памяти
-					if((file = ::fopen( "/proc/self/statm", "r" )) == nullptr){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
-						#endif
-						// Выводим пустой результат
-						return result;
-					}
-					// Выполняем чтение данных потребления памяти
-					if(::fscanf(file, "%*s%ld", &rss) != 1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
-						#endif
+				#else
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if _WIN32 || _WIN64
+						// Создаём объект информации о памяти
+						PROCESS_MEMORY_COUNTERS info;
+						// Выполняем извлечение данных текущего процесса
+						if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
+							// Создаём буфер сообщения ошибки
+							wchar_t message[256] = {0};
+							// Выполняем формирование текста ошибки
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+							#endif
+						// Выполняем извлечение размера пика потребляемой памяти
+						} else result = static_cast <size_t> (info.WorkingSetSize);
+					/**
+					 * Для операционной системы MacOS X
+					 */
+					#elif __APPLE__ || __MACH__
+						// Создаём объект информации о памяти
+						struct mach_task_basic_info info;
+						// Устанавливаем количество извлекаемой информации
+						mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+						// Выполняем извлечение информации о текущем потреблении памяти
+						if(::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast <task_info_t> (&info), &count) != KERN_SUCCESS){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Unable to access to determine memory consumption");
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", "Unable to access to determine memory consumption");
+							#endif
+							// Выводим пустой результат
+							return result;
+						}
+						// Выполняем извлечение размера пика потребляемой памяти
+						return static_cast <size_t> (info.resident_size);
+					/**
+					 * Для операционной системы FreeBSD, NetBSD, OpenBSD
+					 */
+					#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+						// Создаём объект информации о памяти
+						struct kinfo_proc info;
+						// Получаем размер объекта информации
+						size_t size = sizeof(info);
+						// Устанавливаем флаги для необходимых нам процессов
+						int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+						// Выполняем извлечение данных о потреблении памяти
+						if(::sysctl(mib, 4, &info, &size, nullptr, 0) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							#endif
+							// Выводим пустой результат
+							return result;
+						}
+						// RSS в страницах; переводим в байты
+						return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
+					/**
+					 * Для операционной системы Linux
+					 */
+					#elif __linux__ || __linux || linux || __gnu_linux__
+						// Размер потребления памяти
+						long rss = 0L;
+						// Создаём указатель файла
+						FILE * file = nullptr;
+						// Открываем файловый дескриптор для чтения памяти
+						if((file = ::fopen( "/proc/self/statm", "r" )) == nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							#endif
+							// Выводим пустой результат
+							return result;
+						}
+						// Выполняем чтение данных потребления памяти
+						if(::fscanf(file, "%*s%ld", &rss) != 1){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							#endif
+							// Выполняем закрытие файлового дескриптора
+							::fclose(file);
+							// Выводим пустой результат
+							return result;
+						}
 						// Выполняем закрытие файлового дескриптора
 						::fclose(file);
-						// Выводим пустой результат
-						return result;
-					}
-					// Выполняем закрытие файлового дескриптора
-					::fclose(file);
-					// Выполняем извлечение размера пика потребляемой памяти
-					result = (static_cast <size_t> (rss) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
-				/**
-				 * Для операционной системы Sun Solaris
-				 */
-				#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
-					// Создаём файловый дескриптор для чтения файла
-					int32_t sock = -1;
-					// Создаём объект информации о памяти
-					struct psinfo psinfo;
-					// Открываем файловый дескриптор для чтения памяти
-					if((sock = ::open("/proc/self/psinfo", O_RDONLY)) == -1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
-						#endif
-						// Выводим пустой результат
-						return result;
-					}
-					// Выполняем чтение данных потребления памяти
-					if(::read(sock, &psinfo, sizeof(psinfo) ) != sizeof(psinfo)){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
-						#endif
+						// Выполняем извлечение размера пика потребляемой памяти
+						result = (static_cast <size_t> (rss) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
+					/**
+					 * Для операционной системы Sun Solaris
+					 */
+					#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+						// Создаём файловый дескриптор для чтения файла
+						int32_t sock = -1;
+						// Создаём объект информации о памяти
+						struct psinfo psinfo;
+						// Открываем файловый дескриптор для чтения памяти
+						if((sock = ::open("/proc/self/psinfo", O_RDONLY)) == -1){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							#endif
+							// Выводим пустой результат
+							return result;
+						}
+						// Выполняем чтение данных потребления памяти
+						if(::read(sock, &psinfo, sizeof(psinfo) ) != sizeof(psinfo)){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							#endif
+							// Выполняем закрытие файлового дескриптора
+							::close(sock);
+							// Выводим пустой результат
+							return result;
+						}
 						// Выполняем закрытие файлового дескриптора
 						::close(sock);
-						// Выводим пустой результат
-						return result;
-					}
-					// Выполняем закрытие файлового дескриптора
-					::close(sock);
-					// Выполняем извлечение размера пика потребляемой памяти
-					result = static_cast <size_t> (psinfo.pr_rssize * 1024L);
+						// Выполняем извлечение размера пика потребляемой памяти
+						result = static_cast <size_t> (psinfo.pr_rssize * 1024L);
+					#endif
 				#endif
 			} break;
 			// Если необходимо получить максимальное потребление памяти
@@ -967,6 +912,230 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод вывода статистики расхода памяти
+ *
+ */
+void awh::OS::printStatsMemory() const noexcept {
+	/**
+	 * Если используется аллокатор TcMalloc
+	 */
+	#if __AWH_USE_TCMALLOC__
+		// Выводим разделители
+		cout << "*************** START ***************" << endl << endl << flush;
+		// Выводим статус занятой памяти
+		MallocExtension::instance()->PrintStats();
+		// Выводим разделители
+		cout << endl << "---------------- END ----------------" << endl << endl << flush;
+	/**
+	 * Если аллокатор TcMalloc не используется
+	 */
+	#else
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\nMemory operations only work in the release build\n\n", __PRETTY_FUNCTION__);
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "ERROR! Memory operations only work in the release build\n\n");
+		#endif
+	#endif
+}
+/**
+ * @brief Метод очистки выделенной памяти
+ * 
+ */
+void awh::OS::releaseFreeMemory() const noexcept {
+	/**
+	 * Если используется аллокатор TcMalloc
+	 */
+	#if __AWH_USE_TCMALLOC__
+		// Выполняем сброс памяти
+		::tcmalloc::MallocExtension::instance()->ReleaseFreeMemory();
+	/**
+	 * Если используется аллокатор Glibc
+	 */
+	#elif __GLIBC__
+		// Выполняем сброс памяти
+		::malloc_trim(0);
+	/**
+	 * Операционной системой является MacOS X
+	 */
+	#elif __APPLE__ || __MACH__
+		/**
+		 * MacOS X: нет malloc_trim, но можно использовать malloc_zone.
+		 * В новых версиях достаточно madvise, но явного API нет.
+		 * Альтернатива: malloc_zone_pressure_relief (доступна в macOS 11+)
+		 */
+		#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 110000
+			// Выполняем сброс памяти
+			::malloc_zone_pressure_relief(nullptr, 0);
+		#endif
+	/**
+	 * Если операционной системой является FreeBSD, NetBSD и OpenBSD
+	 */
+	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		/**
+		 * BSD: можно попробовать malloc_trim (FreeBSD 13+)
+		 */
+		#if __FreeBSD__ && __FreeBSD__ >= 13
+			// Выполняем сброс памяти
+			::malloc_trim(0);
+		#endif
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#elif _WIN32 || _WIN64
+		/**
+		 * Если активирован компилятор MS Visual Studio
+		 */
+		#if _MSC_VER
+			// Выполняем сброс памяти
+			::_heapmin();
+		/**
+		 * Если активирован компилятор MinGW
+		 */
+		#elif __MINGW32__ || __MINGW64__
+			/**
+			 * MinGW: нет стандартного trim, но можно попробовать
+			 */
+			#if _UCRT || __MSVCRT_VERSION__
+				// Экспортируем нужную нам функцию
+				extern "C" int _heap_trim(size_t);
+				// Выполняем сброс памяти
+				_heap_trim(0);
+			#endif
+		#endif
+	#endif
+}
+/**
+ * @brief Метод резервирования нужного размера памяти для всего приложения
+ *
+ * @param size размер резервированной памяти
+ * @return     результат выполнения операции
+ */
+bool awh::OS::warmup(const size_t size) const noexcept {
+	// Если размер резервированной памяти передан
+	if(size > 0){
+		// Выделяем память
+		void * p = ::malloc(size);
+		// Если память не выделена
+		if(p == nullptr)
+			// Выводим отрицательный результат
+			return false;
+		/**
+		 * Если операционной системой является Linux
+		 */
+		#ifdef __linux__
+			/**
+			 * Закрепляем память в RAM (предотвращает swap)
+			 */
+			::madvise(p, size, MADV_WILLNEED);
+		#endif
+		// Освобождаем — tcmalloc/jemalloc сохранят регион в пуле
+		::free(p);
+		// Выводим положительный результат
+		return true;
+	}
+	// Выводим отрицательный результат
+	return false;
+}
+/**
+ * @brief Метод блокировки возвращения оперативной памяти системе
+ *
+ * @param mode флаг активации/деактивации
+ * @return     результат выполнения операции
+ */
+bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если используется аллокатор TcMalloc
+	 */
+	#if __AWH_USE_TCMALLOC__
+		// Если необходимо блокировать возвращение оперативной памяти системе
+		if(mode){
+			// Запрещаем возвращение памяти
+			MallocExtension::instance()->SetNumericProperty("tcmalloc.release_rate", 0.);
+			// Отключаем фоновую очистку
+			MallocExtension::instance()->SetNumericProperty("tcmalloc.background_release_rate", 0.);
+			// Отключить автоматическое возвращение памяти
+			MallocExtension::instance()->SetNumericProperty("tcmalloc.decommit_time_ms", 1000000000);
+			{
+				// Значение установленное времени
+				size_t value = 0;
+				// Извлекаем установленный параметр
+				MallocExtension::instance()->GetNumericProperty("tcmalloc.decommit_time_ms", &value);
+				// Если параметр установлен корректно
+				if((result = (value == 1000000000))){
+					// Значение установленного множителя
+					double rate = 0.;
+					// Выполняем извлечение установленного параметра
+					MallocExtension::instance()->GetNumericProperty("tcmalloc.release_rate", &rate);
+					// Если множитель установлен верно
+					if((result = (rate == 0.))){
+						// Выполняем извлечение установленного параметра
+						MallocExtension::instance()->GetNumericProperty("tcmalloc.background_release_rate", &rate);
+						// Выполняем формирование результата
+						result = (rate == 0.);
+					}
+				}
+			}
+		// Если необходимо разблокировать возвращение памяти системе
+		} else {
+			// Разрешаем возвращение памяти
+			MallocExtension::instance()->SetNumericProperty("tcmalloc.release_rate", 1.);
+			// Включаем фоновую очистку
+			MallocExtension::instance()->SetNumericProperty("tcmalloc.background_release_rate", 1.);
+			// Включаем автоматическое возвращение памяти
+			MallocExtension::instance()->SetNumericProperty("tcmalloc.decommit_time_ms", 10000);
+			{
+				// Значение установленное времени
+				size_t value = 0;
+				// Извлекаем установленный параметр
+				MallocExtension::instance()->GetNumericProperty("tcmalloc.decommit_time_ms", &value);
+				// Если параметр установлен корректно
+				if((result = (value == 10000))){
+					// Значение установленного множителя
+					double rate = 0.;
+					// Выполняем извлечение установленного параметра
+					MallocExtension::instance()->GetNumericProperty("tcmalloc.release_rate", &rate);
+					// Если множитель установлен верно
+					if((result = (rate == 1.))){
+						// Выполняем извлечение установленного параметра
+						MallocExtension::instance()->GetNumericProperty("tcmalloc.background_release_rate", &rate);
+						// Выполняем формирование результата
+						result = (rate == 1.);
+					}
+				}
+			}
+		}
+	/**
+	 * Если аллокатор TcMalloc не используется
+	 */
+	#else
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\nMemory operations only work in the release build\n\n", __PRETTY_FUNCTION__);
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "ERROR! Memory operations only work in the release build\n\n");
+		#endif
+	#endif
 	// Выводим результат
 	return result;
 }

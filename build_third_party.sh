@@ -1528,8 +1528,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем сборку на всех логических ядрах
 	$MAKE -j"$numproc" || exit 1
 
-	# Создаём каталог GPerfTools
-	mkdir "$PREFIX/include/gperftools"
+	# Создаём каталог для заголовочных файлов
+	mkdir "$PREFIX/include/tcmalloc" || exit 1
 
 	# Производим установку собранных библиотек
 	for i in $(ls "$src/build_awh" | grep ".*\.a$");
@@ -1538,12 +1538,36 @@ if [ ! -f "$src/.stamp_done" ]; then
 		cp "$src/build_awh/$i" "$PREFIX/lib/$i" || exit 1
 	done
 
-	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$src/src" | grep ".*\.h$");
-	do
-		echo "Move \"$src/src/$i\" to \"$PREFIX/include/gperftools/$i\""
-		cp "$src/src/$i" "$PREFIX/include/gperftools/$i" || exit 1
-	done
+	# Если сборка производится в операционной системе MacOS X, FreeBSD, NetBSD или OpenBSD
+	if [ $OS = "Darwin" ] || [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+		# Используем find для поиска всех .h файлов и копируем их с воссозданием структуры
+		cd "$src/src" || exit 1
+		# Выполняем перенос всех заголовочных файлов
+		find . -type f -name "*.h" | while IFS= read -r file; do
+			# Получаем путь к директории файла (без имени файла)
+			dir_path=$(dirname "$file")
+			# Создаём такую же поддиректорию в целевом каталоге
+			mkdir -p "$PREFIX/include/tcmalloc/$dir_path"
+			# Копируем файл
+			cp "$file" "$PREFIX/include/tcmalloc/$file"
+		done
+	# Если сборка производится в операционной системе Solaris
+	elif [ $OS = "SunOS" ]; then
+		# Используем find для поиска всех заголовочных .h файлов и копируем их с воссозданием структуры
+		cd "$src/src" || exit 1
+		# Выполняем перенос всех заголовочных файлов
+		find . -type f -name "*.h" -print0 | xargs -0 gcp --parents -t "$PREFIX/include/tcmalloc"
+	# Если сборка производится в операционной системе Windows или Linux
+	elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
+		# Используем find для поиска всех заголовочных .h файлов и копируем их с воссозданием структуры
+		cd "$src/src" || exit 1
+		# Выполняем перенос всех заголовочных файлов
+		find . -type f -name "*.h" -print0 | xargs -0 cp --parents -t "$PREFIX/include/tcmalloc"
+	# Если операционная система не определена
+	else
+		echo "Operating system not defined"
+		exit 1
+	fi
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

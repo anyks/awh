@@ -89,7 +89,7 @@ namespace awh {
 				uint8_t events;
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
 				 */
 				Poller() noexcept : id(0), events(0) {}
 			} __attribute__((packed)) poller_t;

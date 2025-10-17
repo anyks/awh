@@ -170,8 +170,7 @@ static uint64_t wid() noexcept {
 	/**
 	 * @brief Функция определения поддержки портов в Sun Solaris
 	 *
-	 * @return true 
-	 * @return false 
+	 * @return результат проверки доступности портов
 	 */
 	static bool tryEventPorts() noexcept {
 		/**

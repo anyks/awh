@@ -297,6 +297,7 @@ find_package(TcMalloc REQUIRED)
 
 # Провекра TcMalloc
 if (TcMalloc_FOUND)
+    message(STATUS "TcMalloc include dir found: " ${TCMALLOC_INCLUDE_DIR})
     message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
 else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
@@ -304,6 +305,7 @@ endif (TcMalloc_FOUND)
 
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
+include_directories(BEFORE ${TCMALLOC_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})

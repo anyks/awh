@@ -1047,7 +1047,7 @@ bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t 
 }
 /**
  * @brief Метод проверки валидности сокета
- * 
+ *
  * @param sock сетевой сокет
  * @return     результат проверки сокета
  */
