@@ -19,6 +19,11 @@
 #include <algorithm>
 
 /**
+ * Подключаем OpenSSL
+ */
+#include <openssl/sha.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <ws/ws.hpp>

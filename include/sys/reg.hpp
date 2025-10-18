@@ -18,13 +18,13 @@
 /**
  * Стандартные модули
  */
+#include <any>
 #include <map>
 #include <mutex>
 #include <string>
 #include <vector>
 #include <cstdint>
 #include <sys/types.h>
-#include <pcre2/pcre2posix.h>
 
 /**
  * Разрешаем сборку под Windows
@@ -82,7 +82,7 @@ namespace awh {
 					bool _mode;
 				public:
 					// Объект контекста регулярного выражения
-					regex_t reg;
+					std::any reg;
 				public:
 					/**
 					 * @brief Оператор проверки на инициализацию регулярного выражения

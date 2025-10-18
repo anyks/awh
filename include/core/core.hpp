@@ -101,11 +101,6 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * @brief Метод отправки пинка
-					 *
-					 */
-					void kick() noexcept;
-					/**
 					 * @brief Метод остановки чтения базы событий
 					 *
 					 */
@@ -126,12 +121,6 @@ namespace awh {
 					 *
 					 */
 					void reinit() noexcept;
-					/**
-					 * @brief Метод заморозки чтения данных
-					 *
-					 * @param mode флаг активации
-					 */
-					void freeze(const bool mode) noexcept;
 					/**
 					 * @brief Метод активации простого режима чтения базы событий
 					 *
@@ -225,12 +214,6 @@ namespace awh {
 			 * @param core модуль ядра для отключения
 			 */
 			void unbind(Core & core) noexcept;
-		public:
-			/**
-			 * @brief Метод отправки пинка
-			 *
-			 */
-			void kick() noexcept;
 		public:
 			/**
 			 * @brief Метод остановки клиента
@@ -376,12 +359,6 @@ namespace awh {
 			 */
 			void easily(const bool mode = true) noexcept;
 			/**
-			 * @brief Метод заморозки чтения данных
-			 *
-			 * @param mode флаг активации заморозки чтения данных
-			 */
-			void freeze(const bool mode = true) noexcept;
-			/**
 			 * @brief Метод установки флага запрета вывода информационных сообщений
 			 *
 			 * @param mode флаг запрета вывода информационных сообщений
@@ -403,25 +380,28 @@ namespace awh {
 			void signalInterception(const scheme_t::mode_t mode = scheme_t::mode_t::DISABLED) noexcept;
 		public:
 			/**
-			 * @brief Метод отправки сообщения между потоками
+			 * @brief Метод отправки события через потоки
 			 *
-			 * @param sock сокет межпотокового передатчика
-			 * @param tid  идентификатор трансферной передачи
+			 * @param id  идентификатор события для отправки
+			 * @param tid идентификатор трансферной передачи
+			 * @return    результат отправки события
 			 */
-			void upstream(const SOCKET sock, const uint32_t tid) noexcept;
+			bool trigger(const uint32_t id, const uint32_t tid) noexcept;
+		public:
 			/**
-			 * @brief Метод деактивации межпотокового передатчика
+			 * @brief Метод отмены регистрации события
 			 *
-			 * @param sock сокет межпотокового передатчика
+			 * @param id идентификатор события
+			 * @return   результат отмены регистрации события
 			 */
-			void deactivationUpstream(const SOCKET sock) noexcept;
+			bool detach(const uint32_t id) noexcept;
 			/**
-			 * @brief Метод активации межпотокового передатчика
+			 * @brief Метод регистрации нового события
 			 *
 			 * @param callback функция обратного вызова
-			 * @return         сокет межпотокового передатчика
+			 * @return         идентификатор события
 			 */
-			SOCKET activationUpstream(function <void (const uint32_t)> callback) noexcept;
+			uint32_t attach(function <void (const uint32_t)> callback) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

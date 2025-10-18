@@ -1107,17 +1107,9 @@ bool awh::Socket::listen(const SOCKET sock) const noexcept {
 		// Устанавливаем размер опции для чтения
 		socklen_t size = sizeof(option);
 		// Если мы получили ошибку, выходим сообщение
-		if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_ACCEPTCONN, reinterpret_cast <char *> (&option), &size)))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим в лог информацию
-				this->_log->print("Getsockopt for SO_ACCEPTCONN failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
-			#endif
+		if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_ACCEPTCONN, reinterpret_cast <char *> (&option), &size))))
 			// Выходим из функции
 			return result;
-		}
 		// Устанавливаем результат
 		result = (option > 0);
 	}

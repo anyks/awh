@@ -135,29 +135,29 @@ void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
  * @param sock  сетевой сокет
  * @param event произошедшее событие
  */
-void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const base_t::event_type_t event) noexcept {
+void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const events_t::type_t event) noexcept {
 	/**
 	 * Определяем тип события
 	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие закрытие подключения
-		case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
+		case static_cast <uint8_t> (events_t::type_t::CLOSE): {
 			// Выполняем остановку работы события
-			this->_event.stop();
+			this->_events.stop();
 			// Если функция обратного вызова на закратие подключения установлена
 			if(this->_callback.is("close"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const uint32_t)> ("close", this->_id);
 		} break;
 		// Если выполняется событие чтения данных с сокета
-		case static_cast <uint8_t> (base_t::event_type_t::READ): {
+		case static_cast <uint8_t> (events_t::type_t::READ): {
 			// Если функция обратного вызова на чтение данных с сокета установлена
 			if(this->_callback.is("read"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const uint32_t)> ("read", this->_id);
 		} break;
 		// Если выполняется событие записи данных с сокета
-		case static_cast <uint8_t> (base_t::event_type_t::WRITE): {
+		case static_cast <uint8_t> (events_t::type_t::WRITE): {
 			// Если функция обратного вызова на запись данных в сокет установлена
 			if(this->_callback.is("write"))
 				// Выполняем функцию обратного вызова
@@ -171,7 +171,7 @@ void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const bas
  */
 void awh::Scheme::Broker::stop() noexcept {
 	// Выполняем остановку работы события
-	this->_event.stop();
+	this->_events.stop();
 }
 /**
  * @brief Метод запуска работы
@@ -179,13 +179,13 @@ void awh::Scheme::Broker::stop() noexcept {
  */
 void awh::Scheme::Broker::start() noexcept {
 	// Устанавливаем базу данных событий
-	this->_event = this->_base;
+	this->_events = this->_base;
 	// Устанавливаем тип события
-	this->_event = this->addr.sock;
+	this->_events = this->addr.sock;
 	// Устанавливаем функцию обратного вызова
-	this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
+	this->_events = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const events_t::type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
 	// Выполняем запуск работы события
-	this->_event.start();
+	this->_events.start();
 }
 /**
  * @brief Метод активации/деактивации метода события сокета
@@ -209,16 +209,14 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
 						// Выполняем активацию работы события
-						this->_event.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
-						// Выполняем активацию события закрытий подключения
-						this->_event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+						this->_events.mode(events_t::type_t::READ, events_t::mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
 						this->ectx.timeout(static_cast <uint32_t> (this->timeouts.read) * 1000, engine_t::method_t::READ);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):
 						// Выполняем деактивацию работы события
-						this->_event.mode(base_t::event_type_t::READ, base_t::event_mode_t::DISABLED);
+						this->_events.mode(events_t::type_t::READ, events_t::mode_t::DISABLED);
 					break;
 				}
 			} break;
@@ -231,16 +229,14 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
 						// Выполняем активацию работы события
-						this->_event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
-						// Выполняем активацию события закрытий подключения
-						this->_event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+						this->_events.mode(events_t::type_t::WRITE, events_t::mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
 						this->ectx.timeout(static_cast <uint32_t> (this->timeouts.write) * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):
 						// Выполняем деактивацию работы события
-						this->_event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
+						this->_events.mode(events_t::type_t::WRITE, events_t::mode_t::DISABLED);
 					break;
 				}
 			} break;
@@ -304,8 +300,8 @@ awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
  * @param log объект для работы с логами
  */
 awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept :
- _id(0), _sid(sid), _ip{""}, _mac{""}, _port(0), _sonet(sonet_t::TCP),
- _event(event_t::type_t::EVENT, fmk, log), _callback(log),
+ _id(0), _sid(sid), _ip{""}, _mac{""}, _port(0),
+ _sonet(sonet_t::TCP), _events(fmk, log), _callback(log),
  ectx(fmk, log), addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
 	// Устанавливаем идентификатор брокера
 	this->_id = const_cast <fmk_t *> (this->_fmk)->identifier();
@@ -316,7 +312,7 @@ awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t *
  */
 awh::Scheme::Broker::~Broker() noexcept {
 	// Выполняем остановку работы события
-	this->_event.stop();
+	this->_events.stop();
 }
 /**
  * @brief Метод очистки

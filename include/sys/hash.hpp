@@ -18,60 +18,16 @@
 /**
  * Стандартные модули
  */
+#include <any>
+#include <atomic>
 #include <string>
 #include <vector>
-
-/**
- * Подключаем LZ4
-*/
-#include <lz4.h>
-#include <lz4hc.h>
-
-/**
- * Подключаем GZip
-*/
-#include <zlib.h>
-
-/**
- * Подключаем Zstandard
-*/
-#include <zstd.h>
-
-/**
- * Подключаем BZip2
-*/
-#include <bzlib.h>
-
-/**
- * Подключаем LZma
-*/
-#include <lzma.h>
-
-/**
- * Подключаем Brotli
- */
-#include <brotli/decode.h>
-#include <brotli/encode.h>
-
-/**
- * Подключаем OpenSSL
- */
-#include <openssl/md5.h>
-#include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
 
 /**
  * Наши модули
  */
 #include "fmk.hpp"
 #include "log.hpp"
-
-// Параметры Zlib
-#define MOD_GZIP_ZLIB_CFACTOR 9
-#define MOD_GZIP_ZLIB_BSIZE 8096
 
 /**
  * @brief основное пространство имён
@@ -96,14 +52,14 @@ namespace awh {
 				// Количество обработанных байт
 				int32_t num;
 				// Ключ шифрования
-				AES_KEY key;
+				std::any key;
 				// Буфер данных для шифрования
-				u_char ivec[AES_BLOCK_SIZE];
+				uint8_t ivec[16];
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				State() noexcept : num(0), key{{0}, 0}, ivec{0} {}
+				State() noexcept : num(0), ivec{0} {}
 			} state_t;
 		public:
 			/**
@@ -173,18 +129,18 @@ namespace awh {
 			// Соль и пароль для шифрования
 			string _salt, _password;
 		private:
-			// Флаг переиспользования контекста компрессии
-			bool _takeOverCompress;
-			// Флаг переиспользования контекста декомпрессии
-			bool _takeOverDecompress;
-		private:
 			// Хвостовой буфер для удаления из финального сообщения
 			const char _btype[4];
 		private:
-			// Создаем поток ZLib для декомпрессии
-			mutable z_stream _zinf;
-			// Создаем поток ZLib для компрессии
-			mutable z_stream _zdef;
+			// Создаем поток GZip для декомпрессии
+			mutable std::any _zinf;
+			// Создаем поток GZip для компрессии
+			mutable std::any _zdef;
+		private:
+			// Флаг переиспользования контекста компрессии
+			std::atomic_bool _takeOverCompress;
+			// Флаг переиспользования контекста декомпрессии
+			std::atomic_bool _takeOverDecompress;
 		private:
 			// Объект работы с логами
 			const log_t * _log;

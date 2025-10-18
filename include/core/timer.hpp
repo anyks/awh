@@ -35,33 +35,6 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT Timer : public awh::core_t {
 		private:
-			/**
-			 * @brief Класс брокера
-			 *
-			 */
-			typedef class Broker {
-				public:
-					// Флаг персистентной работы
-					bool persist;
-				public:
-					// Объект события таймера
-					event_t event;
-				public:
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 */
-					Broker(const fmk_t * fmk, const log_t * log) noexcept :
-					 persist(false), event(event_t::type_t::TIMER, fmk, log) {}
-					/**
-					 * @brief Деструктор
-					 *
-					 */
-					~Broker() noexcept {}
-			} broker_t;
-		private:
 			// Мютекс для блокировки основного потока
 			std::mutex _mtx;
 		private:
@@ -69,7 +42,7 @@ namespace awh {
 			callback_t _callback;
 		private:
 			// Список активных брокеров
-			std::unordered_map <uint16_t, std::unique_ptr <broker_t>> _brokers;
+			std::unordered_map <uint16_t, std::unique_ptr <events_t>> _events;
 		private:
 			/**
 			 * @brief Метод генерации уникального идентификатора
@@ -100,7 +73,7 @@ namespace awh {
 			 * @param sock  сетевой сокет
 			 * @param event произошедшее событие
 			 */
-			void event(const uint16_t tid, const SOCKET sock, const base_t::event_type_t event) noexcept;
+			void event(const uint16_t tid, const SOCKET sock, const events_t::type_t event) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки всех таймеров

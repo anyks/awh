@@ -38,19 +38,6 @@ using namespace placeholders;
 std::unique_ptr <awh::base_t> awh::Core::Dispatch::_base;
 
 /**
- * @brief Метод отправки пинка
- *
- */
-void awh::Core::Dispatch::kick() noexcept {
-	// Если база событий проинициализированна
-	if(this->_init && (this->_base != nullptr)){
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx);
-		// Выполняем остановку всех событий
-		this->_base->kick();
-	}
-}
-/**
  * @brief Метод остановки чтения базы событий
  *
  */
@@ -227,20 +214,6 @@ void awh::Core::Dispatch::reinit() noexcept {
 	}
 }
 /**
- * @brief Метод заморозки чтения данных
- *
- * @param mode флаг активации
- */
-void awh::Core::Dispatch::freeze(const bool mode) noexcept {
-	// Если база событий проинициализированна
-	if(this->_init && (this->_base != nullptr)){
-		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx);
-		// Выполняем фриз получения данных
-		this->_base->freeze(mode);
-	}
-}
-/**
  * @brief Метод активации простого режима чтения базы событий
  *
  * @param mode флаг активации
@@ -252,8 +225,6 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 		const lock_guard lock(this->_mtx);
 		// Устанавливаем флаг активации простого чтения базы событий
 		this->_base->easily(mode);
-		// Выполняем остановку всех событий
-		this->_base->kick();
 	}
 }
 /**
@@ -268,8 +239,6 @@ void awh::Core::Dispatch::rate(const uint8_t msec) noexcept {
 		const lock_guard lock(this->_mtx);
 		// Устанавливаем частоту обновления базы событий
 		this->_base->rate(msec);
-		// Выполняем остановку всех событий
-		this->_base->kick();
 	}
 }
 /**
@@ -432,16 +401,6 @@ void awh::Core::unbind(core_t & core) noexcept {
 		core.closedown(false, true);
 }
 /**
- * @brief Метод отправки пинка
- *
- */
-void awh::Core::kick() noexcept {
-	// Если система уже запущена
-	if(this->_mode)
-		// Выполняем отправку события сброса
-		this->_dispatch.kick();
-}
-/**
  * @brief Метод остановки клиента
  *
  */
@@ -560,15 +519,6 @@ void awh::Core::easily(const bool mode) noexcept {
 		this->start();
 }
 /**
- * @brief Метод заморозки чтения данных
- *
- * @param mode флаг активации заморозки чтения данных
- */
-void awh::Core::freeze(const bool mode) noexcept {
-	// Устанавливаем режим заморозки чтения данных
-	this->_dispatch.freeze(mode);
-}
-/**
  * @brief Метод установки флага запрета вывода информационных сообщений
  *
  * @param mode флаг запрета вывода информационных сообщений
@@ -616,41 +566,47 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
 	}
 }
 /**
- * @brief Метод отправки сообщения между потоками
+ * @brief Метод отправки события через потоки
  *
- * @param sock сокет межпотокового передатчика
- * @param tid  идентификатор трансферной передачи
+ * @param id  идентификатор события для отправки
+ * @param tid идентификатор трансферной передачи
+ * @return    результат отправки события
  */
-void awh::Core::upstream(const SOCKET sock, const uint32_t tid) noexcept {
+bool awh::Core::trigger(const uint32_t id, const uint32_t tid) noexcept {
 	// Если база событий инициализированна
 	if(this->_dispatch._base != nullptr)
 		// Выполняем отправку сообщения
-		this->_dispatch._base->upstream(sock, tid);
+		this->_dispatch._base->trigger(id, tid);
+	// Выводим значение по умолчанию
+	return false;
 }
 /**
- * @brief Метод деактивации межпотокового передатчика
+ * @brief Метод отмены регистрации события
  *
- * @param sock сокет межпотокового передатчика
+ * @param id идентификатор события
+ * @return   результат отмены регистрации события
  */
-void awh::Core::deactivationUpstream(const SOCKET sock) noexcept {
+bool awh::Core::detach(const uint32_t id) noexcept {
 	// Если база событий инициализированна
 	if(this->_dispatch._base != nullptr)
 		// Выполняем деактивации межпотокового передатчика
-		this->_dispatch._base->deactivationUpstream(sock);
+		this->_dispatch._base->detach(id);
+	// Выводим значение по умолчанию
+	return false;
 }
 /**
- * @brief Метод активации межпотокового передатчика
+ * @brief Метод регистрации нового события
  *
  * @param callback функция обратного вызова
- * @return         сокет межпотокового передатчика
+ * @return         идентификатор события
  */
-SOCKET awh::Core::activationUpstream(function <void (const uint32_t)> callback) noexcept {
+uint32_t awh::Core::attach(function <void (const uint32_t)> callback) noexcept {
 	// Если база событий инициализированна
 	if(this->_dispatch._base != nullptr)
 		// Выполняем активации межпотокового передатчика
-		return this->_dispatch._base->activationUpstream(callback);
+		return this->_dispatch._base->attach(callback);
 	// Выводим значение по умолчанию
-	return INVALID_SOCKET;
+	return 0;
 }
 /**
  * @brief Конструктор

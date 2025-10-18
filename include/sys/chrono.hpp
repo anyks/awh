@@ -18,6 +18,7 @@
 /**
  * Подключаем зависимые заголовки
  */
+#include <any>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -396,7 +397,7 @@ namespace awh {
 			// Список внутренних временных зон
 			std::unordered_map <string, int32_t> _timeZones;
 			// Список скомпилированных регулярных выражений
-			std::unordered_map <format_t, regex_t> _expressions;
+			std::unordered_map <format_t, std::any> _expressions;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

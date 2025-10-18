@@ -1,6 +1,6 @@
 /**
  * @file: base.hpp
- * @date: 2024-06-26
+ * @date: 2025-10-17
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -16,38 +16,12 @@
 #define __AWH_EVENT_BASE__
 
 /**
- * Для операционной системы Linux
- */
-#if __linux__
-	/**
-	 * Подключаем системные заголовки
-	 */
-	#include <sys/epoll.h>
-/**
- * Для операционной системы Sun Solaris
- */
-#elif __sun__
-	/**
-	 * Подключаем системные заголовки
-	 */
-	#include <sys/devpoll.h>
-/**
- * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
- */
-#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-	/**
-	 * Подключаем системные заголовки
-	 */
-	#include <sys/event.h>
-#endif
-
-/**
  * Стандартные модули
  */
 #include <mutex>
-#include <vector>
 #include <string>
 #include <atomic>
+#include <vector>
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
@@ -55,20 +29,13 @@
 /**
  * Наши модули
  */
-#include "fds.hpp"
-#include "watch.hpp"
-#include "../net/socket.hpp"
+#include "events.hpp"
 
 /**
  * @brief основное пространство имён
  *
  */
 namespace awh {
-	/**
-	 * @brief Прототип класса события AWH event
-	 *
-	 */
-	class Event;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -80,108 +47,30 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Base {
 		private:
 			/**
-			 * @brief Устанавливаем дружбу с модулем события
-			 *
-			 */
-			friend class Event;
-		public:
-			/**
-			 * Тип режима получения события
-			 */
-			enum class event_mode_t : uint8_t {
-				ENABLED  = 0x01, // Разрешено получение события
-				DISABLED = 0x00  // Запрещено получение события
-			};
-			/**
-			 * Тип активного события
-			 */
-			enum class event_type_t : uint8_t {
-				NONE   = 0x00, // Тип активного события не установлено
-				CLOSE  = 0x01, // Событие закрытия подключения
-				READ   = 0x02, // Событие доступности данных на чтение
-				WRITE  = 0x03, // Событие доступности сокета на запись
-				TIMER  = 0x04, // Событие таймера в миллисекундах
-				STREAM = 0x05  // Событие межпотоковое системное
-			};
-		public:
-			/**
-			 * Создаём тип функции обратного вызова
-			 */
-			using callback_t = function <void (const SOCKET, const event_type_t)>;
-		private:
-			/**
-			 * @brief Конструктор таймера
-			 * 
-			 */
-			typedef struct Timer {
-				// Флаг персистентного таймера
-				bool persist;
-				// Задержка времени таймера
-				uint32_t delay;
-				// Функция обратного вызова
-				callback_t callback;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				Timer() noexcept :
-				 persist(false), delay(0), callback(nullptr) {}
-			} timer_t;
-			/**
-			 * @brief Структура работы вышестоящего потока
-			 *
-			 */
-			typedef struct Upstream {
-				// Мютекс для блокировки потока
-				std::mutex mtx;
-				// Объект работы с уведомителем
-				notifier_t notifier;
-				/**
-				 * Функция обратного вызова
-				 */
-				function <void (const uint32_t)> callback;
-				/**
-				 * @brief Конструктор
-				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 */
-				Upstream(const fmk_t * fmk, const log_t * log) noexcept :
-				 notifier(fmk, log), callback(nullptr) {}
-			} upstream_t;
-			/**
 			 * @brief Структура участника
 			 *
 			 */
 			typedef struct Peer {
-				// Идентификатор участника
-				uint32_t id;
 				// Отслеживаемый сокет
 				SOCKET sock;
-				// Флаг персистентного таймера
-				bool persist;
 				// Задержка времени таймера
 				uint32_t delay;
-				// Тип участника по умолчанию
-				event_type_t type;
+				// Активные события
+				uint8_t events;
 				// Функция обратного вызова
-				callback_t callback;
-				// Список соответствия типов событий режиму работы
-				std::unordered_map <event_type_t, event_mode_t> mode;
+				const events_t::callback_t & callback;
 				/**
 				 * @brief Конструктор
 				 *
+				 * @param fn функция обратного вызова
 				 */
-				Peer() noexcept :
-				 id(0), sock(INVALID_SOCKET), persist(false),
-				 delay(0), type(event_type_t::NONE), callback(nullptr) {}
+				Peer(const events_t::callback_t & fn) noexcept :
+				 sock(INVALID_SOCKET), delay(0),
+				 events(react_t::AWH_NONE), callback(fn) {}
 			} peer_t;
 		private:
-			// Идентификатор потока
-			uint64_t _wid;
-		private:
-			// Сокет таймера
-			SOCKET _timer;
+			// Объект реактора Event Loop
+			react_t _react;
 		private:
 			// Время блокировки базы событий в ожидании событий
 			std::atomic_int _rate;
@@ -189,159 +78,24 @@ namespace awh {
 			std::atomic_bool _works;
 			// Флаг простого чтения базы событий
 			std::atomic_bool _easily;
-			// Флаг блокировки опроса базы событий
-			std::atomic_bool _locker;
 			// Флаг запущенного опроса базы событий
 			std::atomic_bool _launched;
-		private:
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if _WIN32 || _WIN64
-				// Объект данных запроса
-				WSADATA _wsaData;
-				// Флаг инициализации WinSocksAPI
-				bool _winSockInit;
-				// Список активных файловых дескрипторов
-				vector <WSAPOLLFD> _events;
-			/**
-			 * Для операционной системы Sun Solaris
-			 */
-			#elif __sun__
-				// Идентификатор активного /dev/poll
-				int32_t _wfd;
-				// Список активных событий
-				struct dvpoll _dopoll;
-				// Список активных файловых дескрипторов
-				vector <struct pollfd> _events;
-			/**
-			 * Для операционной системы Linux
-			 */
-			#elif __linux__
-				// Идентификатор активного EPoll
-				SOCKET _efd;
-				// Список активных изменений событий
-				vector <struct epoll_event> _change;
-				// Список активных событий
-				vector <struct epoll_event> _events;
-			/**
-			 * Для операционной системы MacOS Xб FreeBSD, NetBSD или OpenBSD
-			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-				// Идентификатор активного kqueue
-				SOCKET _kq;
-				// Список активных изменений событий
-				vector <struct kevent> _change;
-				// Список активных событий
-				vector <struct kevent> _events;
-			#endif
-		private:
-			// Объект работы с операционноы системы
-			os_t _os;
-			// Объект работы с файловыми дескрипторами
-			fds_t _fds;
-			// Объект работы с часами
-			watch_t _watch;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
 		private:
-			// Список активных таймеров
-			std::unordered_map <uint32_t, timer_t> _timers;
+			// Список активных событий событий
+			vector <react_t::poller_t> _pollers;
 		private:
 			// Список отслеживаемых участников
-			std::unordered_map <SOCKET, peer_t> _peers;
+			std::unordered_map <uint32_t, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
-			std::unordered_map <SOCKET, std::unique_ptr <upstream_t>> _upstream;
+			std::unordered_map <uint32_t, function <void (const uint32_t)>> _events;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
-		private:
-			/**
-			 * @brief Метод получения идентификатора потока
-			 *
-			 * @return идентификатор потока для получения
-			 */
-			uint64_t wid() const noexcept;
-		private:
-			/**
-			 * @brief Метод проверки запущен ли модуль в дочернем потоке
-			 *
-			 * @return результат проверки
-			 */
-			bool isChildThread() const noexcept;
-		private:
-			/**
-			 * @brief Метод применение сетевой оптимизации операционной системы
-			 *
-			 * @return результат работы
-			 */
-			void boostingNetwork() const noexcept;
-		private:
-			/**
-			 * @brief Метод инициализации базы событий
-			 *
-			 * @param mode флаг инициализации
-			 */
-			void init(const event_mode_t mode) noexcept;
-		private:
-			/**
-			 * @brief Метод получения событий верхнеуровневых потоков
-			 *
-			 * @param sock  окет межпотокового передатчика
-			 * @param event входящее событие от межпотокового передатчика
-			 */
-			void stream(const SOCKET sock, const uint32_t event) noexcept;
-		private:
-			/**
-			 * @brief Метод удаления файлового дескриптора из базы событий
-			 *
-			 * @param sock сокет для удаления
-			 * @return     результат работы функции
-			 */
-			bool del(const SOCKET sock) noexcept;
-			/**
-			 * @brief Метод удаления файлового дескриптора из базы событий для всех событий
-			 *
-			 * @param id   идентификатор записи
-			 * @param sock сокет для удаления
-			 * @return     результат работы функции
-			 */
-			bool del(const uint32_t id, const SOCKET sock) noexcept;
-			/**
-			 * @brief Метод удаления файлового дескриптора из базы событий для указанного события
-			 *
-			 * @param id   идентификатор записи
-			 * @param sock сокет для удаления
-			 * @param type тип отслеживаемого события
-			 * @return     результат работы функции
-			 */
-			bool del(const uint32_t id, const SOCKET sock, const event_type_t type) noexcept;
-		private:
-			/**
-			 * @brief Метод добавления файлового дескриптора в базу событий
-			 *
-			 * @param id       идентификатор записи
-			 * @param sock     сокет для добавления
-			 * @param callback функция обратного вызова при получении события
-			 * @param delay    задержка времени для создания таймеров
-			 * @param persist  флаг персистентного таймера
-			 * @return         результат работы функции
-			 */
-			bool add(const uint32_t id, SOCKET & sock, const callback_t & callback = nullptr, const uint32_t delay = 0, const bool persist = false) noexcept;
-		private:
-			/**
-			 * @brief Метод установки режима работы модуля
-			 *
-			 * @param id   идентификатор записи
-			 * @param sock сокет для установки режима работы
-			 * @param type тип событий модуля для которого требуется сменить режим работы
-			 * @param mode флаг режима работы модуля
-			 * @return     результат работы функции
-			 */
-			bool mode(const uint32_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки запущена ли в данный момент база событий
@@ -351,16 +105,38 @@ namespace awh {
 			bool launched() const noexcept;
 		public:
 			/**
+			 * @brief Метод удаления события из базы событий
+			 *
+			 * @param id идентификатор события
+			 * @return   результат работы функции
+			 */
+			bool erase(const uint32_t id) noexcept;
+		public:
+			/**
+			 * @brief Метод установки режима работы сокета
+			 *
+			 * @param id     идентификатор события
+			 * @param events устанавливаемые события
+			 * @return       результат установки события
+			 */
+			bool mode(const uint32_t id, const uint8_t events) noexcept;
+		public:
+			/**
+			 * @brief Метод добавления сокета в базу событий
+			 *
+			 * @param sock     сокет для добавления
+			 * @param callback функция обратного вызова при получении события
+			 * @param delay    задержка времени таймера
+			 * @return         идентификатор добавленного события
+			 */
+			uint32_t emplace(const SOCKET sock, const events_t::callback_t & callback, const uint32_t delay = 0) noexcept;
+		public:
+			/**
 			 * @brief Метод очистки списка событий
 			 *
 			 */
 			void clear() noexcept;
 		public:
-			/**
-			 * @brief Метод отправки пинка
-			 *
-			 */
-			void kick() noexcept;
 			/**
 			 * @brief Метод остановки чтения базы событий
 			 *
@@ -371,18 +147,13 @@ namespace awh {
 			 *
 			 */
 			void start() noexcept;
+		public:
 			/**
 			 * @brief Метод пересоздания базы событий
 			 *
 			 */
 			void rebase() noexcept;
 		public:
-			/**
-			 * @brief Метод заморозки чтения данных
-			 *
-			 * @param mode флаг активации
-			 */
-			void freeze(const bool mode) noexcept;
 			/**
 			 * @brief Метод активации простого режима чтения базы событий
 			 *
@@ -398,25 +169,28 @@ namespace awh {
 			void rate(const uint32_t msec = 10) noexcept;
 		public:
 			/**
-			 * @brief Метод отправки сообщения между потоками
+			 * @brief Метод отправки события через потоки
 			 *
-			 * @param sock сокет межпотокового передатчика
-			 * @param tid  идентификатор трансферной передачи
+			 * @param id  идентификатор события для отправки
+			 * @param tid идентификатор трансферной передачи
+			 * @return    результат отправки события
 			 */
-			void upstream(const SOCKET sock, const uint32_t tid) noexcept;
+			bool trigger(const uint32_t id, const uint32_t tid) noexcept;
+		public:
 			/**
-			 * @brief Метод деактивации межпотокового передатчика
+			 * @brief Метод отмены регистрации события
 			 *
-			 * @param sock сокет межпотокового передатчика
+			 * @param id идентификатор события
+			 * @return   результат отмены регистрации события
 			 */
-			void deactivationUpstream(const SOCKET sock) noexcept;
+			bool detach(const uint32_t id) noexcept;
 			/**
-			 * @brief Метод активации межпотокового передатчика
+			 * @brief Метод регистрации нового события
 			 *
 			 * @param callback функция обратного вызова
-			 * @return         сокет межпотокового передатчика
+			 * @return         идентификатор события
 			 */
-			SOCKET activationUpstream(function <void (const uint32_t)> callback) noexcept;
+			uint32_t attach(function <void (const uint32_t)> callback) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

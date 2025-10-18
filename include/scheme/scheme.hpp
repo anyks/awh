@@ -30,13 +30,17 @@
 #include "../sys/buffer.hpp"
 #include "../sys/callback.hpp"
 #include "../net/engine.hpp"
-#include "../events/event.hpp"
+#include "../events/base.hpp"
 
 /**
- * @brief основное пространство имён
+ * @brief пространство имён
  *
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * @brief клиентское пространство имён
 	 *
@@ -59,17 +63,6 @@ namespace awh {
 		 */
 		class Core;
 	};
-}
-
-/**
- * @brief пространство имён
- *
- */
-namespace awh {
-	/**
-	 * Подписываемся на стандартное пространство имён
-	 */
-	using namespace std;
 	/**
 	 * @brief Структура схемы сети
 	 *
@@ -178,7 +171,7 @@ namespace awh {
 					sonet_t _sonet;
 				private:
 					// Объект основных событий
-					event_t _event;
+					events_t _events;
 				public:
 					// Буфер полезной нагрузки
 					payload_t payload;
@@ -364,7 +357,7 @@ namespace awh {
 					 * @param sock  сетевой сокет
 					 * @param event произошедшее событие
 					 */
-					void callback(const SOCKET sock, const base_t::event_type_t event) noexcept;
+					void callback(const SOCKET sock, const events_t::type_t event) noexcept;
 				public:
 					/**
 					 * @brief Метод остановки работы

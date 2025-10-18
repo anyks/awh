@@ -13,6 +13,48 @@
  */
 
 /**
+ * Подключаем LZ4
+*/
+#include <lz4.h>
+#include <lz4hc.h>
+
+/**
+ * Подключаем GZip
+*/
+#include <zlib.h>
+
+/**
+ * Подключаем Zstandard
+*/
+#include <zstd.h>
+
+/**
+ * Подключаем BZip2
+*/
+#include <bzlib.h>
+
+/**
+ * Подключаем LZma
+*/
+#include <lzma.h>
+
+/**
+ * Подключаем Brotli
+ */
+#include <brotli/decode.h>
+#include <brotli/encode.h>
+
+/**
+ * Подключаем OpenSSL
+ */
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <openssl/aes.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+
+/**
  * Стандартные модули
  */
 #include <cstdio>
@@ -25,6 +67,12 @@
  * Подключаем заголовочный файл
  */
 #include <sys/hash.hpp>
+
+/**
+ * Параметры компрессора GZip
+ */
+#define MOD_GZIP_ZLIB_CFACTOR 9
+#define MOD_GZIP_ZLIB_BSIZE 8096
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -63,7 +111,7 @@ static void hashing(const string & text, const awh::hash_t::type_t type, T & res
 			// Выполняем очистку блока с результатом
 			result.clear();
 			// Буфер промежуточных значений
-			vector <u_char> digest;
+			vector <uint8_t> digest;
 			/**
 			 * Определяем тип хэш-суммы
 			 */
@@ -236,7 +284,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 					// Выделяем память для буфера данных
 					result.resize(33, 0);
 					// Выполняем получение подписи
-					const u_char * digest = ::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+					const uint8_t * digest = ::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
 					// Заполняем строку данными MD5
 					for(uint8_t i = 0; i < 16; i++)
 						// Формируем данные MD5-хэша
@@ -249,7 +297,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 					// Выделяем память для буфера данных
 					result.resize(41, 0);
 					// Выполняем получение подписи
-					const u_char * digest = ::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+					const uint8_t * digest = ::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
 					// Заполняем строку данными SHA1
 					for(uint8_t i = 0; i < 20; i++)
 						// Формируем данные SHA1-хэша
@@ -262,7 +310,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 					// Выделяем память для буфера данных
 					result.resize(57, 0);
 					// Выполняем получение подписи
-					const u_char * digest = ::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+					const uint8_t * digest = ::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
 					// Заполняем строку данными SHA224
 					for(uint8_t i = 0; i < 28; i++)
 						// Формируем данные SHA224-хэша
@@ -275,7 +323,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 					// Выделяем память для буфера данных
 					result.resize(65, 0);
 					// Выполняем получение подписи
-					const u_char * digest = ::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+					const uint8_t * digest = ::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
 					// Заполняем строку данными SHA256
 					for(uint8_t i = 0; i < 32; i++)
 						// Формируем данные SHA256-хэша
@@ -288,7 +336,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 					// Выделяем память для буфера данных
 					result.resize(97, 0);
 					// Выполняем получение подписи
-					const u_char * digest = ::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+					const uint8_t * digest = ::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
 					// Заполняем строку данными SHA384
 					for(uint8_t i = 0; i < 48; i++)
 						// Формируем данные SHA384-хэша
@@ -301,7 +349,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 					// Выделяем память для буфера данных
 					result.resize(129, 0);
 					// Выполняем получение подписи
-					const u_char * digest = ::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+					const uint8_t * digest = ::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
 					// Заполняем строку данными SHA512
 					for(uint8_t i = 0; i < 64; i++)
 						// Формируем данные SHA512-хэша
@@ -422,7 +470,7 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 					// Определяем размер данных для считывания
 					size_t actual = size;
 					// Выделяем память для буфера данных
-					vector <u_char> output(AES_BLOCK_SIZE, 0);
+					vector <uint8_t> output(AES_BLOCK_SIZE, 0);
 					/**
 					 * Выполняем шифровку всех данных
 					 */
@@ -436,12 +484,12 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 							// Если производится кодирование данных
 							case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE):
 								// Выполняем сжатие данных
-								::AES_cfb128_encrypt(reinterpret_cast <const u_char *> (buffer) + offset, output.data(), length, &state.key, state.ivec, &state.num, AES_ENCRYPT);
+								::AES_cfb128_encrypt(reinterpret_cast <const uint8_t *> (buffer) + offset, output.data(), length, &std::any_cast <AES_KEY &>(state.key), state.ivec, &state.num, AES_ENCRYPT);
 							break;
 							// Если производится декодирование данных
 							case static_cast <uint8_t> (awh::hash_t::event_t::DECODE):
 								// Выполняем сжатие данных
-								::AES_cfb128_encrypt(reinterpret_cast <const u_char *> (buffer) + offset, output.data(), length, &state.key, state.ivec, &state.num, AES_DECRYPT);
+								::AES_cfb128_encrypt(reinterpret_cast <const uint8_t *> (buffer) + offset, output.data(), length, &std::any_cast <AES_KEY &>(state.key), state.ivec, &state.num, AES_DECRYPT);
 							break;
 						}
 						// Увеличиваем смещение
@@ -1461,7 +1509,7 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
  */
 bool awh::Hash::cipher(const cipher_t cipher) noexcept {
 	// Формируем массивы для шифрования
-	vector <u_char> iv, key;
+	vector <uint8_t> iv, key;
 	// Создаем тип шифрования
 	const EVP_CIPHER * evp = EVP_enc_null();
 	/**
@@ -1502,18 +1550,22 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
 	EVP_CIPHER_CTX * ctx = ::EVP_CIPHER_CTX_new();
 	// Если контекст для шифрования удачно инициализирован
 	if(ctx != nullptr){
+		// Объявляем структуру ключа
+		this->_state.key = AES_KEY{};
+		// Выполняем инициализацию ключа шифрования
+		std::any_cast <AES_KEY &>(this->_state.key) = {{0},0};
 		// Привязываем контекст к типу шифрования
 		::EVP_EncryptInit_ex(ctx, evp, nullptr, nullptr, nullptr);
 		/*
 		// Выделяем нужное количество памяти
-		vector <u_char> iv(::EVP_CIPHER_CTX_iv_length(ctx), 0);
-		vector <u_char> key(::EVP_CIPHER_CTX_key_length(ctx), 0);
+		vector <uint8_t> iv(::EVP_CIPHER_CTX_iv_length(ctx), 0);
+		vector <uint8_t> key(::EVP_CIPHER_CTX_key_length(ctx), 0);
 		*/
 		// Выполняем инициализацию ключа
 		const int32_t ok = EVP_BytesToKey(
 			evp, ::EVP_sha256(),
-			(this->_salt.empty() ? nullptr : reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_salt.data())),
-			reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_password.data()),
+			(this->_salt.empty() ? nullptr : reinterpret_cast <uint8_t *> (const_cast <hash_t *> (this)->_salt.data())),
+			reinterpret_cast <uint8_t *> (const_cast <hash_t *> (this)->_password.data()),
 			this->_password.length(), this->_rounds, key.data(), iv.data()
 		);
 		// Очищаем контекст
@@ -1523,7 +1575,7 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
 			// Выходим из функции
 			return false;
 		// Устанавливаем ключ шифрования
-		if(::AES_set_encrypt_key(key.data(), key.size() * 8, &this->_state.key) != 0)
+		if(::AES_set_encrypt_key(key.data(), key.size() * 8, &std::any_cast <AES_KEY &>(this->_state.key)) != 0)
 			// Выходим из функции
 			return false;
 		// Обнуляем номер
@@ -1533,7 +1585,7 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
 		// Копируем данные шифрования
 		::memcpy(this->_state.ivec, iv.data(), iv.size());
 		// Выполняем шифрование
-		// ::AES_encrypt(this->_state.ivec, this->_state.count, &this->_state.key);
+		// ::AES_encrypt(this->_state.ivec, this->_state.count, &std::any_cast <AES_KEY &>(this->_state.key));
 	// Выводим сообщение об ошибке
 	} else this->_log->print("%s", log_t::flag_t::CRITICAL, "Context for encryption/decryption could not be initialized");
 	// Сообщаем что всё удачно
@@ -1548,7 +1600,7 @@ void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
 	// Если сообщение является финальным
 	if(buffer.size() > sizeof(this->_btype)){
 		// Выполняем поиск хвостового списка байт для удаления
-		auto i = search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
+		auto i = std::search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
 		// Удаляем хвостовой список байт из буфера данных
 		buffer.erase(i, buffer.end());
 	}
@@ -2044,7 +2096,7 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 			// Если метод компрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем компрессию данных методом Deflate
-				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverCompress, this->_zdef, event_t::ENCODE, result);
+				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverCompress, std::any_cast <z_stream &> (this->_zdef), event_t::ENCODE, result);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -2130,7 +2182,7 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 			// Если метод компрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем компрессию данных методом Deflate
-				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverCompress, this->_zdef, event_t::ENCODE, result);
+				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverCompress, std::any_cast <z_stream &> (this->_zdef), event_t::ENCODE, result);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -2245,7 +2297,7 @@ void awh::Hash::decompress(const char * buffer, const size_t size, const method_
 			// Если метод декомпрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
-				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverDecompress, this->_zinf, event_t::DECODE, result);
+				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverDecompress, std::any_cast <z_stream &> (this->_zinf), event_t::DECODE, result);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -2331,7 +2383,7 @@ void awh::Hash::decompress(const char * buffer, const size_t size, const method_
 			// Если метод декомпрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
-				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverDecompress, this->_zinf, event_t::DECODE, result);
+				::deflate(buffer, size, this->_level[1], this->_wbit, this->_takeOverDecompress, std::any_cast <z_stream &> (this->_zinf), event_t::DECODE, result);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -2430,20 +2482,22 @@ void awh::Hash::password(const string & password) noexcept {
  * @param flag флаг переиспользования контекста компрессии
  */
 void awh::Hash::takeoverCompress(const bool flag) noexcept {
+	// Извлекаем буфер GZip
+	z_stream & buffer = std::any_cast <z_stream &> (this->_zdef);
 	// Если флаг установлен
 	if(this->_takeOverCompress && !flag)
 		// Очищаем выделенную память для компрессора
-		::deflateEnd(&this->_zdef);
+		::deflateEnd(&buffer);
 	// Если флаг установлен
 	if(!this->_takeOverCompress && flag){
 		// Заполняем его нулями потока для компрессора
-		::memset(&this->_zdef, 0, sizeof(this->_zdef));
+		::memset(&buffer, 0, sizeof(buffer));
 		// Обнуляем структуру потока для компрессора
-		this->_zdef.zalloc = Z_NULL;
-		this->_zdef.zfree  = Z_NULL;
-		this->_zdef.opaque = Z_NULL;
+		buffer.zalloc = Z_NULL;
+		buffer.zfree  = Z_NULL;
+		buffer.opaque = Z_NULL;
 		// Если поток инициализировать не удалось, выходим
-		if(::deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
+		if(::deflateInit2(&buffer, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
@@ -2470,22 +2524,24 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
  * @param flag флаг переиспользования контекста декомпрессии
  */
 void awh::Hash::takeoverDecompress(const bool flag) noexcept {
+	// Извлекаем буфер GZip
+	z_stream & buffer = std::any_cast <z_stream &> (this->_zinf);
 	// Если флаг установлен
 	if(this->_takeOverDecompress && !flag)
 		// Очищаем выделенную память для декомпрессора
-		::inflateEnd(&this->_zinf);
+		::inflateEnd(&buffer);
 	// Если флаг установлен
 	if(!this->_takeOverDecompress && flag){
 		// Заполняем его нулями потока для декомпрессора
-		::memset(&this->_zinf, 0, sizeof(this->_zinf));
+		::memset(&buffer, 0, sizeof(buffer));
 		// Обнуляем структуру потока для декомпрессора
-		this->_zinf.avail_in = 0;
-		this->_zinf.zalloc   = Z_NULL;
-		this->_zinf.zfree    = Z_NULL;
-		this->_zinf.opaque   = Z_NULL;
-		this->_zinf.next_in  = Z_NULL;
+		buffer.avail_in = 0;
+		buffer.zalloc   = Z_NULL;
+		buffer.zfree    = Z_NULL;
+		buffer.opaque   = Z_NULL;
+		buffer.next_in  = Z_NULL;
 		// Если поток инициализировать не удалось, выходим
-		if(::inflateInit2(&this->_zinf, -1 * this->_wbit) != Z_OK){
+		if(::inflateInit2(&buffer, -1 * this->_wbit) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
@@ -2514,8 +2570,12 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 awh::Hash::Hash(const log_t * log) noexcept :
  _wbit(MAX_WBITS), _rounds(5),
  _level{1, Z_DEFAULT_COMPRESSION, ZSTD_CLEVEL_DEFAULT},
- _salt{""}, _password{""}, _takeOverCompress(false), _takeOverDecompress(false),
- _btype{0x00, 0x00, 0xFF, 0xFF}, _zinf({0}), _zdef({0}), _log(log) {}
+ _salt{""}, _password{""}, _btype{0x00,0x00,0xFF,0xFF},
+ _takeOverCompress(false), _takeOverDecompress(false), _log(log) {
+	// Объявляем структуры буферов GZip
+	this->_zinf = z_stream{};
+	this->_zdef = z_stream{};
+}
 /**
  * @brief Деструктор
  *
@@ -2524,9 +2584,9 @@ awh::Hash::~Hash() noexcept {
 	// Очищаем выделенную память для компрессора
 	if(this->_takeOverCompress)
 		// Завершаем работу
-		::deflateEnd(&this->_zdef);
+		::deflateEnd(&std::any_cast <z_stream &> (this->_zdef));
 	// Очищаем выделенную память для декомпрессора
 	if(this->_takeOverDecompress)
 		// Завершаем работу
-		::inflateEnd(&this->_zinf);
+		::inflateEnd(&std::any_cast <z_stream &> (this->_zinf));
 }

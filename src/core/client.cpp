@@ -765,8 +765,6 @@ void awh::client::Core::reset(const uint32_t bid) noexcept {
 			}
 			// Выполняем отключение всех подключённых брокеров
 			this->close();
-			// Выполняем пинок базе событий
-			this->_dispatch.kick();
 			// Переходим по всему списку схем сети
 			for(auto & item : this->_schemes){
 				// Получаем объект схемы сети

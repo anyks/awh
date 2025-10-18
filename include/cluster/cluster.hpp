@@ -47,7 +47,7 @@
 #include "../sys/callback.hpp"
 #include "../net/socket.hpp"
 #include "../core/core.hpp"
-#include "../events/event.hpp"
+#include "../events/base.hpp"
 
 /**
  * @brief основное пространство имён
@@ -155,7 +155,7 @@ namespace awh {
 						 * @param sock  сетевой сокет
 						 * @param event произошедшее событие
 						 */
-						void message(const SOCKET sock, const base_t::event_type_t event) noexcept;
+						void message(const SOCKET sock, const events_t::type_t event) noexcept;
 					#endif
 				public:
 					/**
@@ -218,7 +218,7 @@ namespace awh {
 				// Объект подключения
 				peer_t peer;
 				// Объект события
-				awh::event_t ev;
+				events_t events;
 				/**
 				 * @brief Конструктор
 				 *
@@ -226,8 +226,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Client(const fmk_t * fmk, const log_t * log) noexcept :
-				 sock(INVALID_SOCKET), wid(0),
-				 ev(awh::event_t::type_t::EVENT, fmk, log) {}
+				 sock(INVALID_SOCKET), wid(0), events(fmk, log) {}
 			} client_t;
 			/**
 			 * @brief Структура сервера
@@ -245,7 +244,7 @@ namespace awh {
 				// Объект работы с сокетами
 				socket_t socket;
 				// Объект события на получения сообщений
-				awh::event_t ev;
+				events_t events;
 				/**
 				 * @brief Конструктор
 				 *
@@ -254,7 +253,7 @@ namespace awh {
 				 */
 				Server(const fmk_t * fmk, const log_t * log) noexcept :
 				 sock(INVALID_SOCKET), ipc{""}, fs(fmk, log),
-				 socket(fmk, log), ev(awh::event_t::type_t::EVENT, fmk, log) {}
+				 socket(fmk, log), events(fmk, log) {}
 			} server_t;
 		private:
 			/**
@@ -266,13 +265,13 @@ namespace awh {
 				 *
 				 */
 				typedef struct Broker {
-					bool stop;          // Флаг завершения работы процессом
-					pid_t pid;          // Идентификатор активного процесса
-					uint64_t date;      // Время начала жизни процесса
-					SOCKET mfds[2];     // Список файловых дескрипторов родительского процесса
-					SOCKET cfds[2];     // Список файловых дескрипторов дочернего процесса
-					awh::event_t read;  // Объект события на получения сообщений
-					awh::event_t write; // Объект события на запись сообщений
+					bool stop;       // Флаг завершения работы процессом
+					pid_t pid;       // Идентификатор активного процесса
+					uint64_t date;   // Время начала жизни процесса
+					SOCKET mfds[2];  // Список файловых дескрипторов родительского процесса
+					SOCKET cfds[2];  // Список файловых дескрипторов дочернего процесса
+					events_t read;   // Объект события на получения сообщений
+					events_t write;  // Объект события на запись сообщений
 					/**
 					 * @brief Конструктор
 					 *
@@ -281,10 +280,9 @@ namespace awh {
 					 */
 					Broker(const fmk_t * fmk, const log_t * log) noexcept :
 					 stop(false), pid(::getpid()), date(0),
-					 mfds{INVALID_SOCKET, INVALID_SOCKET},
-					 cfds{INVALID_SOCKET, INVALID_SOCKET},
-					 read(awh::event_t::type_t::EVENT, fmk, log),
-					 write(awh::event_t::type_t::EVENT, fmk, log) {}
+					 mfds{INVALID_SOCKET,INVALID_SOCKET},
+					 cfds{INVALID_SOCKET,INVALID_SOCKET},
+					 read(fmk, log), write(fmk, log) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -412,7 +410,7 @@ namespace awh {
 			 * @param wid  идентификатор воркера
 			 * @param sock сетевой сокет
 			 */
-			void accept(const uint16_t wid, const SOCKET sock, const base_t::event_type_t) noexcept;
+			void accept(const uint16_t wid, const SOCKET sock, const events_t::type_t) noexcept;
 		private:
 			/**
 			 * @brief Метод записи буфера данных в сокет

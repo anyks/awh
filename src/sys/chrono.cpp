@@ -20,6 +20,10 @@
 #include <chrono>
 #include <cstdarg>
 #include <iostream>
+
+/**
+ * Подключаем модуль PCRE2
+ */
 #include <pcre2/pcre2posix.h>
 
 /**
@@ -339,8 +343,10 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 		if(i == this->_expressions.end()){
 			// Выполняем создании записи кэша
 			auto ret = this->_expressions.emplace(format, regex_t{});
+			// Получаем объект регулярного выражения
+			regex_t & regex = std::any_cast <regex_t &> (ret.first->second);
 			// Выполняем компиляцию регулярного выражения
-			const int32_t error = ::pcre2_regcomp(&ret.first->second, expression.c_str(), REG_UTF);
+			const int32_t error = ::pcre2_regcomp(&regex, expression.c_str(), REG_UTF);
 			// Если возникла ошибка компиляции
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
@@ -348,7 +354,7 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
-				const size_t size = ::pcre2_regerror(error, &ret.first->second, buffer, sizeof(buffer) - 1);
+				const size_t size = ::pcre2_regerror(error, &regex, buffer, sizeof(buffer) - 1);
 				// Если текст ошибки получен
 				if(size > 0){
 					/**
@@ -433,10 +439,12 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 		if(i != this->_expressions.end()){
 			// Выполняем блокировку потока
 			const lock_guard lock(this->_mtx.parse);
+			// Получаем объект регулярного выражения
+			const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 			// Создаём объект матчинга
-			regmatch_t match[i->second.re_nsub + 1];
+			regmatch_t match[regex.re_nsub + 1];
 			// Выполняем разбор регулярного выражения
-			const int32_t error = ::pcre2_regexec(&i->second, text.c_str() + pos, i->second.re_nsub + 1, match, REG_NOTEMPTY);
+			const int32_t error = ::pcre2_regexec(&regex, text.c_str() + pos, regex.re_nsub + 1, match, REG_NOTEMPTY);
 			// Если ошибок не получено
 			if(error == 0){
 				/**
@@ -464,7 +472,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %W
 					case static_cast <uint8_t> (format_t::W): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Получаем смещение в тексте
@@ -641,9 +649,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 							// Выполняем сброс временной зоны
 							dt.offset = 0;
 						// Создаём массив собранных результатов
-						vector <string> data(i->second.re_nsub + 1);
+						vector <string> data(regex.re_nsub + 1);
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -700,7 +708,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %R
 					case static_cast <uint8_t> (format_t::R): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -721,7 +729,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %D
 					case static_cast <uint8_t> (format_t::D): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -751,7 +759,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %F
 					case static_cast <uint8_t> (format_t::F): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -778,7 +786,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %T
 					case static_cast <uint8_t> (format_t::T): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -803,7 +811,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %r
 					case static_cast <uint8_t> (format_t::r): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -843,7 +851,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 					// Если формат получен как %c
 					case static_cast <uint8_t> (format_t::c): {
 						// Выполняем перебор всех полученных вариантов
-						for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
 								// Если это первый элемент
@@ -3526,10 +3534,12 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
 				const lock_guard lock(this->_mtx.parse);
+				// Получаем объект регулярного выражения
+				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
-				regmatch_t match[i->second.re_nsub + 1];
+				regmatch_t match[regex.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&i->second, value.c_str(), i->second.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, value.c_str(), regex.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Обозначение размерности числа
@@ -3537,7 +3547,7 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 					// Размерность времени и размерность секунд
 					double dimension = 1., seconds = 0.;
 					// Выполняем перебор всех полученных вариантов
-					for(uint8_t j = 1; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+					for(uint8_t j = 1; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so){
 							/**
@@ -5759,16 +5769,18 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
 				const lock_guard lock(this->_mtx.parse);
+				// Получаем объект регулярного выражения
+				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
-				regmatch_t match[i->second.re_nsub + 1];
+				regmatch_t match[regex.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&i->second, zone.c_str(), i->second.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, zone.c_str(), regex.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Создаём массив собранных результатов
-					vector <string> data(i->second.re_nsub + 1);
+					vector <string> data(regex.re_nsub + 1);
 					// Выполняем перебор всех полученных вариантов
-					for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so)
 							// Выполняем установку результата
@@ -7102,16 +7114,18 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
 				const lock_guard lock(this->_mtx.parse);
+				// Получаем объект регулярного выражения
+				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
-				regmatch_t match[i->second.re_nsub + 1];
+				regmatch_t match[regex.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&i->second, zone.c_str(), i->second.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, zone.c_str(), regex.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Создаём массив собранных результатов
-					vector <string> data(i->second.re_nsub + 1);
+					vector <string> data(regex.re_nsub + 1);
 					// Выполняем перебор всех полученных вариантов
-					for(uint8_t j = 0; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
+					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so)
 							// Выполняем установку результата
@@ -11070,7 +11084,7 @@ awh::Chrono::~Chrono() noexcept {
 	// Выполняем перебор всего списка скомпилированных регулярных выражений
 	for(auto i = this->_expressions.begin(); i != this->_expressions.end();){
 		// Выполняем удаление выделенной памяти
-		::pcre2_regfree(&i->second);
+		::pcre2_regfree(&std::any_cast <regex_t &> (i->second));
 		// Удаляем регулярное выражение
 		i = this->_expressions.erase(i);
 	}
