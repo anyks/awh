@@ -177,10 +177,10 @@ class Executor {
 		 *
 		 * @param bid    идентификатор брокера (клиента)
 		 * @param buffer бинарный буфер сообщения
-		 * @param text   тип буфера сообщения
+		 * @param utf8   тип буфера сообщения
 		 * @param ws     объект Websocket-сервера
 		 */
-		void message(const uint32_t bid, const buffer_t & buffer, const bool text, server::websocket_t * ws){
+		void message(const uint32_t bid, const buffer_t & buffer, const bool utf8, server::websocket_t * ws){
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выбранный сабпротокол
@@ -191,10 +191,14 @@ class Executor {
 				if(!subprotocols.empty())
 					// Выполняем получение выбранного сабпротокола
 					subprotocol = (* subprotocols.begin());
-				// Выводим информацию в лог
-				this->_log->print("Message: %s [%s]", log_t::flag_t::INFO, static_cast <string> (buffer).c_str(), subprotocol.c_str());
+				// Если данные пришли в виде текста, выводим
+				if(utf8)
+					// Выводим полученный результат
+					cout << " +++++++++++++ " << buffer << " [" << subprotocol << "]" << endl;
+				// Сообщаем количество полученных байт
+				else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 				// Отправляем сообщение обратно
-				ws->sendMessage(bid, buffer, text);
+				ws->sendMessage(bid, buffer, utf8);
 			}
 		}
 		/**

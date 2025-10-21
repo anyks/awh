@@ -166,7 +166,7 @@ class Executor {
 			// Если данные пришли в виде текста, выводим
 			if(utf8)
 				// Выводим полученный результат
-				cout << " +++++++++++++ " << buffer << " == " << subprotocol << endl;
+				cout << " +++++++++++++ " << buffer << " == [" << subprotocol << "]" << endl;
 			// Сообщаем количество полученных байт
 			else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 		}

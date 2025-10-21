@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/holder.hpp>
 #include <client/web/web.hpp>
 
 /**
@@ -225,9 +226,9 @@ void awh::client::Web2::statusEvent(const awh::core_t::status_t status) noexcept
  */
 void awh::client::Web2::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::CONNECT}, event_t::CONNECT))
+	if(holder.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::CONNECT}, event_t::CONNECT))
 		// Выполняем инициализацию сессии HTTP/2
 		this->implementation(bid);
 }
@@ -241,9 +242,9 @@ void awh::client::Web2::proxyConnectEvent(const uint32_t bid, const uint16_t sid
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::OPEN, event_t::PROXY_READ}, event_t::PROXY_CONNECT)){
+		if(holder.access({event_t::OPEN, event_t::PROXY_READ}, event_t::PROXY_CONNECT)){
 			/**
 			 * Определяем тип прокси-сервера
 			 */
@@ -338,9 +339,9 @@ void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, c
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::PROXY_CONNECT}, event_t::PROXY_READ)){
+		if(holder.access({event_t::PROXY_CONNECT}, event_t::PROXY_READ)){
 			/**
 			 * Определяем тип прокси-сервера
 			 */
@@ -506,9 +507,9 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
  */
 bool awh::client::Web2::ping() noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND))
+	if(holder.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND))
 		// Выполняем пинг удалённого сервера
 		return this->_http2.ping();
 	// Выводим результат
@@ -536,9 +537,9 @@ bool awh::client::Web2::send(const int32_t sid, const char * buffer, const size_
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
+	if(holder.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((result = ((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0)))){
 			// Выполняем отправку тела запроса на сервер
@@ -565,9 +566,9 @@ int32_t awh::client::Web2::send(const int32_t sid, const vector <std::pair <stri
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
+	if(holder.access({event_t::CONNECT, event_t::READ, event_t::SEND}, event_t::SEND)){
 		// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
 		if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 			// Выполняем отправку заголовков запроса на сервер

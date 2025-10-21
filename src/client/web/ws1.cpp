@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/holder.hpp>
 #include <client/web/ws1.hpp>
 
 /**
@@ -35,9 +36,9 @@ using namespace placeholders;
  */
 void awh::client::Websocket1::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+	if(holder.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Запоминаем идентификатор брокера
@@ -182,9 +183,9 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 				// Выходим из функции
 				return;
 			// Создаём объект холдирования
-			hold_t <event_t> hold(this->_events);
+			holder_t <event_t> holder(this->_events);
 			// Если событие соответствует разрешённому
-			if(hold.access({event_t::CONNECT}, event_t::READ)){
+			if(holder.access({event_t::CONNECT}, event_t::READ)){
 				// Если рукопожатие не выполнено
 				if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).state(http_t::state_t::HANDSHAKE))){
 					// Добавляем полученные данные в буфер
@@ -1087,9 +1088,9 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
  */
 void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+	if(holder.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
 		if((this->_core != nullptr) && this->_core->working() && (this->_bid > 0)){
 			// Если отправка сообщения разрешена
@@ -1153,9 +1154,9 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+	if(holder.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
 		if((this->_core != nullptr) && this->_core->working()){
 			// Если отправка сообщения разрешена

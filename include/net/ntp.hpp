@@ -54,7 +54,6 @@
 #include "../sys/fs.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
-#include "../sys/hold.hpp"
 
 /**
  * @brief основное пространство имён

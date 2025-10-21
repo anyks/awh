@@ -3688,12 +3688,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::DTLSv1_2_server_method());
+						target._ctx = ::SSL_CTX_new(::DTLS_server_method());
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::TLSv1_2_server_method());
+						target._ctx = ::SSL_CTX_new(::TLS_server_method());
 					break;
 				}
 			/**
@@ -3701,7 +3701,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 */
 			#else
 				// Получаем контекст OpenSSL
-				target._ctx = ::SSL_CTX_new(::TLSv1_2_server_method());
+				target._ctx = ::SSL_CTX_new(::TLS_server_method());
 			#endif
 			// Если контекст не создан
 			if(target._ctx == nullptr){
@@ -3964,12 +3964,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(DTLSv1_2_client_method());
+							target._ctx = ::SSL_CTX_new(DTLS_client_method());
 						break;
 						// Если приложение является сервером
 						case static_cast <uint8_t> (type_t::SERVER):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(DTLSv1_2_server_method());
+							target._ctx = ::SSL_CTX_new(DTLS_server_method());
 						break;
 					}
 				} break;
@@ -3982,12 +3982,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(TLSv1_2_client_method());
+							target._ctx = ::SSL_CTX_new(TLS_client_method());
 						break;
 						// Если приложение является сервером
 						case static_cast <uint8_t> (type_t::SERVER):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(TLSv1_2_server_method());
+							target._ctx = ::SSL_CTX_new(TLS_server_method());
 						break;
 					}
 				} break;
@@ -4329,12 +4329,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::DTLSv1_2_client_method());
+						target._ctx = ::SSL_CTX_new(::DTLS_client_method());
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::TLSv1_2_client_method());
+						target._ctx = ::SSL_CTX_new(::TLS_client_method());
 					break;
 				}
 			/**
@@ -4342,7 +4342,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			 */
 			#else
 				// Получаем контекст OpenSSL
-				target._ctx = ::SSL_CTX_new(::TLSv1_2_client_method());
+				target._ctx = ::SSL_CTX_new(::TLS_client_method());
 			#endif
 			// Если контекст не создан
 			if(target._ctx == nullptr){

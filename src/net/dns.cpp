@@ -52,6 +52,7 @@
  * Подключаем заголовочный файл
  */
 #include <net/dns.hpp>
+#include <sys/holder.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -1464,9 +1465,9 @@ bool awh::DNS::clear() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if((result = hold.access({}, status_t::CLEAR))){
+	if((result = holder.access({}, status_t::CLEAR))){
 		// Выполняем сброс кэша DNS-резолвера
 		this->flush();
 		// Выполняем отмену выполненных запросов IPv4
@@ -1490,9 +1491,9 @@ bool awh::DNS::flush() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
+	if((result = holder.access({status_t::CLEAR}, status_t::FLUSH))){
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		// Выполняем сброс кэша полученных IPv4-адресов
@@ -2410,9 +2411,9 @@ void awh::DNS::server(const string & server) noexcept {
  */
 void awh::DNS::server(const int32_t family, const string & server) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::NSS_SET}, status_t::NS_SET)){
+	if(holder.access({status_t::NSS_SET}, status_t::NS_SET)){
 		// Если адрес сервера передан
 		if(!server.empty()){
 			// Хост переданного сервера
@@ -2621,9 +2622,9 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
-		hold_t <status_t> hold(this->_status);
+		holder_t <status_t> holder(this->_status);
 		// Если статус работы DNS-резолвера соответствует
-		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
+		if(holder.access({status_t::NSS_REP}, status_t::NSS_SET)){
 			// Выполняем блокировку потока
 			const lock_guard lock(this->_mtx);
 			// Переходим по всем нейм серверам и добавляем их
@@ -2672,9 +2673,9 @@ void awh::DNS::servers(const int32_t family, const vector <string> & servers) no
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
-		hold_t <status_t> hold(this->_status);
+		holder_t <status_t> holder(this->_status);
 		// Если статус работы DNS-резолвера соответствует
-		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
+		if(holder.access({status_t::NSS_REP}, status_t::NSS_SET)){
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers)
 				// Выполняем добавление нового сервера
@@ -2689,9 +2690,9 @@ void awh::DNS::servers(const int32_t family, const vector <string> & servers) no
  */
 void awh::DNS::replace(const vector <string> & servers) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
+	if(holder.access({status_t::RESOLVE}, status_t::NSS_REP)){
 		// Список серверов IPv4
 		vector <string> ipv4, ipv6;
 		// Выполняем блокировку потока
@@ -2743,9 +2744,9 @@ void awh::DNS::replace(const vector <string> & servers) noexcept {
  */
 void awh::DNS::replace(const int32_t family, const vector <string> & servers) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::RESOLVE, status_t::NSS_REP}, status_t::NSS_REP)){
+	if(holder.access({status_t::RESOLVE, status_t::NSS_REP}, status_t::NSS_REP)){
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		/**
@@ -2798,9 +2799,9 @@ void awh::DNS::replace(const int32_t family, const vector <string> & servers) no
  */
 void awh::DNS::network(const vector <string> & network) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы установки параметров сети соответствует
-	if(hold.access({}, status_t::NET_SET)){
+	if(holder.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
@@ -2862,9 +2863,9 @@ void awh::DNS::network(const vector <string> & network) noexcept {
  */
 void awh::DNS::network(const int32_t family, const vector <string> & network) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы установки параметров сети соответствует
-	if(hold.access({}, status_t::NET_SET)){
+	if(holder.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
@@ -3013,9 +3014,9 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({}, status_t::RESOLVE)){
+	if(holder.access({}, status_t::RESOLVE)){
 		// Если домен передан
 		if(!name.empty()){
 			// Если доменное имя является локальным
@@ -3156,9 +3157,9 @@ string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({}, status_t::RESOLVE)){
+	if(holder.access({}, status_t::RESOLVE)){
 		// Если домен передан
 		if(!host.empty()){
 			/**

@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/holder.hpp>
 #include <client/web/http1.hpp>
 
 /**
@@ -35,9 +36,9 @@ using namespace placeholders;
  */
 void awh::client::Http1::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+	if(holder.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 		// Запоминаем идентификатор брокера
 		this->_bid = bid;
 		// Выполняем установку идентификатора объекта
@@ -115,9 +116,9 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 		// Если обработка полученных данных разрешена
 		if(process){
 			// Создаём объект холдирования
-			hold_t <event_t> hold(this->_events);
+			holder_t <event_t> holder(this->_events);
 			// Если событие соответствует разрешённому
-			if(hold.access({event_t::CONNECT}, event_t::READ)){
+			if(holder.access({event_t::CONNECT}, event_t::READ)){
 				/**
 				 * Определяем тип агента
 				 */
@@ -842,9 +843,9 @@ bool awh::client::Http1::sendMessage(const char * message, const size_t size, co
  */
 void awh::client::Http1::submit(const request_t & request) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::SEND, event_t::CONNECT}, event_t::SUBMIT)){
+	if(holder.access({event_t::READ, event_t::SEND, event_t::CONNECT}, event_t::SUBMIT)){
 		// Если подключение выполнено
 		if((this->_core != nullptr) && (this->_bid > 0)){
 			// Выполняем сброс параметров запроса
@@ -937,9 +938,9 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
  */
 int32_t awh::client::Http1::send(const request_t & request) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если сетевое ядро уже инициализированно
 		if(this->_core != nullptr){
 			// Если идентификатор запроса не установлен
@@ -1073,9 +1074,9 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если данные переданы верные
 		if((result = ((this->_core != nullptr) && (buffer != nullptr) && (size > 0)))){
 			// Выполняем сброс данных тела
@@ -1116,9 +1117,9 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы
 		if((this->_core != nullptr) && !headers.empty()){
 			// Выполняем очистку параметров HTTP-запроса

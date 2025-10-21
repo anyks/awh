@@ -35,7 +35,7 @@ using namespace placeholders;
 /**
  * Объект глобальной базы событий
  */
-std::unique_ptr <awh::base_t> awh::Core::Dispatch::_base;
+static awh::base_t * EventBase = nullptr;
 
 /**
  * @brief Метод остановки чтения базы событий
@@ -43,13 +43,13 @@ std::unique_ptr <awh::base_t> awh::Core::Dispatch::_base;
  */
 void awh::Core::Dispatch::stop() noexcept {
 	// Если чтение базы событий уже началось
-	if(this->_work && this->_init && (this->_base != nullptr)){
+	if(this->_work && this->_init && (EventBase != nullptr)){
 		// Снимаем флаг работы модуля
 		this->_work = !this->_work;
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		// Выполняем остановку базы событий
-		this->_base->stop();
+		EventBase->stop();
 	// Если модуль не инициализирован
 	} else if(!this->_init) {
 		// Если функция обратного вызова установлена
@@ -64,7 +64,7 @@ void awh::Core::Dispatch::stop() noexcept {
  */
 void awh::Core::Dispatch::start() noexcept {
 	// Если чтение базы событий ещё не началось
-	if(!this->_work && this->_init && (this->_base != nullptr)){
+	if(!this->_work && this->_init && (EventBase != nullptr)){
 		// Устанавливаем флаг работы модуля
 		this->_work = !this->_work;
 		// Если функция обратного вызова установлена
@@ -72,7 +72,7 @@ void awh::Core::Dispatch::start() noexcept {
 			// Выполняем запуск функции активации базы событий
 			this->_launching(true, true);
 		// Выполняем запуск базы событий
-		this->_base->start();
+		EventBase->start();
 		// Если функция обратного вызова установлена
 		if(this->_closedown != nullptr)
 			// Выполняем остановку функции активации базы событий
@@ -103,11 +103,11 @@ void awh::Core::Dispatch::rebase() noexcept {
 			// Выполняем блокировку потока
 			const lock_guard lock(this->_mtx);
 			// Если база событий уже создана
-			if(this->_base != nullptr)
+			if(EventBase != nullptr)
 				// Выполняем пересоздание базы событий
-				this->_base->rebase();
+				EventBase->rebase();
 			// Создаем новую базу событий
-			else this->_base = std::make_unique <base_t> (this->_fmk, this->_log);
+			else EventBase = new base_t(this->_fmk, this->_log);
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**
@@ -167,11 +167,11 @@ void awh::Core::Dispatch::reinit() noexcept {
 			// Выполняем блокировку потока
 			const lock_guard lock(this->_mtx);
 			// Если база событий уже создана
-			if(this->_base != nullptr)
+			if(EventBase != nullptr)
 				// Удаляем объект базы событий
-				this->_base.reset(nullptr);
+				delete EventBase;
 			// Создаем новую базу событий
-			this->_base = std::make_unique <base_t> (this->_fmk, this->_log);
+			EventBase = new base_t(this->_fmk, this->_log);
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**
@@ -220,11 +220,11 @@ void awh::Core::Dispatch::reinit() noexcept {
  */
 void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	// Если база событий инициализированна
-	if(this->_base != nullptr){
+	if(EventBase != nullptr){
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		// Устанавливаем флаг активации простого чтения базы событий
-		this->_base->easily(mode);
+		EventBase->easily(mode);
 	}
 }
 /**
@@ -234,11 +234,11 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
  */
 void awh::Core::Dispatch::rate(const uint8_t msec) noexcept {
 	// Если база событий проинициализированна
-	if(this->_init && (this->_base != nullptr)){
+	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		// Устанавливаем частоту обновления базы событий
-		this->_base->rate(msec);
+		EventBase->rate(msec);
 	}
 }
 /**
@@ -274,7 +274,7 @@ awh::Core::Dispatch::Dispatch(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _work(false), _init(false), _virt(false),
  _launching(nullptr), _closedown(nullptr), _fmk(fmk), _log(log) {
 	// Если база событий ещё не проинициализированна
-	if(!(this->_virt = (this->_base != nullptr)))
+	if(!(this->_virt = (EventBase != nullptr)))
 		// Выполняем инициализацию базы событий
 		this->reinit();
 }
@@ -286,9 +286,9 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 	// Если база событий проинициализированна
 	if(this->_init){
 		// Если база событий не является виртуальной
-		if(!this->_virt && (this->_base != nullptr))
+		if(!this->_virt && (EventBase != nullptr))
 			// Удаляем объект базы событий
-			this->_base.reset(nullptr);
+			delete EventBase;
 	}
 }
 /**
@@ -497,7 +497,7 @@ bool awh::Core::working() const noexcept {
  */
 awh::base_t * awh::Core::base() noexcept {
 	// Выполняем получение базы событий
-	return this->_dispatch._base.get();
+	return EventBase;
 }
 /**
  * @brief Метод активации простого режима чтения базы событий
@@ -574,9 +574,9 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
  */
 bool awh::Core::trigger(const uint32_t id, const uint32_t tid) noexcept {
 	// Если база событий инициализированна
-	if(this->_dispatch._base != nullptr)
+	if(EventBase != nullptr)
 		// Выполняем отправку сообщения
-		this->_dispatch._base->trigger(id, tid);
+		EventBase->trigger(id, tid);
 	// Выводим значение по умолчанию
 	return false;
 }
@@ -588,9 +588,9 @@ bool awh::Core::trigger(const uint32_t id, const uint32_t tid) noexcept {
  */
 bool awh::Core::detach(const uint32_t id) noexcept {
 	// Если база событий инициализированна
-	if(this->_dispatch._base != nullptr)
+	if(EventBase != nullptr)
 		// Выполняем деактивации межпотокового передатчика
-		this->_dispatch._base->detach(id);
+		EventBase->detach(id);
 	// Выводим значение по умолчанию
 	return false;
 }
@@ -602,9 +602,9 @@ bool awh::Core::detach(const uint32_t id) noexcept {
  */
 uint32_t awh::Core::attach(function <void (const uint32_t)> callback) noexcept {
 	// Если база событий инициализированна
-	if(this->_dispatch._base != nullptr)
+	if(EventBase != nullptr)
 		// Выполняем активации межпотокового передатчика
-		return this->_dispatch._base->attach(callback);
+		return EventBase->attach(callback);
 	// Выводим значение по умолчанию
 	return 0;
 }

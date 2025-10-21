@@ -1,5 +1,5 @@
 /**
- * @file: hold.hpp
+ * @file: holder.hpp
  * @date: 2023-08-05
  * @license: GPL-3.0
  *
@@ -32,7 +32,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Шаблон формата данных статусов холдера
+	 * @brief Шаблон формата данных статусов холдера
+	 *
 	 * @tparam T данные статусов холдера
 	 */
 	template <typename T>
@@ -106,7 +107,7 @@ namespace awh {
 	/**
 	 * Создаём тип данных работы с холдером
 	 */
-	using hold_t = Holder <T>;
+	using holder_t = Holder <T>;
 };
 
 #endif // __AWH_HOLDER__

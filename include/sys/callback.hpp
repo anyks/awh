@@ -30,6 +30,7 @@
  * Наши модули
  */
 #include "log.hpp"
+#include "locker.hpp"
 #include <cityhash/city.h>
 
 /**
@@ -205,11 +206,11 @@ namespace awh {
 					explicit Iterator(iterator it, const log_t * log) noexcept : _it(it), _log(log) {}
 			} iterator_t;
 		private:
-			// Мютекс для блокировки основного потока
-			mutable std::recursive_mutex _mtx;
-		private:
 			// Хранилище распределения по названиям
 			std::unordered_map <uint32_t, fn_t> _callbacks;
+		private:
+			// Объект холдера для блокировки основного потока
+			mutable lock_state_t <std::recursive_mutex> _lockState;
 		private:
 			/**
 			 * Функция обратного вызова при получении события установки или удаления функции
@@ -273,7 +274,7 @@ namespace awh {
 			 */
 			bool empty() const noexcept {
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx);
+				const locker_t lock(this->_lockState);
 				// Выводим результат проверки
 				return this->_callbacks.empty();
 			}
@@ -300,7 +301,7 @@ namespace awh {
 					 */
 					try {
 						// Выполняем блокировку потока
-						const lock_guard lock(this->_mtx);
+						const locker_t lock(this->_lockState);
 						// Устанавливаем новые данные функциий обратного вызова
 						this->_callbacks = callbacks;
 					/**
@@ -334,7 +335,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем очистку списка функций обратного вызова
 					this->_callbacks.clear();
 				/**
@@ -365,7 +366,7 @@ namespace awh {
 			 */
 			bool _is(const uint32_t id) const noexcept {
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx);
+				const locker_t lock(this->_lockState);
 				// Выводим результат проверки
 				return ((id > 0) && (this->_callbacks.find(id) != this->_callbacks.end()));
 			}
@@ -429,7 +430,7 @@ namespace awh {
 				try {
 					{
 						// Выполняем блокировку потока
-						const lock_guard lock(this->_mtx);
+						const locker_t lock(this->_lockState);
 						// Выполняем поиск существующей функции обратного вызова
 						auto i = this->_callbacks.find(id);
 						// Если функция существует
@@ -517,7 +518,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск первой функции
 					auto i = this->_callbacks.find(id1);
 					// Выполняем поиск второй функции
@@ -564,9 +565,9 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока для текущего контейнера
-					const lock_guard lock1(this->_mtx);
+					const locker_t lock1(this->_lockState);
 					// Выполняем блокировку потока для стороннего контейнера
-					const lock_guard lock2(storage._mtx);
+					const locker_t lock2(storage._lockState);
 					// Выполняем поиск первой функции
 					auto i = this->_callbacks.find(id1);
 					// Выполняем поиск второй функции
@@ -606,9 +607,9 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока для текущего контейнера
-					const lock_guard lock1(this->_mtx);
+					const locker_t lock1(this->_lockState);
 					// Выполняем блокировку потока для стороннего контейнера
-					const lock_guard lock2(storage._mtx);
+					const locker_t lock2(storage._lockState);
 					// Выполняем обмен функциями
 					this->_callbacks.swap(storage._callbacks);
 				/**
@@ -733,7 +734,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск функции обратного вызова
 					auto i = storage._callbacks.find(id);
 					// Если функция в внешнем хранилище найдена
@@ -801,7 +802,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск указанной функции в переданном хранилище
 					auto i = storage._callbacks.find(id1);
 					// Если функция в хранилище получена
@@ -868,7 +869,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск функции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция найдена в списке
@@ -1067,7 +1068,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск фиункции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция обратного вызова найдена
@@ -1196,7 +1197,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск существующей функции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция обратного вызова найдена
@@ -1436,7 +1437,7 @@ namespace awh {
 			 */
 			void on(function <void (const event_t, const uint32_t, const fn_t &)> callback) noexcept {
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx);
+				const locker_t lock(this->_lockState);
 				// Выполняем установку функции обратного вызова
 				this->_callback = std::move(callback);
 			}
@@ -1472,7 +1473,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем поиск функции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция обратного вызова не найдена
@@ -1523,7 +1524,7 @@ namespace awh {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Если результат функции обратного вызова не возвращается
 					if constexpr (is_void_v <Result>){
 						// Выполняем извлечение функции обратного вызова
@@ -1546,7 +1547,7 @@ namespace awh {
 			 */
 			void call() const noexcept {
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx);
+				const locker_t lock(this->_lockState);
 				// Выполняем перебор всех функций обратного вызова в контейнере
 				for(const auto & [id, cb] : this->_callbacks){
 					// Если мы извлекли функцию обратного вызова
@@ -1693,9 +1694,9 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock1(this->_mtx);
+					const locker_t lock1(this->_lockState);
 					// Выполняем блокировку потока для стороннего контейнера
-					const lock_guard lock2(storage._mtx);
+					const locker_t lock2(storage._lockState);
 					// Выполняем копирование функций обратного вызова
 					this->_callbacks = std::move(storage._callbacks);
 				/**
@@ -1731,7 +1732,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_lockState);
 					// Выполняем копирование функций обратного вызова
 					this->_callbacks = storage._callbacks;
 				/**

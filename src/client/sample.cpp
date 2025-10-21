@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/holder.hpp>
 #include <client/sample.hpp>
 
 /**
@@ -36,9 +37,9 @@ void awh::client::Sample::openEvent(const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((this->_core != nullptr) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::READ, event_t::CONNECT}, event_t::OPEN)){
+		if(holder.access({event_t::READ, event_t::CONNECT}, event_t::OPEN)){
 			// Если подключение уже выполнено
 			if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
 				// Если подключение производится через, прокси-сервер
@@ -73,9 +74,9 @@ void awh::client::Sample::connectEvent(const uint32_t bid, const uint16_t sid) n
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+		if(holder.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 			// Запоминаем идентификатор брокера
 			this->_bid = bid;
 			// Если функция обратного вызова существует
@@ -121,9 +122,9 @@ void awh::client::Sample::readEvent(const char * buffer, const size_t size, cons
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::CONNECT}, event_t::READ)){
+		if(holder.access({event_t::CONNECT}, event_t::READ)){
 			// Если функция обратного вызова существует
 			if(this->_callback.is("message")){
 				// Выполняем очистку буфера данных
@@ -178,9 +179,9 @@ void awh::client::Sample::proxyConnectEvent(const uint32_t bid, const uint16_t s
 	// Если данные переданы верные
 	if((this->_core != nullptr) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::OPEN, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::PROXY_CONNECT)){
+		if(holder.access({event_t::OPEN, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::PROXY_CONNECT)){
 			// Запоминаем идентификатор брокера
 			this->_bid = bid;
 			/**
@@ -245,9 +246,9 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 	// Если данные существуют
 	if((this->_core != nullptr) && (buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
+		if(holder.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
 			this->_buffer.push(buffer, size);
 			/**
@@ -609,9 +610,9 @@ bool awh::client::Sample::nodelay(const engine_t::mode_t mode) noexcept {
  */
 void awh::client::Sample::send(const char * buffer, const size_t size) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+	if(holder.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
 		if((this->_core != nullptr) && this->_core->working()){
 			// Если включён режим отладки

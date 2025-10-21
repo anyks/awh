@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/holder.hpp>
 #include <client/web/ws2.hpp>
 
 /**
@@ -102,9 +103,9 @@ void awh::client::Websocket2::send(const uint32_t bid) noexcept {
  */
 void awh::client::Websocket2::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::CONNECT)){
+	if(holder.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::CONNECT)){
 		// Запоминаем идентификатор брокера
 		this->_bid = bid;
 		// Разрешаем перехватывать контекст компрессии
@@ -1426,9 +1427,9 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 	// Если переключение протокола на HTTP/2 выполнено
 	else {
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+		if(holder.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 			// Если подключение выполнено
 			if((this->_core != nullptr) && this->_core->working() && (this->_bid > 0)){
 				// Если отправка сообщения разрешена
@@ -1494,9 +1495,9 @@ bool awh::client::Websocket2::sendMessage(const char * message, const size_t siz
 	// Если переключение протокола на HTTP/2 выполнено
 	else {
 		// Создаём объект холдирования
-		hold_t <event_t> hold(this->_events);
+		holder_t <event_t> holder(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
+		if(holder.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 			// Если подключение выполнено
 			if((this->_core != nullptr) && this->_core->working()){
 				// Если отправка сообщения разрешена

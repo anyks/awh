@@ -63,6 +63,7 @@
  * Подключаем заголовочный файл
  */
 #include <net/ping.hpp>
+#include <sys/holder.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -545,9 +546,9 @@ void awh::Ping::ping(const int32_t family, const string & host) noexcept {
  */
 void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы PING-клиента соответствует
-	if(hold.access({}, status_t::PING)){
+	if(holder.access({}, status_t::PING)){
 		// Если IP-адрес передан и пинг ещё не активирован
 		if((this->_mode = !ip.empty())){
 			// Выполняем блокировку потока
@@ -924,9 +925,9 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 	// Результат работы функции
 	double result = .0;
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы PING-клиента соответствует
-	if(hold.access({}, status_t::PING)){
+	if(holder.access({}, status_t::PING)){
 		// Если IP-адрес передан и пинг ещё не активирован
 		if((this->_mode = !ip.empty())){
 			// Выполняем блокировку потока
@@ -1251,9 +1252,9 @@ void awh::Ping::ns(const vector <string> & servers) noexcept {
  */
 void awh::Ping::network(const vector <string> & network) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы установки параметров сети соответствует
-	if(hold.access({}, status_t::NET_SET)){
+	if(holder.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
@@ -1317,9 +1318,9 @@ void awh::Ping::network(const vector <string> & network) noexcept {
  */
 void awh::Ping::network(const int32_t family, const vector <string> & network) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы установки параметров сети соответствует
-	if(hold.access({}, status_t::NET_SET)){
+	if(holder.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока

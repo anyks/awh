@@ -49,6 +49,7 @@
  * Подключаем заголовочный файл
  */
 #include <net/ntp.hpp>
+#include <sys/holder.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -461,9 +462,9 @@ bool awh::NTP::clear() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы NTP-клиента соответствует
-	if((result = hold.access({}, status_t::CLEAR))){
+	if((result = holder.access({}, status_t::CLEAR))){
 		// Выполняем отмену выполненных запросов IPv4
 		this->cancel(AF_INET);
 		// Выполняем отмену выполненных запросов IPv6
@@ -683,9 +684,9 @@ void awh::NTP::server(const string & server) noexcept {
  */
 void awh::NTP::server(const int32_t family, const string & server) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы NTP-клиента соответствует
-	if(hold.access({status_t::NTSS_SET}, status_t::NTS_SET)){
+	if(holder.access({status_t::NTSS_SET}, status_t::NTS_SET)){
 		// Если адрес сервера передан
 		if(!server.empty()){
 			// Порт переданного сервера
@@ -892,9 +893,9 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
-		hold_t <status_t> hold(this->_status);
+		holder_t <status_t> holder(this->_status);
 		// Если статус работы NTP-клиента соответствует
-		if(hold.access({status_t::NTSS_REP}, status_t::NTSS_SET)){
+		if(holder.access({status_t::NTSS_REP}, status_t::NTSS_SET)){
 			// Выполняем блокировку потока
 			const lock_guard lock(this->_mtx);
 			// Переходим по всем нейм серверам и добавляем их
@@ -943,9 +944,9 @@ void awh::NTP::servers(const int32_t family, const vector <string> & servers) no
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
-		hold_t <status_t> hold(this->_status);
+		holder_t <status_t> holder(this->_status);
 		// Если статус работы NTP-резолвера соответствует
-		if(hold.access({status_t::NTSS_REP}, status_t::NTSS_SET)){
+		if(holder.access({status_t::NTSS_REP}, status_t::NTSS_SET)){
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers)
 				// Выполняем добавление нового сервера
@@ -960,9 +961,9 @@ void awh::NTP::servers(const int32_t family, const vector <string> & servers) no
  */
 void awh::NTP::replace(const vector <string> & servers) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы NTP-клиента соответствует
-	if(hold.access({status_t::REQUEST}, status_t::NTSS_REP)){
+	if(holder.access({status_t::REQUEST}, status_t::NTSS_REP)){
 		// Список серверов IPv4
 		vector <string> ipv4, ipv6;
 		// Выполняем блокировку потока
@@ -1014,9 +1015,9 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
  */
 void awh::NTP::replace(const int32_t family, const vector <string> & servers) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы NTP-клиента соответствует
-	if(hold.access({status_t::REQUEST}, status_t::NTSS_REP)){
+	if(holder.access({status_t::REQUEST}, status_t::NTSS_REP)){
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		/**
@@ -1069,9 +1070,9 @@ void awh::NTP::replace(const int32_t family, const vector <string> & servers) no
  */
 void awh::NTP::network(const vector <string> & network) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы установки параметров сети соответствует
-	if(hold.access({}, status_t::NET_SET)){
+	if(holder.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
@@ -1135,9 +1136,9 @@ void awh::NTP::network(const vector <string> & network) noexcept {
  */
 void awh::NTP::network(const int32_t family, const vector <string> & network) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы установки параметров сети соответствует
-	if(hold.access({}, status_t::NET_SET)){
+	if(holder.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
 			// Выполняем блокировку потока
@@ -1188,9 +1189,9 @@ uint64_t awh::NTP::request() noexcept {
  */
 uint64_t awh::NTP::request(const int32_t family) noexcept {
 	// Создаём объект холдирования
-	hold_t <status_t> hold(this->_status);
+	holder_t <status_t> holder(this->_status);
 	// Если статус работы NTP-клиента соответствует
-	if(hold.access({}, status_t::REQUEST)){
+	if(holder.access({}, status_t::REQUEST)){
 		// Выполняем блокировку потока
 		const lock_guard lock(this->_mtx);
 		/**

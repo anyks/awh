@@ -83,9 +83,6 @@ namespace awh {
 					// Флаг виртуальной базы данных
 					std::atomic_bool _virt;
 				private:
-					// Активная база событий
-					static std::unique_ptr <base_t> _base;
-				private:
 					/**
 					 * Функция обратного вызова при запуске модуля
 					 */

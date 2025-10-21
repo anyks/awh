@@ -127,7 +127,7 @@ using namespace placeholders;
 						// Выполняем остановку работы
 						const_cast <cluster_t *> (this->_ctx)->clear();
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						// ::exit(EXIT_FAILURE);
 					// Выходим из функции
 					} else return;
 				} break;
@@ -323,7 +323,7 @@ using namespace placeholders;
 					// Выводим сообщение об ошибке в лог
 					this->_log->print("[%u] Data from main process is closed", log_t::flag_t::CRITICAL, ::getpid());
 					// Выходим из приложения
-					::exit(EXIT_FAILURE);
+					// ::exit(EXIT_FAILURE);
 				} break;
 				// Если выполняется событие чтения данных с сокета
 				case static_cast <uint8_t> (events_t::type_t::READ): {
@@ -427,7 +427,7 @@ using namespace placeholders;
 			// Останавливаем чтение данных с родительского процесса
 			const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	}
 #endif
@@ -541,7 +541,7 @@ awh::Cluster::Worker::~Worker() noexcept {}
 							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_server.socket.message(AWH_ERROR()).c_str());
 						#endif
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						// ::exit(EXIT_FAILURE);
 					}
 					// Выводим информацию о запущенном сервере на unix-сокете
 					this->_log->print("Cluster [%s] has been started [%s] successfully", log_t::flag_t::INFO, this->_name.c_str(), this->_server.ipc.c_str());
@@ -576,13 +576,13 @@ awh::Cluster::Worker::~Worker() noexcept {}
 						// Выполняем остановку работы
 						this->clear();
 						// Выходим из приложения
-						::exit(SIGINT);
+						// ::exit(SIGINT);
 					// Если время жизни процесса составляет меньше 3-х минут
 					} else if((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - broker->date) <= 180000) {
 						// Выполняем остановку работы
 						this->clear();
 						// Выходим из приложения
-						::exit(status);
+						// ::exit(status);
 					}
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("exit"))
@@ -607,7 +607,7 @@ awh::Cluster::Worker::~Worker() noexcept {}
 						// Выполняем остановку работы
 						this->clear();
 						// Выполняем завершение работы
-						::exit(status);
+						// ::exit(status);
 					}
 					// Выходим функции
 					return;
@@ -845,7 +845,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock)
 							// Выполняем остановку работы
 							this->stop(wid);
 							// Выходим из приложения
-							::exit(EXIT_FAILURE);
+							// ::exit(EXIT_FAILURE);
 						}
 					// Если процесс является дочерним
 					} else {
@@ -877,7 +877,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock)
 							// Выполняем остановку работы
 							this->stop(wid);
 							// Выходим из приложения
-							::exit(EXIT_FAILURE);
+							// ::exit(EXIT_FAILURE);
 						}
 					}
 				}
@@ -1008,7 +1008,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 							// Выполняем остановку работы
 							this->clear();
 							// Выходим принудительно из приложения
-							::exit(EXIT_FAILURE);
+							// ::exit(EXIT_FAILURE);
 						}
 						// Выполняем подписку на дочерний канал передачи данных
 						if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->cfds) != 0){
@@ -1017,7 +1017,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 							// Выполняем остановку работы
 							this->clear();
 							// Выходим принудительно из приложения
-							::exit(EXIT_FAILURE);
+							// ::exit(EXIT_FAILURE);
 						}
 					}
 					// Выполняем добавление брокера в список брокеров
@@ -1036,7 +1036,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// Выполняем остановку работы
 						this->clear();
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						// ::exit(EXIT_FAILURE);
 					} break;
 					// Если процесс является дочерним
 					case 0: {
@@ -1227,7 +1227,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 							// Выполняем остановку работы
 							this->stop(wid);
 							// Выходим из приложения
-							::exit(EXIT_FAILURE);
+							// ::exit(EXIT_FAILURE);
 						}
 					} break;
 					// Если процесс является родительским
@@ -1318,7 +1318,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 			#endif
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	#endif
 }
@@ -1369,7 +1369,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Выполняем остановку работы
 									this->clear();
 									// Выходим принудительно из приложения
-									::exit(EXIT_FAILURE);
+									// ::exit(EXIT_FAILURE);
 								}
 								// Выполняем подписку на дочерний канал передачи данных
 								if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->cfds) != 0){
@@ -1378,7 +1378,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Выполняем остановку работы
 									this->clear();
 									// Выходим принудительно из приложения
-									::exit(EXIT_FAILURE);
+									// ::exit(EXIT_FAILURE);
 								}
 							}
 							// Выполняем добавление брокера в список брокеров
@@ -1405,7 +1405,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								// Выполняем остановку работы
 								this->clear();
 								// Выходим принудительно из приложения
-								::exit(EXIT_FAILURE);
+								// ::exit(EXIT_FAILURE);
 							}
 							// Выполняем подписку на дочерний канал передачи данных
 							if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->cfds) != 0){
@@ -1421,7 +1421,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								// Выполняем остановку работы
 								this->clear();
 								// Выходим принудительно из приложения
-								::exit(EXIT_FAILURE);
+								// ::exit(EXIT_FAILURE);
 							}
 						}
 						// Устанавливаем нового брокера
@@ -1440,7 +1440,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Выполняем остановку работы
 							this->clear();
 							// Выходим из приложения
-							::exit(EXIT_FAILURE);
+							// ::exit(EXIT_FAILURE);
 						} break;
 						// Если процесс является дочерним
 						case 0: {
@@ -1624,7 +1624,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								// Выполняем остановку работы
 								this->stop(wid);
 								// Выходим из приложения
-								::exit(EXIT_FAILURE);
+								// ::exit(EXIT_FAILURE);
 							}
 						} break;
 						// Если процесс является родительским
@@ -1758,7 +1758,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 			#endif
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	#endif
 }
@@ -1845,7 +1845,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
 			// Выполняем поиск брокеров
@@ -1933,7 +1933,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -1999,7 +1999,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			//::exit(EXIT_FAILURE);
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -2288,7 +2288,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			// Выполняем закрытие подключения передачи сообщений
 			this->close(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 		// Если воркер найден, снимаем флаг запуска кластера
 		if(i != this->_workers.end())
@@ -2323,7 +2323,7 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -2457,7 +2457,7 @@ void awh::Cluster::emplace(const uint16_t wid) noexcept {
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -2532,7 +2532,7 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -2607,7 +2607,7 @@ void awh::Cluster::autoRestart(const uint16_t wid, const bool mode) noexcept {
 			// Выполняем остановку работы
 			this->stop(wid);
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// ::exit(EXIT_FAILURE);
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -2654,7 +2654,7 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 		#endif
 		// Выходим из приложения
-		::exit(EXIT_FAILURE);
+		// ::exit(EXIT_FAILURE);
 	}
 }
 /**
@@ -2706,6 +2706,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 	#if !_WIN32 && !_WIN64
 		// Выполняем установку объекта кластера
 		cluster = this;
+		/*
 		// Выполняем зануление структур перехватчиков событий
 		::memset(&this->_sa, 0, sizeof(this->_sa));
 		// Устанавливаем функцию перехвадчика событий
@@ -2716,6 +2717,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 		sigemptyset(&this->_sa.sa_mask);
 		// Активируем перехватчик событий
 		::sigaction(SIGCHLD, &this->_sa, nullptr);
+		*/
 		// Выполняем инициализацию unix-сокета
 		this->name(AWH_SHORT_NAME);
 	#endif
@@ -2737,6 +2739,7 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
 	#if !_WIN32 && !_WIN64
 		// Выполняем установку объекта кластера
 		cluster = this;
+		/*
 		// Выполняем зануление структур перехватчиков событий
 		::memset(&this->_sa, 0, sizeof(this->_sa));
 		// Устанавливаем функцию перехвадчика событий
@@ -2747,6 +2750,7 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
 		sigemptyset(&this->_sa.sa_mask);
 		// Активируем перехватчик событий
 		::sigaction(SIGCHLD, &this->_sa, nullptr);
+		*/
 		// Выполняем инициализацию unix-сокета
 		this->name(AWH_SHORT_NAME);
 	#endif

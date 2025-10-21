@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/holder.hpp>
 #include <client/web/http2.hpp>
 
 /**
@@ -35,9 +36,9 @@ using namespace placeholders;
  */
 void awh::client::Http2::connectEvent(const uint32_t bid, const uint16_t sid) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::CONNECT)){
+	if(holder.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::CONNECT)){
 		// Запоминаем идентификатор брокера
 		this->_bid = bid;
 		// Выполняем установку идентификатора объекта
@@ -1358,9 +1359,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если подключение выполнено
 		if((this->_core != nullptr) && (this->_bid > 0)){
 			// Идентификатор предыдущего потока
@@ -1713,9 +1714,9 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если данные переданы верные
 		if((result = ((buffer != nullptr) && (size > 0)))){
 			// Если флаг инициализации сессии HTTP/2 установлен
@@ -1765,9 +1766,9 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы
 		if(!headers.empty()){
 			// Если флаг инициализации сессии HTTP/2 установлен
@@ -1829,9 +1830,9 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
  */
 bool awh::client::Http2::send2(const int32_t sid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
 		if((buffer != nullptr) && (size > 0) && this->_http2.initialized())
 			// Выполняем отправку сообщения на сервер
@@ -1850,9 +1851,9 @@ bool awh::client::Http2::send2(const int32_t sid, const char * buffer, const siz
  */
 int32_t awh::client::Http2::send2(const int32_t sid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Создаём объект холдирования
-	hold_t <event_t> hold(this->_events);
+	holder_t <event_t> holder(this->_events);
 	// Если событие соответствует разрешённому
-	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
+	if(holder.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
 		if(!headers.empty() && this->_http2.initialized())
 			// Выполняем отправку заголовков на сервер
