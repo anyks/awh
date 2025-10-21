@@ -20,6 +20,7 @@
  */
 #include <mutex>
 #include <memory>
+#include <atomic>
 #include <cinttypes>
 #include <unistd.h>
 
@@ -57,7 +58,7 @@ namespace awh {
 			friend class Locker;
 		private:
 			// Идентификатор процесса
-			pid_t _pid;
+			std::atomic <pid_t> _pid;
 		private:
 			// Мютекс для блокировки потока
 			std::unique_ptr <MutexType> _mtx;
