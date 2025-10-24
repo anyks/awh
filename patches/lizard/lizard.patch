@@ -1,0 +1,1071 @@
+diff --git a/lib/entropy/entropy_common.c b/lib/entropy/entropy_common.c
+index 72bc398..248ee2a 100644
+--- a/lib/entropy/entropy_common.c
++++ b/lib/entropy/entropy_common.c
+@@ -46,29 +46,29 @@
+ /*-****************************************
+ *  Version
+ ******************************************/
+-unsigned FSE_versionNumber(void) { return FSE_VERSION_NUMBER; }
++unsigned FSE_versionNumber2(void) { return FSE_VERSION_NUMBER; }
+ 
+ 
+ /*-****************************************
+ *  FSE Error Management
+ ******************************************/
+-unsigned FSE_isError(size_t code) { return ERR_isError(code); }
++unsigned FSE_isError2(size_t code) { return ERR_isError(code); }
+ 
+-const char* FSE_getErrorName(size_t code) { return ERR_getErrorName(code); }
++const char* FSE_getErrorName2(size_t code) { return ERR_getErrorName(code); }
+ 
+ 
+ /* **************************************************************
+ *  HUF Error Management
+ ****************************************************************/
+-unsigned HUF_isError(size_t code) { return ERR_isError(code); }
++unsigned HUF_isError2(size_t code) { return ERR_isError(code); }
+ 
+-const char* HUF_getErrorName(size_t code) { return ERR_getErrorName(code); }
++const char* HUF_getErrorName2(size_t code) { return ERR_getErrorName(code); }
+ 
+ 
+ /*-**************************************************************
+ *  FSE NCount encoding-decoding
+ ****************************************************************/
+-size_t FSE_readNCount (short* normalizedCounter, unsigned* maxSVPtr, unsigned* tableLogPtr,
++size_t FSE_readNCount2 (short* normalizedCounter, unsigned* maxSVPtr, unsigned* tableLogPtr,
+                  const void* headerBuffer, size_t hbSize)
+ {
+     const BYTE* const istart = (const BYTE*) headerBuffer;
+@@ -160,14 +160,14 @@ size_t FSE_readNCount (short* normalizedCounter, unsigned* maxSVPtr, unsigned* t
+ }
+ 
+ 
+-/*! HUF_readStats() :
++/*! HUF_readStats2() :
+     Read compact Huffman tree, saved by HUF_writeCTable().
+     `huffWeight` is destination buffer.
+     `rankStats` is assumed to be a table of at least HUF_TABLELOG_MAX U32.
+     @return : size read from `src` , or an error Code .
+     Note : Needed by HUF_readCTable() and HUF_readDTableX?() .
+ */
+-size_t HUF_readStats(BYTE* huffWeight, size_t hwSize, U32* rankStats,
++size_t HUF_readStats2(BYTE* huffWeight, size_t hwSize, U32* rankStats,
+                      U32* nbSymbolsPtr, U32* tableLogPtr,
+                      const void* src, size_t srcSize)
+ {
+@@ -195,7 +195,7 @@ size_t HUF_readStats(BYTE* huffWeight, size_t hwSize, U32* rankStats,
+         FSE_DTable fseWorkspace[FSE_DTABLE_SIZE_U32(6)];  /* 6 is max possible tableLog for HUF header (maybe even 5, to be tested) */
+         if (iSize+1 > srcSize) return ERROR(srcSize_wrong);
+         oSize = FSE_decompress_wksp(huffWeight, hwSize-1, ip+1, iSize, fseWorkspace, 6);   /* max (hwSize-1) values decoded, as last one is implied */
+-        if (FSE_isError(oSize)) return oSize;
++        if (FSE_isError2(oSize)) return oSize;
+     }
+ 
+     /* collect weight stats */
+diff --git a/lib/entropy/fse.h b/lib/entropy/fse.h
+index baac390..fe674cc 100644
+--- a/lib/entropy/fse.h
++++ b/lib/entropy/fse.h
+@@ -69,18 +69,18 @@ extern "C" {
+ #define FSE_VERSION_STRING FSE_EXPAND_AND_QUOTE(FSE_LIB_VERSION)
+ 
+ #define FSE_VERSION_NUMBER  (FSE_VERSION_MAJOR *100*100 + FSE_VERSION_MINOR *100 + FSE_VERSION_RELEASE)
+-FSE_PUBLIC_API unsigned FSE_versionNumber(void);   /**< library version number; to be used when checking dll version */
++FSE_PUBLIC_API unsigned FSE_versionNumber2(void);   /**< library version number; to be used when checking dll version */
+ 
+ /*-****************************************
+ *  FSE simple functions
+ ******************************************/
+ /*! FSE_compress() :
+     Compress content of buffer 'src', of size 'srcSize', into destination buffer 'dst'.
+-    'dst' buffer must be already allocated. Compression runs faster is dstCapacity >= FSE_compressBound(srcSize).
++    'dst' buffer must be already allocated. Compression runs faster is dstCapacity >= FSE_compressBound2(srcSize).
+     @return : size of compressed data (<= dstCapacity).
+     Special values : if return == 0, srcData is not compressible => Nothing is stored within dst !!!
+                      if return == 1, srcData is a single byte symbol * srcSize times. Use RLE compression instead.
+-                     if FSE_isError(return), compression failed (more details using FSE_getErrorName())
++                     if FSE_isError2(return), compression failed (more details using FSE_getErrorName2())
+ */
+ FSE_PUBLIC_API size_t FSE_compress(void* dst, size_t dstCapacity,
+                              const void* src, size_t srcSize);
+@@ -89,7 +89,7 @@ FSE_PUBLIC_API size_t FSE_compress(void* dst, size_t dstCapacity,
+     Decompress FSE data from buffer 'cSrc', of size 'cSrcSize',
+     into already allocated destination buffer 'dst', of size 'dstCapacity'.
+     @return : size of regenerated data (<= maxDstSize),
+-              or an error code, which can be tested using FSE_isError() .
++              or an error code, which can be tested using FSE_isError2() .
+ 
+     ** Important ** : FSE_decompress() does not decompress non-compressible nor RLE data !!!
+     Why ? : making this distinction requires a header.
+@@ -102,11 +102,11 @@ FSE_PUBLIC_API size_t FSE_decompress(void* dst,  size_t dstCapacity,
+ /*-*****************************************
+ *  Tool functions
+ ******************************************/
+-FSE_PUBLIC_API size_t FSE_compressBound(size_t size);       /* maximum compressed size */
++FSE_PUBLIC_API size_t FSE_compressBound2(size_t size);       /* maximum compressed size */
+ 
+ /* Error Management */
+-FSE_PUBLIC_API unsigned    FSE_isError(size_t code);        /* tells if a return value is an error code */
+-FSE_PUBLIC_API const char* FSE_getErrorName(size_t code);   /* provides error code string (useful for debugging) */
++FSE_PUBLIC_API unsigned    FSE_isError2(size_t code);        /* tells if a return value is an error code */
++FSE_PUBLIC_API const char* FSE_getErrorName2(size_t code);   /* provides error code string (useful for debugging) */
+ 
+ 
+ /*-*****************************************
+@@ -118,7 +118,7 @@ FSE_PUBLIC_API const char* FSE_getErrorName(size_t code);   /* provides error co
+     @return : size of compressed data
+     Special values : if return == 0, srcData is not compressible => Nothing is stored within cSrc !!!
+                      if return == 1, srcData is a single byte symbol * srcSize times. Use RLE compression.
+-                     if FSE_isError(return), it's an error code.
++                     if FSE_isError2(return), it's an error code.
+ */
+ FSE_PUBLIC_API size_t FSE_compress2 (void* dst, size_t dstSize, const void* src, size_t srcSize, unsigned maxSymbolValue, unsigned tableLog);
+ 
+@@ -152,32 +152,32 @@ or to save and provide normalized distribution using external method.
+     *maxSymbolValuePtr will be updated if detected smaller than initial value.
+     @return : the count of the most frequent symbol (which is not identified).
+               if return == srcSize, there is only one symbol.
+-              Can also return an error code, which can be tested with FSE_isError(). */
++              Can also return an error code, which can be tested with FSE_isError2(). */
+ FSE_PUBLIC_API size_t FSE_count(unsigned* count, unsigned* maxSymbolValuePtr, const void* src, size_t srcSize);
+ 
+-/*! FSE_optimalTableLog():
++/*! FSE_optimalTableLog2():
+     dynamically downsize 'tableLog' when conditions are met.
+     It saves CPU time, by using smaller tables, while preserving or even improving compression ratio.
+     @return : recommended tableLog (necessarily <= 'maxTableLog') */
+-FSE_PUBLIC_API unsigned FSE_optimalTableLog(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue);
++FSE_PUBLIC_API unsigned FSE_optimalTableLog2(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue);
+ 
+-/*! FSE_normalizeCount():
++/*! FSE_normalizeCount2():
+     normalize counts so that sum(count[]) == Power_of_2 (2^tableLog)
+     'normalizedCounter' is a table of short, of minimum size (maxSymbolValue+1).
+     @return : tableLog,
+-              or an errorCode, which can be tested using FSE_isError() */
+-FSE_PUBLIC_API size_t FSE_normalizeCount(short* normalizedCounter, unsigned tableLog, const unsigned* count, size_t srcSize, unsigned maxSymbolValue);
++              or an errorCode, which can be tested using FSE_isError2() */
++FSE_PUBLIC_API size_t FSE_normalizeCount2(short* normalizedCounter, unsigned tableLog, const unsigned* count, size_t srcSize, unsigned maxSymbolValue);
+ 
+-/*! FSE_NCountWriteBound():
++/*! FSE_NCountWriteBound2():
+     Provides the maximum possible size of an FSE normalized table, given 'maxSymbolValue' and 'tableLog'.
+     Typically useful for allocation purpose. */
+-FSE_PUBLIC_API size_t FSE_NCountWriteBound(unsigned maxSymbolValue, unsigned tableLog);
++FSE_PUBLIC_API size_t FSE_NCountWriteBound2(unsigned maxSymbolValue, unsigned tableLog);
+ 
+-/*! FSE_writeNCount():
++/*! FSE_writeNCount2():
+     Compactly save 'normalizedCounter' into 'buffer'.
+     @return : size of the compressed table,
+-              or an errorCode, which can be tested using FSE_isError(). */
+-FSE_PUBLIC_API size_t FSE_writeNCount (void* buffer, size_t bufferSize, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog);
++              or an errorCode, which can be tested using FSE_isError2(). */
++FSE_PUBLIC_API size_t FSE_writeNCount2 (void* buffer, size_t bufferSize, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog);
+ 
+ 
+ /*! Constructor and Destructor of FSE_CTable.
+@@ -188,15 +188,15 @@ FSE_PUBLIC_API void        FSE_freeCTable (FSE_CTable* ct);
+ 
+ /*! FSE_buildCTable():
+     Builds `ct`, which must be already allocated, using FSE_createCTable().
+-    @return : 0, or an errorCode, which can be tested using FSE_isError() */
++    @return : 0, or an errorCode, which can be tested using FSE_isError2() */
+ FSE_PUBLIC_API size_t FSE_buildCTable(FSE_CTable* ct, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog);
+ 
+-/*! FSE_compress_usingCTable():
++/*! FSE_compress_usingCTable2():
+     Compress `src` using `ct` into `dst` which must be already allocated.
+     @return : size of compressed data (<= `dstCapacity`),
+               or 0 if compressed data could not fit into `dst`,
+-              or an errorCode, which can be tested using FSE_isError() */
+-FSE_PUBLIC_API size_t FSE_compress_usingCTable (void* dst, size_t dstCapacity, const void* src, size_t srcSize, const FSE_CTable* ct);
++              or an errorCode, which can be tested using FSE_isError2() */
++FSE_PUBLIC_API size_t FSE_compress_usingCTable2 (void* dst, size_t dstCapacity, const void* src, size_t srcSize, const FSE_CTable* ct);
+ 
+ /*!
+ Tutorial :
+@@ -207,49 +207,49 @@ Result will be saved into 'count', a table of unsigned int, which must be alread
+ maxSymbolValuePtr[0] will be updated, with its real value (necessarily <= original value)
+ FSE_count() will return the number of occurrence of the most frequent symbol.
+ This can be used to know if there is a single symbol within 'src', and to quickly evaluate its compressibility.
+-If there is an error, the function will return an ErrorCode (which can be tested using FSE_isError()).
++If there is an error, the function will return an ErrorCode (which can be tested using FSE_isError2()).
+ 
+ The next step is to normalize the frequencies.
+-FSE_normalizeCount() will ensure that sum of frequencies is == 2 ^'tableLog'.
++FSE_normalizeCount2() will ensure that sum of frequencies is == 2 ^'tableLog'.
+ It also guarantees a minimum of 1 to any Symbol with frequency >= 1.
+ You can use 'tableLog'==0 to mean "use default tableLog value".
+-If you are unsure of which tableLog value to use, you can ask FSE_optimalTableLog(),
++If you are unsure of which tableLog value to use, you can ask FSE_optimalTableLog2(),
+ which will provide the optimal valid tableLog given sourceSize, maxSymbolValue, and a user-defined maximum (0 means "default").
+ 
+-The result of FSE_normalizeCount() will be saved into a table,
++The result of FSE_normalizeCount2() will be saved into a table,
+ called 'normalizedCounter', which is a table of signed short.
+ 'normalizedCounter' must be already allocated, and have at least 'maxSymbolValue+1' cells.
+ The return value is tableLog if everything proceeded as expected.
+ It is 0 if there is a single symbol within distribution.
+-If there is an error (ex: invalid tableLog value), the function will return an ErrorCode (which can be tested using FSE_isError()).
++If there is an error (ex: invalid tableLog value), the function will return an ErrorCode (which can be tested using FSE_isError2()).
+ 
+-'normalizedCounter' can be saved in a compact manner to a memory area using FSE_writeNCount().
++'normalizedCounter' can be saved in a compact manner to a memory area using FSE_writeNCount2().
+ 'buffer' must be already allocated.
+ For guaranteed success, buffer size must be at least FSE_headerBound().
+ The result of the function is the number of bytes written into 'buffer'.
+-If there is an error, the function will return an ErrorCode (which can be tested using FSE_isError(); ex : buffer size too small).
++If there is an error, the function will return an ErrorCode (which can be tested using FSE_isError2(); ex : buffer size too small).
+ 
+ 'normalizedCounter' can then be used to create the compression table 'CTable'.
+ The space required by 'CTable' must be already allocated, using FSE_createCTable().
+ You can then use FSE_buildCTable() to fill 'CTable'.
+-If there is an error, both functions will return an ErrorCode (which can be tested using FSE_isError()).
++If there is an error, both functions will return an ErrorCode (which can be tested using FSE_isError2()).
+ 
+-'CTable' can then be used to compress 'src', with FSE_compress_usingCTable().
++'CTable' can then be used to compress 'src', with FSE_compress_usingCTable2().
+ Similar to FSE_count(), the convention is that 'src' is assumed to be a table of char of size 'srcSize'
+ The function returns the size of compressed data (without header), necessarily <= `dstCapacity`.
+ If it returns '0', compressed data could not fit into 'dst'.
+-If there is an error, the function will return an ErrorCode (which can be tested using FSE_isError()).
++If there is an error, the function will return an ErrorCode (which can be tested using FSE_isError2()).
+ */
+ 
+ 
+ /* *** DECOMPRESSION *** */
+ 
+-/*! FSE_readNCount():
++/*! FSE_readNCount2():
+     Read compactly saved 'normalizedCounter' from 'rBuffer'.
+     @return : size read from 'rBuffer',
+-              or an errorCode, which can be tested using FSE_isError().
++              or an errorCode, which can be tested using FSE_isError2().
+               maxSymbolValuePtr[0] and tableLogPtr[0] will also be updated with their respective values */
+-FSE_PUBLIC_API size_t FSE_readNCount (short* normalizedCounter, unsigned* maxSymbolValuePtr, unsigned* tableLogPtr, const void* rBuffer, size_t rBuffSize);
++FSE_PUBLIC_API size_t FSE_readNCount2 (short* normalizedCounter, unsigned* maxSymbolValuePtr, unsigned* tableLogPtr, const void* rBuffer, size_t rBuffSize);
+ 
+ /*! Constructor and Destructor of FSE_DTable.
+     Note that its size depends on 'tableLog' */
+@@ -259,14 +259,14 @@ FSE_PUBLIC_API void        FSE_freeDTable(FSE_DTable* dt);
+ 
+ /*! FSE_buildDTable():
+     Builds 'dt', which must be already allocated, using FSE_createDTable().
+-    return : 0, or an errorCode, which can be tested using FSE_isError() */
++    return : 0, or an errorCode, which can be tested using FSE_isError2() */
+ FSE_PUBLIC_API size_t FSE_buildDTable (FSE_DTable* dt, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog);
+ 
+ /*! FSE_decompress_usingDTable():
+     Decompress compressed source `cSrc` of size `cSrcSize` using `dt`
+     into `dst` which must be already allocated.
+     @return : size of regenerated data (necessarily <= `dstCapacity`),
+-              or an errorCode, which can be tested using FSE_isError() */
++              or an errorCode, which can be tested using FSE_isError2() */
+ FSE_PUBLIC_API size_t FSE_decompress_usingDTable(void* dst, size_t dstCapacity, const void* cSrc, size_t cSrcSize, const FSE_DTable* dt);
+ 
+ /*!
+@@ -277,24 +277,24 @@ Tutorial :
+  If block is a single repeated byte, use memset() instead )
+ 
+ The first step is to obtain the normalized frequencies of symbols.
+-This can be performed by FSE_readNCount() if it was saved using FSE_writeNCount().
++This can be performed by FSE_readNCount2() if it was saved using FSE_writeNCount2().
+ 'normalizedCounter' must be already allocated, and have at least 'maxSymbolValuePtr[0]+1' cells of signed short.
+ In practice, that means it's necessary to know 'maxSymbolValue' beforehand,
+ or size the table to handle worst case situations (typically 256).
+-FSE_readNCount() will provide 'tableLog' and 'maxSymbolValue'.
+-The result of FSE_readNCount() is the number of bytes read from 'rBuffer'.
++FSE_readNCount2() will provide 'tableLog' and 'maxSymbolValue'.
++The result of FSE_readNCount2() is the number of bytes read from 'rBuffer'.
+ Note that 'rBufferSize' must be at least 4 bytes, even if useful information is less than that.
+-If there is an error, the function will return an error code, which can be tested using FSE_isError().
++If there is an error, the function will return an error code, which can be tested using FSE_isError2().
+ 
+ The next step is to build the decompression tables 'FSE_DTable' from 'normalizedCounter'.
+ This is performed by the function FSE_buildDTable().
+ The space required by 'FSE_DTable' must be already allocated using FSE_createDTable().
+-If there is an error, the function will return an error code, which can be tested using FSE_isError().
++If there is an error, the function will return an error code, which can be tested using FSE_isError2().
+ 
+ `FSE_DTable` can then be used to decompress `cSrc`, with FSE_decompress_usingDTable().
+ `cSrcSize` must be strictly correct, otherwise decompression will fail.
+ FSE_decompress_usingDTable() result will tell how many bytes were regenerated (<=`dstCapacity`).
+-If there is an error, the function will return an error code, which can be tested using FSE_isError(). (ex: dst buffer too small)
++If there is an error, the function will return an error code, which can be tested using FSE_isError2(). (ex: dst buffer too small)
+ */
+ 
+ 
+@@ -346,8 +346,8 @@ size_t FSE_count_simple(unsigned* count, unsigned* maxSymbolValuePtr, const void
+ 
+ 
+ 
+-unsigned FSE_optimalTableLog_internal(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue, unsigned minus);
+-/**< same as FSE_optimalTableLog(), which used `minus==2` */
++unsigned FSE_optimalTableLog_internal2(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue, unsigned minus);
++/**< same as FSE_optimalTableLog2(), which used `minus==2` */
+ 
+ /* FSE_compress_wksp() :
+  * Same as FSE_compress2(), but using an externally allocated scratch buffer (`workSpace`).
+@@ -359,14 +359,14 @@ size_t FSE_compress_wksp (void* dst, size_t dstSize, const void* src, size_t src
+ size_t FSE_buildCTable_raw (FSE_CTable* ct, unsigned nbBits);
+ /**< build a fake FSE_CTable, designed for a flat distribution, where each symbol uses nbBits */
+ 
+-size_t FSE_buildCTable_rle (FSE_CTable* ct, unsigned char symbolValue);
++size_t FSE_buildCTable_rle2 (FSE_CTable* ct, unsigned char symbolValue);
+ /**< build a fake FSE_CTable, designed to compress always the same symbolValue */
+ 
+-/* FSE_buildCTable_wksp() :
++/* FSE_buildCTable_wksp2() :
+  * Same as FSE_buildCTable(), but using an externally allocated scratch buffer (`workSpace`).
+  * `wkspSize` must be >= `(1<<tableLog)`.
+  */
+-size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog, void* workSpace, size_t wkspSize);
++size_t FSE_buildCTable_wksp2(FSE_CTable* ct, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog, void* workSpace, size_t wkspSize);
+ 
+ size_t FSE_buildDTable_raw (FSE_DTable* dt, unsigned nbBits);
+ /**< build a fake FSE_DTable, designed to read a flat distribution where each symbol uses nbBits */
+@@ -399,7 +399,7 @@ static void FSE_encodeSymbol(BIT_CStream_t* bitC, FSE_CState_t* CStatePtr, unsig
+ static void FSE_flushCState(BIT_CStream_t* bitC, const FSE_CState_t* CStatePtr);
+ 
+ /**<
+-These functions are inner components of FSE_compress_usingCTable().
++These functions are inner components of FSE_compress_usingCTable2().
+ They allow the creation of custom streams, mixing multiple tables and bit sources.
+ 
+ A key property to keep in mind is that encoding and decoding are done **in reverse direction**.
+@@ -416,7 +416,7 @@ The first thing to do is to init bitStream and state.
+     size_t errorCode = BIT_initCStream(&bitStream, dstBuffer, maxDstSize);
+     FSE_initCState(&state, ct);
+ 
+-Note that BIT_initCStream() can produce an error code, so its result should be tested, using FSE_isError();
++Note that BIT_initCStream() can produce an error code, so its result should be tested, using FSE_isError2();
+ You can then encode your input data, byte after byte.
+ FSE_encodeSymbol() outputs a maximum of 'tableLog' bits at a time.
+ Remember decoding will be done in reverse direction.
+@@ -437,7 +437,7 @@ Your last FSE encoding operation shall be to flush your last state value(s).
+ Finally, you must close the bitStream.
+ The function returns the size of CStream in bytes.
+ If data couldn't fit into dstBuffer, it will return a 0 ( == not compressible)
+-If there is an error, it returns an errorCode (which can be tested using FSE_isError()).
++If there is an error, it returns an errorCode (which can be tested using FSE_isError2()).
+     size_t size = BIT_closeCStream(&bitStream);
+ */
+ 
+diff --git a/lib/entropy/fse_compress.c b/lib/entropy/fse_compress.c
+index 337b7a6..4e27048 100644
+--- a/lib/entropy/fse_compress.c
++++ b/lib/entropy/fse_compress.c
+@@ -95,12 +95,12 @@
+ 
+ /* Function templates */
+ 
+-/* FSE_buildCTable_wksp() :
++/* FSE_buildCTable_wksp2() :
+  * Same as FSE_buildCTable(), but using an externally allocated scratch buffer (`workSpace`).
+  * wkspSize should be sized to handle worst case situation, which is `1<<max_tableLog * sizeof(FSE_FUNCTION_TYPE)`
+  * workSpace must also be properly aligned with FSE_FUNCTION_TYPE requirements
+  */
+-size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog, void* workSpace, size_t wkspSize)
++size_t FSE_buildCTable_wksp2(FSE_CTable* ct, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog, void* workSpace, size_t wkspSize)
+ {
+     U32 const tableSize = 1 << tableLog;
+     U32 const tableMask = tableSize - 1;
+@@ -185,7 +185,7 @@ size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsi
+ size_t FSE_buildCTable(FSE_CTable* ct, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog)
+ {
+     FSE_FUNCTION_TYPE tableSymbol[FSE_MAX_TABLESIZE];   /* memset() is not necessary, even if static analyzer complain about it */
+-    return FSE_buildCTable_wksp(ct, normalizedCounter, maxSymbolValue, tableLog, tableSymbol, sizeof(tableSymbol));
++    return FSE_buildCTable_wksp2(ct, normalizedCounter, maxSymbolValue, tableLog, tableSymbol, sizeof(tableSymbol));
+ }
+ 
+ 
+@@ -195,7 +195,7 @@ size_t FSE_buildCTable(FSE_CTable* ct, const short* normalizedCounter, unsigned
+ /*-**************************************************************
+ *  FSE NCount encoding-decoding
+ ****************************************************************/
+-size_t FSE_NCountWriteBound(unsigned maxSymbolValue, unsigned tableLog)
++size_t FSE_NCountWriteBound2(unsigned maxSymbolValue, unsigned tableLog)
+ {
+     size_t const maxHeaderSize = (((maxSymbolValue+1) * tableLog) >> 3) + 3;
+     return maxSymbolValue ? maxHeaderSize : FSE_NCOUNTBOUND;  /* maxSymbolValue==0 ? use default */
+@@ -289,12 +289,12 @@ static size_t FSE_writeNCount_generic (void* header, size_t headerBufferSize,
+ }
+ 
+ 
+-size_t FSE_writeNCount (void* buffer, size_t bufferSize, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog)
++size_t FSE_writeNCount2 (void* buffer, size_t bufferSize, const short* normalizedCounter, unsigned maxSymbolValue, unsigned tableLog)
+ {
+     if (tableLog > FSE_MAX_TABLELOG) return ERROR(GENERIC);   /* Unsupported */
+     if (tableLog < FSE_MIN_TABLELOG) return ERROR(GENERIC);   /* Unsupported */
+ 
+-    if (bufferSize < FSE_NCountWriteBound(maxSymbolValue, tableLog))
++    if (bufferSize < FSE_NCountWriteBound2(maxSymbolValue, tableLog))
+         return FSE_writeNCount_generic(buffer, bufferSize, normalizedCounter, maxSymbolValue, tableLog, 0);
+ 
+     return FSE_writeNCount_generic(buffer, bufferSize, normalizedCounter, maxSymbolValue, tableLog, 1);
+@@ -482,7 +482,7 @@ static unsigned FSE_minTableLog(size_t srcSize, unsigned maxSymbolValue)
+ 	return minBits;
+ }
+ 
+-unsigned FSE_optimalTableLog_internal(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue, unsigned minus)
++unsigned FSE_optimalTableLog_internal2(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue, unsigned minus)
+ {
+ 	U32 maxBitsSrc = BIT_highbit32((U32)(srcSize - 1)) - minus;
+     U32 tableLog = maxTableLog;
+@@ -495,9 +495,9 @@ unsigned FSE_optimalTableLog_internal(unsigned maxTableLog, size_t srcSize, unsi
+     return tableLog;
+ }
+ 
+-unsigned FSE_optimalTableLog(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue)
++unsigned FSE_optimalTableLog2(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue)
+ {
+-    return FSE_optimalTableLog_internal(maxTableLog, srcSize, maxSymbolValue, 2);
++    return FSE_optimalTableLog_internal2(maxTableLog, srcSize, maxSymbolValue, 2);
+ }
+ 
+ 
+@@ -579,7 +579,7 @@ static size_t FSE_normalizeM2(short* norm, U32 tableLog, const unsigned* count,
+ }
+ 
+ 
+-size_t FSE_normalizeCount (short* normalizedCounter, unsigned tableLog,
++size_t FSE_normalizeCount2 (short* normalizedCounter, unsigned tableLog,
+                            const unsigned* count, size_t total,
+                            unsigned maxSymbolValue)
+ {
+@@ -618,7 +618,7 @@ size_t FSE_normalizeCount (short* normalizedCounter, unsigned tableLog,
+         if (-stillToDistribute >= (normalizedCounter[largest] >> 1)) {
+             /* corner case, need another normalization method */
+             size_t const errorCode = FSE_normalizeM2(normalizedCounter, tableLog, count, total, maxSymbolValue);
+-            if (FSE_isError(errorCode)) return errorCode;
++            if (FSE_isError2(errorCode)) return errorCode;
+         }
+         else normalizedCounter[largest] += (short)stillToDistribute;
+     }
+@@ -675,7 +675,7 @@ size_t FSE_buildCTable_raw (FSE_CTable* ct, unsigned nbBits)
+ }
+ 
+ /* fake FSE_CTable, for rle input (always same symbol) */
+-size_t FSE_buildCTable_rle (FSE_CTable* ct, BYTE symbolValue)
++size_t FSE_buildCTable_rle2 (FSE_CTable* ct, BYTE symbolValue)
+ {
+     void* ptr = ct;
+     U16* tableU16 = ( (U16*) ptr) + 2;
+@@ -712,7 +712,7 @@ static size_t FSE_compress_usingCTable_generic (void* dst, size_t dstSize,
+     /* init */
+     if (srcSize <= 2) return 0;
+     { size_t const initError = BIT_initCStream(&bitC, dst, dstSize);
+-      if (FSE_isError(initError)) return 0; /* not enough space available to write a bitstream */ }
++      if (FSE_isError2(initError)) return 0; /* not enough space available to write a bitstream */ }
+ 
+ #define FSE_FLUSHBITS(s)  (fast ? BIT_flushBitsFast(s) : BIT_flushBits(s))
+ 
+@@ -757,7 +757,7 @@ static size_t FSE_compress_usingCTable_generic (void* dst, size_t dstSize,
+     return BIT_closeCStream(&bitC);
+ }
+ 
+-size_t FSE_compress_usingCTable (void* dst, size_t dstSize,
++size_t FSE_compress_usingCTable2 (void* dst, size_t dstSize,
+                            const void* src, size_t srcSize,
+                            const FSE_CTable* ct)
+ {
+@@ -770,7 +770,7 @@ size_t FSE_compress_usingCTable (void* dst, size_t dstSize,
+ }
+ 
+ 
+-size_t FSE_compressBound(size_t size) { return FSE_COMPRESSBOUND(size); }
++size_t FSE_compressBound2(size_t size) { return FSE_COMPRESSBOUND(size); }
+ 
+ #define CHECK_V_F(e, f) size_t const e = f; if (ERR_isError(e)) return f
+ #define CHECK_F(f)   { CHECK_V_F(_var_err__, f); }
+@@ -805,17 +805,17 @@ size_t FSE_compress_wksp (void* dst, size_t dstSize, const void* src, size_t src
+         if (maxCount < (srcSize >> 7)) return 0;   /* Heuristic : not compressible enough */
+     }
+ 
+-    tableLog = FSE_optimalTableLog(tableLog, srcSize, maxSymbolValue);
+-    CHECK_F( FSE_normalizeCount(norm, tableLog, count, srcSize, maxSymbolValue) );
++    tableLog = FSE_optimalTableLog2(tableLog, srcSize, maxSymbolValue);
++    CHECK_F( FSE_normalizeCount2(norm, tableLog, count, srcSize, maxSymbolValue) );
+ 
+     /* Write table description header */
+-    {   CHECK_V_F(nc_err, FSE_writeNCount(op, oend-op, norm, maxSymbolValue, tableLog) );
++    {   CHECK_V_F(nc_err, FSE_writeNCount2(op, oend-op, norm, maxSymbolValue, tableLog) );
+         op += nc_err;
+     }
+ 
+     /* Compress */
+-    CHECK_F( FSE_buildCTable_wksp(CTable, norm, maxSymbolValue, tableLog, scratchBuffer, scratchBufferSize) );
+-    {   CHECK_V_F(cSize, FSE_compress_usingCTable(op, oend - op, src, srcSize, CTable) );
++    CHECK_F( FSE_buildCTable_wksp2(CTable, norm, maxSymbolValue, tableLog, scratchBuffer, scratchBufferSize) );
++    {   CHECK_V_F(cSize, FSE_compress_usingCTable2(op, oend - op, src, srcSize, CTable) );
+         if (cSize == 0) return 0;   /* not enough space for compressed data */
+         op += cSize;
+     }
+diff --git a/lib/entropy/fse_decompress.c b/lib/entropy/fse_decompress.c
+index 1479a5e..734f7c7 100644
+--- a/lib/entropy/fse_decompress.c
++++ b/lib/entropy/fse_decompress.c
+@@ -303,7 +303,7 @@ size_t FSE_decompress_wksp(void* dst, size_t dstCapacity, const void* cSrc, size
+     unsigned maxSymbolValue = FSE_MAX_SYMBOL_VALUE;
+ 
+     /* normal FSE decoding mode */
+-    size_t const NCountLength = FSE_readNCount (counting, &maxSymbolValue, &tableLog, istart, cSrcSize);
++    size_t const NCountLength = FSE_readNCount2 (counting, &maxSymbolValue, &tableLog, istart, cSrcSize);
+     if (FSE_isError(NCountLength)) return NCountLength;
+     //if (NCountLength >= cSrcSize) return ERROR(srcSize_wrong);   /* too small input size; supposed to be already checked in NCountLength, only remaining case : NCountLength==cSrcSize */
+     if (tableLog > maxLog) return ERROR(tableLog_tooLarge);
+diff --git a/lib/entropy/huf.h b/lib/entropy/huf.h
+index 48c7f83..25f66d6 100644
+--- a/lib/entropy/huf.h
++++ b/lib/entropy/huf.h
+@@ -60,12 +60,12 @@ extern "C" {
+ HUF_compress() :
+     Compress content from buffer 'src', of size 'srcSize', into buffer 'dst'.
+     'dst' buffer must be already allocated.
+-    Compression runs faster if `dstCapacity` >= HUF_compressBound(srcSize).
++    Compression runs faster if `dstCapacity` >= HUF_compressBound2(srcSize).
+     `srcSize` must be <= `HUF_BLOCKSIZE_MAX` == 128 KB.
+     @return : size of compressed data (<= `dstCapacity`).
+     Special values : if return == 0, srcData is not compressible => Nothing is stored within dst !!!
+                      if return == 1, srcData is a single repeated byte symbol (RLE compression).
+-                     if HUF_isError(return), compression failed (more details using HUF_getErrorName())
++                     if HUF_isError2(return), compression failed (more details using HUF_getErrorName2())
+ */
+ HUF_PUBLIC_API size_t HUF_compress(void* dst, size_t dstCapacity,
+                              const void* src, size_t srcSize);
+@@ -79,7 +79,7 @@ HUF_decompress() :
+            RLE (cSrcSize==1) and uncompressed (cSrcSize==dstSize) data,
+            because it knows size to regenerate.
+     @return : size of regenerated data (== originalSize),
+-              or an error code, which can be tested using HUF_isError()
++              or an error code, which can be tested using HUF_isError2()
+ */
+ HUF_PUBLIC_API size_t HUF_decompress(void* dst,  size_t originalSize,
+                                const void* cSrc, size_t cSrcSize);
+@@ -87,11 +87,11 @@ HUF_PUBLIC_API size_t HUF_decompress(void* dst,  size_t originalSize,
+ 
+ /* ***   Tool functions *** */
+ #define HUF_BLOCKSIZE_MAX (128 * 1024)                 /**< maximum input size for a single block compressed with HUF_compress */
+-HUF_PUBLIC_API size_t HUF_compressBound(size_t size);      /**< maximum compressed size (worst case) */
++HUF_PUBLIC_API size_t HUF_compressBound2(size_t size);      /**< maximum compressed size (worst case) */
+ 
+ /* Error Management */
+-HUF_PUBLIC_API unsigned    HUF_isError(size_t code);       /**< tells if a return value is an error code */
+-HUF_PUBLIC_API const char* HUF_getErrorName(size_t code);  /**< provides error code string (useful for debugging) */
++HUF_PUBLIC_API unsigned    HUF_isError2(size_t code);       /**< tells if a return value is an error code */
++HUF_PUBLIC_API const char* HUF_getErrorName2(size_t code);  /**< provides error code string (useful for debugging) */
+ 
+ 
+ /* ***   Advanced function   *** */
+@@ -164,41 +164,41 @@ size_t HUF_decompress4X4_DCtx(HUF_DTable* dctx, void* dst, size_t dstSize, const
+ /*!
+ HUF_compress() does the following:
+ 1. count symbol occurrence from source[] into table count[] using FSE_count()
+-2. (optional) refine tableLog using HUF_optimalTableLog()
++2. (optional) refine tableLog using HUF_optimalTableLog2()
+ 3. build Huffman table from count using HUF_buildCTable()
+ 4. save Huffman table to memory buffer using HUF_writeCTable()
+-5. encode the data stream using HUF_compress4X_usingCTable()
++5. encode the data stream using HUF_compress4X_usingCTable2()
+ 
+ The following API allows targeting specific sub-functions for advanced tasks.
+ For example, it's possible to compress several blocks using the same 'CTable',
+ or to save and regenerate 'CTable' using external methods.
+ */
+ /* FSE_count() : find it within "fse.h" */
+-unsigned HUF_optimalTableLog(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue);
++unsigned HUF_optimalTableLog2(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue);
+ typedef struct HUF_CElt_s HUF_CElt;   /* incomplete type */
+ size_t HUF_buildCTable (HUF_CElt* CTable, const unsigned* count, unsigned maxSymbolValue, unsigned maxNbBits);
+ size_t HUF_writeCTable (void* dst, size_t maxDstSize, const HUF_CElt* CTable, unsigned maxSymbolValue, unsigned huffLog);
+-size_t HUF_compress4X_usingCTable(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable);
++size_t HUF_compress4X_usingCTable2(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable);
+ 
+ 
+-/** HUF_buildCTable_wksp() :
++/** HUF_buildCTable_wksp2() :
+  *  Same as HUF_buildCTable(), but using externally allocated scratch buffer.
+  *  `workSpace` must be aligned on 4-bytes boundaries, and be at least as large as a table of 1024 unsigned.
+  */
+-size_t HUF_buildCTable_wksp (HUF_CElt* tree, const U32* count, U32 maxSymbolValue, U32 maxNbBits, void* workSpace, size_t wkspSize);
++size_t HUF_buildCTable_wksp2 (HUF_CElt* tree, const U32* count, U32 maxSymbolValue, U32 maxNbBits, void* workSpace, size_t wkspSize);
+ 
+-/*! HUF_readStats() :
++/*! HUF_readStats2() :
+     Read compact Huffman tree, saved by HUF_writeCTable().
+     `huffWeight` is destination buffer.
+     @return : size read from `src` , or an error Code .
+-    Note : Needed by HUF_readCTable() and HUF_readDTableXn() . */
+-size_t HUF_readStats(BYTE* huffWeight, size_t hwSize, U32* rankStats,
++    Note : Needed by HUF_readCTable2() and HUF_readDTableXn() . */
++size_t HUF_readStats2(BYTE* huffWeight, size_t hwSize, U32* rankStats,
+                      U32* nbSymbolsPtr, U32* tableLogPtr,
+                      const void* src, size_t srcSize);
+ 
+-/** HUF_readCTable() :
++/** HUF_readCTable2() :
+ *   Loading a CTable saved with HUF_writeCTable() */
+-size_t HUF_readCTable (HUF_CElt* CTable, unsigned maxSymbolValue, const void* src, size_t srcSize);
++size_t HUF_readCTable2 (HUF_CElt* CTable, unsigned maxSymbolValue, const void* src, size_t srcSize);
+ 
+ 
+ /*
+@@ -208,17 +208,17 @@ HUF_decompress() does the following:
+ 3. decode 1 or 4 segments in parallel using HUF_decompressSXn_usingDTable
+ */
+ 
+-/** HUF_selectDecoder() :
++/** HUF_selectDecoder2() :
+ *   Tells which decoder is likely to decode faster,
+ *   based on a set of pre-determined metrics.
+ *   @return : 0==HUF_decompress4X2, 1==HUF_decompress4X4 .
+ *   Assumption : 0 < cSrcSize < dstSize <= 128 KB */
+-U32 HUF_selectDecoder (size_t dstSize, size_t cSrcSize);
++U32 HUF_selectDecoder2 (size_t dstSize, size_t cSrcSize);
+ 
+ size_t HUF_readDTableX2 (HUF_DTable* DTable, const void* src, size_t srcSize);
+ size_t HUF_readDTableX4 (HUF_DTable* DTable, const void* src, size_t srcSize);
+ 
+-size_t HUF_decompress4X_usingDTable(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);
++size_t HUF_decompress4X_usingDTable2(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);
+ size_t HUF_decompress4X2_usingDTable(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);
+ size_t HUF_decompress4X4_usingDTable(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);
+ 
+@@ -227,7 +227,7 @@ size_t HUF_decompress4X4_usingDTable(void* dst, size_t maxDstSize, const void* c
+ 
+ size_t HUF_compress1X (void* dst, size_t dstSize, const void* src, size_t srcSize, unsigned maxSymbolValue, unsigned tableLog);
+ size_t HUF_compress1X_wksp (void* dst, size_t dstSize, const void* src, size_t srcSize, unsigned maxSymbolValue, unsigned tableLog, void* workSpace, size_t wkspSize);  /**< `workSpace` must be a table of at least 1024 unsigned */
+-size_t HUF_compress1X_usingCTable(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable);
++size_t HUF_compress1X_usingCTable2(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable);
+ 
+ size_t HUF_decompress1X2 (void* dst, size_t dstSize, const void* cSrc, size_t cSrcSize);   /* single-symbol decoder */
+ size_t HUF_decompress1X4 (void* dst, size_t dstSize, const void* cSrc, size_t cSrcSize);   /* double-symbol decoder */
+@@ -236,7 +236,7 @@ size_t HUF_decompress1X_DCtx (HUF_DTable* dctx, void* dst, size_t dstSize, const
+ size_t HUF_decompress1X2_DCtx(HUF_DTable* dctx, void* dst, size_t dstSize, const void* cSrc, size_t cSrcSize);   /**< single-symbol decoder */
+ size_t HUF_decompress1X4_DCtx(HUF_DTable* dctx, void* dst, size_t dstSize, const void* cSrc, size_t cSrcSize);   /**< double-symbols decoder */
+ 
+-size_t HUF_decompress1X_usingDTable(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);   /**< automatic selection of sing or double symbol decoder, based on DTable */
++size_t HUF_decompress1X_usingDTable2(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);   /**< automatic selection of sing or double symbol decoder, based on DTable */
+ size_t HUF_decompress1X2_usingDTable(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);
+ size_t HUF_decompress1X4_usingDTable(void* dst, size_t maxDstSize, const void* cSrc, size_t cSrcSize, const HUF_DTable* DTable);
+ 
+diff --git a/lib/entropy/huf_compress.c b/lib/entropy/huf_compress.c
+index bf464da..626bcb9 100644
+--- a/lib/entropy/huf_compress.c
++++ b/lib/entropy/huf_compress.c
+@@ -46,7 +46,7 @@
+ #include <string.h>     /* memcpy, memset */
+ #include <stdio.h>      /* printf (debug) */
+ #include "bitstream.h"
+-#define FSE_STATIC_LINKING_ONLY   /* FSE_optimalTableLog_internal */
++#define FSE_STATIC_LINKING_ONLY   /* FSE_optimalTableLog_internal2 */
+ #include "fse.h"        /* header compression */
+ #define HUF_STATIC_LINKING_ONLY
+ #include "huf.h"
+@@ -63,9 +63,9 @@
+ /* **************************************************************
+ *  Utils
+ ****************************************************************/
+-unsigned HUF_optimalTableLog(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue)
++unsigned HUF_optimalTableLog2(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue)
+ {
+-    return FSE_optimalTableLog_internal(maxTableLog, srcSize, maxSymbolValue, 1);
++    return FSE_optimalTableLog_internal2(maxTableLog, srcSize, maxSymbolValue, 1);
+ }
+ 
+ 
+@@ -102,17 +102,17 @@ size_t HUF_compressWeights (void* dst, size_t dstSize, const void* weightTable,
+         if (maxCount == 1) return 0;         /* each symbol present maximum once => not compressible */
+     }
+ 
+-    tableLog = FSE_optimalTableLog(tableLog, wtSize, maxSymbolValue);
+-    CHECK_F( FSE_normalizeCount(norm, tableLog, count, wtSize, maxSymbolValue) );
++    tableLog = FSE_optimalTableLog2(tableLog, wtSize, maxSymbolValue);
++    CHECK_F( FSE_normalizeCount2(norm, tableLog, count, wtSize, maxSymbolValue) );
+ 
+     /* Write table description header */
+-    {   CHECK_V_F(hSize, FSE_writeNCount(op, oend-op, norm, maxSymbolValue, tableLog) );
++    {   CHECK_V_F(hSize, FSE_writeNCount2(op, oend-op, norm, maxSymbolValue, tableLog) );
+         op += hSize;
+     }
+ 
+     /* Compress */
+-    CHECK_F( FSE_buildCTable_wksp(CTable, norm, maxSymbolValue, tableLog, scratchBuffer, sizeof(scratchBuffer)) );
+-    {   CHECK_V_F(cSize, FSE_compress_usingCTable(op, oend - op, weightTable, wtSize, CTable) );
++    CHECK_F( FSE_buildCTable_wksp2(CTable, norm, maxSymbolValue, tableLog, scratchBuffer, sizeof(scratchBuffer)) );
++    {   CHECK_V_F(cSize, FSE_compress_usingCTable2(op, oend - op, weightTable, wtSize, CTable) );
+         if (cSize == 0) return 0;   /* not enough space for compressed data */
+         op += cSize;
+     }
+@@ -165,7 +165,7 @@ size_t HUF_writeCTable (void* dst, size_t maxDstSize,
+ }
+ 
+ 
+-size_t HUF_readCTable (HUF_CElt* CTable, U32 maxSymbolValue, const void* src, size_t srcSize)
++size_t HUF_readCTable2 (HUF_CElt* CTable, U32 maxSymbolValue, const void* src, size_t srcSize)
+ {
+     BYTE huffWeight[HUF_SYMBOLVALUE_MAX + 1];   /* init not required, even though some static analyzer may complain */
+     U32 rankVal[HUF_TABLELOG_ABSOLUTEMAX + 1];   /* large enough for values from 0 to 16 */
+@@ -173,7 +173,7 @@ size_t HUF_readCTable (HUF_CElt* CTable, U32 maxSymbolValue, const void* src, si
+     U32 nbSymbols = 0;
+ 
+     /* get symbol weights */
+-    CHECK_V_F(readSize, HUF_readStats(huffWeight, HUF_SYMBOLVALUE_MAX+1, rankVal, &nbSymbols, &tableLog, src, srcSize));
++    CHECK_V_F(readSize, HUF_readStats2(huffWeight, HUF_SYMBOLVALUE_MAX+1, rankVal, &nbSymbols, &tableLog, src, srcSize));
+ 
+     /* check result */
+     if (tableLog > HUF_TABLELOG_MAX) return ERROR(tableLog_tooLarge);
+@@ -325,13 +325,13 @@ static void HUF_sort(nodeElt* huffNode, const U32* count, U32 maxSymbolValue)
+ }
+ 
+ 
+-/** HUF_buildCTable_wksp() :
++/** HUF_buildCTable_wksp2() :
+  *  Same as HUF_buildCTable(), but using externally allocated scratch buffer.
+  *  `workSpace` must be aligned on 4-bytes boundaries, and be at least as large as a table of 1024 unsigned.
+  */
+ #define STARTNODE (HUF_SYMBOLVALUE_MAX+1)
+ typedef nodeElt huffNodeTable[2*HUF_SYMBOLVALUE_MAX+1 +1];
+-size_t HUF_buildCTable_wksp (HUF_CElt* tree, const U32* count, U32 maxSymbolValue, U32 maxNbBits, void* workSpace, size_t wkspSize)
++size_t HUF_buildCTable_wksp2 (HUF_CElt* tree, const U32* count, U32 maxSymbolValue, U32 maxNbBits, void* workSpace, size_t wkspSize)
+ {
+     nodeElt* const huffNode0 = (nodeElt*)workSpace;
+     nodeElt* const huffNode = huffNode0+1;
+@@ -406,7 +406,7 @@ size_t HUF_buildCTable_wksp (HUF_CElt* tree, const U32* count, U32 maxSymbolValu
+ size_t HUF_buildCTable (HUF_CElt* tree, const U32* count, U32 maxSymbolValue, U32 maxNbBits)
+ {
+     huffNodeTable nodeTable;
+-    return HUF_buildCTable_wksp(tree, count, maxSymbolValue, maxNbBits, nodeTable, sizeof(nodeTable));
++    return HUF_buildCTable_wksp2(tree, count, maxSymbolValue, maxNbBits, nodeTable, sizeof(nodeTable));
+ }
+ 
+ static void HUF_encodeSymbol(BIT_CStream_t* bitCPtr, U32 symbol, const HUF_CElt* CTable)
+@@ -414,7 +414,7 @@ static void HUF_encodeSymbol(BIT_CStream_t* bitCPtr, U32 symbol, const HUF_CElt*
+     BIT_addBitsFast(bitCPtr, CTable[symbol].val, CTable[symbol].nbBits);
+ }
+ 
+-size_t HUF_compressBound(size_t size) { return HUF_COMPRESSBOUND(size); }
++size_t HUF_compressBound2(size_t size) { return HUF_COMPRESSBOUND(size); }
+ 
+ #define HUF_FLUSHBITS(s)  (fast ? BIT_flushBitsFast(s) : BIT_flushBits(s))
+ 
+@@ -424,7 +424,7 @@ size_t HUF_compressBound(size_t size) { return HUF_COMPRESSBOUND(size); }
+ #define HUF_FLUSHBITS_2(stream) \
+     if (sizeof((stream)->bitContainer)*8 < HUF_TABLELOG_MAX*4+7) HUF_FLUSHBITS(stream)
+ 
+-size_t HUF_compress1X_usingCTable(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable)
++size_t HUF_compress1X_usingCTable2(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable)
+ {
+     const BYTE* ip = (const BYTE*) src;
+     BYTE* const ostart = (BYTE*)dst;
+@@ -437,7 +437,7 @@ size_t HUF_compress1X_usingCTable(void* dst, size_t dstSize, const void* src, si
+     /* init */
+     if (dstSize < 8) return 0;   /* not enough space to compress */
+     { size_t const initErr = BIT_initCStream(&bitC, op, oend-op);
+-      if (HUF_isError(initErr)) return 0; }
++      if (HUF_isError2(initErr)) return 0; }
+ 
+     n = srcSize & ~3;  /* join to mod 4 */
+     switch (srcSize & 3)
+@@ -467,7 +467,7 @@ size_t HUF_compress1X_usingCTable(void* dst, size_t dstSize, const void* src, si
+ }
+ 
+ 
+-size_t HUF_compress4X_usingCTable(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable)
++size_t HUF_compress4X_usingCTable2(void* dst, size_t dstSize, const void* src, size_t srcSize, const HUF_CElt* CTable)
+ {
+     size_t const segmentSize = (srcSize+3)/4;   /* first 3 segments */
+     const BYTE* ip = (const BYTE*) src;
+@@ -480,28 +480,28 @@ size_t HUF_compress4X_usingCTable(void* dst, size_t dstSize, const void* src, si
+     if (srcSize < 12) return 0;   /* no saving possible : too small input */
+     op += 6;   /* jumpTable */
+ 
+-    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable(op, oend-op, ip, segmentSize, CTable) );
++    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable2(op, oend-op, ip, segmentSize, CTable) );
+         if (cSize==0) return 0;
+         MEM_writeLE16(ostart, (U16)cSize);
+         op += cSize;
+     }
+ 
+     ip += segmentSize;
+-    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable(op, oend-op, ip, segmentSize, CTable) );
++    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable2(op, oend-op, ip, segmentSize, CTable) );
+         if (cSize==0) return 0;
+         MEM_writeLE16(ostart+2, (U16)cSize);
+         op += cSize;
+     }
+ 
+     ip += segmentSize;
+-    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable(op, oend-op, ip, segmentSize, CTable) );
++    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable2(op, oend-op, ip, segmentSize, CTable) );
+         if (cSize==0) return 0;
+         MEM_writeLE16(ostart+4, (U16)cSize);
+         op += cSize;
+     }
+ 
+     ip += segmentSize;
+-    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable(op, oend-op, ip, iend-ip, CTable) );
++    {   CHECK_V_F(cSize, HUF_compress1X_usingCTable2(op, oend-op, ip, iend-ip, CTable) );
+         if (cSize==0) return 0;
+         op += cSize;
+     }
+@@ -543,8 +543,8 @@ static size_t HUF_compress_internal (
+     }
+ 
+     /* Build Huffman Tree */
+-    huffLog = HUF_optimalTableLog(huffLog, srcSize, maxSymbolValue);
+-    {   CHECK_V_F(maxBits, HUF_buildCTable_wksp (table.CTable, table.count, maxSymbolValue, huffLog, workSpace, wkspSize) );
++    huffLog = HUF_optimalTableLog2(huffLog, srcSize, maxSymbolValue);
++    {   CHECK_V_F(maxBits, HUF_buildCTable_wksp2 (table.CTable, table.count, maxSymbolValue, huffLog, workSpace, wkspSize) );
+         huffLog = (U32)maxBits;
+     }
+ 
+@@ -556,9 +556,9 @@ static size_t HUF_compress_internal (
+ 
+     /* Compress */
+     {   size_t const cSize = (singleStream) ?
+-                            HUF_compress1X_usingCTable(op, oend - op, src, srcSize, table.CTable) :   /* single segment */
+-                            HUF_compress4X_usingCTable(op, oend - op, src, srcSize, table.CTable);
+-        if (HUF_isError(cSize)) return cSize;
++                            HUF_compress1X_usingCTable2(op, oend - op, src, srcSize, table.CTable) :   /* single segment */
++                            HUF_compress4X_usingCTable2(op, oend - op, src, srcSize, table.CTable);
++        if (HUF_isError2(cSize)) return cSize;
+         if (cSize==0) return 0;   /* uncompressible */
+         op += cSize;
+     }
+diff --git a/lib/entropy/huf_decompress.c b/lib/entropy/huf_decompress.c
+index a342dfb..60c5f5c 100644
+--- a/lib/entropy/huf_decompress.c
++++ b/lib/entropy/huf_decompress.c
+@@ -97,8 +97,8 @@ size_t HUF_readDTableX2 (HUF_DTable* DTable, const void* src, size_t srcSize)
+     HUF_STATIC_ASSERT(sizeof(DTableDesc) == sizeof(HUF_DTable));
+     /* memset(huffWeight, 0, sizeof(huffWeight)); */   /* is not necessary, even though some analyzer complain ... */
+ 
+-    iSize = HUF_readStats(huffWeight, HUF_SYMBOLVALUE_MAX + 1, rankVal, &nbSymbols, &tableLog, src, srcSize);
+-    if (HUF_isError(iSize)) return iSize;
++    iSize = HUF_readStats2(huffWeight, HUF_SYMBOLVALUE_MAX + 1, rankVal, &nbSymbols, &tableLog, src, srcSize);
++    if (HUF_isError2(iSize)) return iSize;
+ 
+     /* Table header */
+     {   DTableDesc dtd = HUF_getDTableDesc(DTable);
+@@ -189,7 +189,7 @@ static size_t HUF_decompress1X2_usingDTable_internal(
+     U32 const dtLog = dtd.tableLog;
+ 
+     { size_t const errorCode = BIT_initDStream(&bitD, cSrc, cSrcSize);
+-      if (HUF_isError(errorCode)) return errorCode; }
++      if (HUF_isError2(errorCode)) return errorCode; }
+ 
+     HUF_decodeStreamX2(op, &bitD, oend, dt, dtLog);
+ 
+@@ -214,7 +214,7 @@ size_t HUF_decompress1X2_DCtx (HUF_DTable* DCtx, void* dst, size_t dstSize, cons
+     const BYTE* ip = (const BYTE*) cSrc;
+ 
+     size_t const hSize = HUF_readDTableX2 (DCtx, cSrc, cSrcSize);
+-    if (HUF_isError(hSize)) return hSize;
++    if (HUF_isError2(hSize)) return hSize;
+     if (hSize >= cSrcSize) return ERROR(srcSize_wrong);
+     ip += hSize; cSrcSize -= hSize;
+ 
+@@ -269,13 +269,13 @@ static size_t HUF_decompress4X2_usingDTable_internal(
+ 
+         if (length4 > cSrcSize) return ERROR(corruption_detected);   /* overflow */
+         { size_t const errorCode = BIT_initDStream(&bitD1, istart1, length1);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+         { size_t const errorCode = BIT_initDStream(&bitD2, istart2, length2);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+         { size_t const errorCode = BIT_initDStream(&bitD3, istart3, length3);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+         { size_t const errorCode = BIT_initDStream(&bitD4, istart4, length4);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+ 
+         /* 16-32 symbols per loop (4-8 symbols per stream) */
+         endSignal = BIT_reloadDStream(&bitD1) | BIT_reloadDStream(&bitD2) | BIT_reloadDStream(&bitD3) | BIT_reloadDStream(&bitD4);
+@@ -337,7 +337,7 @@ size_t HUF_decompress4X2_DCtx (HUF_DTable* dctx, void* dst, size_t dstSize, cons
+     const BYTE* ip = (const BYTE*) cSrc;
+ 
+     size_t const hSize = HUF_readDTableX2 (dctx, cSrc, cSrcSize);
+-    if (HUF_isError(hSize)) return hSize;
++    if (HUF_isError2(hSize)) return hSize;
+     if (hSize >= cSrcSize) return ERROR(srcSize_wrong);
+     ip += hSize; cSrcSize -= hSize;
+ 
+@@ -463,8 +463,8 @@ size_t HUF_readDTableX4 (HUF_DTable* DTable, const void* src, size_t srcSize)
+     if (maxTableLog > HUF_TABLELOG_MAX) return ERROR(tableLog_tooLarge);
+     /* memset(weightList, 0, sizeof(weightList)); */  /* is not necessary, even though some analyzer complain ... */
+ 
+-    iSize = HUF_readStats(weightList, HUF_SYMBOLVALUE_MAX + 1, rankStats, &nbSymbols, &tableLog, src, srcSize);
+-    if (HUF_isError(iSize)) return iSize;
++    iSize = HUF_readStats2(weightList, HUF_SYMBOLVALUE_MAX + 1, rankStats, &nbSymbols, &tableLog, src, srcSize);
++    if (HUF_isError2(iSize)) return iSize;
+ 
+     /* check result */
+     if (tableLog > maxTableLog) return ERROR(tableLog_tooLarge);   /* DTable can't fit code depth */
+@@ -594,7 +594,7 @@ static size_t HUF_decompress1X4_usingDTable_internal(
+ 
+     /* Init */
+     {   size_t const errorCode = BIT_initDStream(&bitD, cSrc, cSrcSize);
+-        if (HUF_isError(errorCode)) return errorCode;
++        if (HUF_isError2(errorCode)) return errorCode;
+     }
+ 
+     /* decode */
+@@ -628,7 +628,7 @@ size_t HUF_decompress1X4_DCtx (HUF_DTable* DCtx, void* dst, size_t dstSize, cons
+     const BYTE* ip = (const BYTE*) cSrc;
+ 
+     size_t const hSize = HUF_readDTableX4 (DCtx, cSrc, cSrcSize);
+-    if (HUF_isError(hSize)) return hSize;
++    if (HUF_isError2(hSize)) return hSize;
+     if (hSize >= cSrcSize) return ERROR(srcSize_wrong);
+     ip += hSize; cSrcSize -= hSize;
+ 
+@@ -681,13 +681,13 @@ static size_t HUF_decompress4X4_usingDTable_internal(
+ 
+         if (length4 > cSrcSize) return ERROR(corruption_detected);   /* overflow */
+         { size_t const errorCode = BIT_initDStream(&bitD1, istart1, length1);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+         { size_t const errorCode = BIT_initDStream(&bitD2, istart2, length2);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+         { size_t const errorCode = BIT_initDStream(&bitD3, istart3, length3);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+         { size_t const errorCode = BIT_initDStream(&bitD4, istart4, length4);
+-          if (HUF_isError(errorCode)) return errorCode; }
++          if (HUF_isError2(errorCode)) return errorCode; }
+ 
+         /* 16-32 symbols per loop (4-8 symbols per stream) */
+         endSignal = BIT_reloadDStream(&bitD1) | BIT_reloadDStream(&bitD2) | BIT_reloadDStream(&bitD3) | BIT_reloadDStream(&bitD4);
+@@ -750,7 +750,7 @@ size_t HUF_decompress4X4_DCtx (HUF_DTable* dctx, void* dst, size_t dstSize, cons
+     const BYTE* ip = (const BYTE*) cSrc;
+ 
+     size_t hSize = HUF_readDTableX4 (dctx, cSrc, cSrcSize);
+-    if (HUF_isError(hSize)) return hSize;
++    if (HUF_isError2(hSize)) return hSize;
+     if (hSize >= cSrcSize) return ERROR(srcSize_wrong);
+     ip += hSize; cSrcSize -= hSize;
+ 
+@@ -768,7 +768,7 @@ size_t HUF_decompress4X4 (void* dst, size_t dstSize, const void* cSrc, size_t cS
+ /* Generic decompression selector */
+ /* ********************************/
+ 
+-size_t HUF_decompress1X_usingDTable(void* dst, size_t maxDstSize,
++size_t HUF_decompress1X_usingDTable2(void* dst, size_t maxDstSize,
+                                     const void* cSrc, size_t cSrcSize,
+                                     const HUF_DTable* DTable)
+ {
+@@ -777,7 +777,7 @@ size_t HUF_decompress1X_usingDTable(void* dst, size_t maxDstSize,
+                            HUF_decompress1X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable);
+ }
+ 
+-size_t HUF_decompress4X_usingDTable(void* dst, size_t maxDstSize,
++size_t HUF_decompress4X_usingDTable2(void* dst, size_t maxDstSize,
+                                     const void* cSrc, size_t cSrcSize,
+                                     const HUF_DTable* DTable)
+ {
+@@ -809,12 +809,12 @@ static const algo_time_t algoTime[16 /* Quantization */][3 /* single, double, qu
+     {{ 722,128}, {1891,145}, {1936,146}},   /* Q ==15 : 93-99% */
+ };
+ 
+-/** HUF_selectDecoder() :
++/** HUF_selectDecoder2() :
+ *   Tells which decoder is likely to decode faster,
+ *   based on a set of pre-determined metrics.
+ *   @return : 0==HUF_decompress4X2, 1==HUF_decompress4X4 .
+ *   Assumption : 0 < cSrcSize < dstSize <= 128 KB */
+-U32 HUF_selectDecoder (size_t dstSize, size_t cSrcSize)
++U32 HUF_selectDecoder2 (size_t dstSize, size_t cSrcSize)
+ {
+     /* decoder timing evaluation */
+     U32 const Q = (U32)(cSrcSize * 16 / dstSize);   /* Q < 16 since dstSize > cSrcSize */
+@@ -839,7 +839,7 @@ size_t HUF_decompress (void* dst, size_t dstSize, const void* cSrc, size_t cSrcS
+     if (cSrcSize == dstSize) { memcpy(dst, cSrc, dstSize); return dstSize; }   /* not compressed */
+     if (cSrcSize == 1) { memset(dst, *(const BYTE*)cSrc, dstSize); return dstSize; }   /* RLE */
+ 
+-    {   U32 const algoNb = HUF_selectDecoder(dstSize, cSrcSize);
++    {   U32 const algoNb = HUF_selectDecoder2(dstSize, cSrcSize);
+         return decompress[algoNb](dst, dstSize, cSrc, cSrcSize);
+     }
+ }
+@@ -852,7 +852,7 @@ size_t HUF_decompress4X_DCtx (HUF_DTable* dctx, void* dst, size_t dstSize, const
+     if (cSrcSize == dstSize) { memcpy(dst, cSrc, dstSize); return dstSize; }   /* not compressed */
+     if (cSrcSize == 1) { memset(dst, *(const BYTE*)cSrc, dstSize); return dstSize; }   /* RLE */
+ 
+-    {   U32 const algoNb = HUF_selectDecoder(dstSize, cSrcSize);
++    {   U32 const algoNb = HUF_selectDecoder2(dstSize, cSrcSize);
+         return algoNb ? HUF_decompress4X4_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) :
+                         HUF_decompress4X2_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) ;
+     }
+@@ -864,7 +864,7 @@ size_t HUF_decompress4X_hufOnly (HUF_DTable* dctx, void* dst, size_t dstSize, co
+     if (dstSize == 0) return ERROR(dstSize_tooSmall);
+     if ((cSrcSize >= dstSize) || (cSrcSize <= 1)) return ERROR(corruption_detected);   /* invalid */
+ 
+-    {   U32 const algoNb = HUF_selectDecoder(dstSize, cSrcSize);
++    {   U32 const algoNb = HUF_selectDecoder2(dstSize, cSrcSize);
+         return algoNb ? HUF_decompress4X4_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) :
+                         HUF_decompress4X2_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) ;
+     }
+@@ -878,7 +878,7 @@ size_t HUF_decompress1X_DCtx (HUF_DTable* dctx, void* dst, size_t dstSize, const
+     if (cSrcSize == dstSize) { memcpy(dst, cSrc, dstSize); return dstSize; }   /* not compressed */
+     if (cSrcSize == 1) { memset(dst, *(const BYTE*)cSrc, dstSize); return dstSize; }   /* RLE */
+ 
+-    {   U32 const algoNb = HUF_selectDecoder(dstSize, cSrcSize);
++    {   U32 const algoNb = HUF_selectDecoder2(dstSize, cSrcSize);
+         return algoNb ? HUF_decompress1X4_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) :
+                         HUF_decompress1X2_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) ;
+     }
+diff --git a/lib/lizard_common.h b/lib/lizard_common.h
+index 1677abb..ceed35d 100644
+--- a/lib/lizard_common.h
++++ b/lib/lizard_common.h
+@@ -85,7 +85,7 @@ extern "C" {
+ #define LIZARD_BLOCK_SIZE_PAD      (LIZARD_BLOCK_SIZE+32)
+ #define LIZARD_COMPRESS_ADD_BUF    (5*LIZARD_BLOCK_SIZE_PAD)
+ #ifndef LIZARD_NO_HUFFMAN
+-    #define LIZARD_COMPRESS_ADD_HUF    HUF_compressBound(LIZARD_BLOCK_SIZE_PAD)
++    #define LIZARD_COMPRESS_ADD_HUF    HUF_compressBound2(LIZARD_BLOCK_SIZE_PAD)
+     #define LIZARD_HUF_BLOCK_SIZE      LIZARD_BLOCK_SIZE
+ #else
+     #define LIZARD_COMPRESS_ADD_HUF    0
+diff --git a/lib/lizard_compress.c b/lib/lizard_compress.c
+index eaf12f7..de19211 100644
+--- a/lib/lizard_compress.c
++++ b/lib/lizard_compress.c
+@@ -145,7 +145,7 @@ FORCE_INLINE int Lizard_writeStream(int useHuff, Lizard_stream_t* ctx, BYTE* str
+         int useHuffBuf;
+         if (*op + 6 > oend) { LIZARD_LOG_COMPRESS("*op[%p] + 6 > oend[%p]\n", *op, oend); return -1; }
+ 
+-        useHuffBuf = ((size_t)(oend - (*op + 6)) < HUF_compressBound(streamLen)); 
++        useHuffBuf = ((size_t)(oend - (*op + 6)) < HUF_compressBound2(streamLen)); 
+         if (useHuffBuf) {
+             if (streamLen > LIZARD_BLOCK_SIZE) { LIZARD_LOG_COMPRESS("streamLen[%d] > LIZARD_BLOCK_SIZE\n", streamLen); return -1; }
+             ctx->comprStreamLen = (U32)HUF_compress(ctx->huffBase, ctx->huffEnd - ctx->huffBase, streamPtr, streamLen);
+@@ -153,7 +153,7 @@ FORCE_INLINE int Lizard_writeStream(int useHuff, Lizard_stream_t* ctx, BYTE* str
+             ctx->comprStreamLen = (U32)HUF_compress(*op + 6, oend - (*op + 6), streamPtr, streamLen);
+         }
+ 
+-        if (!HUF_isError(ctx->comprStreamLen)) {
++        if (!HUF_isError2(ctx->comprStreamLen)) {
+             if (ctx->comprStreamLen > 0 && (LIZARD_MINIMAL_HUFF_GAIN(ctx->comprStreamLen) < streamLen)) { /* compressible */
+                 MEM_writeLE24(*op, streamLen);
+                 MEM_writeLE24(*op+3, ctx->comprStreamLen);
+diff --git a/lib/lizard_decompress.c b/lib/lizard_decompress.c
+index df2eb69..e35e64e 100644
+--- a/lib/lizard_decompress.c
++++ b/lib/lizard_decompress.c
+@@ -93,7 +93,7 @@ FORCE_INLINE size_t Lizard_readStream(int flag, const BYTE** ip, const BYTE* con
+ 
+         if ((op > oend - streamLen) || (*ip + comprStreamLen > iend - 6)) return 0;
+         res = HUF_decompress(op, streamLen, *ip + 6, comprStreamLen);
+-        if (HUF_isError(res) || (res != streamLen)) return 0;
++        if (HUF_isError2(res) || (res != streamLen)) return 0;
+         
+         *ip += comprStreamLen + 6;
+         *streamPtr = op;

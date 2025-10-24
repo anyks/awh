@@ -96,11 +96,14 @@ namespace awh {
 				NONE    = 0x00, // Метод сжатия не установлен
 				LZ4     = 0x01, // Метод сжатия Lz4
 				LZMA    = 0x02, // Метод сжатия LZma
-				ZSTD    = 0x03, // Метод сжатия Zstandard
+				ZSTD    = 0x03, // Метод сжатия ZStd
 				GZIP    = 0x04, // Метод сжатия GZip
 				BZIP2   = 0x05, // Метод сжания BZip2
 				BROTLI  = 0x06, // Метод сжатия Brotli
-				DEFLATE = 0x07  // Метод сжатия Deflate
+				LIZARD  = 0x07, // Метод сжатия Lizard
+				SNAPPY  = 0x08, // Метод сжатия Snappy
+				DEFLATE = 0x09, // Метод сжатия Deflate
+				DENSITY = 0x0A  // Метод сжатия Density
 			};
 			/**
 			 * type_t Тип хэш-суммы
@@ -119,12 +122,12 @@ namespace awh {
 			state_t _state;
 		private:
 			// Размер скользящего окна
-			int16_t _wbit;
+			int16_t _wbits;
 			// Устанавливаем количество раундов
 			int32_t _rounds;
 		private:
 			// Уровни компрессии
-			uint32_t _level[3];
+			uint32_t _level[4];
 		private:
 			// Соль и пароль для шифрования
 			string _salt, _password;

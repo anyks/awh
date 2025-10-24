@@ -39,7 +39,10 @@ if [ -n "$1" ]; then
 		clean_submodule "zlib"
 		clean_submodule "zstd"
 		clean_submodule "lzma"
+		clean_submodule "lizard"
 		clean_submodule "brotli"
+		clean_submodule "snappy"
+		clean_submodule "density"
 		# Очищаем подпроекты
 		clean_submodule "pcre2"
 		clean_submodule "openssl"
@@ -241,8 +244,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.5.3
-	VER="3.5.3"
+	# Версия OpenSSL
+	VER="3.6.0"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -390,6 +393,82 @@ if [ ! -f "$src/.stamp_done" ]; then
 		rm "$PREFIX/lib/libzlib.dll"
 		rm "$PREFIX/lib/libzlib.dll.a"
 	fi
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка Snappy
+src="$ROOT/submodules/snappy"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** Snappy ******\n"
+	cd "$src" || exit 1
+
+	# Версия Snappy
+	VER="1.2.1"
+
+	# Переключаемся на main
+	git checkout main
+	# Выполняем удаление предыдущей закаченной версии
+	git tag -d ${VER}
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch ${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf ./CMakeCache.txt
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DSNAPPY_INSTALL="YES" \
+		 -DBUILD_SHARED_LIBS="NO" \
+		 -DSNAPPY_BUILD_TESTS="NO" \
+		 -DSNAPPY_FUZZING_BUILD="NO" \
+		 -DSNAPPY_BUILD_BENCHMARKS="NO" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DSNAPPY_INSTALL="YES" \
+		 -DBUILD_SHARED_LIBS="NO" \
+		 -DSNAPPY_BUILD_TESTS="NO" \
+		 -DSNAPPY_FUZZING_BUILD="NO" \
+		 -DSNAPPY_BUILD_BENCHMARKS="NO" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$MAKE install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
+
+	# Создаём каталог Snappy
+	mkdir "$PREFIX/include/snappy"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep ".*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/snappy/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/snappy/$i" || exit 1
+	done
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -909,6 +988,123 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Удаляем файл разметки
 		rm -f "__.SYMDEF SORTED"
 	fi
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка Density
+src="$ROOT/submodules/density"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** Density ******\n"
+	cd "$src" || exit 1
+
+	# Версия Density
+	VER="0.14.2"
+
+	# Переключаемся на main
+	git checkout main
+	# Выполняем удаление предыдущей закаченной версии
+	git tag -d density-${VER}
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch density-${VER}
+
+	# Выполняем очистку сборки
+	$MAKE clean || exit 1
+	# Выполняем сборку на всех логических ядрах
+	$MAKE CFLAGS="-O3 -std=c99 -Wall -fpic" || exit 1
+
+	# Производим установку библиотеки по нужному пути
+	echo "Install \"$src/build/libdensity.a\" to \"$PREFIX/lib/libdensity.a\""
+	${INSTALL_CMD} "$src/build/libdensity.a" "$PREFIX/lib/libdensity.a" || exit 1
+
+	# Выполняем копирование всех заголовочных файлов
+	for i in $(find "$src/src" -type f -name "*.h");
+	do
+		SRC=$(realpath $i)
+		FILE=$(realpath $i | sed 's/.*\(src\)/\1/g' | cut -d '/' -f2-)
+		DIR=$(dirname $FILE)
+		mkdir -p $DIR
+		mkdir -p "$PREFIX/include/density/algorithms/chameleon/core"
+		mkdir -p "$PREFIX/include/density/algorithms/chameleon/dictionary"
+		mkdir -p "$PREFIX/include/density/algorithms/cheetah/core"
+		mkdir -p "$PREFIX/include/density/algorithms/cheetah/dictionary"
+		mkdir -p "$PREFIX/include/density/algorithms/lion/forms"
+		mkdir -p "$PREFIX/include/density/algorithms/lion/core"
+		mkdir -p "$PREFIX/include/density/algorithms/lion/dictionary"
+		mkdir -p "$PREFIX/include/density/structure"
+		mkdir -p "$PREFIX/include/density/buffers"
+		
+		echo "Install \"$SRC\" to \"$PREFIX/include/density/$FILE\""
+		${INSTALL_CMD} "$SRC" "$PREFIX/include/density/$FILE" || exit 1
+	done
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка Lizard
+src="$ROOT/submodules/lizard"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** Lizard ******\n"
+	cd "$src" || exit 1
+
+	# Версия Lizard
+	VER="1.0"
+
+	# Выполняем очистку сборки
+	$MAKE clean || exit 1
+
+	# Переключаемся на lizard
+	git checkout lizard
+	# Выполняем удаление предыдущей закаченной версии
+	git tag -d v${VER}
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Применяем патч
+	apply_patch "lizard" "lizard.patch"
+
+	# Выполняем сборку библиотеки
+	$MAKE lib || exit 1
+
+	# Производим установку библиотеки по нужному пути
+	echo "Install \"$src/lib/liblizard.a\" to \"$PREFIX/lib/liblizard.a\""
+	${INSTALL_CMD} "$src/lib/liblizard.a" "$PREFIX/lib/liblizard.a" || exit 1
+
+	mkdir -p "$PREFIX/include/lizard/xxhash"
+	mkdir -p "$PREFIX/include/lizard/entropy"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$src/lib" | grep \\.h$);
+	do
+		echo "Install \"$src/lib/$i\" to \"$PREFIX/include/lizard/$i\""
+		${INSTALL_CMD} "$src/lib/$i" "$PREFIX/include/lizard/$i" || exit 1
+	done
+
+	# Производим установку оставшихся заголовочных файлов по нужному пути
+	for i in $(ls "$src/lib/xxhash" | grep \\.h$);
+	do
+		echo "Install \"$src/lib/xxhash/$i\" to \"$PREFIX/include/lizard/xxhash/$i\""
+		${INSTALL_CMD} "$src/lib/xxhash/$i" "$PREFIX/include/lizard/xxhash/$i" || exit 1
+	done
+
+	# Производим установку оставшихся заголовочных файлов по нужному пути
+	for i in $(ls "$src/lib/entropy" | grep \\.h$);
+	do
+		echo "Install \"$src/lib/entropy/$i\" to \"$PREFIX/include/lizard/entropy/$i\""
+		${INSTALL_CMD} "$src/lib/entropy/$i" "$PREFIX/include/lizard/entropy/$i" || exit 1
+	done
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

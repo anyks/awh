@@ -23,6 +23,18 @@ $ROOT/submodule.sh add zstd https://gitflic.ru/project/third_party/zstd.git
 $ROOT/submodule.sh remove zlib
 $ROOT/submodule.sh add zlib https://gitflic.ru/project/third_party/zlib.git
 
+# Выполняем пересборку сабмодуля lizard
+$ROOT/submodule.sh remove lizard
+$ROOT/submodule.sh add lizard https://gitflic.ru/project/third_party/lizard.git
+
+# Выполняем пересборку сабмодуля density
+$ROOT/submodule.sh remove density
+$ROOT/submodule.sh add density https://gitflic.ru/project/third_party/density.git
+
+# Выполняем пересборку сабмодуля snappy
+$ROOT/submodule.sh remove snappy
+$ROOT/submodule.sh add snappy https://gitflic.ru/project/third_party/snappy.git
+
 # Выполняем пересборку сабмодуля brotli
 $ROOT/submodule.sh remove brotli
 $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git

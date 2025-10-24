@@ -13,6 +13,15 @@
 [submodule "submodules/zlib"]
 	path = submodules/zlib
 	url = https://gitflic.ru/project/third_party/zlib.git
+[submodule "submodules/lizard"]
+	path = submodules/lizard
+	url = https://gitflic.ru/project/third_party/lizard.git
+[submodule "submodules/density"]
+	path = submodules/density
+	url = https://gitflic.ru/project/third_party/density.git
+[submodule "submodules/snappy"]
+	path = submodules/snappy
+	url = https://gitflic.ru/project/third_party/snappy.git
 [submodule "submodules/brotli"]
 	path = submodules/brotli
 	url = https://gitflic.ru/project/third_party/brotli.git
