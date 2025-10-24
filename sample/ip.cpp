@@ -35,7 +35,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Выполняем создание объекта IP-адреса
-	net_t net(&log);
+	net_t net(&fmk, &log);
 
 	// Выводим тесты IP-адресов
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";

@@ -2447,7 +2447,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = server.substr(0, pos);
 							// Извлекаем порт сервера имён
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+							port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 1), server.length() - (pos + 1));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -2473,7 +2473,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 								// Извлекаем хост сервера имён
 								host = server.substr(1, pos - 1);
 								// Запоминаем полученный порт
-								port = static_cast <uint32_t> (::stoi(server.substr(pos + 2)));
+								port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 2), server.length() - (pos + 2));
 							/**
 							 * Если возникает ошибка
 							 */
@@ -2503,7 +2503,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = server.substr(0, pos);
 							// Извлекаем порт сервера имён
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+							port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 1), server.length() - (pos + 1));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -2537,7 +2537,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = this->host(family, server.substr(0, pos));
 							// Извлекаем порт сервера имён
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+							port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 1), server.length() - (pos + 1));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -3468,7 +3468,7 @@ vector <string> awh::DNS::search(const int32_t family, const string & ip) noexce
  * @param log объект для работы с логами
  */
 awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
- _net(log), _timeout(5), _prefix{AWH_SHORT_NAME},
+ _net(fmk, log), _timeout(5), _prefix{AWH_SHORT_NAME},
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = std::make_unique <worker_t> (AF_INET, this);

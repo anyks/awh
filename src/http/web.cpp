@@ -934,7 +934,7 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 								// Если размер HTTP-тела запроса получен
 								if(!length.empty()){
 									// Запоминаем размер тела сообщения
-									this->_body.size = static_cast <int32_t> (::stoul(length));
+									this->_body.size = this->_fmk->atoi <int32_t> (length);
 									// Если размер тела не получен
 									if(this->_body.size == 0){
 										// Запрашиваем заголовок подключения
@@ -1050,11 +1050,11 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 													// Устанавливаем стейт ожидания получения заголовков
 													this->_work.state = state_t::HEADERS;
 													// Получаем версию протокол запроса
-													this->_response.version = ::stod(string(buffer + 5, this->_work.pos[0] - 5));
+													this->_response.version = this->_fmk->atoi <double> (buffer + 5, this->_work.pos[0] - 5);
 													// Получаем сообщение ответа
 													this->_response.message.assign(buffer + (this->_work.pos[1] + 1), size - (this->_work.pos[1] + 1));
 													// Получаем код ответа
-													this->_response.code = static_cast <uint32_t> (::stoi(string(buffer + (this->_work.pos[0] + 1), this->_work.pos[1] - (this->_work.pos[0] + 1))));
+													this->_response.code = this->_fmk->atoi <uint32_t> (buffer + (this->_work.pos[0] + 1), this->_work.pos[1] - (this->_work.pos[0] + 1));
 													// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 													if(this->_callback.is("response"))
 														// Выполняем функцию обратного вызова
@@ -1114,7 +1114,7 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 													// Получаем параметры URI-запроса
 													const string uri(buffer + (this->_work.pos[0] + 1), this->_work.pos[1] - (this->_work.pos[0] + 1));
 													// Получаем версию протокол запроса
-													this->_request.version = ::stod(string(buffer + (this->_work.pos[1] + 6), size - (this->_work.pos[1] + 6)));
+													this->_request.version = this->_fmk->atoi <double> (buffer + (this->_work.pos[1] + 6), size - (this->_work.pos[1] + 6));
 													// Выполняем установку URI-параметров запроса
 													this->_request.url = this->_uri.parse(uri);
 													// Если метод определён как GET
@@ -1206,7 +1206,7 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 											// Если название заголовка соответствует HOST
 											if(this->_fmk->compare("host", name)){
 												// Создаём объект работы с IP-адресами
-												net_t net(this->_log);
+												net_t net(this->_fmk, this->_log);
 												// Выполняем установку порта по умолчанию
 												this->_request.url.port = 80;
 												// Выполняем установку схемы запроса
@@ -1222,7 +1222,7 @@ size_t awh::Web::extraction(const char * buffer, const size_t size, const unit_t
 													// Если данные порта являются числом
 													if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
 														// Выполняем установку порта сервера
-														this->_request.url.port = static_cast <uint32_t> (::stoi(port));
+														this->_request.url.port = this->_fmk->atoi <uint32_t> (port);
 														// Выполняем получение хоста сервера
 														this->_request.url.host = this->_request.url.host.substr(0, pos);
 														// Если порт установлен как 443

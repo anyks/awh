@@ -1094,7 +1094,7 @@ void awh::server::ProxySocks5::ssl(const node_t::ssl_t & ssl) noexcept {
  * @param log объект для работы с логами
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _net(log),
+ _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _net(fmk, log),
  _callback(log), _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log),
  _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений

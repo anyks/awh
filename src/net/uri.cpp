@@ -648,7 +648,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 					 */
 					try {
 						// Выполняем извлечение порта запроса
-						result.port = ::stoi(i->second);
+						result.port = this->_fmk->atoi <uint32_t>(i->second);
 					/**
 					 * Если возникает ошибка
 					 */
@@ -1958,7 +1958,7 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 					 */
 					try {
 						// Выполняем установку порта
-						result.port = ::stoi(port);
+						result.port = this->_fmk->atoi <uint32_t> (port);
 					/**
 					 * Если возникает ошибка
 					 */
@@ -2066,7 +2066,8 @@ string awh::URI::operator = (const url_t & url) const noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::URI::URI(const fmk_t * fmk, const log_t * log) noexcept : _net(log), _hash(log), _fmk(fmk), _log(log) {
+awh::URI::URI(const fmk_t * fmk, const log_t * log) noexcept :
+ _net(fmk, log), _hash(log), _fmk(fmk), _log(log) {
 	// Устанавливаем регулярное выражение для парсинга URI
 	this->_uri = this->_regexp.build("^(([^:/?#]+):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 	// Устанавливаем регулярное выражение для парсинга E-Mail

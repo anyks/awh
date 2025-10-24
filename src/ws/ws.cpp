@@ -568,7 +568,7 @@ bool awh::Websocket::extract(const string & extension) noexcept {
 					/**
 					 * Определяем размер шифрования
 					 */
-					switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
+					switch(this->_fmk->atoi <uint16_t> (extension.c_str() + 19, extension.length() - 19)){
 						// Если шифрование произведено 128 битным ключём
 						case 128: this->_encrypt.cipher = hash_t::cipher_t::AES128; break;
 						// Если шифрование произведено 192 битным ключём
@@ -766,7 +766,7 @@ bool awh::Websocket::extract(const string & extension) noexcept {
 						 */
 						try {
 							// Устанавливаем размер скользящего окна
-							this->_permessage.client.wbits = static_cast <int16_t> (::stoi(extension.substr(23)));
+							this->_permessage.client.wbits = this->_fmk->atoi <int16_t> (extension.c_str() + 23, extension.length() - 23);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -791,7 +791,7 @@ bool awh::Websocket::extract(const string & extension) noexcept {
 						 */
 						try {
 							// Устанавливаем размер скользящего окна
-							this->_permessage.client.wbits = static_cast <int16_t> (::stoi(extension.substr(23)));
+							this->_permessage.client.wbits = this->_fmk->atoi <int16_t> (extension.c_str() + 23, extension.length() - 23);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -839,7 +839,7 @@ bool awh::Websocket::extract(const string & extension) noexcept {
 						 */
 						try {
 							// Устанавливаем размер скользящего окна
-							this->_permessage.server.wbits = static_cast <int16_t> (::stoi(extension.substr(23)));
+							this->_permessage.server.wbits = this->_fmk->atoi <int16_t> (extension.c_str() + 23, extension.length() - 23);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -864,7 +864,7 @@ bool awh::Websocket::extract(const string & extension) noexcept {
 						 */
 						try {
 							// Устанавливаем размер скользящего окна
-							this->_permessage.server.wbits = static_cast <int16_t> (::stoi(extension.substr(23)));
+							this->_permessage.server.wbits = this->_fmk->atoi <int16_t> (extension.c_str() + 23, extension.length() - 23);
 						/**
 						 * Если возникает ошибка
 						 */

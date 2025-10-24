@@ -31,7 +31,7 @@ using namespace std;
 awh::client::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
  mode(false), type(type_t::NONE),
  family(scheme_t::family_t::IPV4),
- net(log), socks5(log), http(fmk, log) {
+ net(fmk, log), socks5(log), http(fmk, log) {
 	// Устанавливаем идентичность протокола к прокси-серверу
 	this->http.identity(http_t::identity_t::PROXY);
 }

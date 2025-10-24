@@ -185,7 +185,7 @@ void awh::server::Websocket::commit() noexcept {
 								/**
 								 * Определяем размер шифрования
 								 */
-								switch(static_cast <uint16_t> (::stoi(header.second))){
+								switch(this->_fmk->atoi <uint16_t> (header.second)){
 									// Если шифрование произведено 128 битным ключём
 									case 128: this->_encrypt.cipher = hash_t::cipher_t::AES128; break;
 									// Если шифрование произведено 192 битным ключём
@@ -334,12 +334,12 @@ bool awh::server::Websocket::step(const step_t step) noexcept {
 						 */
 						try {
 							// Проверяем, совпадает ли желаемая версия протокола
-							return (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (awh::ws_t::VERSION));
+							return (this->_fmk->atoi <uint8_t> (header.second) == static_cast <uint8_t> (awh::ws_t::VERSION));
 						/**
 						 * Если возникает ошибка
 						 */
 						} catch(const exception &) {
-							// Сообщяем, что проверка не прошла
+							// Сообщаем, что проверка не прошла
 							return false;
 						}
 					}

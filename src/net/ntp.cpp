@@ -720,7 +720,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = server.substr(0, pos);
 							// Извлекаем порт сервера имён
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+							port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 1), server.length() - (pos + 1));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -746,7 +746,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 								// Извлекаем хост сервера имён
 								host = server.substr(1, pos - 1);
 								// Запоминаем полученный порт
-								port = static_cast <uint32_t> (::stoi(server.substr(pos + 2)));
+								port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 2), server.length() - (pos + 2));
 							/**
 							 * Если возникает ошибка
 							 */
@@ -776,7 +776,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = server.substr(0, pos);
 							// Извлекаем порт сервера имён
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+							port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 1), server.length() - (pos + 1));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -808,7 +808,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = this->_dns.host(family, server.substr(0, pos));
 							// Извлекаем порт сервера имён
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+							port = this->_fmk->atoi <uint32_t> (server.c_str() + (pos + 1), server.length() - (pos + 1));
 						/**
 						 * Если возникает ошибка
 						 */
@@ -1228,7 +1228,7 @@ uint64_t awh::NTP::request(const int32_t family) noexcept {
  * @param log объект для работы с логами
  */
 awh::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
- _net(log), _dns(fmk, log), _timeout(5),
+ _net(fmk, log), _dns(fmk, log), _timeout(5),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = std::make_unique <worker_t> (AF_INET, this);

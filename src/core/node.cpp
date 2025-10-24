@@ -1051,8 +1051,9 @@ awh::Node & awh::Node::operator = (const scheme_t::family_t family) noexcept {
  * @param log объект для работы с логами
  */
 awh::Node::Node(const fmk_t * fmk, const log_t * log) noexcept :
- awh::core_t(fmk, log), _fs(fmk, log), _net(log), _uri(fmk, log),
- _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
+ awh::core_t(fmk, log), _fs(fmk, log), _net(fmk, log),
+ _uri(fmk, log), _engine(fmk, log, &_uri),
+ _sending(sending_t::INSTANT),
  _memoryAvailableSize(AWH_WINDOW_SIZE),
  _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
 /**
@@ -1063,8 +1064,9 @@ awh::Node::Node(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::Node::Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::core_t(fmk, log), _fs(fmk, log), _net(log), _uri(fmk, log),
- _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
+ awh::core_t(fmk, log), _fs(fmk, log), _net(fmk, log),
+ _uri(fmk, log), _engine(fmk, log, &_uri),
+ _sending(sending_t::INSTANT),
  _memoryAvailableSize(AWH_WINDOW_SIZE),
  _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
 /**

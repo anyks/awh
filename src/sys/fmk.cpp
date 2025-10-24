@@ -30,6 +30,11 @@
 #include <sys/types.h>
 
 /**
+ * Подключаем сторонний модуль быстрых чисел
+ */
+#include <fast_float/fast_float.h>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/fmk.hpp>
@@ -2946,6 +2951,108 @@ template <typename T>
 /**
  * @brief Метод конвертации строковых чисел в десятичную систему счисления
  *
+ * @param value строковое представление числа
+ * @return      числовое значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const string & value) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если мы получили на вход число
+	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		// Выводим значение по умолчанию
+		result = static_cast <T> (0);
+		// Если строка для конвертации не пуста
+		if(!value.empty()){
+			// Вызываем метод конвертации
+			auto answer = fast_float::from_chars(value.c_str(), value.c_str() + value.length(), result);
+			// Если мы получили ошибку
+			if (answer.ec != std::errc())
+				// Выводим значение по умолчанию
+				result = static_cast <T> (0);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const string &) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const string &) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const string &) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const string &) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const string &) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const string &) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const string &) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const string &) const noexcept;
+template float awh::Framework::atoi <float> (const string &) const noexcept;
+template double awh::Framework::atoi <double> (const string &) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const string &) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const string &) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  строковое представление числа
+ * @param length длина строки
+ * @return       числовое значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const char * value, const size_t length) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если мы получили на вход число
+	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		// Выводим значение по умолчанию
+		result = static_cast <T> (0);
+		// Вызываем метод конвертации
+		auto answer = fast_float::from_chars(value, value + length, result);
+		// Если мы получили ошибку
+		if (answer.ec != std::errc())
+			// Выводим значение по умолчанию
+			result = static_cast <T> (0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const char *, const size_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const char *, const size_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const char *, const size_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const char *, const size_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const char *, const size_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const char *, const size_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const char *, const size_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const char *, const size_t) const noexcept;
+template float awh::Framework::atoi <float> (const char *, const size_t) const noexcept;
+template double awh::Framework::atoi <double> (const char *, const size_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const char *, const size_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const char *, const size_t) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
@@ -3826,7 +3933,7 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 		 */
 		try {
 			// Преобразуем слово в число
-			const uint32_t number = ::stoi(word);
+			const uint32_t number = this->atoi <uint32_t> (word);
 			// Выполняем расчет
 			result = this->convert(this->arabic2rome(number));
 		/**
@@ -5090,7 +5197,7 @@ double awh::Framework::bytes(const string & str) const noexcept {
 			// Размерность скорости
 			double dimension = 1.;
 			// Получаем значение размерности
-			result = ::stod(match[1]);
+			result = this->atoi <double> (match[1]);
 			// Если это размерность в килобайтах
 			if(this->compare("Kb", match[2]))
 				// Выполняем установку множителя
@@ -5254,7 +5361,7 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 			// Размерность скорости
 			float dimension = .0f;
 			// Получаем значение скорости
-			const float speed = ::stof(match[1]);
+			const float speed = this->atoi <float> (match[1]);
 			// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 			const bool bytes = !::fmod(speed / 8.f, 2.f);
 			// Если это биты

@@ -741,7 +741,7 @@ void awh::Http::commit() noexcept {
 					/**
 					 * Определяем размер шифрования
 					 */
-					switch(static_cast <uint16_t> (::stoi(encrypt))){
+					switch(this->_fmk->atoi <uint16_t> (encrypt)){
 						// Если шифрование произведено 128 битным ключём
 						case 128: this->_encrypt.cipher = hash_t::cipher_t::AES128; break;
 						// Если шифрование произведено 192 битным ключём
@@ -890,31 +890,31 @@ void awh::Http::commit() noexcept {
 														// Если данные пришли сжатые методом LZ4
 														if(this->_fmk->compare("lz4", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::LZ4);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::LZ4);
 														// Если данные пришли сжатые методом Zstandard
 														else if(this->_fmk->compare("zstd", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::ZSTD);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::ZSTD);
 														// Если данные пришли сжатые методом LZma
 														else if(this->_fmk->compare("xz", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::LZMA);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::LZMA);
 														// Если данные пришли сжатые методом Brotli
 														else if(this->_fmk->compare("br", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::BROTLI);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::BROTLI);
 														// Если данные пришли сжатые методом BZip2
 														else if(this->_fmk->compare("bzip2", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::BZIP2);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::BZIP2);
 														// Если данные пришли сжатые методом GZip
 														else if(this->_fmk->compare("gzip", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::GZIP);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::GZIP);
 														// Если данные пришли сжатые методом Deflate
 														else if(this->_fmk->compare("deflate", first))
 															// Добавляем в список полученный компрессор
-															requested.emplace(::stof(second), compressor_t::DEFLATE);
+															requested.emplace(this->_fmk->atoi <float> (second), compressor_t::DEFLATE);
 													// Если вес компрессора указан не является числом
 													} else {
 														// Выводим сообщение об ошибке
@@ -1024,31 +1024,31 @@ void awh::Http::commit() noexcept {
 													// Если данные пришли сжатые методом LZ4
 													if(this->_fmk->compare("lz4", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::LZ4);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::LZ4);
 													// Если данные пришли сжатые методом Zstandard
 													else if(this->_fmk->compare("zstd", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::ZSTD);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::ZSTD);
 													// Если данные пришли сжатые методом LZma
 													else if(this->_fmk->compare("xz", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::LZMA);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::LZMA);
 													// Если данные пришли сжатые методом Brotli
 													else if(this->_fmk->compare("br", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::BROTLI);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::BROTLI);
 													// Если данные пришли сжатые методом BZip2
 													else if(this->_fmk->compare("bzip2", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::BZIP2);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::BZIP2);
 													// Если данные пришли сжатые методом GZip
 													else if(this->_fmk->compare("gzip", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::GZIP);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::GZIP);
 													// Если данные пришли сжатые методом Deflate
 													else if(this->_fmk->compare("deflate", first))
 														// Добавляем в список полученный компрессор
-														requested.emplace(::stof(second), compressor_t::DEFLATE);
+														requested.emplace(this->_fmk->atoi <float> (second), compressor_t::DEFLATE);
 													// Если получен параметр разрешающий использовать трейлеры
 													else if(this->_fmk->compare("trailers", first))
 														// Выполняем активации получение трейлеров
@@ -2510,7 +2510,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 				// Если ключ соответствует доменному имени
 				} else if(this->_fmk->compare(":authority", name)) {
 					// Создаём объект работы с IP-адресами
-					net_t net(this->_log);
+					net_t net(this->_fmk, this->_log);
 					// Устанавливаем хост
 					this->_web.header("Host", content);
 					// Получаем объект параметров запроса
@@ -2536,10 +2536,10 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 							 * Выполняем отлов ошибок
 							 */
 							try {
-								// Выполняем установку порта сервера
-								request.url.port = static_cast <uint32_t> (::stoi(port));
 								// Выполняем получение хоста сервера
 								request.url.host = request.url.host.substr(0, pos);
+								// Выполняем установку порта сервера
+								request.url.port = this->_fmk->atoi <uint32_t> (port);
 								// Если порт установлен как 443
 								if(request.url.port == 443)
 									// Выполняем установку защищённую схему запроса
@@ -2592,7 +2592,7 @@ void awh::Http::header(const string & name, const string & content) noexcept {
 						// Устанавливаем версию протокола
 						response.version = 2.;
 						// Выполняем установку статуса ответа
-						response.code = static_cast <uint32_t> (::stoi(content));
+						response.code = this->_fmk->atoi <uint32_t> (content);
 						// Выполняем формирование текста ответа
 						response.message = this->message(response.code);
 						// Выполняем сохранение параметров ответа
@@ -3666,7 +3666,7 @@ awh::buffer_t & awh::Http::process(const process_t flag, const web_t::provider_t
 												 */
 												try {
 													// Устанавливаем длину передаваемого текста
-													length = static_cast <size_t> (::stoull(header.second));
+													length = this->_fmk->atoi <size_t> (header.second);
 												/**
 												 * Если возникает ошибка
 												 */
@@ -4324,7 +4324,7 @@ awh::buffer_t & awh::Http::process(const process_t flag, const web_t::provider_t
 												 */
 												try {
 													// Устанавливаем длину передаваемого текста
-													length = static_cast <size_t> (::stoull(header.second));
+													length = this->_fmk->atoi <size_t> (header.second);
 												/**
 												 * Если возникает ошибка
 												 */

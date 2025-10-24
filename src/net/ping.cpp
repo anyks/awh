@@ -1378,6 +1378,8 @@ void awh::Ping::on(function <void (const uint64_t, const string &, ping_t *)> ca
  * @param log объект для работы с логами
  */
 awh::Ping::Ping(const fmk_t * fmk, const log_t * log) noexcept :
- _sock(INVALID_SOCKET), _net(log), _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
- _mode(false), _verb(true), _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
+ _sock(INVALID_SOCKET), _net(fmk, log),
+ _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
+ _mode(false), _verb(true), _shifting(3000),
+ _timeoutRead(5000), _timeoutWrite(15000),
  _fmk(fmk), _log(log), _callback(nullptr) {}

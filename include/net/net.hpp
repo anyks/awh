@@ -131,11 +131,13 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param exp регулярное выражение для установки
+				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				LocalNet(const regexp_t::exp_t & exp, const log_t * log) noexcept :
+				LocalNet(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept :
 				 reserved(false), prefix(0),
-				 end(new Net(exp, log)), begin(new Net(exp, log)) {}
+				 end(new Net(exp, fmk, log)),
+				 begin(new Net(exp, fmk, log)) {}
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -156,6 +158,8 @@ namespace awh {
 			// Список локальных адресов
 			std::unordered_multimap <type_t, localNet_t> _localsNet;
 		private:
+			// Объект фреймворка
+			const fmk_t * _fmk;
 			// Объект для работы с логами
 			const log_t * _log;
 		private:
@@ -630,17 +634,19 @@ namespace awh {
 			/**
 			 * @brief конструктор
 			 *
+			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Net(const log_t * log) noexcept;
+			Net(const fmk_t * fmk, const log_t * log) noexcept;
 		private:
 			/**
 			 * @brief конструктор
 			 *
 			 * @param exp регулярное выражение для установки
+			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Net(const regexp_t::exp_t & exp, const log_t * log) noexcept;
+			Net(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief деструктор

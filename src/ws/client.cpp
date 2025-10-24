@@ -225,7 +225,7 @@ void awh::client::Websocket::commit() noexcept {
 								/**
 								 * Определяем размер шифрования
 								 */
-								switch(static_cast <uint16_t> (::stoi(header.second))){
+								switch(this->_fmk->atoi <uint16_t> (header.second)){
 									// Если шифрование произведено 128 битным ключём
 									case 128: this->_encrypt.cipher = hash_t::cipher_t::AES128; break;
 									// Если шифрование произведено 192 битным ключём
