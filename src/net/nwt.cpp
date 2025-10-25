@@ -1,6 +1,6 @@
 /**
  * @file: nwt.cpp
- * @date: 2021-12-19
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -16,6 +16,11 @@
  * Подключаем заголовочный файл
  */
 #include <net/nwt.hpp>
+
+/**
+ * Подключаем заголовочный файл логера
+ */
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -174,7 +179,6 @@ awh::NWT::URL::URL() noexcept :
  type(types_t::NONE), port(0), uri{""},
  host{""}, path{""}, user{""}, pass{""},
  anchor{""}, domain{""}, params{""}, schema{""} {}
-
 /**
  * @brief Метод инициализации
  *
@@ -540,10 +544,50 @@ void awh::NWT::init() noexcept {
  * @param zone пользовательская зона
  */
 void awh::NWT::zone(const string & zone) noexcept {
-	// Если зона передана и она не существует
-	if(!zone.empty() && (this->_national.find(zone) == this->_national.end()) && (this->_general.find(zone) == this->_general.end()))
-		// Добавляем зону в список
-		this->_user.emplace(zone);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если зона передана и она не существует
+		if(!zone.empty() && (this->_national.find(zone) == this->_national.end()) && (this->_general.find(zone) == this->_general.end()))
+			// Добавляем зону в список
+			this->_user.emplace(zone);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод извлечения списка пользовательских зон интернета
@@ -584,162 +628,202 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 	// Если текст передан
 	if(!text.empty()){
 		/**
-		 * @brief Функция извлечения данных электронного адреса
-		 *
-		 * @param text текст для парсинга
+		 * Выполняем отлов ошибок
 		 */
-		auto emailFn = [this](const string & text) noexcept -> url_t {
-			// Результат работы функции
-			url_t result;
-			// Если текст передан
-			if(!text.empty()){
-				// Выполняем проверку электронной почты
-				const auto & match = this->_regexp.exec(text, this->_email);
-				// Если результат найден
-				if(!match.empty()){
-					// Запоминаем тип параметра
-					result.type = types_t::EMAIL;
-					// Запоминаем uri адрес
-					result.uri = match[1];
-					// Запоминаем логин пользователя
-					result.user = match[2];
-					// Запоминаем название электронного ящика
-					result.host = match[3];
-					// Запоминаем домен верхнего уровня
-					result.domain = match[4];
+		try {
+			/**
+			 * @brief Функция извлечения данных электронного адреса
+			 *
+			 * @param text текст для парсинга
+			 */
+			auto emailFn = [this](const string & text) noexcept -> url_t {
+				// Результат работы функции
+				url_t result;
+				// Если текст передан
+				if(!text.empty()){
+					// Выполняем проверку электронной почты
+					const auto & match = this->_regexp.exec(text, this->_email);
+					// Если результат найден
+					if(!match.empty()){
+						// Запоминаем тип параметра
+						result.type = types_t::EMAIL;
+						// Запоминаем uri адрес
+						result.uri = match[1];
+						// Запоминаем логин пользователя
+						result.user = match[2];
+						// Запоминаем название электронного ящика
+						result.host = match[3];
+						// Запоминаем домен верхнего уровня
+						result.domain = match[4];
+					}
 				}
-			}
-			// Выводим результат
-			return result;
-		};
-		/**
-		 * @brief Функция извлечения данных URL адресов
-		 *
-		 * @param text текст для парсинга
-		 */
-		auto urlFn = [this](const string & text) noexcept -> url_t {
-			// Результат работы функции
-			url_t result;
-			// Если текст передан
-			if(!text.empty()){
-				// Выполняем проверку URL адреса
-				const auto & match = this->_regexp.exec(text, this->_url);
-				// Если результат найден
-				if(!match.empty()){
-					// Запоминаем uri адрес
-					result.uri = match[0];
-					// Получаем логин пользователя
-					result.user = match[2];
-					// Получаем пароль пользователя
-					result.pass = match[3];
-					// Запоминаем название домена
-					result.host = match[4];
-					// Запоминаем путь запроса
-					result.path = match[7];
-					// Запоминаем протокол
-					result.schema = match[1];
-					// Запоминаем домен верхнего уровня
-					result.domain = match[5];
-					// Запоминаем параметры запроса
-					result.params = match[8];
-					// Запоминаем якорь запроса
-					result.anchor = match[9];
-					// Если порт получен
-					if(!match[6].empty()){
-						/**
-						 * Выполняем отлов ошибок
-						 */
-						try {
-							// Запоминаем порт запроса
-							result.port = ::stoi(match[6]);
-						/**
-						 * Если возникает ошибка
-						 */
-						} catch(const exception &) {
-							// Запоминаем порт запроса
-							result.port = 0;
+				// Выводим результат
+				return result;
+			};
+			/**
+			 * @brief Функция извлечения данных URL адресов
+			 *
+			 * @param text текст для парсинга
+			 */
+			auto urlFn = [this](const string & text) noexcept -> url_t {
+				// Результат работы функции
+				url_t result;
+				// Если текст передан
+				if(!text.empty()){
+					// Выполняем проверку URL адреса
+					const auto & match = this->_regexp.exec(text, this->_url);
+					// Если результат найден
+					if(!match.empty()){
+						// Запоминаем uri адрес
+						result.uri = match[0];
+						// Получаем логин пользователя
+						result.user = match[2];
+						// Получаем пароль пользователя
+						result.pass = match[3];
+						// Запоминаем название домена
+						result.host = match[4];
+						// Запоминаем путь запроса
+						result.path = match[7];
+						// Запоминаем протокол
+						result.schema = match[1];
+						// Запоминаем домен верхнего уровня
+						result.domain = match[5];
+						// Запоминаем параметры запроса
+						result.params = match[8];
+						// Запоминаем якорь запроса
+						result.anchor = match[9];
+						// Если порт получен
+						if(!match[6].empty()){
+							/**
+							 * Выполняем отлов ошибок
+							 */
+							try {
+								// Запоминаем порт запроса
+								result.port = ::stoi(match[6]);
+							/**
+							 * Если возникает ошибка
+							 */
+							} catch(const exception &) {
+								// Запоминаем порт запроса
+								result.port = 0;
+							}
+						}
+						// Запоминаем тип параметра
+						result.type = types_t::URL;
+					// Устанавливаем параметр неверных данных
+					} else result.type = types_t::WRONG;
+				}
+				// Выводим результат
+				return result;
+			};
+			/**
+			 * @brief Функция извлечения данных IP адресов
+			 *
+			 * @param text текст для парсинга
+			 */
+			auto ipFn = [this](const string & text) noexcept -> url_t {
+				// Результат работы функции
+				url_t result;
+				// Если текст передан
+				if(!text.empty()){
+					// Выполняем проверку IP адреса
+					const auto & match = this->_regexp.exec(text, this->_ip);
+					// Если результат найден
+					if(!match.empty()){
+						// Запоминаем uri адрес
+						result.uri = match.at(0);
+						// Если это MAC адрес
+						if(!match[2].empty()){
+							// Запоминаем сам параметр
+							result.host = match[2];
+							// Запоминаем тип параметра
+							result.type = types_t::MAC;
+						// Если это IPv4 адрес
+						} else if(!match[4].empty()) {
+							// Запоминаем сам параметр
+							result.host = match[4];
+							// Запоминаем тип параметра
+							result.type = types_t::IPV4;
+						// Если это IPv6 адрес
+						} else if(!match[3].empty()) {
+							// Запоминаем сам параметр
+							result.host = match[3];
+							// Запоминаем тип параметра
+							result.type = types_t::IPV6;
+						// Если это параметры сети
+						} else if(!match[1].empty()) {
+							// Запоминаем сам параметр
+							result.host = match[1];
+							// Запоминаем тип параметра
+							result.type = types_t::NETWORK;
 						}
 					}
-					// Запоминаем тип параметра
-					result.type = types_t::URL;
-				// Устанавливаем параметр неверных данных
-				} else result.type = types_t::WRONG;
-			}
-			// Выводим результат
-			return result;
-		};
-		/**
-		 * @brief Функция извлечения данных IP адресов
-		 *
-		 * @param text текст для парсинга
-		 */
-		auto ipFn = [this](const string & text) noexcept -> url_t {
-			// Результат работы функции
-			url_t result;
-			// Если текст передан
-			if(!text.empty()){
-				// Выполняем проверку IP адреса
-				const auto & match = this->_regexp.exec(text, this->_ip);
-				// Если результат найден
-				if(!match.empty()){
-					// Запоминаем uri адрес
-					result.uri = match.at(0);
-					// Если это MAC адрес
-					if(!match[2].empty()){
-						// Запоминаем сам параметр
-						result.host = match[2];
-						// Запоминаем тип параметра
-						result.type = types_t::MAC;
-					// Если это IPv4 адрес
-					} else if(!match[4].empty()) {
-						// Запоминаем сам параметр
-						result.host = match[4];
-						// Запоминаем тип параметра
-						result.type = types_t::IPV4;
-					// Если это IPv6 адрес
-					} else if(!match[3].empty()) {
-						// Запоминаем сам параметр
-						result.host = match[3];
-						// Запоминаем тип параметра
-						result.type = types_t::IPV6;
-					// Если это параметры сети
-					} else if(!match[1].empty()) {
-						// Запоминаем сам параметр
-						result.host = match[1];
-						// Запоминаем тип параметра
-						result.type = types_t::NETWORK;
-					}
+				}
+				// Выводим результат
+				return result;
+			};
+			// Очищаем результаты предыдущей работы
+			this->clear();
+			// Запрашиваем данные URL адреса
+			url_t url = urlFn(text);
+			// Если мы получили какие-то достоверные параметры
+			if((url.type == types_t::URL) && ((url.port > 0) ||
+			!url.path.empty() || !url.pass.empty() ||
+			!url.anchor.empty() || !url.params.empty() || !url.schema.empty()))
+				// Устанавливаем полученный результат
+				result = ::move(url);
+			// Если URL адрес мы не получили
+			else {
+				// Выполняем извлечение E-Mail адреса
+				url_t email = emailFn(text);
+				// Если мы получили E-Mail адрес
+				if(email.type == types_t::EMAIL)
+					// Устанавливаем полученный результат
+					result = ::move(email);
+				// Если E-Mail адрес мы не получили
+				else {
+					// Выполняем извлечение IP адреса
+					url_t ip = ipFn(text);
+					// Если мы получили IP адрес
+					if((ip.type == types_t::IPV4) || (ip.type == types_t::IPV6) || (ip.type == types_t::MAC) || (ip.type == types_t::NETWORK))
+						// Устанавливаем полученный результат
+						result = ::move(ip);
 				}
 			}
-			// Выводим результат
-			return result;
-		};
-		// Очищаем результаты предыдущей работы
-		this->clear();
-		// Запрашиваем данные URL адреса
-		url_t url = urlFn(text);
-		// Если мы получили какие-то достоверные параметры
-		if((url.type == types_t::URL) && ((url.port > 0) ||
-		   !url.path.empty() || !url.pass.empty() ||
-		   !url.anchor.empty() || !url.params.empty() || !url.schema.empty()))
-			// Устанавливаем полученный результат
-			result = ::move(url);
-		// Если URL адрес мы не получили
-		else {
-			// Выполняем извлечение E-Mail адреса
-			url_t email = emailFn(text);
-			// Если мы получили E-Mail адрес
-			if(email.type == types_t::EMAIL)
-				// Устанавливаем полученный результат
-				result = ::move(email);
-			// Если E-Mail адрес мы не получили
-			else {
-				// Выполняем извлечение IP адреса
-				url_t ip = ipFn(text);
-				// Если мы получили IP адрес
-				if((ip.type == types_t::IPV4) || (ip.type == types_t::IPV6) || (ip.type == types_t::MAC) || (ip.type == types_t::NETWORK))
-					// Устанавливаем полученный результат
-					result = ::move(ip);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
 			}
 		}
 	}
@@ -752,49 +836,101 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
  * @param letters список букв алфавита
  */
 void awh::NWT::letters(const string & letters) noexcept {
-	// Если буквы переданы запоминаем их
-	if(!letters.empty())
-		// Устанавливаем буквы алфавита
-		this->_letters = letters;
-	// Устанавливаем регулярное выражение для проверки электронной почты
-	this->_email = this->_regexp.build(
-		"((?:([\\w\\-"
-		+ this->_letters
-		+ "]+)\\@)(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-"
-		+ this->_letters
-		+ "]+\\.){0,100}[\\w\\-"
-		+ this->_letters
-		+ "]+)\\.(xn\\-\\-[\\w\\d]+|[a-z"
-		+ this->_letters
-		+ "]+)))", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
-	);
-	// Устанавливаем правило регулярного выражения для проверки URL адресов
-	this->_url = this->_regexp.build(
-		"(?:(http[s]?)\\:\\/\\/)?(?:([\\w+\\-]+)(?:\\:([\\w+\\-]+))?\\@)?(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-"
-		+ this->_letters
-		+ "]+\\.){0,100}[\\w\\-"
-		+ this->_letters
-		+ "]+)\\.(xn\\-\\-[\\w\\d]+|[a-z"
-		+ this->_letters
-		+ "]+))(?:\\:(\\d+))?((?:\\/[\\w\\-]+){0,100}(?:$|\\/|\\w+)|\\/)?(?:\\?([\\w\\-\\.\\~\\:\\[\\]\\@\\!\\$\\&\\'\\(\\)\\*\\+\\,\\;\\=]+))?(?:\\#([\\w\\-\\_]+))?", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
-	);
-	// Устанавливаем правило регулярного выражения для проверки IP адресов
-	this->_ip = this->_regexp.build(
-		// Если это сеть
-		"(?:((?:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}[\\:]{2}|[\\:]{2})|[\\:]{2}))\\/(?:\\d{1,3}(?:\\.\\d{1,3}){3}|\\d+))|"
-		// Определение MAC адреса
-		"([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
-		// Определение IPv6 адреса
-		"(?:\\[?(\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:\\:\\:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){1,7})?)|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)|"
-		// Определение IPv4 адреса
-		"(\\d{1,3}(?:\\.\\d{1,3}){3})(?:\\:\\d+)?\\/?)", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
-	);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если буквы переданы запоминаем их
+		if(!letters.empty())
+			// Устанавливаем буквы алфавита
+			this->_letters = letters;
+		// Устанавливаем регулярное выражение для проверки электронной почты
+		this->_email = this->_regexp.build(
+			"((?:([\\w\\-"
+			+ this->_letters
+			+ "]+)\\@)(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-"
+			+ this->_letters
+			+ "]+\\.){0,100}[\\w\\-"
+			+ this->_letters
+			+ "]+)\\.(xn\\-\\-[\\w\\d]+|[a-z"
+			+ this->_letters
+			+ "]+)))", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
+		);
+		// Устанавливаем правило регулярного выражения для проверки URL адресов
+		this->_url = this->_regexp.build(
+			"(?:(http[s]?)\\:\\/\\/)?(?:([\\w+\\-]+)(?:\\:([\\w+\\-]+))?\\@)?(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-"
+			+ this->_letters
+			+ "]+\\.){0,100}[\\w\\-"
+			+ this->_letters
+			+ "]+)\\.(xn\\-\\-[\\w\\d]+|[a-z"
+			+ this->_letters
+			+ "]+))(?:\\:(\\d+))?((?:\\/[\\w\\-]+){0,100}(?:$|\\/|\\w+)|\\/)?(?:\\?([\\w\\-\\.\\~\\:\\[\\]\\@\\!\\$\\&\\'\\(\\)\\*\\+\\,\\;\\=]+))?(?:\\#([\\w\\-\\_]+))?", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
+		);
+		// Устанавливаем правило регулярного выражения для проверки IP адресов
+		this->_ip = this->_regexp.build(
+			// Если это сеть
+			"(?:((?:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}[\\:]{2}|[\\:]{2})|[\\:]{2}))\\/(?:\\d{1,3}(?:\\.\\d{1,3}){3}|\\d+))|"
+			// Определение MAC адреса
+			"([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
+			// Определение IPv6 адреса
+			"(?:\\[?(\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:\\:\\:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){1,7})?)|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)|"
+			// Определение IPv4 адреса
+			"(\\d{1,3}(?:\\.\\d{1,3}){3})(?:\\:\\d+)?\\/?)", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
+		);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(letters), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+}
+/**
+ * @brief Метод установки объекта логирования
+ *
+ * @param log объект работы с логами
+ */
+void awh::NWT::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект логера
+	this->_log = log;
+	// Устанавливаем объект логера для работы с регулярными выражениями
+	this->_regexp.setLogger(log);
 }
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
  */
-awh::NWT::NWT() noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
+awh::NWT::NWT(const log_t * log) noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _regexp(log), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их
@@ -804,8 +940,9 @@ awh::NWT::NWT() noexcept : _letters("абвгдеёжзийклмнопрсту�
  * @brief Конструктор
  *
  * @param letters список букв алфавита
+ * @param log     объект для работы с логами
  */
-awh::NWT::NWT(const string & letters) noexcept : _letters{""} {
+awh::NWT::NWT(const string & letters, const log_t * log) noexcept : _letters{letters}, _regexp(log), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их

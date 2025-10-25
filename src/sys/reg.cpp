@@ -1,6 +1,6 @@
 /**
  * @file: reg.cpp
- * @date: 2023-12-14
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -25,9 +25,10 @@
 #include <pcre2/pcre2posix.h>
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочныые файлы регулярых выражений и логера
  */
 #include <sys/reg.hpp>
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -109,7 +110,7 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 	// Результат работы функции
 	bool result = false;
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.match);
+	const locker_t lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -140,19 +141,37 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 	// Выводим результат
@@ -185,7 +204,7 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 	// Результат работы функции
 	vector <string> result;
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.match);
+	const locker_t lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -226,38 +245,74 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 		 * Если возникает ошибка
 		 */
 		} catch(const bad_alloc &) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
+				#endif
+			}
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 	// Выводим результат
@@ -290,7 +345,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 	// Результат работы функции
 	vector <std::pair <size_t, size_t>> result;
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.match);
+	const locker_t lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -333,38 +388,74 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 		 * Если возникает ошибка
 		 */
 		} catch(const bad_alloc &) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
+				#endif
+			}
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 	// Выводим результат
@@ -445,7 +536,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				// Если регулярное выражение уже устарело и удалено
 				if(result == nullptr){
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx.cache);
+					const locker_t lock(this->_mtx.cache);
 					// Удаляем запись
 					this->_cache.erase(key);
 				}
@@ -479,7 +570,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				// Если регулярное выражение удачно созданно
 				} else {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx.cache);
+					const locker_t lock(this->_mtx.cache);
 					// Добавляем регулярное выражение в список
 					this->_cache.emplace(key, result);
 				}
@@ -488,40 +579,85 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 		 * Если возникает ошибка
 		 */
 		} catch(const bad_alloc &) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
+				#endif
+			}
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
 		}
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * @brief Метод установки объекта логирования
+ *
+ * @param log объект работы с логами
+ */
+void awh::RegExp::setLogger(const log_t * log) noexcept {
+	// Выполняем установку объекта логирования
+	this->_log = log;
 }

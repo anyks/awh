@@ -1,6 +1,6 @@
 /**
  * @file: reg.hpp
- * @date: 2023-12-14
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -24,18 +24,23 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <sys/types.h>
 
 /**
- * Разрешаем сборку под Windows
+ * Наши модули
  */
 #include "global.hpp"
+#include "locker.hpp"
 
 /**
  * @brief основное пространство имён
  *
  */
 namespace awh {
+	/**
+	 * @brief Прототип класса работы с логами
+	 *
+	 */
+	class Log;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -52,9 +57,9 @@ namespace awh {
 			 */
 			typedef struct Mutex {
 				// Мютекс контроля матчинга
-				std::mutex match;
+				lock_state_t <std::mutex> match;
 				// Мютекс контроля записи в кэш
-				std::mutex cache;
+				lock_state_t <std::mutex> cache;
 			} mtx_t;
 		public:
 			/**
@@ -125,9 +130,12 @@ namespace awh {
 		private:
 			// Мютексы для блокировки потоков
 			mutable mtx_t _mtx;
-		public:
+		private:
 			// Кэш собранных регулярных выражений
 			mutable std::map <std::pair <int32_t, string>, exp_weak_t> _cache;
+		private:
+			// Объект логирования
+			const Log * _log;
 		public:
 			/**
 			 * @brief Метод извлечения текста ошибки регулярного выражения
@@ -200,10 +208,18 @@ namespace awh {
 			exp_t build(const string & pattern, const vector <option_t> & options = {}) const noexcept;
 		public:
 			/**
+			 * @brief Метод установки объекта логирования
+			 *
+			 * @param log объект работы с логами
+			 */
+			void setLogger(const Log * log) noexcept;
+		public:
+			/**
 			 * @brief Конструктор
 			 *
+			 * @param log объект работы с логами
 			 */
-			RegExp() noexcept : _error{""} {}
+			RegExp(const Log * log) noexcept : _error{""}, _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

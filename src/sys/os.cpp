@@ -1,6 +1,6 @@
 /**
  * @file: os.cpp
- * @date: 2024-04-02
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -604,13 +604,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 							#endif
 						// Выполняем извлечение размера пика потребляемой памяти
 						} else result = static_cast <size_t> (info.WorkingSetSize);
@@ -629,13 +629,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Unable to access to determine memory consumption");
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", "Unable to access to determine memory consumption");
+								this->_log->print("%s", log_t::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							#endif
 							// Выводим пустой результат
 							return result;
@@ -659,13 +659,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выводим пустой результат
 							return result;
@@ -687,13 +687,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выводим пустой результат
 							return result;
@@ -705,13 +705,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выполняем закрытие файлового дескриптора
 							::fclose(file);
@@ -737,13 +737,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выводим пустой результат
 							return result;
@@ -755,13 +755,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выполняем закрытие файлового дескриптора
 							::close(sock);
@@ -794,13 +794,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 						#endif
 					// Выполняем извлечение размера пика потребляемой памяти
 					} else result = static_cast <size_t> (info.PeakWorkingSetSize);
@@ -819,13 +819,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Выводим пустой результат
 						return result;
@@ -837,13 +837,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Выполняем закрытие файлового дескриптора
 						::close(sock);
@@ -867,13 +867,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если данные получили удачно
 					} else {
@@ -903,13 +903,13 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -939,13 +939,13 @@ void awh::OS::printStatsMemory() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\nMemory operations only work in the release build\n\n", __PRETTY_FUNCTION__);
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Memory operations only work in the release build\n\n");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		#endif
 	#endif
 }
@@ -1127,13 +1127,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\nMemory operations only work in the release build\n\n", __PRETTY_FUNCTION__);
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(mode), log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Memory operations only work in the release build\n\n");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		#endif
 	#endif
 	// Выводим результат
@@ -1224,13 +1224,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 					// Очищаем список групп пользователя
 					result.clear();
@@ -1243,13 +1243,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Выводим результат
@@ -1279,13 +1279,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Выводим результат
@@ -1315,13 +1315,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Выводим результат
@@ -1353,13 +1353,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -1392,13 +1392,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -1431,13 +1431,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -1510,13 +1510,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Очищаем список групп пользователя
 						result.clear();
@@ -1529,13 +1529,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -1560,13 +1560,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Выводим результат
@@ -1593,13 +1593,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 			// Выводим отрицательный результат
@@ -1611,13 +1611,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Выводим результат
@@ -1656,13 +1656,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			// Если данные пользователя не извлечены
@@ -1672,13 +1672,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -1712,13 +1712,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Выводим результат
@@ -1743,13 +1743,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1772,13 +1772,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1830,13 +1830,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Выводим результат
@@ -1861,13 +1861,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1890,13 +1890,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1960,13 +1960,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 					// Выводим результат
 					return result;
@@ -2001,13 +2001,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 			}
@@ -2054,13 +2054,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 				// Выводим результат
 				return result;
@@ -2119,13 +2119,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 				// Выводим результат
 				return result;
@@ -2161,13 +2161,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Освобождаем ресурсы
@@ -2192,13 +2192,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен
@@ -2223,13 +2223,13 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен

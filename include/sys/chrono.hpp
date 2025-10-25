@@ -1,6 +1,6 @@
 /**
  * @file: chrono.hpp
- * @date: 2025-03-12
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -19,7 +19,6 @@
  * Подключаем зависимые заголовки
  */
 #include <any>
-#include <mutex>
 #include <string>
 #include <vector>
 #include <type_traits>
@@ -29,12 +28,18 @@
  * Наши модули
  */
 #include "fmk.hpp"
+#include "locker.hpp"
 
 /**
  * @brief основное пространство имён
  *
  */
 namespace awh {
+	/**
+	 * @brief Прототип класса работы с логами
+	 *
+	 */
+	class Log;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -349,9 +354,12 @@ namespace awh {
 			 *
 			 */
 			typedef struct Mutex {
-				std::mutex tz;              // Мютекс контроля добавления временной зоны
-				std::mutex date;            // Мютекс контроля локального объекта даты
-				std::recursive_mutex parse; // Мютекс контроля парсинга
+				// Мютекс контроля добавления временной зоны
+				lock_state_t <std::mutex> tz;
+				// Мютекс контроля локального объекта даты
+				lock_state_t <std::mutex> date;
+				// Мютекс контроля парсинга
+				lock_state_t <std::recursive_mutex> parse;
 			} mtx_t;
 			/**
 			 * @brief Структура параметров даты и времени
@@ -399,11 +407,13 @@ namespace awh {
 			// Список скомпилированных регулярных выражений
 			std::unordered_map <format_t, std::any> _expressions;
 		private:
+			// Объект логера
+			const Log * _log;
 			// Объект фреймворка
 			const fmk_t * _fmk;
 		public:
 			/**
-			 * @brief Метод очистку всех локальных данных
+			 * @brief Метод очистки всех локальных данных
 			 *
 			 */
 			void clear() noexcept;
@@ -915,8 +925,9 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Chrono(const fmk_t * fmk) noexcept;
+			Chrono(const fmk_t * fmk, const Log * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

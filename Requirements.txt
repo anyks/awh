@@ -1,0 +1,15 @@
+openssl --version 3.6.0
+zlib --version 1.3.1
+snappy --version 1.2.1
+bz2 --branch master
+lz4 --version 1.10.0
+zstd --version 1.5.7
+lzma --version 5.2.3
+brotli --version 1.1.0
+density --version 0.14.2
+lizard --version 1.0
+pcre2 --version 10.46
+nghttp2 --version 1.67.1
+idn --none
+static --none
+gperftools --version 2.17.2

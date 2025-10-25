@@ -1,6 +1,6 @@
 /**
  * @file: log.cpp
- * @date: 2021-12-19
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -26,8 +26,19 @@
 #include <sys/stat.h>
 
 /**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	/**
+	 * Подключаем заголовок syslog
+	 */
+	#include <syslog.h>
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
+#include <sys/os.hpp>
 #include <sys/log.hpp>
 
 /**
@@ -271,7 +282,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		// Проверяем является ли это переводом строки
 		isEnd = ((payload.text.compare(AWH_STRING_BREAK) == 0) || (payload.text.compare(AWH_STRING_BREAK) == 0));
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx);
+	const locker_t lock(this->_mtx);
 	// Если функция подписки на логи установлена, выводим результат
 	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
 		// Выводим сообщение лога всем подписавшимся
@@ -489,87 +500,135 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
-			// Создаём список аргументов
-			va_list args;
-			// Запускаем инициализацию списка аргументов
-			va_start(args, flag);
-			// Буфер данных для логирования
-			vector <char> buffer(1024);
-			// Выполняем перебор всех аргументов
-			for(;;){
-				// Создаем список аргументов
-				va_list args2;
-				// Копируем список аргументов
-				va_copy(args2, args);
-				// Выполняем запись в буфер данных
-				size_t res = ::vsnprintf(buffer.data(), buffer.size(), format.c_str(), args2);
-				// Если результат получен
-				if((res >= 0) && (res < buffer.size())){
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Если отправка сообщения в SysLog разрешёна
+				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
+					// Выполняем блокировку потока
+					const locker_t lock(this->_mtx);
+					// Создаём список аргументов
+					va_list args;
+					// Запускаем инициализацию списка аргументов
+					va_start(args, flag);
+					// Открываем Syslog для нашего приложения
+					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
+					/**
+					 * Определяем тип сообщения
+					 */
+					switch(static_cast <uint8_t> (flag)){
+						// Выводим сообщение так-как оно есть
+						case static_cast <uint8_t> (flag_t::NONE):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_NOTICE, format.c_str(), args);
+						break;
+						// Выводим информационное сообщение
+						case static_cast <uint8_t> (flag_t::INFO):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_INFO, format.c_str(), args);
+						break;
+						// Выводим сообщение об ошибке
+						case static_cast <uint8_t> (flag_t::CRITICAL):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_ERR, format.c_str(), args);
+						break;
+						// Выводим сообщение предупреждения
+						case static_cast <uint8_t> (flag_t::WARNING):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_WARNING, format.c_str(), args);
+						break;
+					}
 					// Завершаем список аргументов
 					va_end(args);
+					// Закрываем SysLog
+					::closelog();
+				}
+			#endif
+			// Если кроме syslog есть другие режимы вывода
+			if((this->_mode.size() > 1) || (this->_mode.find(mode_t::SYSLOG) == this->_mode.end())){
+				// Создаём список аргументов
+				va_list args;
+				// Запускаем инициализацию списка аргументов
+				va_start(args, flag);
+				// Буфер данных для логирования
+				vector <char> buffer(1024);
+				// Выполняем перебор всех аргументов
+				for(;;){
+					// Создаем список аргументов
+					va_list args2;
+					// Копируем список аргументов
+					va_copy(args2, args);
+					// Выполняем запись в буфер данных
+					size_t res = ::vsnprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+					// Если результат получен
+					if((res >= 0) && (res < buffer.size())){
+						// Завершаем список аргументов
+						va_end(args);
+						// Завершаем список локальных аргументов
+						va_end(args2);
+						// Если результат не получен
+						if(res == 0)
+							// Выполняем сброс результата
+							buffer.clear();
+						// Выводим результат
+						else buffer.assign(buffer.begin(), buffer.begin() + res);
+						// Выходим из цикла
+						break;
+					}
+					// Размер буфера данных
+					size_t size = 0;
+					// Если данные не получены, увеличиваем буфер в два раза
+					if(res < 0)
+						// Увеличиваем размер буфера в два раза
+						size = (buffer.size() * 2);
+					// Увеличиваем размер буфера на один байт
+					else size = (res + 1);
+					// Очищаем буфер данных
+					buffer.clear();
+					// Выделяем память для буфера
+					buffer.resize(size);
 					// Завершаем список локальных аргументов
 					va_end(args2);
-					// Если результат не получен
-					if(res == 0)
-						// Выполняем сброс результата
-						buffer.clear();
-					// Выводим результат
-					else buffer.assign(buffer.begin(), buffer.begin() + res);
-					// Выходим из цикла
-					break;
 				}
-				// Размер буфера данных
-				size_t size = 0;
-				// Если данные не получены, увеличиваем буфер в два раза
-				if(res < 0)
-					// Увеличиваем размер буфера в два раза
-					size = (buffer.size() * 2);
-				// Увеличиваем размер буфера на один байт
-				else size = (res + 1);
-				// Очищаем буфер данных
-				buffer.clear();
-				// Выделяем память для буфера
-				buffer.resize(size);
-				// Завершаем список локальных аргументов
-				va_end(args2);
-			}
-			// Завершаем список аргументов
-			va_end(args);
-			// Если буфер данных для логирования сформирован
-			if(!buffer.empty()){
-				// Создаём объект полезной нагрузки
-				payload_t payload;
-				// Устанавливаем флаг логирования
-				payload.flag = flag;
-				// Устанавливаем даныне сообщения
-				payload.text.assign(buffer.begin(), buffer.end());
-				// Если асинхронный режим работы активирован
-				if(this->_async){
-					// Получаем идентификатор текущего процесса
-					const pid_t pid = ::getpid();
-					// Если идентификатор процесса является дочерним
-					if(pid != this->_pid){
-						// Если процесс ещё не инициализирован и дочерний поток уже создан
-						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
-							// Выполняем остановку скрина
-							this->_screen.stop();
-							// Выполняем очистку списка инициализированных процессов
-							this->_initialized.clear();
+				// Завершаем список аргументов
+				va_end(args);
+				// Если буфер данных для логирования сформирован
+				if(!buffer.empty()){
+					// Создаём объект полезной нагрузки
+					payload_t payload;
+					// Устанавливаем флаг логирования
+					payload.flag = flag;
+					// Устанавливаем даныне сообщения
+					payload.text.assign(buffer.begin(), buffer.end());
+					// Если асинхронный режим работы активирован
+					if(this->_async){
+						// Получаем идентификатор текущего процесса
+						const pid_t pid = ::getpid();
+						// Если идентификатор процесса является дочерним
+						if(pid != this->_pid){
+							// Если процесс ещё не инициализирован и дочерний поток уже создан
+							if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+								// Выполняем остановку скрина
+								this->_screen.stop();
+								// Выполняем очистку списка инициализированных процессов
+								this->_initialized.clear();
+							}
 						}
-					}
-					// Если дочерний поток не создан
-					if(!static_cast <bool> (this->_screen)){
-						// Выполняем установку функцию обратного вызова
-						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
-						// Выполняем инициализацию текущего процесса
-						this->_initialized.emplace(pid);
-						// Запускаем работу скрина
-						this->_screen.start();
-					}
-					// Выполняем отправку сообщения дочернему потоку
-					this->_screen = ::move(payload);
-				// Выполняем вывод полученного лога
-				} else this->receiving(payload);
+						// Если дочерний поток не создан
+						if(!static_cast <bool> (this->_screen)){
+							// Выполняем установку функцию обратного вызова
+							this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+							// Выполняем инициализацию текущего процесса
+							this->_initialized.emplace(pid);
+							// Запускаем работу скрина
+							this->_screen.start();
+						}
+						// Выполняем отправку сообщения дочернему потоку
+						this->_screen = ::move(payload);
+					// Выполняем вывод полученного лога
+					} else this->receiving(payload);
+				}
 			}
 		}
 	}
@@ -591,87 +650,135 @@ void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
-			// Создаём список аргументов
-			va_list args;
-			// Запускаем инициализацию списка аргументов
-			va_start(args, flag);
-			// Буфер данных для логирования
-			vector <wchar_t> buffer(1024);
-			// Выполняем перебор всех аргументов
-			for(;;){
-				// Создаем список аргументов
-				va_list args2;
-				// Копируем список аргументов
-				va_copy(args2, args);
-				// Выполняем запись в буфер данных
-				size_t res = ::vswprintf(buffer.data(), buffer.size(), format.c_str(), args2);
-				// Если результат получен
-				if((res >= 0) && (res < buffer.size())){
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Если отправка сообщения в SysLog разрешёна
+				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
+					// Выполняем блокировку потока
+					const locker_t lock(this->_mtx);
+					// Создаём список аргументов
+					va_list args;
+					// Запускаем инициализацию списка аргументов
+					va_start(args, flag);
+					// Открываем Syslog для нашего приложения
+					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
+					/**
+					 * Определяем тип сообщения
+					 */
+					switch(static_cast <uint8_t> (flag)){
+						// Выводим сообщение так-как оно есть
+						case static_cast <uint8_t> (flag_t::NONE):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_NOTICE, this->_fmk->convert(format).c_str(), args);
+						break;
+						// Выводим информационное сообщение
+						case static_cast <uint8_t> (flag_t::INFO):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_INFO, this->_fmk->convert(format).c_str(), args);
+						break;
+						// Выводим сообщение об ошибке
+						case static_cast <uint8_t> (flag_t::CRITICAL):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_ERR, this->_fmk->convert(format).c_str(), args);
+						break;
+						// Выводим сообщение предупреждения
+						case static_cast <uint8_t> (flag_t::WARNING):
+							// Выполняем отправку сообщения
+							::vsyslog(LOG_WARNING, this->_fmk->convert(format).c_str(), args);
+						break;
+					}
 					// Завершаем список аргументов
 					va_end(args);
+					// Закрываем SysLog
+					::closelog();
+				}
+			#endif
+			// Если кроме syslog есть другие режимы вывода
+			if((this->_mode.size() > 1) || (this->_mode.find(mode_t::SYSLOG) == this->_mode.end())){
+				// Создаём список аргументов
+				va_list args;
+				// Запускаем инициализацию списка аргументов
+				va_start(args, flag);
+				// Буфер данных для логирования
+				vector <wchar_t> buffer(1024);
+				// Выполняем перебор всех аргументов
+				for(;;){
+					// Создаем список аргументов
+					va_list args2;
+					// Копируем список аргументов
+					va_copy(args2, args);
+					// Выполняем запись в буфер данных
+					size_t res = ::vswprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+					// Если результат получен
+					if((res >= 0) && (res < buffer.size())){
+						// Завершаем список аргументов
+						va_end(args);
+						// Завершаем список локальных аргументов
+						va_end(args2);
+						// Если результат не получен
+						if(res == 0)
+							// Выполняем сброс результата
+							buffer.clear();
+						// Выводим результат
+						else buffer.assign(buffer.begin(), buffer.begin() + res);
+						// Выходим из цикла
+						break;
+					}
+					// Размер буфера данных
+					size_t size = 0;
+					// Если данные не получены, увеличиваем буфер в два раза
+					if(res < 0)
+						// Увеличиваем размер буфера в два раза
+						size = (buffer.size() * 2);
+					// Увеличиваем размер буфера на один байт
+					else size = (res + 1);
+					// Очищаем буфер данных
+					buffer.clear();
+					// Выделяем память для буфера
+					buffer.resize(size);
 					// Завершаем список локальных аргументов
 					va_end(args2);
-					// Если результат не получен
-					if(res == 0)
-						// Выполняем сброс результата
-						buffer.clear();
-					// Выводим результат
-					else buffer.assign(buffer.begin(), buffer.begin() + res);
-					// Выходим из цикла
-					break;
 				}
-				// Размер буфера данных
-				size_t size = 0;
-				// Если данные не получены, увеличиваем буфер в два раза
-				if(res < 0)
-					// Увеличиваем размер буфера в два раза
-					size = (buffer.size() * 2);
-				// Увеличиваем размер буфера на один байт
-				else size = (res + 1);
-				// Очищаем буфер данных
-				buffer.clear();
-				// Выделяем память для буфера
-				buffer.resize(size);
-				// Завершаем список локальных аргументов
-				va_end(args2);
-			}
-			// Завершаем список аргументов
-			va_end(args);
-			// Если буфер данных для логирования сформирован
-			if(!buffer.empty()){
-				// Создаём объект полезной нагрузки
-				payload_t payload;
-				// Устанавливаем флаг логирования
-				payload.flag = flag;
-				// Устанавливаем даныне сообщения
-				payload.text = this->_fmk->convert(wstring(buffer.begin(), buffer.end()));
-				// Если асинхронный режим работы активирован
-				if(this->_async){
-					// Получаем идентификатор текущего процесса
-					const pid_t pid = ::getpid();
-					// Если идентификатор процесса является дочерним
-					if(pid != this->_pid){
-						// Если процесс ещё не инициализирован и дочерний поток уже создан
-						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
-							// Выполняем остановку скрина
-							this->_screen.stop();
-							// Выполняем очистку списка инициализированных процессов
-							this->_initialized.clear();
+				// Завершаем список аргументов
+				va_end(args);
+				// Если буфер данных для логирования сформирован
+				if(!buffer.empty()){
+					// Создаём объект полезной нагрузки
+					payload_t payload;
+					// Устанавливаем флаг логирования
+					payload.flag = flag;
+					// Устанавливаем даныне сообщения
+					payload.text = this->_fmk->convert(wstring(buffer.begin(), buffer.end()));
+					// Если асинхронный режим работы активирован
+					if(this->_async){
+						// Получаем идентификатор текущего процесса
+						const pid_t pid = ::getpid();
+						// Если идентификатор процесса является дочерним
+						if(pid != this->_pid){
+							// Если процесс ещё не инициализирован и дочерний поток уже создан
+							if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+								// Выполняем остановку скрина
+								this->_screen.stop();
+								// Выполняем очистку списка инициализированных процессов
+								this->_initialized.clear();
+							}
 						}
-					}
-					// Если дочерний поток не создан
-					if(!static_cast <bool> (this->_screen)){
-						// Выполняем установку функцию обратного вызова
-						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
-						// Выполняем инициализацию текущего процесса
-						this->_initialized.emplace(pid);
-						// Запускаем работу скрина
-						this->_screen.start();
-					}
-					// Выполняем отправку сообщения дочернему потоку
-					this->_screen = ::move(payload);
-				// Выполняем вывод полученного лога
-				} else this->receiving(payload);
+						// Если дочерний поток не создан
+						if(!static_cast <bool> (this->_screen)){
+							// Выполняем установку функцию обратного вызова
+							this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+							// Выполняем инициализацию текущего процесса
+							this->_initialized.emplace(pid);
+							// Запускаем работу скрина
+							this->_screen.start();
+						}
+						// Выполняем отправку сообщения дочернему потоку
+						this->_screen = ::move(payload);
+					// Выполняем вывод полученного лога
+					} else this->receiving(payload);
+				}
 			}
 		}
 	}
@@ -694,39 +801,81 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
-			// Создаём объект полезной нагрузки
-			payload_t payload;
-			// Устанавливаем флаг логирования
-			payload.flag = flag;
-			// Устанавливаем даныне сообщения
-			payload.text = this->_fmk->format(format, args);
-			// Если асинхронный режим работы активирован
-			if(this->_async){
-				// Получаем идентификатор текущего процесса
-				const pid_t pid = ::getpid();
-				// Если идентификатор процесса является дочерним
-				if(pid != this->_pid){
-					// Если процесс ещё не инициализирован, а скрин уже запущен
-					if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
-						// Выполняем остановку скрина
-						this->_screen.stop();
-						// Выполняем очистку списка инициализированных процессов
-						this->_initialized.clear();
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Если отправка сообщения в SysLog разрешёна
+				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
+					// Выполняем блокировку потока
+					const locker_t lock(this->_mtx);
+					// Открываем Syslog для нашего приложения
+					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
+					/**
+					 * Определяем тип сообщения
+					 */
+					switch(static_cast <uint8_t> (flag)){
+						// Выводим сообщение так-как оно есть
+						case static_cast <uint8_t> (flag_t::NONE):
+							// Выполняем отправку сообщения
+							::syslog(LOG_NOTICE, "%s", this->_fmk->format(format, args).c_str());
+						break;
+						// Выводим информационное сообщение
+						case static_cast <uint8_t> (flag_t::INFO):
+							// Выполняем отправку сообщения
+							::syslog(LOG_INFO, "%s", this->_fmk->format(format, args).c_str());
+						break;
+						// Выводим сообщение об ошибке
+						case static_cast <uint8_t> (flag_t::CRITICAL):
+							// Выполняем отправку сообщения
+							::syslog(LOG_ERR, "%s", this->_fmk->format(format, args).c_str());
+						break;
+						// Выводим сообщение предупреждения
+						case static_cast <uint8_t> (flag_t::WARNING):
+							// Выполняем отправку сообщения
+							::syslog(LOG_WARNING, "%s", this->_fmk->format(format, args).c_str());
+						break;
 					}
+					// Закрываем SysLog
+					::closelog();
 				}
-				// Если дочерний поток не создан
-				if(!static_cast <bool> (this->_screen)){
-					// Выполняем установку функцию обратного вызова
-					this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
-					// Выполняем инициализацию текущего процесса
-					this->_initialized.emplace(pid);
-					// Запускаем работу скрина
-					this->_screen.start();
-				}
-				// Выполняем отправку сообщения дочернему потоку
-				this->_screen = ::move(payload);
-			// Выполняем вывод полученного лога
-			} else this->receiving(payload);
+			#endif
+			// Если кроме syslog есть другие режимы вывода
+			if((this->_mode.size() > 1) || (this->_mode.find(mode_t::SYSLOG) == this->_mode.end())){
+				// Создаём объект полезной нагрузки
+				payload_t payload;
+				// Устанавливаем флаг логирования
+				payload.flag = flag;
+				// Устанавливаем даныне сообщения
+				payload.text = this->_fmk->format(format, args);
+				// Если асинхронный режим работы активирован
+				if(this->_async){
+					// Получаем идентификатор текущего процесса
+					const pid_t pid = ::getpid();
+					// Если идентификатор процесса является дочерним
+					if(pid != this->_pid){
+						// Если процесс ещё не инициализирован, а скрин уже запущен
+						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+							// Выполняем остановку скрина
+							this->_screen.stop();
+							// Выполняем очистку списка инициализированных процессов
+							this->_initialized.clear();
+						}
+					}
+					// Если дочерний поток не создан
+					if(!static_cast <bool> (this->_screen)){
+						// Выполняем установку функцию обратного вызова
+						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+						// Выполняем инициализацию текущего процесса
+						this->_initialized.emplace(pid);
+						// Запускаем работу скрина
+						this->_screen.start();
+					}
+					// Выполняем отправку сообщения дочернему потоку
+					this->_screen = ::move(payload);
+				// Выполняем вывод полученного лога
+				} else this->receiving(payload);
+			}
 		}
 	}
 }
@@ -748,39 +897,81 @@ void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring>
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
-			// Создаём объект полезной нагрузки
-			payload_t payload;
-			// Устанавливаем флаг логирования
-			payload.flag = flag;
-			// Устанавливаем даныне сообщения
-			payload.text = this->_fmk->convert(this->_fmk->format(format, args));
-			// Если асинхронный режим работы активирован
-			if(this->_async){
-				// Получаем идентификатор текущего процесса
-				const pid_t pid = ::getpid();
-				// Если идентификатор процесса является дочерним
-				if(pid != this->_pid){
-					// Если процесс ещё не инициализирован, а скрин уже запущен
-					if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
-						// Выполняем остановку скрина
-						this->_screen.stop();
-						// Выполняем очистку списка инициализированных процессов
-						this->_initialized.clear();
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Если отправка сообщения в SysLog разрешёна
+				if(this->_mode.find(mode_t::SYSLOG) != this->_mode.end()){
+					// Выполняем блокировку потока
+					const locker_t lock(this->_mtx);
+					// Открываем Syslog для нашего приложения
+					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
+					/**
+					 * Определяем тип сообщения
+					 */
+					switch(static_cast <uint8_t> (flag)){
+						// Выводим сообщение так-как оно есть
+						case static_cast <uint8_t> (flag_t::NONE):
+							// Выполняем отправку сообщения
+							::syslog(LOG_NOTICE, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
+						break;
+						// Выводим информационное сообщение
+						case static_cast <uint8_t> (flag_t::INFO):
+							// Выполняем отправку сообщения
+							::syslog(LOG_INFO, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
+						break;
+						// Выводим сообщение об ошибке
+						case static_cast <uint8_t> (flag_t::CRITICAL):
+							// Выполняем отправку сообщения
+							::syslog(LOG_ERR, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
+						break;
+						// Выводим сообщение предупреждения
+						case static_cast <uint8_t> (flag_t::WARNING):
+							// Выполняем отправку сообщения
+							::syslog(LOG_WARNING, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
+						break;
 					}
+					// Закрываем SysLog
+					::closelog();
 				}
-				// Если дочерний поток не создан
-				if(!static_cast <bool> (this->_screen)){
-					// Выполняем установку функцию обратного вызова
-					this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
-					// Выполняем инициализацию текущего процесса
-					this->_initialized.emplace(pid);
-					// Запускаем работу скрина
-					this->_screen.start();
-				}
-				// Выполняем отправку сообщения дочернему потоку
-				this->_screen = ::move(payload);
-			// Выполняем вывод полученного лога
-			} else this->receiving(payload);
+			#endif
+			// Если кроме syslog есть другие режимы вывода
+			if((this->_mode.size() > 1) || (this->_mode.find(mode_t::SYSLOG) == this->_mode.end())){
+				// Создаём объект полезной нагрузки
+				payload_t payload;
+				// Устанавливаем флаг логирования
+				payload.flag = flag;
+				// Устанавливаем даныне сообщения
+				payload.text = this->_fmk->convert(this->_fmk->format(format, args));
+				// Если асинхронный режим работы активирован
+				if(this->_async){
+					// Получаем идентификатор текущего процесса
+					const pid_t pid = ::getpid();
+					// Если идентификатор процесса является дочерним
+					if(pid != this->_pid){
+						// Если процесс ещё не инициализирован, а скрин уже запущен
+						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+							// Выполняем остановку скрина
+							this->_screen.stop();
+							// Выполняем очистку списка инициализированных процессов
+							this->_initialized.clear();
+						}
+					}
+					// Если дочерний поток не создан
+					if(!static_cast <bool> (this->_screen)){
+						// Выполняем установку функцию обратного вызова
+						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+						// Выполняем инициализацию текущего процесса
+						this->_initialized.emplace(pid);
+						// Запускаем работу скрина
+						this->_screen.start();
+					}
+					// Выполняем отправку сообщения дочернему потоку
+					this->_screen = ::move(payload);
+				// Выполняем вывод полученного лога
+				} else this->receiving(payload);
+			}
 		}
 	}
 }
@@ -900,7 +1091,7 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),
- _level(level_t::ALL), _sep(separator_t::ALWAYS), _chrono(fmk),
+ _level(level_t::ALL), _sep(separator_t::ALWAYS), _chrono(fmk, this),
  _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
  _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта

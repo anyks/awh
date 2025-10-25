@@ -1,6 +1,6 @@
 /**
  * @file: screen.hpp
- * @date: 2024-07-02
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -19,13 +19,17 @@
  * Стандартные модули
  */
 #include <queue>
-#include <mutex>
 #include <chrono>
 #include <thread>
 #include <atomic>
 #include <string>
 #include <functional>
 #include <condition_variable>
+
+/**
+ * Блокировщик потока
+ */
+#include "locker.hpp"
 
 /**
  * @brief основное пространство имён
@@ -73,10 +77,12 @@ namespace awh {
 			// Флаг остановки работы дочернего потока
 			std::atomic_bool _stop;
 		private:
-			// Мютекс для блокировки потока
-			std::mutex _mtx;
 			// Мютекс ожидания данных
 			std::mutex _locker;
+		private:
+			// Мютекс для блокировки потока
+			lock_state_t <std::mutex> _mtx;
+		private:
 			// Объект дочернего потока
 			std::thread _thr;
 			// Условная переменная, ожидания поступления данных
@@ -128,12 +134,12 @@ namespace awh {
 							if(this->_callback != nullptr)
 								// Выводим сообщение лога всем подписавшимся
 								this->_callback(payload);
-							// Выполняем блокировку потока
-							this->_mtx.lock();
-							// Удаляем текущее задание
-							this->_payload.pop();
-							// Выполняем разблокировку потока
-							this->_mtx.unlock();
+							{
+								// Выполняем блокировку уникальным мютексом
+								const locker_t lock(this->_mtx);
+								// Удаляем текущее задание
+								this->_payload.pop();
+							}
 							// Если функция обратного вызова установлена
 							if(this->_state != nullptr)
 								// Выполняем функцию обратного вызова
@@ -251,7 +257,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
@@ -284,7 +290,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
@@ -317,7 +323,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
@@ -351,7 +357,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard lock(this->_mtx);
+					const locker_t lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = std::chrono::milliseconds(delay);
 				/**
@@ -384,12 +390,12 @@ namespace awh {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					this->_mtx.lock();
-					// Выполняем добавление данных в очередь
-					this->_payload.push(std::forward <T> (data));
-					// Выполняем разблокировку потока
-					this->_mtx.unlock();
+					{
+						// Выполняем блокировку потока
+						const locker_t lock(this->_mtx);
+						// Выполняем добавление данных в очередь
+						this->_payload.push(std::forward <T> (data));
+					}
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова
@@ -425,12 +431,12 @@ namespace awh {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					this->_mtx.lock();
-					// Выполняем добавление данных в очередь
-					this->_payload.push(data);
-					// Выполняем разблокировку потока
-					this->_mtx.unlock();
+					{
+						// Выполняем блокировку потока
+						const locker_t lock(this->_mtx);
+						// Выполняем добавление данных в очередь
+						this->_payload.push(data);
+					}
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова

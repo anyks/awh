@@ -1,6 +1,6 @@
 /**
  * @file: date.cpp
- * @date: 2025-03-23
+ * @date: 2025-10-26
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -36,7 +36,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект Chrono
-	chrono_t chrono(&fmk);
+	chrono_t chrono(&fmk, &log);
 	// Выполняем парсинг даты
 	uint64_t date = chrono.parse("2023-03-05T12:55:58.0490925Z", "%Y-%m-%dT%H:%M:%S.%s%Z");
 	// Формируем дату в виде читаемом виде

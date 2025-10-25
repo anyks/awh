@@ -1,6 +1,6 @@
 /**
  * @file: log.hpp
- * @date: 2021-12-19
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -44,6 +44,7 @@
  * Наши модули
  */
 #include "fmk.hpp"
+#include "locker.hpp"
 #include "chrono.hpp"
 #include "screen.hpp"
 
@@ -76,9 +77,10 @@ namespace awh {
 			 */
 			enum class mode_t : uint8_t {
 				NONE     = 0x00, // Вывод логов запрещён
-				FILE     = 0x01, // Разерешно выводить логи в файлы
-				CONSOLE  = 0x02, // Разрешено выводить логи в консоль
-				DEFERRED = 0x03  // Разрешено выводить логи в функцию обратного вызова
+				FILE     = 0x01, // Разрешено выводить логи в файлы
+				SYSLOG   = 0x02, // Разрешено отправлять логи в SysLog
+				CONSOLE  = 0x03, // Разрешено выводить логи в консоль
+				DEFERRED = 0x04  // Разрешено выводить логи в функцию обратного вызова
 			};
 			/**
 			 * Флаги разделителя формирования логов
@@ -197,7 +199,7 @@ namespace awh {
 			mutable std::unordered_set <pid_t> _initialized;
 		private:
 			// Мютекс для блокировки потока
-			mutable std::recursive_mutex _mtx;
+			mutable lock_state_t <std::recursive_mutex> _mtx;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;

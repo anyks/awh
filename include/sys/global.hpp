@@ -1,6 +1,6 @@
 /**
  * @file: global.hpp
- * @date: 2024-11-22
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman

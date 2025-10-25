@@ -1,6 +1,6 @@
 /**
  * @file: nwt.hpp
- * @date: 2021-12-19
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -18,13 +18,12 @@
 /**
  * Стандартные модули
  */
+#include <cinttypes>
 #include <unordered_set>
-#include <sys/types.h>
 
 /**
  * Наши модули
  */
-#include "../sys/os.hpp"
 #include "../sys/lib.hpp"
 #include "../sys/reg.hpp"
 
@@ -33,6 +32,11 @@
  *
  */
 namespace awh {
+	/**
+	 * @brief Прототип класса работы с логами
+	 *
+	 */
+	class Log;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -141,6 +145,9 @@ namespace awh {
 			// Список интернациональных доменных зон интернета
 			std::unordered_set <string> _national;
 		private:
+			// Объект логера
+			const Log * _log;
+		private:
 			/**
 			 * @brief Метод инициализации
 			 *
@@ -187,16 +194,25 @@ namespace awh {
 			void letters(const string & letters = "") noexcept;
 		public:
 			/**
+			 * @brief Метод установки объекта логирования
+			 *
+			 * @param log объект работы с логами
+			 */
+			void setLogger(const Log * log) noexcept;
+		public:
+			/**
 			 * @brief Конструктор
 			 *
+			 * @param log объект для работы с логами
 			 */
-			NWT() noexcept;
+			NWT(const Log * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param letters список букв алфавита
+			 * @param log     объект для работы с логами
 			 */
-			NWT(const string & letters) noexcept;
+			NWT(const string & letters, const Log * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

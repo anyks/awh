@@ -1,6 +1,6 @@
 /**
  * @file: chrono.cpp
- * @date: 2025-03-12
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -27,8 +27,9 @@
 #include <pcre2/pcre2posix.h>
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочныые файлы наших модулей
  */
+#include <sys/log.hpp>
 #include <sys/chrono.hpp>
 
 /**
@@ -118,7 +119,7 @@ void awh::Chrono::clear() noexcept {
 		// Выполняем очистку списка временных зон
 		this->clearTimeZones();
 		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.date);
+		const locker_t lock(this->_mtx.date);
 		// Выполняем сброс локального объекта даты и времени
 		this->_dt = dt_t();
 		// Получаем текущий штамп времени
@@ -144,13 +145,13 @@ void awh::Chrono::clear() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -210,13 +211,13 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 		// Выполняем сброс результата
 		result = 0;
@@ -316,13 +317,13 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Выполняем сброс значения даты
@@ -362,13 +363,13 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, string(buffer, size).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(expression, static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, string(buffer, size).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n", string(buffer, size).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, string(buffer, size).c_str());
 					#endif
 				}
 				// Выполняем удаление созданного объекта регулярного выражения
@@ -438,7 +439,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 		// Если регулярное выражение получено
 		if(i != this->_expressions.end()){
 			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.parse);
+			const locker_t lock(this->_mtx.parse);
 			// Получаем объект регулярного выражения
 			const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 			// Создаём объект матчинга
@@ -973,13 +974,13 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1102,13 +1103,13 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1284,13 +1285,13 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3001,13 +3002,13 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3395,13 +3396,13 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3500,13 +3501,13 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(seconds), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3533,7 +3534,7 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.parse);
+				const locker_t lock(this->_mtx.parse);
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
@@ -3612,13 +3613,13 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3652,13 +3653,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3702,13 +3703,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3760,13 +3761,13 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3809,13 +3810,13 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3879,13 +3880,13 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3926,13 +3927,13 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(year), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3963,13 +3964,13 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4039,7 +4040,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.date);
+			const locker_t lock(this->_mtx.date);
 			/**
 			 * Определяем элементы устанавливаемых данных
 			 */
@@ -4474,13 +4475,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4951,13 +4952,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, date, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5725,13 +5726,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5743,7 +5744,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.date);
+	const locker_t lock(this->_mtx.date);
 	// Устанавливаем временную зону в секундах
 	this->_dt.offset = zone;
 	// Устанавливаем идентификатор временной зоны
@@ -5758,7 +5759,7 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.date);
+	const locker_t lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone;
 	// Устанавливаем временную зону в секундах
@@ -5773,7 +5774,7 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const string & zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.date);
+	const locker_t lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = this->matchTimeZone(zone);
 	// Устанавливаем временную зону в секундах
@@ -5801,7 +5802,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.parse);
+				const locker_t lock(this->_mtx.parse);
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
@@ -6569,13 +6570,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 			// Результат работы функции
 			result = zone_t::NONE;
@@ -6621,13 +6622,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7146,7 +7147,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.parse);
+				const locker_t lock(this->_mtx.parse);
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
@@ -8016,13 +8017,13 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 			// Результат работы функции
 			result = this->_dt.offset;
@@ -8064,13 +8065,13 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (std), static_cast <uint16_t> (sum)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -8142,13 +8143,13 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -8164,7 +8165,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.tz);
+		const locker_t lock(this->_mtx.tz);
 		// Выполняем очистку списка временных зон
 		this->_timeZones.clear();
 		// Выполняем освобождение выделенной памяти
@@ -8178,13 +8179,13 @@ void awh::Chrono::clearTimeZones() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -8200,7 +8201,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard lock(this->_mtx.tz);
+		const locker_t lock(this->_mtx.tz);
 		// Выполняем добавление временной зоны в список временных зон
 		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), offset);
 	/**
@@ -8212,13 +8213,13 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, offset), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -8229,7 +8230,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
  */
 void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard lock(this->_mtx.tz);
+	const locker_t lock(this->_mtx.tz);
 	// Название временной зоны
 	string name = "";
 	// Выполняем перебор всего списка временных зон
@@ -8315,7 +8316,7 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				} break;
 			}
 			// Выполняем блокировку потока
-			const lock_guard lock(this->_mtx.date);
+			const locker_t lock(this->_mtx.date);
 			// Устанавливаем количество миллисекунд
 			this->makeDate(stamp, this->_dt);
 		/**
@@ -8327,13 +8328,13 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -8566,13 +8567,13 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -8617,7 +8618,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.date);
+				const locker_t lock(this->_mtx.date);
 				// Выполняем сброс временной зоны
 				this->_dt.offset = 0;
 				// Выполняем сброс количества наносекунд
@@ -8726,7 +8727,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Выполняем блокировку потока
-								const lock_guard lock(this->_mtx.date);
+								const locker_t lock(this->_mtx.date);
 								/**
 								 * Определяем символ парсинга
 								 */
@@ -9151,7 +9152,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
-				const lock_guard lock(this->_mtx.date);
+				const locker_t lock(this->_mtx.date);
 				// Если флаг смещения временной зоны не передан
 				if(!flags[0]){
 					// Устанавливаем идентификатор временной зоны
@@ -9281,13 +9282,13 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -10140,13 +10141,13 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (zone)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -11068,13 +11069,13 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, format1, format2, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -11085,8 +11086,9 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
+ * @param log объект работы с логами
  */
-awh::Chrono::Chrono(const fmk_t * fmk) noexcept : _fmk(fmk) {
+awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 	// Выполняем инициализацию локального объекта даты и времени
 	this->clear();
 	// Выполняем компиляцию регулярных выражений

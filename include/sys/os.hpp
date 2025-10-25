@@ -1,6 +1,6 @@
 /**
  * @file: os.hpp
- * @date: 2024-04-02
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -106,6 +106,11 @@
 #endif
 
 /**
+ * Подключаем заголовочный файл логера
+ */
+#include "log.hpp"
+
+/**
  * Разрешаем сборку под Windows
  */
 #include "global.hpp"
@@ -124,6 +129,9 @@ namespace awh {
 	 *
 	 */
 	typedef class AWH_SHARED_EXPORT OS {
+		private:
+			// Объект логера
+			const log_t * _log;
 		public:
 			/**
 			 * Режимы извлечения потребления памяти
@@ -418,6 +426,13 @@ namespace awh {
 			 * @param multiline данные должны вернутся многострочные
 			 */
 			string exec(const string & cmd, const bool multiline = true) const noexcept;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param log объект для работы с логами
+			 */
+			OS(const log_t * log) noexcept : _log(log) {}
 	} os_t;
 };
 

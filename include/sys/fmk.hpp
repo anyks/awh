@@ -1,6 +1,6 @@
 /**
  * @file: fmk.hpp
- * @date: 2023-03-04
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -33,7 +33,6 @@
 /**
  * Наши модули
  */
-#include "os.hpp"
 #include "../net/nwt.hpp"
 
 /**
@@ -41,6 +40,11 @@
  *
  */
 namespace awh {
+	/**
+	 * @brief Прототип класса работы с логами
+	 *
+	 */
+	class Log;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -117,6 +121,9 @@ namespace awh {
 			regexp_t::exp_t _bytes;
 			// Регулярное выражение для парсинга буферов данных
 			regexp_t::exp_t _buffers;
+		private:
+			// Объект работы с логами
+			const Log * _log;
 		public:
 			/**
 			 * @brief Шаблон метода поиска в контейнере map указанного значения
@@ -851,6 +858,13 @@ namespace awh {
 			 * @return    размер буфера в байтах
 			 */
 			size_t sizeBuffer(const string & str) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки объекта логирования
+			 *
+			 * @param log объект работы с логами
+			 */
+			void setLogger(const Log * log) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

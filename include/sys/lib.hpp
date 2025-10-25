@@ -1,6 +1,6 @@
 /**
  * @file: lib.hpp
- * @date: 2022-09-03
+ * @date: 2025-10-25
  * @license: GPL-3.0
  *
  * @telegram: @forman
