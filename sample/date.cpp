@@ -35,6 +35,8 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Устанавливаем объект логера
+	fmk.setLogger(&log);
 	// Создаём объект Chrono
 	chrono_t chrono(&fmk, &log);
 	// Выполняем парсинг даты
