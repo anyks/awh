@@ -10,7 +10,11 @@
 - **Compress**: GZIP / BZIP2 / ZSTD / LZ4 / LZMA / DEFLATE / BROTLI - compression support.
 - **Authentication**: BASIC / DIGEST - authentication support.
 
-## Supported protocols HTTP/1.1, HTTP/2 (RFC-9113) and HTTP/3 (RFC-9114)
+## Supported protocols
+
+- **HTTP/1.1** (RFC 9112)
+- **HTTP/2** (RFC-9113)
+- **HTTP/3** (RFC-9114)
 
 ## Requirements
 
