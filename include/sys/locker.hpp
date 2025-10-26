@@ -64,6 +64,15 @@ namespace awh {
 			std::unique_ptr <MutexType> _mtx;
 		public:
 			/**
+			 * @brief Оператор преобразования к мютексу
+			 *
+			 */
+			operator MutexType & () noexcept {
+				// Выводим мютекс для блокировки потока
+				return (* this->_mtx);
+			}
+		public:
+			/**
 			* @brief Оператор копирования
 			*
 			*/

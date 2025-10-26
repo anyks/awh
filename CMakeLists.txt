@@ -320,6 +320,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
