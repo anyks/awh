@@ -4927,7 +4927,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 	// Если данные переданы
 	if(!format.empty() && !items.empty()){
 		/**
-		 * @brief Функция заменты подстроки в строке
+		 * @brief Функция замены подстроки в строке
 		 *
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить
@@ -5059,7 +5059,7 @@ wstring awh::Framework::format(const wstring & format, const vector <wstring> & 
 	// Если данные переданы
 	if(!format.empty() && !items.empty()){
 		/**
-		 * @brief Функция заменты подстроки в строке
+		 * @brief Функция замены подстроки в строке
 		 *
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить
