@@ -49,10 +49,10 @@ namespace awh {
 		public:
 			// Типы URL-адреса
 			enum class types_t : uint8_t {
-				MAC     = 0x00, // MAC адрес
-				URL     = 0x01, // URL адрес
-				IPV4    = 0x02, // IPv4 адрес
-				IPV6    = 0x03, // IPv6 адрес
+				MAC     = 0x00, // MAC-адрес
+				URL     = 0x01, // URL-адрес
+				IPV4    = 0x02, // IPv4-адрес
+				IPV6    = 0x03, // IPv6-адрес
 				NONE    = 0x04, // Тип не определён
 				EMAIL   = 0x05, // Электронная почта
 				WRONG   = 0x06, // Сломанный адрес

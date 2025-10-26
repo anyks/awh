@@ -608,7 +608,8 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 						// Если идентификатор процесса является дочерним
 						if(pid != this->_pid){
 							// Если процесс ещё не инициализирован и дочерний поток уже создан
-							if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+							if(static_cast <bool> (this->_screen) &&
+							  (this->_initialized.find(pid) == this->_initialized.end())){
 								// Выполняем остановку скрина
 								this->_screen.stop();
 								// Выполняем очистку списка инициализированных процессов
@@ -758,7 +759,8 @@ void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
 						// Если идентификатор процесса является дочерним
 						if(pid != this->_pid){
 							// Если процесс ещё не инициализирован и дочерний поток уже создан
-							if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+							if(static_cast <bool> (this->_screen) &&
+							  (this->_initialized.find(pid) == this->_initialized.end())){
 								// Выполняем остановку скрина
 								this->_screen.stop();
 								// Выполняем очистку списка инициализированных процессов
@@ -855,7 +857,8 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 					// Если идентификатор процесса является дочерним
 					if(pid != this->_pid){
 						// Если процесс ещё не инициализирован, а скрин уже запущен
-						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+						if(static_cast <bool> (this->_screen) &&
+						  (this->_initialized.find(pid) == this->_initialized.end())){
 							// Выполняем остановку скрина
 							this->_screen.stop();
 							// Выполняем очистку списка инициализированных процессов
@@ -951,7 +954,8 @@ void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring>
 					// Если идентификатор процесса является дочерним
 					if(pid != this->_pid){
 						// Если процесс ещё не инициализирован, а скрин уже запущен
-						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+						if(static_cast <bool> (this->_screen) &&
+						  (this->_initialized.find(pid) == this->_initialized.end())){
 							// Выполняем остановку скрина
 							this->_screen.stop();
 							// Выполняем очистку списка инициализированных процессов

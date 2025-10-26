@@ -159,7 +159,7 @@ namespace awh {
 	 */
 	 template <typename MutexType = std::mutex>
 	 /**
-	  * Создаём тип данных работы с локера
+	  * Создаём тип данных работы с локом
 	  */
 	using locker_t = Locker <MutexType>;
 };

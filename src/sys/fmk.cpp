@@ -269,9 +269,9 @@ template <typename T>
  *
  * @param str       строка для поиска
  * @param delim     разделитель
- * @param container контенер содержащий данные
+ * @param container контейнер содержащий данные
  * @param log       объект работы с логами
- * @return          контенер содержащий данные
+ * @return          контейнер содержащий данные
  */
 static T & split(const string & str, const string & delim, T & container, const awh::log_t * log) noexcept {
 	/**
@@ -421,9 +421,9 @@ template <typename T>
  *
  * @param str       строка для поиска
  * @param delim     разделитель
- * @param container контенер содержащий данные
+ * @param container контейнер содержащий данные
  * @param log       объект работы с логами
- * @return          контенер содержащий данные
+ * @return          контейнер содержащий данные
  */
 static T & split(const wstring & str, const wstring & delim, T & container, const awh::log_t * log) noexcept {
 	/**
@@ -2401,7 +2401,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 						letter = text[i];
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
-							// Переводим символ в верхний режим
+							// Переводим символ в верхний регистр
 							text[i] = ::toupper(letter);
 						// Переводим остальные символы в нижний регистр
 						else text[i] = ::tolower(letter);
@@ -2509,7 +2509,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 						letter = text[i];
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
-							// Переводим символ в верхний режим
+							// Переводим символ в верхний регистр
 							text[i] = ::towupper(letter);
 						// Переводим остальные символы в нижний регистр
 						else text[i] = ::towlower(letter);
