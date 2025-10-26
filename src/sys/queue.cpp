@@ -78,6 +78,47 @@ bool awh::Queue::rss(const size_t size) noexcept {
 						if((result = ((this->_buffer.size() + (bytes - available)) < this->_max.memory)))
 							// Выделяем ещё памяти
 							this->_buffer.resize(this->_buffer.size() + (bytes - available), 0);
+						// Выводим сообщение об ошибке
+						else if(this->_log != nullptr) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"You are trying to map %s of data into a %s data buffer, which is impossible",
+									__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
+									this->_fmk->bytes(static_cast <double> (this->_buffer.size() + (bytes - available))).c_str(),
+									this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
+								);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print(
+									"You are trying to map %s of data into a %s data buffer, which is impossible",
+									log_t::flag_t::CRITICAL,
+									this->_fmk->bytes(static_cast <double> (this->_buffer.size() + (bytes - available))).c_str(),
+									this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
+								);
+							#endif
+						// Если объект логирования не установлен
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "There is not enough memory in the reserved queue to add a new portion of data");
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved queue to add a new portion of data");
+							#endif
+						}
 					}
 				}
 			// Если буфер данных пустой
@@ -175,17 +216,6 @@ void awh::Queue::pop() noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			unique_lock lock(static_cast <std::mutex &> (this->_mtx));
-			// Выполняем ожидание на поступление данных
-			this->_cv.read.wait(lock, [this]() noexcept -> bool {
-				// Если в очереди появились данные
-				return (this->_terminate || (this->_range.count > 0));
-			});
-			// Если буфер данных пустой или очередь завершила работу
-			if(this->_buffer.empty() || this->_terminate)
-				// Выходим из метода
-				return;
 			// Размер верхней записи в очереди
 			size_t size = 0;
 			// Извлекаем текущее значение размера записи
@@ -206,8 +236,6 @@ void awh::Queue::pop() noexcept {
 					this->_range.count = 0;
 					// Выполняем зануление всего буфера данных
 					::memset(&this->_buffer[0], 0, this->_buffer.size());
-					// Отправляем сообщение о готовности для записи
-					this->_cv.write.notify_all();
 				}
 			// Выводим сообщение об ошибке
 			} else if(this->_log != nullptr) {
@@ -289,8 +317,6 @@ void awh::Queue::clear() noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
 			// Выполняем сброс конца очереди
 			this->_range.end = 0;
 			// Выполняем сброс начала очереди
@@ -299,8 +325,6 @@ void awh::Queue::clear() noexcept {
 			this->_range.count = 0;
 			// Выполняем зануление всего буфера данных
 			::memset(&this->_buffer[0], 0, this->_buffer.size());
-			// Отправляем сообщение о готовности для записи
-			this->_cv.write.notify_all();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -346,52 +370,10 @@ void awh::Queue::clear() noexcept {
 void awh::Queue::reset() noexcept {
 	// Если буфер данных не пустой
 	if(!this->_buffer.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем очистку буфера данных
-			this->clear();
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
-			// Выполняем освобождение памяти
-			vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
+		// Выполняем очистку буфера данных
+		this->clear();
+		// Выполняем освобождение памяти
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	}
 }
 /**
@@ -412,50 +394,9 @@ size_t awh::Queue::size() const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_range.count > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Извлекаем текущее значение размера записи
-			::memcpy(&result, &this->_buffer[this->_range.begin], sizeof(result));
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
+	if(!this->_buffer.empty() && (this->_range.count > 0))
+		// Извлекаем текущее значение размера записи
+		::memcpy(&result, &this->_buffer[this->_range.begin], sizeof(result));
 	// Выводим результат
 	return result;
 }
@@ -477,50 +418,9 @@ const void * awh::Queue::data() const noexcept {
 	// Результат работы функции
 	const void * result = nullptr;
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_range.count > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выводим данные записи в бинарном виде
-			result = (&this->_buffer[0] + this->_range.begin + sizeof(size_t));
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
+	if(!this->_buffer.empty() && (this->_range.count > 0))
+		// Выводим данные записи в бинарном виде
+		result = (&this->_buffer[0] + this->_range.begin + sizeof(size_t));
 	// Выводим результат
 	return result;
 }
@@ -531,69 +431,8 @@ const void * awh::Queue::data() const noexcept {
  * @return        результат проверки
  */
 bool awh::Queue::empty(const uint32_t timeout) const noexcept {
-	// Результат работы функции
-	bool result = true;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если очередь завершила работу
-		if(this->_terminate)
-			// Сообщаем, что очередь пустая
-			return result;
-		// Если очередь пустая
-		if((result = (this->_range.count == 0))){
-			// Если таймаут ожидания установлен
-			if(timeout > 0){
-				// Выполняем блокировку потока
-				unique_lock lock(static_cast <std::mutex &> (this->_mtx));
-				// Выполняем ожидание на поступление данных
-				this->_cv.read.wait_for(lock, std::chrono::duration(std::chrono::milliseconds(timeout)), [this]() noexcept -> bool {
-					// Если в очереди появились данные
-					return (this->_terminate || (this->_range.count > 0));
-				});
-				// Проверяем пустая ли очередь в данный момент
-				result = (this->_terminate || (this->_range.count == 0));
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
+	// Проверяем пустая ли очередь в данный момент
+	return (this->_range.count == 0);
 }
 /**
  * @brief Метод добавления бинарного буфера данных в очередь
@@ -609,24 +448,6 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			unique_lock lock(static_cast <std::mutex &> (this->_mtx));
-			// Если очередь завершила работу
-			if(this->_terminate)
-				// Выводим текущий размер очереди
-				return this->_range.count;
-			// Если все данные добавлены в очередь
-			if(this->_range.count >= this->_max.records){
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_range.count < this->_max.records));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_range.count;
-			}
 			// Выполняем выделение памяти
 			if(this->rss(size)){
 				// Увеличиваем количество записей в очереди
@@ -639,19 +460,6 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				::memcpy(&this->_buffer[this->_range.end], buffer, size);
 				// Увеличиваем смещение конца данных буфера
 				this->_range.end += size;
-				// Отправляем сообщение, что очередь готова на чтение
-				this->_cv.read.notify_one();
-			// Если память не выделена
-			} else {
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_range.end == 0));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_range.count;
 			}
 		/**
 		 * Если возникает ошибка
@@ -707,24 +515,6 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			unique_lock lock(static_cast <std::mutex &> (this->_mtx));
-			// Если очередь завершила работу
-			if(this->_terminate)
-				// Выводим текущий размер очереди
-				return this->_range.count;
-			// Если все данные добавлены в очередь
-			if(this->_range.count >= this->_max.records){
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_range.count < this->_max.records));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_range.count;
-			}
 			// Выполняем выделение памяти
 			if(this->rss(size)){
 				// Увеличиваем количество записей в очереди
@@ -740,19 +530,6 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 					// Увеличиваем смещение конца данных буфера
 					this->_range.end += record.second;
 				}
-				// Отправляем сообщение, что очередь готова на чтение
-				this->_cv.read.notify_one();
-			// Если память не выделена
-			} else {
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_range.end == 0));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_range.count;
 			}
 		/**
 		 * Если возникает ошибка
@@ -801,52 +578,9 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
  */
 void awh::Queue::setMaxMemory(const size_t size) noexcept {
 	// Если максимальный размер потребляемой памяти передан
-	if(size > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
-			// Выполняем установку максимального размера потребляемой памяти
-			this->_max.memory = size;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
+	if(size > 0)
+		// Выполняем установку максимального размера потребляемой памяти
+		this->_max.memory = size;
 }
 /**
  * @brief Метод установки максимального количества записей очереди
@@ -855,52 +589,9 @@ void awh::Queue::setMaxMemory(const size_t size) noexcept {
  */
 void awh::Queue::setMaxRecords(const size_t count) noexcept {
 	// Если количество записей передано
-	if(count > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
-			// Выполняем установку максимального количества сообщений очереди
-			this->_max.records = count;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(count), log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
+	if(count > 0)
+		// Выполняем установку максимального количества сообщений очереди
+		this->_max.records = count;
 }
 /**
  * @brief Метод обмена очередями
@@ -912,22 +603,6 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Активируем завершение работы текущей очереди
-		this->_terminate = true;
-		// Активируем завершение работы сторонней очереди
-		queue._terminate = true;
-		// Разблокируем очередь на чтение текущей очереди
-		this->_cv.read.notify_all();
-		// Разблокируем очередь на запись текущей очереди
-		this->_cv.write.notify_all();
-		// Разблокируем очередь на чтение сторонней очереди
-		queue._cv.read.notify_all();
-		// Разблокируем очередь на запись сторонней очереди
-		queue._cv.write.notify_all();
-		// Выполняем блокировку потока текущей очереди
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока сторонней очереди
-		const locker_t lock2(queue._mtx);
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -956,10 +631,6 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 		this->_max.memory += (queue._max.memory - (queue._max.memory = this->_max.memory));
 		// Выполняем обмен максимальными количествами записей
 		this->_max.records += (queue._max.records - (queue._max.records = this->_max.records));
-		// Деактивируем флаг завершения работы текущей очереди
-		this->_terminate = false;
-		// Деактивируем флаг завершения работы сторонней очереди
-		queue._terminate = false;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1035,22 +706,6 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Активируем завершение работы текущей очереди
-		this->_terminate = true;
-		// Активируем завершение работы сторонней очереди
-		queue._terminate = true;
-		// Разблокируем очередь на чтение текущей очереди
-		this->_cv.read.notify_all();
-		// Разблокируем очередь на запись текущей очереди
-		this->_cv.write.notify_all();
-		// Разблокируем очередь на чтение сторонней очереди
-		queue._cv.read.notify_all();
-		// Разблокируем очередь на запись сторонней очереди
-		queue._cv.write.notify_all();
-		// Выполняем блокировку потока текущей очереди
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока сторонней очереди
-		const locker_t lock2(queue._mtx);
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1077,10 +732,6 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		queue._range.begin = 0;
 		// Выполняем сброс количества добавленных записей сторонней очереди
 		queue._range.count = 0;
-		// Деактивируем флаг завершения работы текущей очереди
-		this->_terminate = false;
-		// Деактивируем флаг завершения работы сторонней очереди
-		queue._terminate = false;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1131,14 +782,6 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Активируем завершение работы текущей очереди
-		this->_terminate = true;
-		// Разблокируем очередь на чтение текущей очереди
-		this->_cv.read.notify_all();
-		// Разблокируем очередь на запись текущей очереди
-		this->_cv.write.notify_all();
-		// Выполняем блокировку потока текущей очереди
-		const locker_t lock(this->_mtx);
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1159,8 +802,6 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		this->_max.records = queue._max.records;
 		// Выполняем копирование буфера данных
 		this->_buffer.assign(queue._buffer.begin(), queue._buffer.end());
-		// Деактивируем флаг завершения работы текущей очереди
-		this->_terminate = false;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1270,22 +911,6 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Активируем завершение работы текущей очереди
-		this->_terminate = true;
-		// Активируем завершение работы сторонней очереди
-		queue._terminate = true;
-		// Разблокируем очередь на чтение текущей очереди
-		this->_cv.read.notify_all();
-		// Разблокируем очередь на запись текущей очереди
-		this->_cv.write.notify_all();
-		// Разблокируем очередь на чтение сторонней очереди
-		queue._cv.read.notify_all();
-		// Разблокируем очередь на запись сторонней очереди
-		queue._cv.write.notify_all();
-		// Выполняем блокировку потока текущей очереди
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока сторонней очереди
-		const locker_t lock2(queue._mtx);
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1312,10 +937,6 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 		queue._range.begin = 0;
 		// Выполняем сброс количества добавленных записей сторонней очереди
 		queue._range.count = 0;
-		// Деактивируем флаг завершения работы текущей очереди
-		this->_terminate = false;
-		// Деактивируем флаг завершения работы сторонней очереди
-		queue._terminate = false;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1363,14 +984,6 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Активируем завершение работы текущей очереди
-		this->_terminate = true;
-		// Разблокируем очередь на чтение текущей очереди
-		this->_cv.read.notify_all();
-		// Разблокируем очередь на запись текущей очереди
-		this->_cv.write.notify_all();
-		// Выполняем блокировку потока текущей очереди
-		const locker_t lock(this->_mtx);
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1391,8 +1004,6 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
 		this->_max.records = queue._max.records;
-		// Деактивируем флаг завершения работы текущей очереди
-		this->_terminate = false;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1436,56 +1047,9 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Queue::Queue(const fmk_t * fmk, const log_t * log) noexcept : _terminate(false), _fmk(fmk), _log(log) {}
+awh::Queue::Queue(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *
  */
-awh::Queue::~Queue() noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Активируем завершение работы очереди
-		this->_terminate = true;
-		// Разблокируем очередь на чтение
-		this->_cv.read.notify_all();
-		// Разблокируем очередь на запись
-		this->_cv.write.notify_all();
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
-	}
-}
+awh::Queue::~Queue() noexcept {}

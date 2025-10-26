@@ -37,7 +37,6 @@
  */
 #include "fmk.hpp"
 #include "log.hpp"
-#include "locker.hpp"
 
 /**
  * @brief основное пространство имён
@@ -153,9 +152,6 @@ namespace awh {
 		private:
 			// Буфер данных выделенной памяти
 			vector <char> _buffer;
-		private:
-			// Мютекс для блокировки потока
-			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk = nullptr;

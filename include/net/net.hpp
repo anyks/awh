@@ -32,7 +32,6 @@
 #include "../sys/os.hpp"
 #include "../sys/reg.hpp"
 #include "../sys/log.hpp"
-#include "../sys/locker.hpp"
 
 /**
  * @brief основное пространство имён
@@ -104,16 +103,6 @@ namespace awh {
 			};
 		private:
 			/**
-			 * @brief структура рабочих мютексов
-			 *
-			 */
-			typedef struct Mutex {
-				// Мютекс контроля основной работы
-				lock_state_t <std::mutex> main;
-				// Мютекс контроля матчинга хоста
-				lock_state_t <std::mutex> match;
-			} mtx_t;
-			/**
 			 * @brief Структура локального адреса
 			 *
 			 */
@@ -140,9 +129,6 @@ namespace awh {
 		private:
 			// Объект регулярного выражения
 			regexp_t _regexp;
-		private:
-			// Мютексы для блокировки потоков
-			mutable mtx_t _mtx;
 		private:
 			// Регулярное выражение для проверки адреса
 			regexp_t::exp_t _exp;

@@ -39,16 +39,13 @@
  * Стандартная библиотека
  */
 #include <vector>
-#include <atomic>
 #include <cstdint>
-#include <condition_variable>
 
 /**
  * Подключаем наши заголовочные файлы
  */
 #include "fmk.hpp"
 #include "log.hpp"
-#include "locker.hpp"
 
 /**
  * @brief основное пространство имён
@@ -65,16 +62,6 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT Queue {
 		private:
-			/**
-			 * @brief Структура условных переменных
-			 *
-			 */
-			typedef struct CV {
-				// Условная переменная на чтение данных
-				std::condition_variable read;
-				// Условная переменная на запись данных
-				std::condition_variable write;
-			} cv_t;
 			/**
 			 * @brief Структура диапазонов записей
 			 *
@@ -115,17 +102,8 @@ namespace awh {
 			// Объект диапазонов записей
 			range_t _range;
 		private:
-			// Условные переменные
-			mutable cv_t _cv;
-		private:
 			// Буфер данных выделенной памяти
 			vector <uint8_t> _buffer;
-		private:
-			// Флаг завершения работы очереди
-			std::atomic_bool _terminate;
-		private:
-			// Мютекс для блокировки потока
-			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk = nullptr;

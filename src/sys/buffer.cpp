@@ -128,54 +128,12 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 void awh::Buffer::clear() noexcept {
 	// Если буфер данных не пустой и записи есть
 	if(!this->_buffer.empty() && (this->_range.end > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
-			// Выполняем сброс конца буфера
-			this->_range.end = 0;
-			// Выполняем сброс начала буфера
-			this->_range.begin = 0;
-			// Выполняем зануление всего буфера данных
-			::memset(&this->_buffer[0], 0, this->_buffer.size());
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
+		// Выполняем сброс конца буфера
+		this->_range.end = 0;
+		// Выполняем сброс начала буфера
+		this->_range.begin = 0;
+		// Выполняем зануление всего буфера данных
+		::memset(&this->_buffer[0], 0, this->_buffer.size());
 	}
 }
 /**
@@ -185,54 +143,10 @@ void awh::Buffer::clear() noexcept {
 void awh::Buffer::reset() noexcept {
 	// Если буфер данных не пустой
 	if(!this->_buffer.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем очистку буфера данных
-			this->clear();
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
-			// Выполняем очистку буфера данных
-			this->_buffer.clear();
-			// Выполняем освобождение памяти
-			vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
+		// Выполняем очистку буфера данных
+		this->clear();
+		// Выполняем освобождение памяти
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	}
 }
 /**
@@ -277,8 +191,6 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
 			// Если буфер не соответствует итераторам
 			if((this->_range.begin > 0) || (this->_range.end < this->_buffer.size())){
 				// Выполняем усечение буфера
@@ -329,8 +241,6 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 		}
 	// Если буфер пустой
 	} else {
-		// Выполняем блокировку потока
-		const locker_t lock(this->_mtx);
 		// Выполняем сброс нижнего итератора
 		const_cast <buffer_t *> (this)->_range.end = 0;
 		// Выполняем сброс верхнего итератора
@@ -711,8 +621,6 @@ template <typename T>
  * @param index индекс значения для установки
  */
 void awh::Buffer::set(const T value, const size_t index) noexcept {
-	// Выполняем блокировку потока
-	const locker_t lock(this->_mtx);
 	// Если контейнер не пустой
 	if(!this->empty() && (index < this->count <T> ())){
 		// Получаем размер данных
@@ -807,8 +715,6 @@ void awh::Buffer::erase(const size_t size) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
 			// Если размер удаляемых данных не выше максимального буфера
 			if((this->_range.end - this->_range.begin) >= size)
 				// Выполняем удаление указанного количества данных
@@ -863,8 +769,6 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока
-		const locker_t lock(this->_mtx);
 		// Выделяем нужное количество памяти буферу данных
 		this->_buffer.reserve(size);
 	/**
@@ -985,10 +889,6 @@ bool awh::Buffer::push(buffer_t && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока стороннего буфера
-		const locker_t lock2(buffer._mtx);
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
@@ -1088,8 +988,6 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 		try {
 			// Определяем помещаются ли данные в буфер
 			if((this->size() + size) <= this->_maxMemory){
-				// Выполняем блокировку потока
-				const locker_t lock(this->_mtx);
 				// Выполняем выделение памяти
 				if((result = this->rss(size))){
 					// Выполняем добавление самих данных полезной нагрузки
@@ -1178,8 +1076,6 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 						::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved buffer to add a new portion of data");
 					#endif
 				}
-				// Выполняем блокировку потока
-				const locker_t lock(this->_mtx);
 				// Выполняем сброс конца буфера
 				this->_range.end = 0;
 				// Выполняем сброс начала буфера
@@ -1234,52 +1130,9 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
  */
 void awh::Buffer::setMaxMemory(const size_t size) noexcept {
 	// Если максимальный размер потребляемой памяти передан
-	if(size > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем блокировку потока
-			const locker_t lock(this->_mtx);
-			// Выполняем установку максимального размера потребляемой памяти
-			this->_maxMemory = size;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
-	}
+	if(size > 0)
+		// Выполняем установку максимального размера потребляемой памяти
+		this->_maxMemory = size;
 }
 /**
  * @brief Метод обмена очередями
@@ -1291,10 +1144,6 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока стороннего буфера
-		const locker_t lock2(buffer._mtx);
 		// Если объект фреймворка установлен
 		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1403,8 +1252,6 @@ awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1463,8 +1310,6 @@ awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1525,8 +1370,6 @@ awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1585,8 +1428,6 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1643,8 +1484,6 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock(this->_mtx);
 		// Выполняем копирование начального итератора
 		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
@@ -1701,10 +1540,6 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока стороннего буфера
-		const locker_t lock2(buffer._mtx);
 		// Если объект фреймворка установлен
 		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1775,10 +1610,6 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока стороннего буфера
-		const locker_t lock2(buffer._mtx);
 		// Если объект фреймворка установлен
 		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1903,10 +1734,6 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока стороннего буфера
-		const locker_t lock2(buffer._mtx);
 		// Если объект фреймворка установлен
 		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1974,10 +1801,6 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока текущего буфера
-		const locker_t lock1(this->_mtx);
-		// Выполняем блокировку потока стороннего буфера
-		const locker_t lock2(buffer._mtx);
 		// Если объект фреймворка установлен
 		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
