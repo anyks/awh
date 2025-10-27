@@ -74,7 +74,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Range() noexcept : end(0), begin(0), count(0) {}
+				explicit Range() noexcept : end(0), begin(0), count(0) {}
 			} __attribute__((packed)) range_t;
 			/**
 			 * @brief Структура параметров максимальных значений
@@ -87,7 +87,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Max() noexcept :
+				explicit Max() noexcept :
 				 memory(AWH_MAX_MEMORY_QUEUE),
 				 records(AWH_MAX_RECORDS_QUEUE) {}
 			} __attribute__((packed)) max_t;
@@ -256,26 +256,26 @@ namespace awh {
 			 * @brief Разрешаем пустое значение объекта
 			 * 
 			 */
-			Queue() = default;
+			explicit Queue() = default;
 			/**
 			 * @brief Конструктор перемещения
 			 *
 			 * @param queue очередь для перемещения
 			 */
-			Queue(Queue && queue) noexcept;
+			explicit Queue(Queue && queue) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param queue очередь для копирования
 			 */
-			Queue(const Queue & queue) noexcept;
+			explicit Queue(const Queue & queue) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Queue(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

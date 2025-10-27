@@ -136,7 +136,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Notifier(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Notifier(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

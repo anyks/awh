@@ -71,7 +71,7 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			FDS(const log_t * log) noexcept : _log(log) {}
+			explicit FDS(const log_t * log) noexcept : _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

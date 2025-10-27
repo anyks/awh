@@ -432,7 +432,7 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			OS(const log_t * log) noexcept : _log(log) {}
+			explicit OS(const log_t * log) noexcept : _log(log) {}
 	} os_t;
 };
 

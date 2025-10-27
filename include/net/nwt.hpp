@@ -205,14 +205,14 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			NWT(const Log * log) noexcept;
+			explicit NWT(const Log * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param letters список букв алфавита
 			 * @param log     объект для работы с логами
 			 */
-			NWT(const string & letters, const Log * log) noexcept;
+			explicit NWT(const string & letters, const Log * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

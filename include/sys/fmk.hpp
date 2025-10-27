@@ -870,13 +870,13 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			Framework() noexcept;
+			explicit Framework() noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param locale локализация приложения
 			 */
-			Framework(const string & locale) noexcept;
+			explicit Framework(const string & locale) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

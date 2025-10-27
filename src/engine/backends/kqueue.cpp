@@ -66,6 +66,118 @@
 using namespace std;
 
 /**
+ * @brief Структура адреса
+ *
+ */
+typedef struct Address {
+	// Размер адреса
+	uint16_t size;
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit Address() noexcept : size(0) {}
+} __attribute__((packed)) address_t;
+
+/**
+ * @brief Структура IPv4-адреса
+ *
+ */
+typedef struct AddressIPv4 : public Address {
+	// IP-адрес
+	uint32_t address;
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressIPv4() noexcept : address(0) {}
+} __attribute__((packed)) address_ipv4_t;
+
+/**
+ * @brief Структура IPv6-адреса
+ *
+ */
+typedef struct AddressIPv6 : public Address {
+	// IP-адрес
+	uint8_t address[16];
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressIPv6() noexcept : address{0} {}
+} __attribute__((packed)) address_ipv6_t;
+
+/**
+ * @brief Структура MAC-адреса
+ *
+ */
+typedef struct AddressMAC : public Address {
+	// MAC-адрес
+	uint8_t address[6];
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressMAC() noexcept : address{0} {}
+} __attribute__((packed)) address_mac_t;
+
+/**
+ * @brief Структура сетевого адреса
+ *
+ */
+typedef struct AddressNetwork : public Address {
+	// Префикс сети
+	uint8_t prefix;
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressNetwork() noexcept : prefix(0) {}
+} __attribute__((packed)) address_network_t;
+
+/**
+ * @brief Структура IPv4 сетевого адреса
+ *
+ */
+typedef struct AddressNetworkIPv4 : public AddressNetwork {
+	// IP-адрес сети
+	uint32_t address;
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressNetworkIPv4() noexcept : address(0) {}
+} __attribute__((packed)) address_network_ipv4_t;
+
+/**
+ * @brief Структура IPv6 сетевого адреса
+ *
+ */
+typedef struct AddressNetworkIPv6 : public AddressNetwork {
+	// IP-адрес сети
+	uint8_t address[16];
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressNetworkIPv6() noexcept : address{0} {}
+} __attribute__((packed)) address_network_ipv6_t;
+
+/**
+ * @brief Структура адреса файловой системы
+ *
+ */
+typedef struct AddressFilesystem : public Address {
+	// Путь к файлу, каталогу или сокету
+	string address;
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit AddressFilesystem() noexcept : address{""} {}
+} address_fs_t;
+
+/**
  * @brief Структура хоста
  *
  */
@@ -76,54 +188,38 @@ typedef struct Host {
 	 * @brief Конструктор
 	 * 
 	 */
-	Host() noexcept : fd(-1) {}
+	explicit Host() noexcept : fd(-1) {}
 } __attribute__((packed)) host_t;
 
 /**
- * @brief Структура IPv4-хоста
+ * @brief Структура IP-хоста
  *
  */
-typedef struct HostIPv4 : public host_t {
+typedef struct HostIP : public host_t {
 	// Порт хоста
 	int32_t port;
 	// IP-адрес хоста
-	uint32_t address;
+	address_t address;
 	/**
 	 * @brief Конструктор
 	 * 
 	 */
-	HostIPv4() noexcept : port(0), address(0) {}
-} __attribute__((packed)) host_ipv4_t;
-
-/**
- * @brief Структура IPv6-хоста
- * 
- */
-typedef struct HostIPv6 : public host_t {
-	// Порт хоста
-	int32_t port;
-	// IP-адрес хоста
-	uint8_t address[16];
-	/**
-	 * @brief Конструктор
-	 * 
-	 */
-	HostIPv6() noexcept : port(0), address{0} {}
-} __attribute__((packed)) host_ipv6_t;
+	explicit HostIP() noexcept : port(0) {}
+} __attribute__((packed)) host_ip_t;
 
 /**
  * @brief Структура UNIX-хоста
  * 
  */
-typedef struct HostUnix : public host_t {
+typedef struct HostUDC : public host_t {
 	// Путь к сокету
-	string path;
+	address_fs_t path;
 	/**
 	 * @brief Конструктор
 	 * 
 	 */
-	HostUnix() noexcept : path{""} {}
-} __attribute__((packed)) host_unix_t;
+	explicit HostUDC() noexcept {}
+} host_udc_t;
 
 /**
  * @brief Структура состояния события
@@ -141,7 +237,7 @@ typedef struct State {
 	 * @brief Конструктор
 	 *
 	 */
-	State() noexcept :
+	explicit State() noexcept :
 	 onlyIPv6(false),
 	 mode(awh::event::mode_t::NONE),
 	 node(awh::event::node_t::NONE),
@@ -164,7 +260,7 @@ typedef struct Callbacks {
 	 * @brief Конструктор
 	 *
 	 */
-	Callbacks() noexcept : error(nullptr), status(nullptr) {}
+	explicit Callbacks() noexcept : error(nullptr), status(nullptr) {}
 } callbacks_t;
 
 /**
@@ -178,7 +274,7 @@ typedef struct CallbacksServer : public Callbacks {
 	 * @brief Конструктор
 	 *
 	 */
-	CallbacksServer() noexcept : accept(nullptr) {}
+	explicit CallbacksServer() noexcept : accept(nullptr) {}
 } callbacks_server_t;
 
 /**
@@ -194,7 +290,7 @@ typedef struct CallbacksClient : public Callbacks {
 	 * @brief Конструктор
 	 *
 	 */
-	CallbacksClient() noexcept : read(nullptr), write(nullptr) {}
+	explicit CallbacksClient() noexcept : read(nullptr), write(nullptr) {}
 } callbacks_client_t;
 
 /**
@@ -219,8 +315,30 @@ typedef struct Timer : public Node {
 	 * @brief Конструктор
 	 *
 	 */
-	Timer() noexcept : delay(0) {}
+	explicit Timer() noexcept : delay(0) {}
 } timer_t;
+
+/**
+ * @brief Структура файловой системы
+ *
+ */
+typedef struct Filesystem : public Node {
+	// Файловый дескриптор
+	int32_t fd;
+	// Путь к файлу, каталогу или сокету
+	address_fs_t path;
+	// Обратные вызовы события
+	callbacks_client_t callbacks;
+	// Чёрный список адресов которым запрещён доступ
+	unordered_set <unique_ptr <address_t>> blacklist;
+	// Белый список адресов которым разрешён доступ
+	unordered_set <unique_ptr <address_t>> whitelist;
+	/**
+	 * @brief Конструктор
+	 * 
+	 */
+	explicit Filesystem() noexcept : fd(-1) {}
+} fs_t;
 
 /**
  * @brief Структура сервера
@@ -232,20 +350,24 @@ typedef struct Server : public Node {
 	// Размер очереди ожидания подключения
 	uint32_t backlog;
 	// MAC-адрес сетевого интерфейса
-	uint8_t macAddress[6];
+	address_mac_t macAddress;
 	// Обратные вызовы события
 	callbacks_server_t callbacks;
-	// Сетевые адреса для выхода в интернет
-	unordered_set <string> networkAddresses;
 	// Сетевые интерфейсы события
-	unordered_set <string> networkInterfaces;
+	unordered_set <string> interfaces;
 	// Опции активных событий
 	unordered_set <awh::event::option_t> options;
+	// Чёрный список пиров которым запрещён доступ
+	unordered_set <unique_ptr <address_t>> blacklist;
+	// Белый список пиров которым разрешён доступ
+	unordered_set <unique_ptr <address_t>> whitelist;
+	// Сетевые адреса для выхода в интернет
+	unordered_set <unique_ptr <address_network_t>> networks;
 	/**
 	 * @brief Конструктор
 	 * 
 	 */
-	Server() noexcept : backlog{SOMAXCONN}, macAddress{0} {}
+	explicit Server() noexcept : backlog{SOMAXCONN} {}
 } server_t;
 
 /**
@@ -257,12 +379,16 @@ typedef struct Client : public Node {
 	host_t host;
 	// Обратные вызовы события
 	callbacks_client_t callbacks;
-	// Сетевые адреса для выхода в интернет
-	unordered_set <string> networkAddresses;
 	// Сетевые интерфейсы события
-	unordered_set <string> networkInterfaces;
+	unordered_set <string> interfaces;
 	// Опции активных событий
 	unordered_set <awh::event::option_t> options;
+	// Чёрный список серверов к которым запрещёно подключение
+	unordered_set <unique_ptr <address_t>> blacklist;
+	// Белый список серверов к которым разрешено подключение
+	unordered_set <unique_ptr <address_t>> whitelist;
+	// Сетевые адреса для выхода в интернет
+	unordered_set <unique_ptr <address_network_t>> networks;
 	// Размеры активных буферов события
 	unordered_map <awh::event::action_t, size_t> bufferSize;
 	// Активные таймауты события
@@ -273,7 +399,7 @@ typedef struct Client : public Node {
 	 * @brief Конструктор
 	 * 
 	 */
-	Client() noexcept {}
+	explicit Client() noexcept {}
 } client_t;
 
 /**
@@ -284,7 +410,7 @@ typedef struct Peer : public Node {
 	// Хост события
 	host_t host;
 	// MAC-адрес сетевого интерфейса
-	uint8_t macAddress[6];
+	address_mac_t macAddress;
 	// Обратные вызовы события
 	callbacks_client_t callbacks;
 	// Опции активных событий
@@ -299,7 +425,7 @@ typedef struct Peer : public Node {
 	 * @brief Конструктор
 	 * 
 	 */
-	Peer() noexcept : macAddress{0} {}
+	explicit Peer() noexcept {}
 } peer_t;
 
 /**
@@ -888,6 +1014,89 @@ bool awh::IO::multicastLeave(const event::id_t id, const string & multicastAddre
 	return false;
 }
 /**
+ * @brief Метод очистки чёрного списка события
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения очистки
+ */
+bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод добавления адреса в чёрный список события
+ *
+ * @param id      идентификатор события
+ * @param address адрес для добавления в чёрный список
+ * @return        результат выполнения добавления
+ */
+bool awh::IO::addToBlacklist(const event::id_t id, const string & address) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод удаления адреса из чёрного списка события
+ *
+ * @param id      идентификатор события
+ * @param address адрес для удаления из чёрного списка
+ * @return        результат выполнения удаления
+ */
+bool awh::IO::removeFromBlacklist(const event::id_t id, const string & address) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод получения чёрного списка события
+ *
+ * @param id идентификатор события
+ * @return   чёрный список события
+ */
+std::unordered_map <awh::event::address_t, string> awh::IO::blacklist(const event::id_t id) const noexcept {
+
+	return {};
+}
+/**
+ * @brief Метод очистки белого списка события
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения очистки
+ */
+bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод добавления адреса в белый список события
+ * @param id      идентификатор события
+ * @param address адрес для добавления в белый список
+ * @return        результат выполнения добавления
+ */
+bool awh::IO::addToWhitelist(const event::id_t id, const string & address) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод удаления адреса из белого списка события
+ *
+ * @param id      идентификатор события
+ * @param address адрес для удаления из белого списка
+ * @return        результат выполнения удаления
+ */
+bool awh::IO::removeFromWhitelist(const event::id_t id, const string & address) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод получения белого списка события
+ *
+ * @param id идентификатор события
+ * @return   белый список события
+ */
+std::unordered_map <awh::event::address_t, string> awh::IO::whitelist(const event::id_t id) const noexcept {
+
+	return {};
+}
+/**
  * @brief Метод установки таймаута на чтение события
  *
  * @param id      идентификатор события
@@ -969,6 +1178,16 @@ bool awh::IO::pause(const event::id_t id) noexcept {
  * @return   результат выполнения возобновления
  */
 bool awh::IO::resume(const event::id_t id) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод проверки состояния события
+ *
+ * @param id идентификатор события
+ * @return   состояние события
+ */
+bool awh::IO::isAlive(const event::id_t id) const noexcept {
 
 	return false;
 }

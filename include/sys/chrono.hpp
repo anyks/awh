@@ -927,7 +927,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Chrono(const fmk_t * fmk, const Log * log) noexcept;
+			explicit Chrono(const fmk_t * fmk, const Log * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

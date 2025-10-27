@@ -269,9 +269,9 @@ template <typename T>
  *
  * @param str       строка для поиска
  * @param delim     разделитель
- * @param container контейнер содержащий данные
+ * @param container контенер содержащий данные
  * @param log       объект работы с логами
- * @return          контейнер содержащий данные
+ * @return          контенер содержащий данные
  */
 static T & split(const string & str, const string & delim, T & container, const awh::log_t * log) noexcept {
 	/**
@@ -421,9 +421,9 @@ template <typename T>
  *
  * @param str       строка для поиска
  * @param delim     разделитель
- * @param container контейнер содержащий данные
+ * @param container контенер содержащий данные
  * @param log       объект работы с логами
- * @return          контейнер содержащий данные
+ * @return          контенер содержащий данные
  */
 static T & split(const wstring & str, const wstring & delim, T & container, const awh::log_t * log) noexcept {
 	/**
@@ -2401,7 +2401,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 						letter = text[i];
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
-							// Переводим символ в верхний регистр
+							// Переводим символ в верхний режим
 							text[i] = ::toupper(letter);
 						// Переводим остальные символы в нижний регистр
 						else text[i] = ::tolower(letter);
@@ -2509,7 +2509,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 						letter = text[i];
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
-							// Переводим символ в верхний регистр
+							// Переводим символ в верхний режим
 							text[i] = ::towupper(letter);
 						// Переводим остальные символы в нижний регистр
 						else text[i] = ::towlower(letter);
@@ -4927,7 +4927,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 	// Если данные переданы
 	if(!format.empty() && !items.empty()){
 		/**
-		 * @brief Функция замены подстроки в строке
+		 * @brief Функция заменты подстроки в строке
 		 *
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить
@@ -5059,7 +5059,7 @@ wstring awh::Framework::format(const wstring & format, const vector <wstring> & 
 	// Если данные переданы
 	if(!format.empty() && !items.empty()){
 		/**
-		 * @brief Функция замены подстроки в строке
+		 * @brief Функция заменты подстроки в строке
 		 *
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить

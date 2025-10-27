@@ -82,13 +82,13 @@ namespace awh {
 			* @brief Конструктор копирования
 			*
 			*/
-			LockState(const LockState &) = delete;
+			explicit LockState(const LockState &) = delete;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			LockState() noexcept :
+			explicit LockState() noexcept :
 			 _pid(::getpid()),
 			 _mtx(std::make_unique <MutexType> ()) {}
 	};
@@ -127,14 +127,14 @@ namespace awh {
 			* @brief Конструктор копирования
 			*
 			*/
-			Locker(const Locker &) = delete;
+			explicit Locker(const Locker &) = delete;
 		public:
 			/**
 			* @brief Конструктор
 			*
 			* @param state объект состояния блокировок
 			*/
-			Locker(LockState <MutexType> & state) noexcept : _state(state) {
+			explicit Locker(LockState <MutexType> & state) noexcept : _state(state) {
 				// Если идентификатор процесса не совпадает
 				if(this->_state._pid != ::getpid()){
 					// Устанавливаем идентификатор процесса

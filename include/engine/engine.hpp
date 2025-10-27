@@ -387,6 +387,67 @@ namespace awh {
 			virtual bool multicastLeave(const event::id_t id, const string & multicastAddress) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод очистки чёрного списка события
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения очистки
+			 */
+			virtual bool clearBlacklist(const event::id_t id) noexcept = 0;
+			/**
+			 * @brief Метод добавления адреса в чёрный список события
+			 *
+			 * @param id      идентификатор события
+			 * @param address адрес для добавления в чёрный список
+			 * @return        результат выполнения добавления
+			 */
+			virtual bool addToBlacklist(const event::id_t id, const string & address) noexcept = 0;
+			/**
+			 * @brief Метод удаления адреса из чёрного списка события
+			 *
+			 * @param id      идентификатор события
+			 * @param address адрес для удаления из чёрного списка
+			 * @return        результат выполнения удаления
+			 */
+			virtual bool removeFromBlacklist(const event::id_t id, const string & address) noexcept = 0;
+			/**
+			 * @brief Метод получения чёрного списка события
+			 *
+			 * @param id идентификатор события
+			 * @return   чёрный список события
+			 */
+			virtual std::unordered_map <event::address_t, string> blacklist(const event::id_t id) const noexcept = 0;
+		public:
+			/**
+			 * @brief Метод очистки белого списка события
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения очистки
+			 */
+			virtual bool clearWhitelist(const event::id_t id) noexcept = 0;
+			/**
+			 * @brief Метод добавления адреса в белый список события
+			 * @param id      идентификатор события
+			 * @param address адрес для добавления в белый список
+			 * @return        результат выполнения добавления
+			 */
+			virtual bool addToWhitelist(const event::id_t id, const string & address) noexcept = 0;
+			/**
+			 * @brief Метод удаления адреса из белого списка события
+			 *
+			 * @param id      идентификатор события
+			 * @param address адрес для удаления из белого списка
+			 * @return        результат выполнения удаления
+			 */
+			virtual bool removeFromWhitelist(const event::id_t id, const string & address) noexcept = 0;
+			/**
+			 * @brief Метод получения белого списка события
+			 *
+			 * @param id идентификатор события
+			 * @return   белый список события
+			 */
+			virtual std::unordered_map <event::address_t, string> whitelist(const event::id_t id) const noexcept = 0;
+		public:
+			/**
 			 * @brief Метод установки таймаута на чтение события
 			 *
 			 * @param id      идентификатор события
@@ -453,6 +514,14 @@ namespace awh {
 			 * @return   результат выполнения возобновления
 			 */
 			virtual bool resume(const event::id_t id) noexcept = 0;
+		public:
+			/**
+			 * @brief Метод проверки состояния события
+			 *
+			 * @param id идентификатор события
+			 * @return   состояние события
+			 */
+			virtual bool isAlive(const event::id_t id) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод инициализации основного движка фреймворка
@@ -566,7 +635,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			Engine(const fmk_t * fmk, const log_t * log) noexcept :
+			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept :
 			 _timer(INVALID_SOCKET), _net(fmk, log),
 			 _watch(fmk, log), _fmk(fmk), _log(log) {}
 			/**

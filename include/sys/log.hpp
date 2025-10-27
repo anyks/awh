@@ -590,7 +590,7 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			Log(const fmk_t * fmk, const string & filename = "") noexcept;
+			explicit Log(const fmk_t * fmk, const string & filename = "") noexcept;
 			/**
 			 * @brief Деструктор
 			 *

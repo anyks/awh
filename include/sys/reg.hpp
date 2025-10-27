@@ -108,7 +108,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Expression() noexcept;
+					explicit Expression() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -219,7 +219,7 @@ namespace awh {
 			 *
 			 * @param log объект работы с логами
 			 */
-			RegExp(const Log * log) noexcept : _error{""}, _log(log) {}
+			explicit RegExp(const Log * log) noexcept : _error{""}, _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

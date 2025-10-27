@@ -618,7 +618,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Net(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Net(const fmk_t * fmk, const log_t * log) noexcept;
 		private:
 			/**
 			 * @brief конструктор
@@ -627,7 +627,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Net(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Net(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief деструктор

@@ -64,7 +64,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Range() noexcept : end(0), begin(0) {}
+				explicit Range() noexcept : end(0), begin(0) {}
 			} __attribute__((packed)) range_t;
 		public:
 			/**
@@ -492,26 +492,26 @@ namespace awh {
 			 * @brief Разрешаем пустое значение объекта
 			 * 
 			 */
-			Buffer() = default;
+			explicit Buffer() = default;
 			/**
 			 * @brief Конструктор перемещения
 			 *
 			 * @param buffer бинарный буфер для перемещения
 			 */
-			Buffer(Buffer && buffer) noexcept;
+			explicit Buffer(Buffer && buffer) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param buffer бинарный буфер для копирования
 			 */
-			Buffer(const Buffer & buffer) noexcept;
+			explicit Buffer(const Buffer & buffer) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Buffer(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Buffer(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
