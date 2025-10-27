@@ -860,7 +860,7 @@ uint32_t awh::Framework::identifier() const noexcept {
 	// Начинаем с 1 (0 можно оставить как "invalid")
 	static std::atomic_uint32_t id{1};
 	// Выводим новое значение идентификатора
-    return id.fetch_add(1, std::memory_order_relaxed);
+	return id.fetch_add(1, std::memory_order_relaxed);
 }
 /**
  * @brief Метод проверки текста на соответствие флагу

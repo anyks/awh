@@ -157,10 +157,11 @@ namespace awh {
 			UDP  = 0x01, // Сокет UDP
 			TCP  = 0x02, // Сокет TCP
 			TLS  = 0x03, // Сокет TLS
-			SCTP = 0x04, // Сокет SCTP
-			DTLS = 0x05, // Сокет DTLS
-			FILE = 0x06, // Файловый сокет
-			DIR  = 0x07  // Директория
+			ICMP = 0x04, // Сокет ICMP
+			SCTP = 0x05, // Сокет SCTP
+			DTLS = 0x06, // Сокет DTLS
+			FILE = 0x07, // Файловый сокет
+			DIR  = 0x08  // Директория
 		};
 		/**
 		 * @brief Семейства сокетов

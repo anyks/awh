@@ -120,31 +120,34 @@ namespace awh {
 			/**
 			 * @brief Метод получения пары событий для сокета
 			 *
-			 * @param family семейство сокета
-			 * @param type   тип сокета
-			 * @param mode   режим сокета
-			 * @return       пара идентификаторов созданных событий
+			 * @param family   семейство сокета
+			 * @param type     тип сокета
+			 * @param protocol протокол сокета
+			 * @param mode     режим сокета
+			 * @return         пара идентификаторов созданных событий
 			 */
-			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::mode_t mode) noexcept;
+			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
 			/**
 			 * @brief Метод создания нового события
 			 *
-			 * @param family семейство сокета
-			 * @param type   тип сокета
-			 * @param mode   режим сокета
-			 * @return       идентификатор созданного события
+			 * @param family   семейство сокета
+			 * @param type     тип сокета
+			 * @param protocol протокол сокета
+			 * @param mode     режим сокета
+			 * @return         идентификатор созданного события
 			 */
-			event::id_t event(const event::family_t family, const event::type_t type, const event::mode_t mode) noexcept;
+			event::id_t event(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
 			/**
 			 * @brief Метод создания нового события на основе существующего
 			 *
-			 * @param id     идентификатор существующего события
-			 * @param family семейство сокета
-			 * @param type   тип сокета
-			 * @param mode   режим сокета
-			 * @return       идентификатор созданного события
+			 * @param id       идентификатор существующего события
+			 * @param family   семейство сокета
+			 * @param type     тип сокета
+			 * @param protocol протокол сокета
+			 * @param mode     режим сокета
+			 * @return         идентификатор созданного события
 			 */
-			event::id_t event(const event::id_t id, const event::family_t family, const event::type_t type, const event::mode_t mode) noexcept;
+			event::id_t event(const event::id_t id, const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод получения режима действия события
