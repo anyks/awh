@@ -46,6 +46,7 @@
  * Подключаем системные заголовки
  */
 #include <fcntl.h>
+#include <sys/un.h>
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -802,381 +803,1190 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 	auto i = ::__awh_nodes__.find(id);
 	// Если идентификатор события найден
 	if(i != ::__awh_nodes__.end()){
-		/**
-		 * Определяем семейство сокета
-		 */
-		switch(static_cast <uint8_t> (i->second->state.family)){
-			// Для семейства UDP
-			case static_cast <uint8_t> (event::family_t::UDP): {
-				/**
-				 * Определяем тип сокета
-				 */
-				switch(static_cast <uint8_t> (i->second->state.type)){
-					// Для типа сокета RAW
-					case static_cast <uint8_t> (event::type_t::RAW):
-					// Для типа сокета DATAGRAM
-					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-						// Устанавливаем флаг режима сокета
-						ret.first->second->state.mode = mode;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						/**
-						 * Определяем чем является текущая нода
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								client_t * first = static_cast <client_t *> (i->second.get());
-								// Получаем текущее значение пира получающего параметры
-								client_t * second = static_cast <client_t *> (ret.first->second.get());
-								/**
-								* Определяем тип подключения
-								*/
-								switch(first->endpoint.server.ss_family){
-									// Для протокола IPv4
-									case AF_INET:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in);
-									break;
-									// Для протокола IPv6
-									case AF_INET6:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in6);
-									break;
-								}
-								// Выполняем копирование объекта подключения клиента
-								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-								// Выполняем копирование объекта подключения сервера
-								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-							} break;
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Получаем текущее значение объекта сервера
-								server_t * first = static_cast <server_t *> (i->second.get());
-								// Получаем текущее значение пира получающего параметры
-								client_t * second = static_cast <client_t *> (ret.first->second.get());
-								/**
-								* Определяем тип подключения
-								*/
-								switch(first->endpoint.server.ss_family){
-									// Для протокола IPv4
-									case AF_INET:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in);
-									break;
-									// Для протокола IPv6
-									case AF_INET6:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in6);
-									break;
-								}
-								// Выполняем копирование объекта подключения клиента
-								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-								// Выполняем копирование объекта подключения сервера
-								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-							} break;
+		// Если событие уже инициализированно
+		if(i->second->state.status == event::status_t::INITIAL){
+			/**
+			 * Определяем семейство сокета
+			 */
+			switch(static_cast <uint8_t> (i->second->state.family)){
+				// Для семейства UDPv4
+				case static_cast <uint8_t> (event::family_t::UDPV4):
+				// Для семейства UDPv6
+				case static_cast <uint8_t> (event::family_t::UDPV6): {
+					// Флаг удачного выполнения объединение событий
+					bool ok = true;
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета RAW
+						case static_cast <uint8_t> (event::type_t::RAW): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства UDPv4
+										case static_cast <uint8_t> (event::family_t::UDPV4): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как RAW
+												case static_cast <uint8_t> (event::protocol_t::RAW):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+												break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+												break;
+												// Если протокол определён как IGMP
+												case static_cast <uint8_t> (event::protocol_t::IGMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+										// Для семейства UDPv6
+										case static_cast <uint8_t> (event::family_t::UDPV6): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										/**
+										 * Определяем протокол
+										 */
+										switch(static_cast <uint8_t> (protocol)){
+											// Если протокол определён как RAW
+											case static_cast <uint8_t> (event::protocol_t::RAW):
+											// Если протокол определён как ICMP
+											case static_cast <uint8_t> (event::protocol_t::ICMP):
+											// Если протокол определён как IGMP
+											case static_cast <uint8_t> (event::protocol_t::IGMP): break;
+											// Если протокол не определён
+											case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_RAW, 0);
+											break;
+											// Если протокол определён как UDP
+											case static_cast <uint8_t> (event::protocol_t::UDP):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_RAW, IPPROTO_UDP);
+											break;
+											// Если установлен другой протокол
+											default: ok = false;
+										}
+										// Если всё хорошо, продолжаем работу
+										if(ok){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+										// Если протокол не определён
+										} else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"RAW socket type only supports UDP protocol or Unix family socket with empty protocol",
+													__PRETTY_FUNCTION__, std::make_tuple(
+														id, static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													), log_t::flag_t::WARNING
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+											#endif
+										}
+									}
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства UDPv4
+										case static_cast <uint8_t> (event::family_t::UDPV4): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как RAW
+												case static_cast <uint8_t> (event::protocol_t::RAW):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+												break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+												break;
+												// Если протокол определён как IGMP
+												case static_cast <uint8_t> (event::protocol_t::IGMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+										// Для семейства UDPv6
+										case static_cast <uint8_t> (event::family_t::UDPV6): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										/**
+										 * Определяем протокол
+										 */
+										switch(static_cast <uint8_t> (protocol)){
+											// Если протокол определён как RAW
+											case static_cast <uint8_t> (event::protocol_t::RAW):
+											// Если протокол определён как ICMP
+											case static_cast <uint8_t> (event::protocol_t::ICMP):
+											// Если протокол определён как IGMP
+											case static_cast <uint8_t> (event::protocol_t::IGMP): break;
+											// Если протокол не определён
+											case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_RAW, 0);
+											break;
+											// Если протокол определён как UDP
+											case static_cast <uint8_t> (event::protocol_t::UDP):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_RAW, IPPROTO_UDP);
+											break;
+											// Если установлен другой протокол
+											default: ok = false;
+										}
+										// Если всё хорошо, продолжаем работу
+										if(ok){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+										// Если протокол не определён
+										} else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"RAW socket type only supports UDP protocol or Unix family socket with empty protocol",
+													__PRETTY_FUNCTION__, std::make_tuple(
+														id, static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													), log_t::flag_t::WARNING
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+											#endif
+										}
+									}
+								} break;
+							}
+							// Если всё прошло успешно
+							if(ok)
+								// Возвращаем идентификатор созданного события
+								result = ret.first->first;
+							// Если всё прошло не успешно
+							else
+								// Удаляем созданное событие
+								::__awh_nodes__.erase(ret.first);
+						} break;
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства UDPv4
+										case static_cast <uint8_t> (event::family_t::UDPV4): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+												break;
+												// Если протокол определён как IGMP
+												case static_cast <uint8_t> (event::protocol_t::IGMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+										// Для семейства UDPv6
+										case static_cast <uint8_t> (event::family_t::UDPV6): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										/**
+										 * Определяем протокол
+										 */
+										switch(static_cast <uint8_t> (protocol)){
+											// Если протокол определён как ICMP
+											case static_cast <uint8_t> (event::protocol_t::ICMP):
+											// Если протокол определён как IGMP
+											case static_cast <uint8_t> (event::protocol_t::IGMP): break;
+											// Если протокол не определён
+											case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, 0);
+											break;
+											// Если протокол определён как UDP
+											case static_cast <uint8_t> (event::protocol_t::UDP):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+											break;
+											// Если установлен другой протокол
+											default: ok = false;
+										}
+										// Если всё хорошо, продолжаем работу
+										if(ok){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+										// Если протокол не определён
+										} else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol",
+													__PRETTY_FUNCTION__, std::make_tuple(
+														id, static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													), log_t::flag_t::WARNING
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+											#endif
+										}
+									}
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства UDPv4
+										case static_cast <uint8_t> (event::family_t::UDPV4): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+												break;
+												// Если протокол определён как IGMP
+												case static_cast <uint8_t> (event::protocol_t::IGMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+										// Для семейства UDPv6
+										case static_cast <uint8_t> (event::family_t::UDPV6): {
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+											/**
+											 * Определяем протокол
+											 */
+											switch(static_cast <uint8_t> (protocol)){
+												// Если протокол не определён
+												case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Если протокол определён как UDP
+												case static_cast <uint8_t> (event::protocol_t::UDP): break;
+												// Если протокол определён как ICMP
+												case static_cast <uint8_t> (event::protocol_t::ICMP):
+													// Создаем сокет подключения
+													second->host.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+												break;
+												// Если установлен другой протокол
+												default: ok = false;
+											}
+										} break;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										/**
+										 * Определяем протокол
+										 */
+										switch(static_cast <uint8_t> (protocol)){
+											// Если протокол определён как ICMP
+											case static_cast <uint8_t> (event::protocol_t::ICMP):
+											// Если протокол определён как IGMP
+											case static_cast <uint8_t> (event::protocol_t::IGMP): break;
+											// Если протокол не определён
+											case static_cast <uint8_t> (event::protocol_t::NONE):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, 0);
+											break;
+											// Если протокол определён как UDP
+											case static_cast <uint8_t> (event::protocol_t::UDP):
+												// Создаем сокет подключения
+												second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+											break;
+											// Если установлен другой протокол
+											default: ok = false;
+										}
+										// Если всё хорошо, продолжаем работу
+										if(ok){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+										// Если протокол не определён
+										} else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol",
+													__PRETTY_FUNCTION__, std::make_tuple(
+														id, static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													), log_t::flag_t::WARNING
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+											#endif
+										}
+									}
+								} break;
+							}
+							// Если всё прошло успешно
+							if(ok)
+								// Возвращаем идентификатор созданного события
+								result = ret.first->first;
+							// Если всё прошло не успешно
+							else
+								// Удаляем созданное событие
+								::__awh_nodes__.erase(ret.first);
+						} break;
+						// Для неизвестного типа сокета
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"An event for a UDP socket cannot be created because it has an invalid initialization type",
+									__PRETTY_FUNCTION__, std::make_tuple(
+										id, static_cast <uint16_t> (protocol),
+										static_cast <uint16_t> (mode)
+									), log_t::flag_t::WARNING
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							#endif
 						}
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
-					// Для неизвестного типа сокета
-					default: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"An event for a UDP socket cannot be created because it has an invalid initialization type",
-								__PRETTY_FUNCTION__, std::make_tuple(
-									id, static_cast <uint16_t> (protocol),
-									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING
-							);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-						#endif
 					}
-				}
-			} break;
-			// Для семейства UNIX-доменных сокетов
-			case static_cast <uint8_t> (event::family_t::UDS): {
-				/**
-				 * Определяем тип сокета
-				 */
-				switch(static_cast <uint8_t> (i->second->state.type)){
-					// Для типа сокета STREAM
-					case static_cast <uint8_t> (event::type_t::STREAM):
-					// Для типа сокета DATAGRAM
-					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-						// Устанавливаем флаг режима сокета
-						ret.first->second->state.mode = mode;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						/**
-						 * Определяем чем является текущая нода
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								client_t * first = static_cast <client_t *> (i->second.get());
-								// Получаем текущее значение пира получающего параметры
-								client_t * second = static_cast <client_t *> (ret.first->second.get());
-								/**
-								* Определяем тип подключения
-								*/
-								switch(first->endpoint.server.ss_family){
-									// Для протокола IPv4
-									case AF_INET:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in);
-									break;
-									// Для протокола IPv6
-									case AF_INET6:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in6);
-									break;
-								}
-								// Выполняем копирование объекта подключения клиента
-								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-								// Выполняем копирование объекта подключения сервера
-								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-							} break;
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Получаем текущее значение объекта сервера
-								server_t * first = static_cast <server_t *> (i->second.get());
-								// Получаем текущее значение пира получающего параметры
-								client_t * second = static_cast <client_t *> (ret.first->second.get());
-								/**
-								* Определяем тип подключения
-								*/
-								switch(first->endpoint.server.ss_family){
-									// Для протокола IPv4
-									case AF_INET:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in);
-									break;
-									// Для протокола IPv6
-									case AF_INET6:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in6);
-									break;
-								}
-								// Выполняем копирование объекта подключения клиента
-								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-								// Выполняем копирование объекта подключения сервера
-								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-							} break;
+				} break;
+				// Для семейства UNIX-доменных сокетов
+				case static_cast <uint8_t> (event::family_t::UDS): {
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									// Запоминаем размер структуры
+									second->endpoint.size = sizeof(struct sockaddr_un);
+									// Создаем сокет подключения
+									second->host.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+									// Выполняем копирование объекта подключения клиента
+									::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+									// Выполняем копирование объекта подключения сервера
+									::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									// Запоминаем размер структуры
+									second->endpoint.size = sizeof(struct sockaddr_un);
+									// Создаем сокет подключения
+									second->host.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+									// Выполняем копирование объекта подключения клиента
+									::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+									// Выполняем копирование объекта подключения сервера
+									::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+								} break;
+							}
+							// Возвращаем идентификатор созданного события
+							result = ret.first->first;
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									// Запоминаем размер структуры
+									second->endpoint.size = sizeof(struct sockaddr_un);
+									// Создаем сокет подключения
+									second->host.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+									// Выполняем копирование объекта подключения клиента
+									::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+									// Выполняем копирование объекта подключения сервера
+									::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									// Запоминаем размер структуры
+									second->endpoint.size = sizeof(struct sockaddr_un);
+									// Создаем сокет подключения
+									second->host.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+									// Выполняем копирование объекта подключения клиента
+									::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+									// Выполняем копирование объекта подключения сервера
+									::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+								} break;
+							}
+							// Возвращаем идентификатор созданного события
+							result = ret.first->first;
+						} break;
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									// Запоминаем размер структуры
+									second->endpoint.size = sizeof(struct sockaddr_un);
+									// Создаем сокет подключения
+									second->host.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+									// Выполняем копирование объекта подключения клиента
+									::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+									// Выполняем копирование объекта подключения сервера
+									::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									// Запоминаем размер структуры
+									second->endpoint.size = sizeof(struct sockaddr_un);
+									// Создаем сокет подключения
+									second->host.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+									// Выполняем копирование объекта подключения клиента
+									::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+									// Выполняем копирование объекта подключения сервера
+									::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+								} break;
+							}
+							// Возвращаем идентификатор созданного события
+							result = ret.first->first;
+						} break;
+						// Для неизвестного типа сокета
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"An event for a Unix socket cannot be created because it has an invalid initialization type",
+									__PRETTY_FUNCTION__, std::make_tuple(
+										id, static_cast <uint16_t> (protocol),
+										static_cast <uint16_t> (mode)
+									), log_t::flag_t::WARNING
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							#endif
 						}
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
-					// Для неизвестного типа сокета
-					default: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"An event for a Unix socket cannot be created because it has an invalid initialization type",
-								__PRETTY_FUNCTION__, std::make_tuple(
-									id, static_cast <uint16_t> (protocol),
-									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING
-							);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-						#endif
 					}
-				}
-			} break;
-			// Для семейства IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4):
-			// Для семейства IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6): {
-				/**
-				 * Определяем тип сокета
-				 */
-				switch(static_cast <uint8_t> (i->second->state.type)){
-					// Для типа сокета STREAM
-					case static_cast <uint8_t> (event::type_t::STREAM):
-					// Для типа сокета SEQPACKET
-					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-						// Устанавливаем флаг режима сокета
-						ret.first->second->state.mode = mode;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						/**
-						 * Определяем чем является текущая нода
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								client_t * first = static_cast <client_t *> (i->second.get());
-								// Получаем текущее значение пира получающего параметры
-								client_t * second = static_cast <client_t *> (ret.first->second.get());
-								/**
-								* Определяем тип подключения
-								*/
-								switch(first->endpoint.server.ss_family){
-									// Для протокола IPv4
-									case AF_INET:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in);
-									break;
-									// Для протокола IPv6
-									case AF_INET6:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in6);
-									break;
-								}
-								// Выполняем копирование объекта подключения клиента
-								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-								// Выполняем копирование объекта подключения сервера
-								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-							} break;
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Получаем текущее значение объекта сервера
-								server_t * first = static_cast <server_t *> (i->second.get());
-								// Получаем текущее значение пира получающего параметры
-								client_t * second = static_cast <client_t *> (ret.first->second.get());
-								/**
-								* Определяем тип подключения
-								*/
-								switch(first->endpoint.server.ss_family){
-									// Для протокола IPv4
-									case AF_INET:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in);
-									break;
-									// Для протокола IPv6
-									case AF_INET6:
-										// Запоминаем размер структуры
-										second->endpoint.size = sizeof(struct sockaddr_in6);
-									break;
-								}
-								// Выполняем копирование объекта подключения клиента
-								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-								// Выполняем копирование объекта подключения сервера
-								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-							} break;
+				} break;
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Флаг удачного выполнения объединение событий
+					bool ok = true;
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+										break;
+									}
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, 0);
+										break;
+										// Если протокол определён как TCP
+										case static_cast <uint8_t> (event::protocol_t::TCP):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, IPPROTO_TCP);
+										break;
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, IPPROTO_SCTP);
+										break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									// Если протокол не определён
+									} else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug(
+												"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
+												__PRETTY_FUNCTION__, std::make_tuple(
+													id, static_cast <uint16_t> (protocol),
+													static_cast <uint16_t> (mode)
+												), log_t::flag_t::WARNING
+											);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+										#endif
+									}
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+										break;
+									}
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, 0);
+										break;
+										// Если протокол определён как TCP
+										case static_cast <uint8_t> (event::protocol_t::TCP):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, IPPROTO_TCP);
+										break;
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, IPPROTO_SCTP);
+										break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									// Если протокол не определён
+									} else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug(
+												"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
+												__PRETTY_FUNCTION__, std::make_tuple(
+													id, static_cast <uint16_t> (protocol),
+													static_cast <uint16_t> (mode)
+												), log_t::flag_t::WARNING
+											);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+										#endif
+									}
+								} break;
+							}
+							// Если всё прошло успешно
+							if(ok)
+								// Возвращаем идентификатор созданного события
+								result = ret.first->first;
+							// Если всё прошло не успешно
+							else
+								// Удаляем созданное событие
+								::__awh_nodes__.erase(ret.first);
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							// Выполняем создание события
+							auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+							// Устанавливаем флаг режима сокета
+							ret.first->second->state.mode = mode;
+							// Устанавливаем флаг протокола сокета
+							ret.first->second->state.protocol = protocol;
+							// Устанавливаем флаг типа сокета
+							ret.first->second->state.type = i->second->state.type;
+							// Устанавливаем флаг семейства сокета
+							ret.first->second->state.family = i->second->state.family;
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * first = static_cast <client_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+										break;
+									}
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (protocol)){
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.client.ss_family, SOCK_SEQPACKET, IPPROTO_SCTP);
+										break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									// Если протокол не определён
+									} else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug(
+												"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
+												__PRETTY_FUNCTION__, std::make_tuple(
+													id, static_cast <uint16_t> (protocol),
+													static_cast <uint16_t> (mode)
+												), log_t::flag_t::WARNING
+											);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+										#endif
+									}
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * first = static_cast <server_t *> (i->second.get());
+									// Получаем текущее значение пира получающего параметры
+									client_t * second = static_cast <client_t *> (ret.first->second.get());
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (i->second->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in);
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Запоминаем размер структуры
+											second->endpoint.size = sizeof(struct sockaddr_in6);
+										break;
+									}
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (protocol)){
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Создаем сокет подключения
+											second->host.fd = ::socket(first->endpoint.server.ss_family, SOCK_SEQPACKET, IPPROTO_SCTP);
+										break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+									// Если всё хорошо, продолжаем работу
+									if(ok){
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									// Если протокол не определён
+									} else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug(
+												"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
+												__PRETTY_FUNCTION__, std::make_tuple(
+													id, static_cast <uint16_t> (protocol),
+													static_cast <uint16_t> (mode)
+												), log_t::flag_t::WARNING
+											);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+										#endif
+									}
+								} break;
+							}
+							// Если всё прошло успешно
+							if(ok)
+								// Возвращаем идентификатор созданного события
+								result = ret.first->first;
+							// Если всё прошло не успешно
+							else
+								// Удаляем созданное событие
+								::__awh_nodes__.erase(ret.first);
+						} break;
+						// Для неизвестного типа сокета
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"An event for a IP socket cannot be created because it has an invalid initialization type",
+									__PRETTY_FUNCTION__, std::make_tuple(
+										id, static_cast <uint16_t> (protocol),
+										static_cast <uint16_t> (mode)
+									), log_t::flag_t::WARNING
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							#endif
 						}
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
-					// Для неизвестного типа сокета
-					default: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"An event for a IP socket cannot be created because it has an invalid initialization type",
-								__PRETTY_FUNCTION__, std::make_tuple(
-									id, static_cast <uint16_t> (protocol),
-									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING
-							);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-						#endif
 					}
+				} break;
+				// Для семейства директорий
+				case static_cast <uint8_t> (event::family_t::DIR):
+				// Для семейства файловой системы
+				case static_cast <uint8_t> (event::family_t::FILE): {
+					// Выполняем создание события
+					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <fs_t> ());
+					// Устанавливаем флаг режима сокета
+					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг протокола сокета
+					ret.first->second->state.protocol = protocol;
+					// Устанавливаем флаг типа сокета
+					ret.first->second->state.type = i->second->state.type;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = i->second->state.family;
+					// Возвращаем идентификатор созданного события
+					result = ret.first->first;
+				} break;
+				// Для семейства таймеров
+				case static_cast <uint8_t> (event::family_t::TIMER):
+				// Для семейства интервалов
+				case static_cast <uint8_t> (event::family_t::INTERVAL): {
+					// Выполняем создание события
+					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <timer_t> ());
+					// Устанавливаем флаг режима сокета
+					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг протокола сокета
+					ret.first->second->state.protocol = protocol;
+					// Устанавливаем флаг типа сокета
+					ret.first->second->state.type = i->second->state.type;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = i->second->state.family;
+					// Возвращаем идентификатор созданного события
+					result = ret.first->first;
+				} break;
+				// Для неизвестного семейства
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"Event cannot be created because the family it belongs to is not defined",
+							__PRETTY_FUNCTION__, std::make_tuple(
+								id, static_cast <uint16_t> (protocol),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Event cannot be created because the family it belongs to is not defined", log_t::flag_t::WARNING);
+					#endif
 				}
-			} break;
-			// Для семейства директорий
-			case static_cast <uint8_t> (event::family_t::DIR):
-			// Для семейства файловой системы
-			case static_cast <uint8_t> (event::family_t::FILE): {
-				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <fs_t> ());
-				// Устанавливаем флаг режима сокета
-				ret.first->second->state.mode = mode;
-				// Устанавливаем флаг протокола сокета
-				ret.first->second->state.protocol = protocol;
-				// Устанавливаем флаг типа сокета
-				ret.first->second->state.type = i->second->state.type;
-				// Устанавливаем флаг семейства сокета
-				ret.first->second->state.family = i->second->state.family;
-				// Возвращаем идентификатор созданного события
-				result = ret.first->first;
-			} break;
-			// Для семейства таймеров
-			case static_cast <uint8_t> (event::family_t::TIMER):
-			// Для семейства интервалов
-			case static_cast <uint8_t> (event::family_t::INTERVAL): {
-				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <timer_t> ());
-				// Устанавливаем флаг режима сокета
-				ret.first->second->state.mode = mode;
-				// Устанавливаем флаг протокола сокета
-				ret.first->second->state.protocol = protocol;
-				// Устанавливаем флаг типа сокета
-				ret.first->second->state.type = i->second->state.type;
-				// Устанавливаем флаг семейства сокета
-				ret.first->second->state.family = i->second->state.family;
-				// Возвращаем идентификатор созданного события
-				result = ret.first->first;
-			} break;
-			// Для неизвестного семейства
-			default: {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug(
-						"Event cannot be created because the family it belongs to is not defined",
-						__PRETTY_FUNCTION__, std::make_tuple(
-							id, static_cast <uint16_t> (protocol),
-							static_cast <uint16_t> (mode)
-						), log_t::flag_t::WARNING
-					);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Event cannot be created because the family it belongs to is not defined", log_t::flag_t::WARNING);
-				#endif
 			}
+		// Событие ещё не инициализированно
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug(
+					"Event ID=%u has not yet been initialized",
+					__PRETTY_FUNCTION__, std::make_tuple(
+						id, static_cast <uint16_t> (protocol),
+						static_cast <uint16_t> (mode)
+					), log_t::flag_t::WARNING, id
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Event ID=%u has not yet been initialized", log_t::flag_t::WARNING, id);
+			#endif
 		}
+	// Если событие не найдено
+	} else {
+		/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug(
+					"Event ID=%u is not exist",
+					__PRETTY_FUNCTION__, std::make_tuple(
+						id, static_cast <uint16_t> (protocol),
+						static_cast <uint16_t> (mode)
+					), log_t::flag_t::WARNING, id
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Event ID=%u is not exist", log_t::flag_t::WARNING, id);
+			#endif
 	}
 	// Возвращаем результат работы функции
 	return result;
@@ -1197,14 +2007,124 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 	 * Определяем семейство сокета
 	 */
 	switch(static_cast <uint8_t> (family)){
-		// Для семейства UDP
-		case static_cast <uint8_t> (event::family_t::UDP): {
+		// Для семейства UDPv4
+		case static_cast <uint8_t> (event::family_t::UDPV4):
+		// Для семейства UDPv6
+		case static_cast <uint8_t> (event::family_t::UDPV6): {
+			// Флаг удачного выполнения объединение событий
+			bool ok = true;
 			/**
 			 * Определяем тип сокета
 			 */
 			switch(static_cast <uint8_t> (type)){
 				// Для типа сокета RAW
-				case static_cast <uint8_t> (event::type_t::RAW):
+				case static_cast <uint8_t> (event::type_t::RAW): {
+					// Выполняем создание события
+					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+					// Устанавливаем флаг типа сокета
+					ret.first->second->state.type = type;
+					// Устанавливаем флаг режима сокета
+					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
+					// Устанавливаем флаг протокола сокета
+					ret.first->second->state.protocol = protocol;
+					/**
+					 * Определяем тип подключения
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::NONE):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_RAW, 0);
+								break;
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::RAW):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+								break;
+								// Если протокол определён как UDP
+								case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+								break;
+								// Если протокол определён как IGMP
+								case static_cast <uint8_t> (event::protocol_t::IGMP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+								break;
+								// Если протокол определён как ICMP
+								case static_cast <uint8_t> (event::protocol_t::ICMP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::NONE):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+								break;
+								// Если протокол определён как UDP
+								case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+								break;
+								// Если протокол определён как ICMP
+								case static_cast <uint8_t> (event::protocol_t::ICMP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+					}
+					// Если всё прошло успешно
+					if(ok)
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					// Если всё прошло не успешно
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"RAW socket type only supports UDP protocol or Unix family socket with empty protocol",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+						#endif
+						// Удаляем созданное событие
+						::__awh_nodes__.erase(ret.first);
+					}
+				} break;
 				// Для типа сокета DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Выполняем создание события
@@ -1217,8 +2137,96 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					ret.first->second->state.family = family;
 					// Устанавливаем флаг протокола сокета
 					ret.first->second->state.protocol = protocol;
-					// Возвращаем идентификатор созданного события
-					result = ret.first->first;
+					/**
+					 * Определяем тип подключения
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::NONE):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+								break;
+								// Если протокол определён как UDP
+								case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+								break;
+								// Если протокол определён как IGMP
+								case static_cast <uint8_t> (event::protocol_t::IGMP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+								break;
+								// Если протокол определён как ICMP
+								case static_cast <uint8_t> (event::protocol_t::ICMP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::NONE):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+								break;
+								// Если протокол определён как UDP
+								case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+								break;
+								// Если протокол определён как ICMP
+								case static_cast <uint8_t> (event::protocol_t::ICMP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+					}
+					// Если всё прошло успешно
+					if(ok)
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					// Если всё прошло не успешно
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+						#endif
+						// Удаляем созданное событие
+						::__awh_nodes__.erase(ret.first);
+					}
 				} break;
 				// Для неизвестного типа сокета
 				default: {
@@ -1237,8 +2245,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 							), log_t::flag_t::WARNING
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
@@ -1253,7 +2261,39 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 			 */
 			switch(static_cast <uint8_t> (type)){
 				// Для типа сокета STREAM
-				case static_cast <uint8_t> (event::type_t::STREAM):
+				case static_cast <uint8_t> (event::type_t::STREAM): {
+					// Выполняем создание события
+					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+					// Устанавливаем флаг типа сокета
+					ret.first->second->state.type = type;
+					// Устанавливаем флаг режима сокета
+					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
+					// Устанавливаем флаг протокола сокета
+					ret.first->second->state.protocol = protocol;
+					// Создаем сокет подключения
+					static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+					// Возвращаем идентификатор созданного события
+					result = ret.first->first;
+				} break;
+				// Для типа сокета SEQPACKET
+				case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+					// Выполняем создание события
+					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+					// Устанавливаем флаг типа сокета
+					ret.first->second->state.type = type;
+					// Устанавливаем флаг режима сокета
+					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
+					// Устанавливаем флаг протокола сокета
+					ret.first->second->state.protocol = protocol;
+					// Создаем сокет подключения
+					static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+					// Возвращаем идентификатор созданного события
+					result = ret.first->first;
+				} break;
 				// Для типа сокета DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Выполняем создание события
@@ -1266,6 +2306,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					ret.first->second->state.family = family;
 					// Устанавливаем флаг протокола сокета
 					ret.first->second->state.protocol = protocol;
+					// Создаем сокет подключения
+					static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
 					// Возвращаем идентификатор созданного события
 					result = ret.first->first;
 				} break;
@@ -1286,8 +2328,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 							), log_t::flag_t::WARNING
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
@@ -1299,12 +2341,110 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 		case static_cast <uint8_t> (event::family_t::IPV4):
 		// Для семейства IPv6
 		case static_cast <uint8_t> (event::family_t::IPV6): {
+			// Флаг удачного выполнения объединение событий
+			bool ok = true;
 			/**
 			 * Определяем тип сокета
 			 */
 			switch(static_cast <uint8_t> (type)){
 				// Для типа сокета STREAM
-				case static_cast <uint8_t> (event::type_t::STREAM):
+				case static_cast <uint8_t> (event::type_t::STREAM): {
+					// Выполняем создание события
+					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+					// Устанавливаем флаг типа сокета
+					ret.first->second->state.type = type;
+					// Устанавливаем флаг режима сокета
+					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
+					// Устанавливаем флаг протокола сокета
+					ret.first->second->state.protocol = protocol;
+					/**
+					 * Определяем тип подключения
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::NONE):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+								break;
+								// Если протокол определён как TCP
+								case static_cast <uint8_t> (event::protocol_t::TCP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+								break;
+								// Если протокол определён как SCTP
+								case static_cast <uint8_t> (event::protocol_t::SCTP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол не определён
+								case static_cast <uint8_t> (event::protocol_t::NONE):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+								break;
+								// Если протокол определён как TCP
+								case static_cast <uint8_t> (event::protocol_t::TCP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+								break;
+								// Если протокол определён как SCTP
+								case static_cast <uint8_t> (event::protocol_t::SCTP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+					}
+					// Если всё прошло успешно
+					if(ok)
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					// Если всё прошло не успешно
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+						#endif
+						// Удаляем созданное событие
+						::__awh_nodes__.erase(ret.first);
+					}
+				} break;
 				// Для типа сокета SEQPACKET
 				case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 					// Выполняем создание события
@@ -1317,8 +2457,71 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					ret.first->second->state.family = family;
 					// Устанавливаем флаг протокола сокета
 					ret.first->second->state.protocol = protocol;
-					// Возвращаем идентификатор созданного события
-					result = ret.first->first;
+					/**
+					 * Определяем тип подключения
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол определён как SCTP
+								case static_cast <uint8_t> (event::protocol_t::SCTP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							/**
+							 * Определяем протокол
+							 */
+							switch(static_cast <uint8_t> (protocol)){
+								// Если протокол определён как SCTP
+								case static_cast <uint8_t> (event::protocol_t::SCTP):
+									// Создаем сокет подключения
+									static_cast <client_t *> (ret.first->second.get())->host.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+								break;
+								// Если установлен другой протокол
+								default: ok = false;
+							}
+						} break;
+					}
+					// Если всё прошло успешно
+					if(ok)
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					// Если всё прошло не успешно
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+						#endif
+						// Удаляем созданное событие
+						::__awh_nodes__.erase(ret.first);
+					}
 				} break;
 				// Для неизвестного типа сокета
 				default: {
@@ -1337,8 +2540,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 							), log_t::flag_t::WARNING
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
@@ -1397,8 +2600,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					), log_t::flag_t::WARNING
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("Event cannot be created because the family it belongs to is not defined", log_t::flag_t::WARNING);
@@ -1418,8 +2621,1061 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
  * @return         пара идентификаторов созданных событий
  */
 std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept {
-
-	return {0, 0};
+	// Результат работы функции
+	std::array <awh::event::id_t, 2> result = {0,0};
+	{
+		// Список сокетов для инициализации
+		int32_t fds[2] = {-1,-1};
+		/**
+		 * Определяем семейство сокета
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPC
+			case static_cast <uint8_t> (event::family_t::IPC): {
+				// Выполняем инициализацию файловых дескрипторов
+				if(::pipe(fds) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (type),
+								static_cast <uint16_t> (protocol),
+								static_cast <uint16_t> (mode)
+							),
+							log_t::flag_t::CRITICAL, ::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства UDPv4
+			case static_cast <uint8_t> (event::family_t::UDPV4):
+			// Для семейства UDPv6
+			case static_cast <uint8_t> (event::family_t::UDPV6): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Для типа сокета RAW
+					case static_cast <uint8_t> (event::type_t::RAW): {
+						/**
+						 * Определяем тип подключения
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства UDPv4
+							case static_cast <uint8_t> (event::family_t::UDPV4): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол не определён
+									case static_cast <uint8_t> (event::protocol_t::NONE): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_RAW, 0, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как RAW
+									case static_cast <uint8_t> (event::protocol_t::RAW): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_RAW, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как UDP
+									case static_cast <uint8_t> (event::protocol_t::UDP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_UDP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как IGMP
+									case static_cast <uint8_t> (event::protocol_t::IGMP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_IGMP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как ICMP
+									case static_cast <uint8_t> (event::protocol_t::ICMP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_ICMP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+								}
+							} break;
+							// Для семейства UDPv6
+							case static_cast <uint8_t> (event::family_t::UDPV6): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол не определён
+									case static_cast <uint8_t> (event::protocol_t::NONE): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_RAW, 0, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как UDP
+									case static_cast <uint8_t> (event::protocol_t::UDP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_RAW, IPPROTO_UDP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}	
+									} break;
+									// Если протокол определён как ICMP
+									case static_cast <uint8_t> (event::protocol_t::ICMP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+								}
+							} break;
+						}
+					} break;
+					// Для типа сокета DATAGRAM
+					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+						/**
+						 * Определяем тип подключения
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства UDPv4
+							case static_cast <uint8_t> (event::family_t::UDPV4): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол не определён
+									case static_cast <uint8_t> (event::protocol_t::NONE): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_DGRAM, 0, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как UDP
+									case static_cast <uint8_t> (event::protocol_t::UDP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_DGRAM, IPPROTO_UDP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как IGMP
+									case static_cast <uint8_t> (event::protocol_t::IGMP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_DGRAM, IPPROTO_IGMP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как ICMP
+									case static_cast <uint8_t> (event::protocol_t::ICMP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_DGRAM, IPPROTO_ICMP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+								}
+							} break;
+							// Для семейства UDPv6
+							case static_cast <uint8_t> (event::family_t::UDPV6): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол не определён
+									case static_cast <uint8_t> (event::protocol_t::NONE): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_DGRAM, 0, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как UDP
+									case static_cast <uint8_t> (event::protocol_t::UDP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_DGRAM, IPPROTO_UDP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}	
+									} break;
+									// Если протокол определён как ICMP
+									case static_cast <uint8_t> (event::protocol_t::ICMP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+								}
+							} break;
+						}
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a UDP socket cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+			// Для семейства UNIX-доменных сокетов
+			case static_cast <uint8_t> (event::family_t::UDS): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Для типа сокета STREAM
+					case static_cast <uint8_t> (event::type_t::STREAM): {
+						// Выполняем инициализацию файловых дескрипторов
+						if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (type),
+										static_cast <uint16_t> (protocol),
+										static_cast <uint16_t> (mode)
+									),
+									log_t::flag_t::CRITICAL, ::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Для типа сокета SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						// Выполняем инициализацию файловых дескрипторов
+						if(::socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fds) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (type),
+										static_cast <uint16_t> (protocol),
+										static_cast <uint16_t> (mode)
+									),
+									log_t::flag_t::CRITICAL, ::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Для типа сокета DATAGRAM
+					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+						/**
+						 * Определяем протокол
+						 */
+						switch(static_cast <uint8_t> (protocol)){
+							// Если протокол не определён
+							case static_cast <uint8_t> (event::protocol_t::NONE): {
+								// Выполняем инициализацию файловых дескрипторов
+								if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, fds) != 0){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug(
+											"%s", __PRETTY_FUNCTION__,
+											std::make_tuple(
+												static_cast <uint16_t> (family),
+												static_cast <uint16_t> (type),
+												static_cast <uint16_t> (protocol),
+												static_cast <uint16_t> (mode)
+											),
+											log_t::flag_t::CRITICAL, ::strerror(errno)
+										);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									#endif
+								}
+							} break;
+						}
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a Unix socket cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4):
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Для типа сокета STREAM
+					case static_cast <uint8_t> (event::type_t::STREAM): {
+						/**
+						 * Определяем тип подключения
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол не определён
+									case static_cast <uint8_t> (event::protocol_t::NONE): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_STREAM, 0, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как TCP
+									case static_cast <uint8_t> (event::protocol_t::TCP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_STREAM, IPPROTO_TCP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как SCTP
+									case static_cast <uint8_t> (event::protocol_t::SCTP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_STREAM, IPPROTO_SCTP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол не определён
+									case static_cast <uint8_t> (event::protocol_t::NONE): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_STREAM, 0, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как TCP
+									case static_cast <uint8_t> (event::protocol_t::TCP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_STREAM, IPPROTO_TCP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если протокол определён как SCTP
+									case static_cast <uint8_t> (event::protocol_t::SCTP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_STREAM, IPPROTO_SCTP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+								}
+							} break;
+						}
+					} break;
+					// Для типа сокета SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						/**
+						 * Определяем тип подключения
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол определён как SCTP
+									case static_cast <uint8_t> (event::protocol_t::SCTP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если установлен другой протокол
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug(
+												"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
+												__PRETTY_FUNCTION__, std::make_tuple(
+													static_cast <uint16_t> (family),
+													static_cast <uint16_t> (type),
+													static_cast <uint16_t> (protocol),
+													static_cast <uint16_t> (mode)
+												), log_t::flag_t::WARNING
+											);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем протокол
+								 */
+								switch(static_cast <uint8_t> (protocol)){
+									// Если протокол определён как SCTP
+									case static_cast <uint8_t> (event::protocol_t::SCTP): {
+										// Выполняем инициализацию файловых дескрипторов
+										if(::socketpair(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP, fds) != 0){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug(
+													"%s", __PRETTY_FUNCTION__,
+													std::make_tuple(
+														static_cast <uint16_t> (family),
+														static_cast <uint16_t> (type),
+														static_cast <uint16_t> (protocol),
+														static_cast <uint16_t> (mode)
+													),
+													log_t::flag_t::CRITICAL, ::strerror(errno)
+												);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+									} break;
+									// Если установлен другой протокол
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug(
+												"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
+												__PRETTY_FUNCTION__, std::make_tuple(
+													static_cast <uint16_t> (family),
+													static_cast <uint16_t> (type),
+													static_cast <uint16_t> (protocol),
+													static_cast <uint16_t> (mode)
+												), log_t::flag_t::WARNING
+											);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a IP socket cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+		}
+		// Если пара сокетов создана удачно
+		if((fds[0] != -1) && (fds[1] != -1)){
+			{
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг режима сокета
+				ret.first->second->state.mode = mode;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Создаем сокет подключения
+				static_cast <client_t *> (ret.first->second.get())->host.fd = fds[0];
+				// Возвращаем идентификатор созданного события
+				result[0] = ret.first->first;
+			}{
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг режима сокета
+				ret.first->second->state.mode = mode;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Создаем сокет подключения
+				static_cast <client_t *> (ret.first->second.get())->host.fd = fds[1];
+				// Возвращаем идентификатор созданного события
+				result[1] = ret.first->first;
+			}
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод получения режима действия события
