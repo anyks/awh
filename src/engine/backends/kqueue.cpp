@@ -48,6 +48,7 @@
 #include <fcntl.h>
 #include <sys/event.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 /**
  * Подключаем наши заголовочные файлы
@@ -74,21 +75,26 @@ typedef struct Address {
 	uint16_t size;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit Address() noexcept : size(0) {}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	virtual ~Address() noexcept = default;
 } __attribute__((packed)) address_t;
 
 /**
  * @brief Структура IPv4-адреса
  *
  */
-typedef struct AddressIPv4 : public Address {
+typedef struct AddressIPv4 : public address_t {
 	// IP-адрес
 	uint32_t address;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressIPv4() noexcept : address(0) {}
 } __attribute__((packed)) address_ipv4_t;
@@ -97,12 +103,12 @@ typedef struct AddressIPv4 : public Address {
  * @brief Структура IPv6-адреса
  *
  */
-typedef struct AddressIPv6 : public Address {
+typedef struct AddressIPv6 : public address_t {
 	// IP-адрес
 	uint8_t address[16];
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressIPv6() noexcept : address{0} {}
 } __attribute__((packed)) address_ipv6_t;
@@ -111,12 +117,12 @@ typedef struct AddressIPv6 : public Address {
  * @brief Структура MAC-адреса
  *
  */
-typedef struct AddressMAC : public Address {
+typedef struct AddressMAC : public address_t {
 	// MAC-адрес
 	uint8_t address[6];
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressMAC() noexcept : address{0} {}
 } __attribute__((packed)) address_mac_t;
@@ -125,12 +131,12 @@ typedef struct AddressMAC : public Address {
  * @brief Структура сетевого адреса
  *
  */
-typedef struct AddressNetwork : public Address {
+typedef struct AddressNetwork : public address_t {
 	// Префикс сети
 	uint8_t prefix;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressNetwork() noexcept : prefix(0) {}
 } __attribute__((packed)) address_network_t;
@@ -139,26 +145,31 @@ typedef struct AddressNetwork : public Address {
  * @brief Структура IPv4 сетевого адреса
  *
  */
-typedef struct AddressNetworkIPv4 : public AddressNetwork {
+typedef struct AddressNetworkIPv4 : public address_network_t {
 	// IP-адрес сети
 	uint32_t address;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressNetworkIPv4() noexcept : address(0) {}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	virtual ~AddressNetworkIPv4() noexcept = default;
 } __attribute__((packed)) address_network_ipv4_t;
 
 /**
  * @brief Структура IPv6 сетевого адреса
  *
  */
-typedef struct AddressNetworkIPv6 : public AddressNetwork {
+typedef struct AddressNetworkIPv6 : public address_network_t {
 	// IP-адрес сети
 	uint8_t address[16];
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressNetworkIPv6() noexcept : address{0} {}
 } __attribute__((packed)) address_network_ipv6_t;
@@ -167,12 +178,12 @@ typedef struct AddressNetworkIPv6 : public AddressNetwork {
  * @brief Структура адреса файловой системы
  *
  */
-typedef struct AddressFilesystem : public Address {
+typedef struct AddressFilesystem : public address_t {
 	// Путь к файлу, каталогу или сокету
 	string address;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit AddressFilesystem() noexcept : address{""} {}
 } address_fs_t;
@@ -186,9 +197,14 @@ typedef struct Host {
 	int32_t fd;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit Host() noexcept : fd(-1) {}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	virtual ~Host() noexcept = default;
 } __attribute__((packed)) host_t;
 
 /**
@@ -202,21 +218,21 @@ typedef struct HostIP : public host_t {
 	address_t address;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit HostIP() noexcept : port(0) {}
 } __attribute__((packed)) host_ip_t;
 
 /**
  * @brief Структура UNIX-хоста
- * 
+ *
  */
 typedef struct HostUDC : public host_t {
 	// Путь к сокету
 	address_fs_t path;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit HostUDC() noexcept {}
 } host_udc_t;
@@ -263,13 +279,18 @@ typedef struct Callbacks {
 	 *
 	 */
 	explicit Callbacks() noexcept : error(nullptr), status(nullptr) {}
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	virtual ~Callbacks() = default;
 } callbacks_t;
 
 /**
  * @brief Структура обратных вызовов сервера
  *
  */
-typedef struct CallbacksServer : public Callbacks {
+typedef struct CallbacksServer : public callbacks_t {
 	// Обратный вызов при принятии события
 	awh::engine_t::acceptCallback accept;
 	/**
@@ -283,7 +304,7 @@ typedef struct CallbacksServer : public Callbacks {
  * @brief Структура обратных вызовов клиента
  *
  */
-typedef struct CallbacksClient : public Callbacks {
+typedef struct CallbacksClient : public callbacks_t {
 	// Обратный вызов при чтении события
 	awh::engine_t::readCallback read;
 	// Обратный вызов при записи события
@@ -296,19 +317,43 @@ typedef struct CallbacksClient : public Callbacks {
 } callbacks_client_t;
 
 /**
+ * @brief Структура конечного подключения
+ *
+ */
+typedef struct Endpoint {
+	// Размер объекта подключения
+	socklen_t size;
+	// Параметры подключения клиента
+	struct sockaddr_storage client;
+	// Параметры подключения сервера
+	struct sockaddr_storage server;
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	explicit Endpoint() noexcept :
+	 size(0), client{0}, server{0} {}
+} endpoint_t;
+
+/**
  * @brief Структура узла события
  *
  */
 typedef struct Node {
 	// Состояние события
 	state_t state;
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	virtual ~Node() = default;
 } node_t;
 
 /**
  * @brief Структура таймера
  *
  */
-typedef struct Timer : public Node {
+typedef struct Timer : public node_t {
 	// Задержка времени таймера в миллисекундах
 	uint32_t delay;
 	// Обратные вызовы события
@@ -324,7 +369,7 @@ typedef struct Timer : public Node {
  * @brief Структура файловой системы
  *
  */
-typedef struct Filesystem : public Node {
+typedef struct Filesystem : public node_t {
 	// Файловый дескриптор
 	int32_t fd;
 	// Путь к файлу, каталогу или сокету
@@ -337,7 +382,7 @@ typedef struct Filesystem : public Node {
 	unordered_set <unique_ptr <address_t>> whitelist;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit Filesystem() noexcept : fd(-1) {}
 } fs_t;
@@ -346,11 +391,13 @@ typedef struct Filesystem : public Node {
  * @brief Структура сервера
  *
  */
-typedef struct Server : public Node {
+typedef struct Server : public node_t {
 	// Хост события
 	host_t host;
 	// Размер очереди ожидания подключения
 	uint32_t backlog;
+	// Объект параметров конечной точки
+	endpoint_t endpoint;
 	// MAC-адрес сетевого интерфейса
 	address_mac_t macAddress;
 	// Обратные вызовы события
@@ -367,7 +414,7 @@ typedef struct Server : public Node {
 	unordered_set <unique_ptr <address_network_t>> networks;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit Server() noexcept : backlog{SOMAXCONN} {}
 } server_t;
@@ -376,9 +423,11 @@ typedef struct Server : public Node {
  * @brief Структура клиента
  *
  */
-typedef struct Client : public Node {
+typedef struct Client : public node_t {
 	// Хост события
 	host_t host;
+	// Объект параметров конечной точки
+	endpoint_t endpoint;
 	// Обратные вызовы события
 	callbacks_client_t callbacks;
 	// Сетевые интерфейсы события
@@ -399,16 +448,16 @@ typedef struct Client : public Node {
 	unordered_map <awh::event::action_t, awh::event::notify_t> actions;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit Client() noexcept {}
 } client_t;
 
 /**
  * @brief Структура подключённого клиента
- * 
+ *
  */
-typedef struct Peer : public Node {
+typedef struct Peer : public node_t {
 	// Хост события
 	host_t host;
 	// MAC-адрес сетевого интерфейса
@@ -425,7 +474,7 @@ typedef struct Peer : public Node {
 	unordered_map <awh::event::action_t, awh::event::notify_t> actions;
 	/**
 	 * @brief Конструктор
-	 * 
+	 *
 	 */
 	explicit Peer() noexcept {}
 } peer_t;
@@ -435,10 +484,9 @@ typedef struct Peer : public Node {
  */
 static unordered_map <awh::event::id_t, unique_ptr <node_t>> __awh_nodes__;
 
-
 /**
  * @brief Функция генерации уникального идентификатора
- * 
+ *
  * @return уникальный идентификатор
  */
 static uint32_t identifier() noexcept {
@@ -765,20 +813,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 				 */
 				switch(static_cast <uint8_t> (i->second->state.type)){
 					// Для типа сокета RAW
-					case static_cast <uint8_t> (event::type_t::RAW): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-						// Устанавливаем флаг режима сокета
-						ret.first->second->state.mode = mode;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
+					case static_cast <uint8_t> (event::type_t::RAW):
 					// Для типа сокета DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Выполняем создание события
@@ -791,9 +826,62 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 						ret.first->second->state.type = i->second->state.type;
 						// Устанавливаем флаг семейства сокета
 						ret.first->second->state.family = i->second->state.family;
-						// Если мактивирован протокол DTLS
-						if(protocol == event::protocol_t::DTLS){
-						
+						/**
+						 * Определяем чем является текущая нода
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								client_t * first = static_cast <client_t *> (i->second.get());
+								// Получаем текущее значение пира получающего параметры
+								client_t * second = static_cast <client_t *> (ret.first->second.get());
+								/**
+								* Определяем тип подключения
+								*/
+								switch(first->endpoint.server.ss_family){
+									// Для протокола IPv4
+									case AF_INET:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для протокола IPv6
+									case AF_INET6:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Выполняем копирование объекта подключения клиента
+								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+								// Выполняем копирование объекта подключения сервера
+								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+							} break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем текущее значение объекта сервера
+								server_t * first = static_cast <server_t *> (i->second.get());
+								// Получаем текущее значение пира получающего параметры
+								client_t * second = static_cast <client_t *> (ret.first->second.get());
+								/**
+								* Определяем тип подключения
+								*/
+								switch(first->endpoint.server.ss_family){
+									// Для протокола IPv4
+									case AF_INET:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для протокола IPv6
+									case AF_INET6:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Выполняем копирование объекта подключения клиента
+								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+								// Выполняем копирование объекта подключения сервера
+								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+							} break;
 						}
 						// Возвращаем идентификатор созданного события
 						result = ret.first->first;
@@ -842,6 +930,63 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 						ret.first->second->state.type = i->second->state.type;
 						// Устанавливаем флаг семейства сокета
 						ret.first->second->state.family = i->second->state.family;
+						/**
+						 * Определяем чем является текущая нода
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								client_t * first = static_cast <client_t *> (i->second.get());
+								// Получаем текущее значение пира получающего параметры
+								client_t * second = static_cast <client_t *> (ret.first->second.get());
+								/**
+								* Определяем тип подключения
+								*/
+								switch(first->endpoint.server.ss_family){
+									// Для протокола IPv4
+									case AF_INET:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для протокола IPv6
+									case AF_INET6:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Выполняем копирование объекта подключения клиента
+								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+								// Выполняем копирование объекта подключения сервера
+								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+							} break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем текущее значение объекта сервера
+								server_t * first = static_cast <server_t *> (i->second.get());
+								// Получаем текущее значение пира получающего параметры
+								client_t * second = static_cast <client_t *> (ret.first->second.get());
+								/**
+								* Определяем тип подключения
+								*/
+								switch(first->endpoint.server.ss_family){
+									// Для протокола IPv4
+									case AF_INET:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для протокола IPv6
+									case AF_INET6:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Выполняем копирование объекта подключения клиента
+								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+								// Выполняем копирование объекта подключения сервера
+								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+							} break;
+						}
 						// Возвращаем идентификатор созданного события
 						result = ret.first->first;
 					} break;
@@ -891,6 +1036,63 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 						ret.first->second->state.type = i->second->state.type;
 						// Устанавливаем флаг семейства сокета
 						ret.first->second->state.family = i->second->state.family;
+						/**
+						 * Определяем чем является текущая нода
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								client_t * first = static_cast <client_t *> (i->second.get());
+								// Получаем текущее значение пира получающего параметры
+								client_t * second = static_cast <client_t *> (ret.first->second.get());
+								/**
+								* Определяем тип подключения
+								*/
+								switch(first->endpoint.server.ss_family){
+									// Для протокола IPv4
+									case AF_INET:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для протокола IPv6
+									case AF_INET6:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Выполняем копирование объекта подключения клиента
+								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+								// Выполняем копирование объекта подключения сервера
+								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+							} break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем текущее значение объекта сервера
+								server_t * first = static_cast <server_t *> (i->second.get());
+								// Получаем текущее значение пира получающего параметры
+								client_t * second = static_cast <client_t *> (ret.first->second.get());
+								/**
+								* Определяем тип подключения
+								*/
+								switch(first->endpoint.server.ss_family){
+									// Для протокола IPv4
+									case AF_INET:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для протокола IPv6
+									case AF_INET6:
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Выполняем копирование объекта подключения клиента
+								::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+								// Выполняем копирование объекта подключения сервера
+								::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+							} break;
+						}
 						// Возвращаем идентификатор созданного события
 						result = ret.first->first;
 					} break;

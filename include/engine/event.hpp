@@ -168,7 +168,7 @@ namespace awh {
 		 *
 		 */
 		enum class family_t : uint8_t {
-			NONE     = 0x00, // Семейство не определено 
+			NONE     = 0x00, // Семейство не определено
 			UDP      = 0x01, // Семейство сокетов UDP
 			UDS      = 0x02, // Семейство Unix Domain Sockets
 			IPC      = 0x03, // Семейство межпроцессного взаимодействия
