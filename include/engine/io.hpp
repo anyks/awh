@@ -118,15 +118,14 @@ namespace awh {
 			 */
 			bool destroy(const event::id_t id) noexcept;
 			/**
-			 * @brief Метод получения пары событий для сокета
+			 * @brief Метод создания нового события на основе существующего
 			 *
-			 * @param family   семейство сокета
-			 * @param type     тип сокета
+			 * @param id       идентификатор существующего события
 			 * @param protocol протокол сокета
 			 * @param mode     режим сокета
-			 * @return         пара идентификаторов созданных событий
+			 * @return         идентификатор созданного события
 			 */
-			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
+			event::id_t event(const event::id_t id, const event::protocol_t protocol, const event::mode_t mode) noexcept;
 			/**
 			 * @brief Метод создания нового события
 			 *
@@ -138,16 +137,15 @@ namespace awh {
 			 */
 			event::id_t event(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
 			/**
-			 * @brief Метод создания нового события на основе существующего
+			 * @brief Метод получения пары событий для сокета
 			 *
-			 * @param id       идентификатор существующего события
 			 * @param family   семейство сокета
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
 			 * @param mode     режим сокета
-			 * @return         идентификатор созданного события
+			 * @return         пара идентификаторов созданных событий
 			 */
-			event::id_t event(const event::id_t id, const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
+			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод получения режима действия события

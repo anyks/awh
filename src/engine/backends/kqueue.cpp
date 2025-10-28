@@ -740,17 +740,231 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 	return false;
 }
 /**
- * @brief Метод получения пары событий для сокета
+ * @brief Метод создания нового события на основе существующего
  *
- * @param family   семейство сокета
- * @param type     тип сокета
+ * @param id       идентификатор существующего события
  * @param protocol протокол сокета
  * @param mode     режим сокета
- * @return         пара идентификаторов созданных событий
+ * @return         идентификатор созданного события
  */
-std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept {
-
-	return {0, 0};
+awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t protocol, const event::mode_t mode) noexcept {
+	// Результат работы функции
+	event::id_t result = 0;
+	// Выполняем поиск идентификатора события
+	auto i = ::__awh_nodes__.find(id);
+	// Если идентификатор события найден
+	if(i != ::__awh_nodes__.end()){
+		/**
+		 * Определяем семейство сокета
+		 */
+		switch(static_cast <uint8_t> (i->second->state.family)){
+			// Для семейства UDP
+			case static_cast <uint8_t> (event::family_t::UDP): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (i->second->state.type)){
+					// Для типа сокета RAW
+					case static_cast <uint8_t> (event::type_t::RAW):
+					// Для типа сокета DATAGRAM
+					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+						// Устанавливаем флаг режима сокета
+						ret.first->second->state.mode = mode;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Если мактивирован протокол DTLS
+						if(protocol == event::protocol_t::DTLS){
+						
+						}
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a UDP socket cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									id, static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+			// Для семейства UNIX-доменных сокетов
+			case static_cast <uint8_t> (event::family_t::UDS): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (i->second->state.type)){
+					// Для типа сокета STREAM
+					case static_cast <uint8_t> (event::type_t::STREAM):
+					// Для типа сокета DATAGRAM
+					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+						// Устанавливаем флаг режима сокета
+						ret.first->second->state.mode = mode;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a Unix socket cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									id, static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4):
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (i->second->state.type)){
+					// Для типа сокета STREAM
+					case static_cast <uint8_t> (event::type_t::STREAM):
+					// Для типа сокета SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+						// Устанавливаем флаг режима сокета
+						ret.first->second->state.mode = mode;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a IP socket cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									id, static_cast <uint16_t> (protocol),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+			// Для семейства директорий
+			case static_cast <uint8_t> (event::family_t::DIR):
+			// Для семейства файловой системы
+			case static_cast <uint8_t> (event::family_t::FILE): {
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <fs_t> ());
+				// Устанавливаем флаг режима сокета
+				ret.first->second->state.mode = mode;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = i->second->state.type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = i->second->state.family;
+				// Возвращаем идентификатор созданного события
+				result = ret.first->first;
+			} break;
+			// Для семейства таймеров
+			case static_cast <uint8_t> (event::family_t::TIMER):
+			// Для семейства интервалов
+			case static_cast <uint8_t> (event::family_t::INTERVAL): {
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <timer_t> ());
+				// Устанавливаем флаг режима сокета
+				ret.first->second->state.mode = mode;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = i->second->state.type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = i->second->state.family;
+				// Возвращаем идентификатор созданного события
+				result = ret.first->first;
+			} break;
+			// Для неизвестного семейства
+			default: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug(
+						"Event cannot be created because the family it belongs to is not defined",
+						__PRETTY_FUNCTION__, std::make_tuple(
+							id, static_cast <uint16_t> (protocol),
+							static_cast <uint16_t> (mode)
+						), log_t::flag_t::WARNING
+					);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Event cannot be created because the family it belongs to is not defined", log_t::flag_t::WARNING);
+				#endif
+			}
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод создания нового события
@@ -780,12 +994,12 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Выполняем создание события
 					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-					// Устанавливаем флаг семейства сокета
-					ret.first->second->state.family = family;
 					// Устанавливаем флаг типа сокета
 					ret.first->second->state.type = type;
 					// Устанавливаем флаг режима сокета
 					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
 					// Устанавливаем флаг протокола сокета
 					ret.first->second->state.protocol = protocol;
 					// Возвращаем идентификатор созданного события
@@ -798,7 +1012,15 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("An event for a UDP socket cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
+						this->_log->debug(
+							"An event for a UDP socket cannot be created because it has an invalid initialization type",
+							__PRETTY_FUNCTION__, std::make_tuple(
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (type),
+								static_cast <uint16_t> (protocol),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING
+						);
 					/**
 					* Если режим отладки не включён
 					*/
@@ -821,12 +1043,12 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Выполняем создание события
 					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-					// Устанавливаем флаг семейства сокета
-					ret.first->second->state.family = family;
 					// Устанавливаем флаг типа сокета
 					ret.first->second->state.type = type;
 					// Устанавливаем флаг режима сокета
 					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
 					// Устанавливаем флаг протокола сокета
 					ret.first->second->state.protocol = protocol;
 					// Возвращаем идентификатор созданного события
@@ -839,7 +1061,15 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("An event for a Unix socket cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
+						this->_log->debug(
+							"An event for a Unix socket cannot be created because it has an invalid initialization type",
+							__PRETTY_FUNCTION__, std::make_tuple(
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (type),
+								static_cast <uint16_t> (protocol),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING
+						);
 					/**
 					* Если режим отладки не включён
 					*/
@@ -864,12 +1094,12 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 				case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 					// Выполняем создание события
 					auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
-					// Устанавливаем флаг семейства сокета
-					ret.first->second->state.family = family;
 					// Устанавливаем флаг типа сокета
 					ret.first->second->state.type = type;
 					// Устанавливаем флаг режима сокета
 					ret.first->second->state.mode = mode;
+					// Устанавливаем флаг семейства сокета
+					ret.first->second->state.family = family;
 					// Устанавливаем флаг протокола сокета
 					ret.first->second->state.protocol = protocol;
 					// Возвращаем идентификатор созданного события
@@ -882,7 +1112,15 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("An event for a IP socket cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
+						this->_log->debug(
+							"An event for a IP socket cannot be created because it has an invalid initialization type",
+							__PRETTY_FUNCTION__, std::make_tuple(
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (type),
+								static_cast <uint16_t> (protocol),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING
+						);
 					/**
 					* Если режим отладки не включён
 					*/
@@ -899,12 +1137,12 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 		case static_cast <uint8_t> (event::family_t::FILE): {
 			// Выполняем создание события
 			auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <fs_t> ());
-			// Устанавливаем флаг семейства сокета
-			ret.first->second->state.family = family;
 			// Устанавливаем флаг типа сокета
 			ret.first->second->state.type = type;
 			// Устанавливаем флаг режима сокета
 			ret.first->second->state.mode = mode;
+			// Устанавливаем флаг семейства сокета
+			ret.first->second->state.family = family;
 			// Устанавливаем флаг протокола сокета
 			ret.first->second->state.protocol = protocol;
 			// Возвращаем идентификатор созданного события
@@ -916,12 +1154,12 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 		case static_cast <uint8_t> (event::family_t::INTERVAL): {
 			// Выполняем создание события
 			auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <timer_t> ());
-			// Устанавливаем флаг семейства сокета
-			ret.first->second->state.family = family;
 			// Устанавливаем флаг типа сокета
 			ret.first->second->state.type = type;
 			// Устанавливаем флаг режима сокета
 			ret.first->second->state.mode = mode;
+			// Устанавливаем флаг семейства сокета
+			ret.first->second->state.family = family;
 			// Устанавливаем флаг протокола сокета
 			ret.first->second->state.protocol = protocol;
 			// Возвращаем идентификатор созданного события
@@ -934,7 +1172,15 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Event cannot be created because the family it belongs to is not defined", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
+				this->_log->debug(
+					"Event cannot be created because the family it belongs to is not defined",
+					__PRETTY_FUNCTION__, std::make_tuple(
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (protocol),
+						static_cast <uint16_t> (mode)
+					), log_t::flag_t::WARNING
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -948,18 +1194,17 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 	return result;
 }
 /**
- * @brief Метод создания нового события на основе существующего
+ * @brief Метод получения пары событий для сокета
  *
- * @param id       идентификатор существующего события
  * @param family   семейство сокета
  * @param type     тип сокета
  * @param protocol протокол сокета
  * @param mode     режим сокета
- * @return         идентификатор созданного события
+ * @return         пара идентификаторов созданных событий
  */
-awh::event::id_t awh::IO::event(const event::id_t id, const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept {
+std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept {
 
-	return 0;
+	return {0, 0};
 }
 /**
  * @brief Метод получения режима действия события
