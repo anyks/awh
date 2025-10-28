@@ -765,7 +765,20 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 				 */
 				switch(static_cast <uint8_t> (i->second->state.type)){
 					// Для типа сокета RAW
-					case static_cast <uint8_t> (event::type_t::RAW):
+					case static_cast <uint8_t> (event::type_t::RAW): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> ());
+						// Устанавливаем флаг режима сокета
+						ret.first->second->state.mode = mode;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
 					// Для типа сокета DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Выполняем создание события
