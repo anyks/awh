@@ -28,7 +28,6 @@
  * Наши модули
  */
 #include "event.hpp"
-#include "watch.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
 #include "../net/net.hpp"
@@ -66,13 +65,8 @@ namespace awh {
 			// Обратный вызов при чтении из события
 			using readCallback = function <void (const event::id_t, const uint8_t *, const size_t)>;
 		protected:
-			// Объект таймера событий
-			SOCKET _timer;
-		protected:
 			// Объект работы с сетью
-			net_t _net;
-			// Объект работы таймеров
-			watch_t _watch;
+			mutable net_t _net;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -638,8 +632,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept :
-			 _timer(INVALID_SOCKET), _net(fmk, log), _watch(fmk, log), _fmk(fmk), _log(log) {}
+			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept : _net(fmk, log), _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
