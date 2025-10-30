@@ -316,6 +316,7 @@ include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 # Выполняем подключение бэкендов IO
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
+    "${CMAKE_SOURCE_DIR}/src/engine/sys/bsd.cpp"
     "${CMAKE_SOURCE_DIR}/src/engine/backends/kqueue.cpp"
 )
 
@@ -330,8 +331,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/engine/fds.cpp"
-    "${CMAKE_SOURCE_DIR}/src/engine/watch.cpp"
-    "${CMAKE_SOURCE_DIR}/src/engine/notifier.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"

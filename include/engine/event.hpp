@@ -19,6 +19,7 @@
  * Стандартные модули
  */
 #include <cstdint>
+#include <functional>
 
 /**
  * @brief основное пространство имён
@@ -219,6 +220,29 @@ namespace awh {
 			MCASTLEAVE = 0x07, // Опция выхода из мультикаст группы
 			RCVTIMEO   = 0x08, // Опция таймаута приёма данных
 			SNDTIMEO   = 0x09  // Опция таймаута отправки данных
+		};
+		/**
+		 * @brief пространство имён работы с обратными вызовами
+		 *
+		 */
+		namespace callback {
+			/**
+			 * Типы обратных вызовов событий
+			 */
+			// Обратный вызов события пользователя
+			using user_t = std::function <void (const uint32_t)>;
+			// Обратный вызов при записи в событие
+			using write_t = std::function <void (const id_t, const size_t)>;
+			// Обратный вызов при подключении события
+			using connect_t = std::function <void (const id_t, const bool)>;
+			// Обратный вызов при ошибке события
+			using error_t = std::function <void (const id_t, const std::string &)>;
+			// Обратный вызов при принятии события
+			using accept_t = std::function <void (const id_t, const id_t)>;
+			// Обратный вызов при изменении статуса события
+			using status_t = std::function <void (const id_t, const status_t)>;
+			// Обратный вызов при чтении из события
+			using read_t = std::function <void (const id_t, const uint8_t *, const size_t)>;
 		};
 	};
 };

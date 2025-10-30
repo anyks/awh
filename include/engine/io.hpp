@@ -44,12 +44,21 @@ namespace awh {
 			bool poll(const int32_t timeout = -1) noexcept;
 		public:
 			/**
+			 * @brief Метод настройки события
+			 *
+			 * @param id    идентификатор события
+			 * @param delay задержка таймера события в миллисекундах
+			 * @return      результат выполнения настройки
+			 */
+			bool setup(const event::id_t id, const uint16_t delay = 0) noexcept;
+		public:
+			/**
 			 * @brief Метод получения порта события
 			 *
 			 * @param id идентификатор события
 			 * @return   порт события
 			 */
-			uint32_t port(const event::id_t id) const noexcept;
+			uint16_t port(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод установки порта события
 			 *
@@ -57,7 +66,7 @@ namespace awh {
 			 * @param port порт события
 			 * @return     результат выполнения установки
 			 */
-			bool port(const event::id_t id, const uint32_t port) noexcept;
+			bool port(const event::id_t id, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод получения хоста события
@@ -76,6 +85,21 @@ namespace awh {
 			bool host(const event::id_t id, const string & host) noexcept;
 		public:
 			/**
+			 * @brief Метод получения типа узла события
+			 *
+			 * @param id идентификатор события
+			 * @return   тип узла события
+			 */
+			event::node_t node(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки типа узла события
+			 * @param id   идентификатор события
+			 * @param node тип узла события
+			 * @return     результат выполнения установки
+			 */
+			bool node(const event::id_t id, const event::node_t node) noexcept;
+		public:
+			/**
 			 * @brief Метод получения адреса события
 			 *
 			 * @param id      идентификатор события
@@ -92,23 +116,6 @@ namespace awh {
 			 * @return        результат выполнения установки
 			 */
 			bool address(const event::id_t id, const event::address_t address, const string & value) noexcept;
-		public:
-			/**
-			 * @brief Метод настройки события
-			 *
-			 * @param id    идентификатор события
-			 * @param delay задержка таймера события в миллисекундах
-			 * @return      результат выполнения настройки
-			 */
-			bool setup(const event::id_t id, const uint32_t delay) noexcept;
-			/**
-			 * @brief Метод настройки события
-			 *
-			 * @param id   идентификатор события
-			 * @param node тип узла события
-			 * @return     результат выполнения настройки
-			 */
-			bool setup(const event::id_t id, const event::node_t node) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления события
@@ -207,7 +214,7 @@ namespace awh {
 			 * @param async флаг асинхронного принятия соединения
 			 * @return      результат выполнения принятия соединения
 			 */
-			bool accept(const event::id_t id, const uint32_t max, const bool async = false) noexcept;
+			bool accept(const event::id_t id, const uint16_t max, const bool async = false) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки события
@@ -410,14 +417,14 @@ namespace awh {
 			 * @param id      идентификатор события
 			 * @param timeout значение таймаута в миллисекундах
 			 */
-			void readTimeout(const event::id_t id, const uint32_t timeout) noexcept;
+			void readTimeout(const event::id_t id, const uint16_t timeout) noexcept;
 			/**
 			 * @brief Метод установки таймаута на запись события
 			 *
 			 * @param id      идентификатор события
 			 * @param timeout значение таймаута в миллисекундах
 			 */
-			void writeTimeout(const event::id_t id, const uint32_t timeout) noexcept;
+			void writeTimeout(const event::id_t id, const uint16_t timeout) noexcept;
 		public:
 			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -426,7 +433,7 @@ namespace awh {
 			 * @param depth    глубина очереди принятия входящих соединений
 			 * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
 			 */
-			void backlog(const event::id_t id, const uint32_t depth, const bool adaptive = false) noexcept;
+			void backlog(const event::id_t id, const uint16_t depth, const bool adaptive = false) noexcept;
 		public:
 			/**
 			 * @brief Метод получения размера буфера события
@@ -508,13 +515,6 @@ namespace awh {
 			 */
 			event::mode_t mode(const event::id_t id) noexcept;
 			/**
-			 * @brief Метод получения узла события
-			 *
-			 * @param id идентификатор события
-			 * @return   узел события
-			 */
-			event::node_t node(const event::id_t id) noexcept;
-			/**
 			 * @brief Метод получения типа события
 			 *
 			 * @param id идентификатор события
@@ -542,49 +542,49 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const readCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::read_t & cb) noexcept;
 			/**
 			 * @brief Методы установки функции обратного вызова на запись события
 			 *
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const writeCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::write_t & cb) noexcept;
 			/**
 			 * @brief Методы установки функции обратного вызова на ошибку события
 			 *
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const errorCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::error_t & cb) noexcept;
 			/**
 			 * @brief Методы установки функции обратного вызова на изменение статуса события
 			 *
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const statusCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::status_t & cb) noexcept;
 			/**
 			 * @brief Методы установки функции обратного вызова на принятие события
 			 *
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const acceptCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::accept_t & cb) noexcept;
 			/**
 			 * @brief Методы установки функции обратного вызова на подключение события
 			 *
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const connectCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::connect_t & cb) noexcept;
 			/**
 			 * @brief Методы установки функции обратного вызова на получение пользовательского события
 			 *
 			 * @param id идентификатор события
 			 * @param cb объект обратного вызова события
 			 */
-			void on(const event::id_t id, const userEventCallback & cb) noexcept;
+			void on(const event::id_t id, const event::callback::user_t & cb) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
