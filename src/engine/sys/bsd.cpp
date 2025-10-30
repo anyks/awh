@@ -37,6 +37,8 @@
  */
 #include <cerrno>
 #include <memory>
+#include <vector>
+#include <cstring>
 #include <cstdlib>
 #include <iostream>
 
@@ -260,6 +262,290 @@ void awh::System::boostingNetwork() noexcept {
 	}
 }
 /**
+ * @brief Метод установки значений адресов по умолчанию
+ *
+ * @param addresses структура сетевых адресов
+ */
+void awh::System::defaultAddress(addresses_t & addresses) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(addresses.host.size){
+			// Если адрес является IPv4
+			case 4: {
+				// Создаем сокет
+				const socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+				// Создаем список dns серверов
+				vector <string> dns = IPV4_RESOLVER;
+				// Создаем структуру подключения сервера
+				struct sockaddr_in serv;
+				// Обнуляем структуру подключения
+				::memset(&serv, 0, sizeof(serv));
+				// Указываем тип сетевого подключения IPv4
+				serv.sin_family = AF_INET;
+				// Устанавливаем порт DNS-сервера
+				serv.sin_port = htons(53);
+				// Указываем адрес DNS-сервера
+				serv.sin_addr.s_addr = ::inet_addr(dns.front().c_str());
+				// Выполняем подключение к серверу
+				int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
+				// Если подключение удачное
+				if(conn > -1){
+					// Создаем структуру имени
+					struct sockaddr_in name;
+					// Размер структуры
+					socklen_t size = sizeof(name);
+					// Запрашиваем имя сокета
+					conn = ::getsockname(sock, reinterpret_cast <sockaddr *> (&name), &size);
+					// Если ошибки нет
+					if(conn > -1){
+						// Устанавливаем хост сети
+						static_cast <address_network_ipv4_t &> (addresses.host).address = name.sin_addr.s_addr;
+						// Устанавливаем название сетевого интерфейса
+						addresses.iface = this->getInterfaceNameFromIP(addresses.host);
+						// Получаем MAC-адрес сетевого интерфейса
+						this->getMacAddressByName(addresses.iface.c_str(), addresses);
+					}
+				}
+				// Закрываем сокет
+				::close(sock);
+			} break;
+			// Если адрес является IPv6
+			case 16: {
+				// Создаем сокет
+				const socket_t sock = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);
+				// Создаем список dns серверов
+				vector <string> dns = IPV6_RESOLVER;
+				// Создаем структуру подключения сервера
+				struct sockaddr_in6 serv;
+				// Обнуляем структуру подключения
+				::memset(&serv, 0, sizeof(serv));
+				// Указываем тип сетевого подключения IPv4
+				serv.sin6_family = AF_INET6;
+				// Устанавливаем порт DNS сервера
+				serv.sin6_port = htons(53);
+				// Указываем адреса
+				::inet_pton(AF_INET6, dns.front().c_str(), &serv.sin6_addr);
+				// Выполняем подключение к серверу
+				int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
+				// Если подключение удачное
+				if(conn > -1){
+					// Создаем структуру имени
+					struct sockaddr_in6 name;
+					// Размер структуры
+					socklen_t size = sizeof(name);
+					// Запрашиваем имя сокета
+					conn = ::getsockname(sock, reinterpret_cast <sockaddr *> (&name), &size);
+					// Если ошибки нет
+					if(conn > -1){
+						// Хост: просто копируем найденный адрес
+						::memcpy(static_cast <address_network_ipv6_t &> (addresses.host).address, name.sin6_addr.s6_addr, sizeof(name.sin6_addr.s6_addr));
+						// Устанавливаем название сетевого интерфейса
+						addresses.iface = this->getInterfaceNameFromIP(addresses.host);
+						// Получаем MAC-адрес сетевого интерфейса
+						this->getMacAddressByName(addresses.iface.c_str(), addresses);
+					}
+				}
+				// Закрываем сокет
+				::close(sock);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод получения имени сетевого интерфейса по IP-адресу
+ *
+ * @param ip IP-адрес
+ * @return   имя сетевого интерфейса
+ */
+string awh::System::getInterfaceNameFromIP(const address_t & ip) noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Получаем список сетевых интерфейсов
+		struct ifaddrs * ptr = nullptr;
+		// Выполняем получение списка сетевых интерфейсов
+		if(::getifaddrs(&ptr) != 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Unable to get list of network interfaces");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, "Unable to get list of network interfaces");
+			#endif
+			// Выводим пустой результат
+			return result;
+		}
+		// Перебираем все сетевые интерфейсы
+		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(ip.size){
+				// Если адрес является IPv4
+				case 4: {
+					// Если не IPv4 адреса
+					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
+						// Переходим к следующему интерфейсу
+						continue;
+					// Получаем указатель на структуру IPv4
+					struct sockaddr_in * addr = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
+					// Если адреса совпадают
+					if(addr->sin_addr.s_addr == static_cast <const address_network_ipv4_t &> (ip).address){
+						// Устанавливаем результат
+						result = ifa->ifa_name;
+						// Завершаем поиск
+						break;
+					}
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Если не IPv6 адреса
+					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
+						// Переходим к следующему интерфейсу
+						continue;
+					// Получаем указатель на структуру IPv6
+					struct sockaddr_in6 * addr6 = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+					// Если адреса совпадают
+					if(::memcmp(&addr6->sin6_addr, static_cast <const address_network_ipv6_t &> (ip).address, sizeof(in6_addr)) == 0){
+						// Устанавливаем результат
+						result = ifa->ifa_name;
+						// Завершаем поиск
+						break;
+					}
+				} break;
+			}
+		}
+		// Освобождаем память списка сетевых интерфейсов
+		::freeifaddrs(ptr);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим пустой результат
+	return result;
+}
+/**
+ * @brief Метод получения имени сетевого интерфейса по MAC-адресу
+ *
+ * @param mac MAC-адрес
+ * @return    имя сетевого интерфейса
+ */
+string awh::System::getInterfaceNameByMacAddress(const address_mac_t & mac) noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Получаем список сетевых интерфейсов
+		struct ifaddrs * ptr = nullptr;
+		// Выполняем получение списка сетевых интерфейсов
+		if(::getifaddrs(&ptr) != 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Unable to get list of network interfaces");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, "Unable to get list of network interfaces");
+			#endif
+			// Выводим пустой результат
+			return result;
+		}
+		// Перебираем все сетевые интерфейсы
+		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+			// Ищем MAC-адрес интерфейса
+			if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)) {
+				// Получаем указатель на структуру sockaddr_dl
+				struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+				// Проверяем длину MAC-адреса
+				if(sdl->sdl_alen == 6){
+					// Получаем указатель на MAC-адрес
+					const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
+					// Сравниваем MAC-адреса
+					if(::memcmp(static_cast <const address_mac_t &> (mac).address, ptr, 6) == 0){
+						// Устанавливаем результат
+						result = ifa->ifa_name;
+						// Завершаем поиск
+						break;
+					}
+				}
+			}
+		}
+		// Освобождаем память списка сетевых интерфейсов
+		::freeifaddrs(ptr);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим пустой результат
+	return result;
+}
+/**
  * @brief Метод получения MAC-адреса по имени сетевого интерфейса
  *
  * @param iface     имя сетевого интерфейса
@@ -289,7 +575,7 @@ void awh::System::getMacAddressByName(const char * iface, addresses_t & addresse
 				// Проверяем длину MAC-адреса
 				if(sdl->sdl_alen == 6){
 					// Копируем MAC-адрес в результат
-					const uint8_t * ptr = reinterpret_cast<const uint8_t*>(LLADDR(sdl));
+					const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 					// Копируем MAC-адрес в результат
 					::memcpy(static_cast <address_mac_t &> (addresses.mac).address, ptr, 6);
 					// Завершаем поиск MAC-адреса
@@ -308,7 +594,7 @@ void awh::System::getMacAddressByName(const char * iface, addresses_t & addresse
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -348,7 +634,7 @@ bool awh::System::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip, net, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -402,7 +688,7 @@ bool awh::System::ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const ui
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(a, b, static_cast <uint16_t> (length)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -446,13 +732,17 @@ void awh::System::findInterfaceInNetwork(const address_t & net, addresses_t & ad
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Network address is not aligned to prefix");
+						this->_log->debug(
+							"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
+							std::make_tuple(htonl(network.address), static_cast <uint16_t> (network.prefix)),
+							log_t::flag_t::WARNING, htonl(network.address), static_cast <uint16_t> (network.prefix)
+						);
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::WARNING, "Network address is not aligned to prefix");
+						this->_log->print("Network address %u is not aligned to prefix %u", log_t::flag_t::WARNING, htonl(network.address), static_cast <uint16_t> (network.prefix));
 					#endif
 					// Выводим пустой результат
 					return;
@@ -466,13 +756,13 @@ void awh::System::findInterfaceInNetwork(const address_t & net, addresses_t & ad
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "getifaddrs failed");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(htonl(network.address), static_cast <uint16_t> (network.prefix)), log_t::flag_t::WARNING, "Unable to get list of network interfaces");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::WARNING, "getifaddrs failed");
+						this->_log->print("%s", log_t::flag_t::WARNING, "Unable to get list of network interfaces");
 					#endif
 					// Выводим пустой результат
 					return;
@@ -544,13 +834,13 @@ void awh::System::findInterfaceInNetwork(const address_t & net, addresses_t & ad
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, "getifaddrs failed");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network.address, static_cast <uint16_t> (network.prefix)), awh::log_t::flag_t::WARNING, "Unable to get list of network interfaces");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, "getifaddrs failed");
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, "Unable to get list of network interfaces");
 					#endif
 					// Выводим пустой результат
 					return;

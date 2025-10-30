@@ -293,7 +293,7 @@ namespace awh {
 			 *
 			 */
 			typedef struct State {
-				bool onlyIPv6;                   // Флаг активации только IPv6
+				bool onlyIPv6;              // Флаг активации только IPv6
 				event::mode_t mode;         // Флаг режима события
 				event::node_t node;         // Флаг узла события
 				event::type_t type;         // Флаг типа события
@@ -533,6 +533,28 @@ namespace awh {
 			 *
 			 */
 			void boostingNetwork() noexcept;
+		public:
+			/**
+			 * @brief Метод установки значений адресов по умолчанию
+			 *
+			 * @param addresses структура сетевых адресов
+			 */
+			void defaultAddress(addresses_t & addresses) noexcept;
+		public:
+			/**
+			 * @brief Метод получения имени сетевого интерфейса по IP-адресу
+			 *
+			 * @param ip IP-адрес
+			 * @return   имя сетевого интерфейса
+			 */
+			string getInterfaceNameFromIP(const address_t & ip) noexcept;
+			/**
+			 * @brief Метод получения имени сетевого интерфейса по MAC-адресу
+			 *
+			 * @param mac MAC-адрес
+			 * @return    имя сетевого интерфейса
+			 */
+			string getInterfaceNameByMacAddress(const address_mac_t & mac) noexcept;
 		public:
 			/**
 			 * @brief Метод получения MAC-адреса по имени сетевого интерфейса
