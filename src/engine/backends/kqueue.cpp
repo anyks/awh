@@ -950,6 +950,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							macAddress.size = 6;
 							// Копируем полученный MAC-адрес в объект события
 							::memcpy(macAddress.address, &mac, macAddress.size);
+
+							/**
+							 * По MAC-адресу нужно определить IP-адрес из локальной сети (а не сервера)
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						} break;
@@ -965,6 +971,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							macAddress.size = 6;
 							// Копируем полученный MAC-адрес в объект события
 							::memcpy(macAddress.address, &mac, macAddress.size);
+
+							/**
+							 * По MAC-адресу нужно определить IP-адрес сервера, а также сетевой интерфейс
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						} break;
@@ -1042,6 +1054,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							address.prefix = 32;
 							// Копируем полученный IP-адрес в объект события
 							address.address = this->_net.v4(net_t::endian_t::LITTLE);
+
+							/**
+							 * По IP-адресу нужно определить MAC-адрес из локальной сети (а не сервера)
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -1057,6 +1075,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							address.prefix = 32;
 							// Копируем полученный IP-адрес в объект события
 							address.address = this->_net.v4(net_t::endian_t::LITTLE);
+
+							/**
+							 * По IP-адресу нужно определить сетевой интерфейс
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -1072,6 +1096,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							address.prefix = 32;
 							// Копируем полученный IP-адрес в объект события
 							address.address = this->_net.v4(net_t::endian_t::LITTLE);
+
+							/**
+							 * По IP-адресу нужно определить MAC-адрес сервера, а также сетевой интерфейс
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -1095,6 +1125,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							address.prefix = 128;
 							// Копируем полученный IP-адрес в объект события
 							::memcpy(address.address, &this->_net.v6(net_t::endian_t::LITTLE)[0], address.size);
+
+							/**
+							 * По IP-адресу нужно определить MAC-адрес из локальной сети (а не сервера)
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -1110,6 +1146,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							address.prefix = 128;
 							// Копируем полученный IP-адрес в объект события
 							::memcpy(address.address, &this->_net.v6(net_t::endian_t::LITTLE)[0], address.size);
+
+							/**
+							 * По IP-адресу нужно определить сетевой интерфейс
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -1125,6 +1167,12 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							address.prefix = 128;
 							// Копируем полученный IP-адрес в объект события
 							::memcpy(address.address, &this->_net.v6(net_t::endian_t::LITTLE)[0], address.size);
+
+							/**
+							 * По IP-адресу нужно определить MAC-адрес сервера, а также сетевой интерфейс
+							 * 
+							 */
+
 							// Возвращаем результат работы функции
 							return true;
 						}
