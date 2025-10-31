@@ -532,14 +532,27 @@ namespace awh {
 			 * @brief Метод применения сетевой оптимизации операционной системы
 			 *
 			 */
-			void boostingNetwork() noexcept;
+			void boostingNetwork() const noexcept;
+		public:
+			/**
+			 * @brief Метод поиска сетевых адресов соседа
+			 *
+			 * @param addresses структура сетевых адресов
+			 */
+			void peerAddresses(addresses_t & addresses) const noexcept;
+			/**
+			 * @brief Метод поиска сетевых адресов узла
+			 *
+			 * @param addresses структура сетевых адресов
+			 */
+			void nodeAddresses(addresses_t & addresses) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки значений адресов по умолчанию
 			 *
 			 * @param addresses структура сетевых адресов
 			 */
-			void defaultAddress(addresses_t & addresses) noexcept;
+			void defaultAddress(addresses_t & addresses) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения имени сетевого интерфейса по IP-адресу
@@ -547,22 +560,30 @@ namespace awh {
 			 * @param ip IP-адрес
 			 * @return   имя сетевого интерфейса
 			 */
-			string getInterfaceNameFromIP(const address_t & ip) noexcept;
+			string interfaceName(const address_t & ip) const noexcept;
 			/**
 			 * @brief Метод получения имени сетевого интерфейса по MAC-адресу
 			 *
 			 * @param mac MAC-адрес
 			 * @return    имя сетевого интерфейса
 			 */
-			string getInterfaceNameByMacAddress(const address_mac_t & mac) noexcept;
+			string interfaceName(const address_mac_t & mac) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения MAC-адреса по имени сетевого интерфейса
+			 * @brief Метод поиска MAC-адреса по имени сетевого интерфейса
 			 *
 			 * @param iface     имя сетевого интерфейса
 			 * @param addresses структура сетевых адресов
 			 */
-			void getMacAddressByName(const char * iface, addresses_t & addresses) noexcept;
+			void macAddress(const char * iface, addresses_t & addresses) const noexcept;
+		public:
+			/**
+			 * @brief Метод поиска сетевых адресов по заданной сети
+			 *
+			 * @param net       сетевой адрес подсети в хостовом порядке
+			 * @param addresses структура сетевых адресов
+			 */
+			void addresses(const address_t & net, addresses_t & addresses) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки принадлежности IP-адреса подсети
@@ -572,7 +593,7 @@ namespace awh {
 			 * @param prefix префикс подсети
 			 * @return       результат проверки
 			 */
-			bool isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) noexcept;
+			bool isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept;
 			/**
 			 * @brief Метод сравнения двух IPv6-адресов по префиксу (в битах)
 			 *
@@ -581,15 +602,7 @@ namespace awh {
 			 * @param length Длина префикса в битах
 			 * @return       Результат сравнения
 			 */
-			bool ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const uint8_t length) noexcept;
-		public:
-			/**
-			 * @brief Метод поиска сетевого интерфейса по заданной сети
-			 *
-			 * @param net       сетевой адрес подсети в хостовом порядке
-			 * @param addresses структура сетевых адресов
-			 */
-			void findInterfaceInNetwork(const address_t & net, addresses_t & addresses) noexcept;
+			bool ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const uint8_t length) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор

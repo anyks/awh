@@ -337,6 +337,7 @@ SET(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
+SET(IP_APP_NAME ip)
 SET(DATE_APP_NAME date)
 SET(CLIENT_APP_NAME client)
 SET(SERVER_APP_NAME server)
@@ -369,12 +370,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
 
     # Выполняем создание демонстрационных приложений
+    add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
     add_executable(${DATE_APP_NAME} sample/date.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
     add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
 # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
 else()
     # Выполняем создание демонстрационных приложений
+    add_executable(${IP_APP_NAME} sample/ip.cpp)
     add_executable(${DATE_APP_NAME} sample/date.cpp)
     add_executable(${CLIENT_APP_NAME} sample/client.cpp)
     add_executable(${SERVER_APP_NAME} sample/server.cpp)
@@ -396,6 +399,14 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+            ${WINFLAGS}
+        )
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
@@ -432,6 +443,13 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
         )
 
@@ -462,6 +480,15 @@ else (CMAKE_SHARED_BUILD_LIB)
     # Если операционной системой является Windows
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+            ${WINFLAGS}
+        )
+
         # Выполняем сборку приложения даты и времени
         target_link_libraries(
             ${DATE_APP_NAME}
@@ -491,6 +518,14 @@ else (CMAKE_SHARED_BUILD_LIB)
 
     # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
     else()
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+        )
 
         # Выполняем сборку приложения даты и времени
         target_link_libraries(
@@ -524,6 +559,12 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
         SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
 
+        add_custom_command(TARGET "${IP_APP_NAME}" POST_BUILD
+            COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IP_APP_NAME}>" "${entitlements_file}"
+            COMMENT "Sign target \"${IP_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
         add_custom_command(TARGET "${DATE_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DATE_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${DATE_APP_NAME}\" to enable core dump on MacOS X"
@@ -554,6 +595,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         FetchContent_MakeAvailable(PVS_CMakeModule)
         include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
         # Выполняем анализ собранных приложений
+        pvs_studio_add_target(TARGET ${IP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${DATE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -614,6 +656,7 @@ endif()
 install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Устанавливаем исполнительные файлы
+install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${DATE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

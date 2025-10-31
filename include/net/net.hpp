@@ -81,12 +81,14 @@ namespace awh {
 				LONG        = 0x01, // Полный формат IP-адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
 				SHORT       = 0x02, // Короткий формат IP-адреса [::ae21:ad12 / 192.168.0.1]
 				MIDDLE      = 0x03, // Средний формат IP-адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
-				LONG_IPV4   = 0x04, // Полный формат IP-адреса для IPv4
-				LONG_IPV6   = 0x05, // Полный формат IP-адреса для IPv6
-				SHORT_IPV4  = 0x06, // Короткий формат IP-адреса для IPv4
-				SHORT_IPV6  = 0x07, // Короткий формат IP-адреса для IPv6
-				MIDDLE_IPV4 = 0x08, // Средний формат IP-адреса для IPv4
-				MIDDLE_IPV6 = 0x09  // Средний формат IP-адреса для IPv6
+				HEX_IPV4    = 0x04, // Шестнадцатеричный формат IP-адреса для IPv4
+				OCTAL_IPV4  = 0x05, // Восьмеричный формат IP-адреса для IPv4
+				LONG_IPV4   = 0x06, // Полный формат IP-адреса для IPv4
+				LONG_IPV6   = 0x07, // Полный формат IP-адреса для IPv6
+				SHORT_IPV4  = 0x08, // Короткий формат IP-адреса для IPv4
+				SHORT_IPV6  = 0x09, // Короткий формат IP-адреса для IPv6
+				MIDDLE_IPV4 = 0x0A, // Средний формат IP-адреса для IPv4
+				MIDDLE_IPV6 = 0x0B  // Средний формат IP-адреса для IPv6
 			};
 			/**
 			 * Идентификаторы разновидностей адресов
@@ -151,22 +153,6 @@ namespace awh {
 			void initLocalNet() noexcept;
 		private:
 			/**
-			 * @brief Метод конвертации строковых чисел в десятичную систему счисления
-			 *
-			 * @param value число для конвертации
-			 * @return      полученная строка в системе счисления
-			 */
-			int64_t atoi(const string & value) const noexcept;
-			/**
-			 * @brief Метод конвертации чисел в указанную систему счисления
-			 *
-			 * @param value число для конвертации
-			 * @param radix система счисления
-			 * @return      полученная строка в системе счисления
-			 */
-			string itoa(const int64_t value, const uint8_t radix) const noexcept;
-		private:
-			/**
 			 * @brief Метод заполнения недостающих элементов нулями
 			 *
 			 * @param num  число для заполнения нулями
@@ -174,26 +160,6 @@ namespace awh {
 			 * @return     полученное число строки
 			 */
 			string && zerro(string && num, const uint8_t size = 3) const noexcept;
-		private:
-			/**
-			 * @brief Метод проверки больше первое число второго или нет (бинарным методом)
-			 *
-			 * @param value1 значение первого числа в бинарном виде
-			 * @param value2 значение второго числа в бинарном виде
-			 * @param size   размер бинарного буфера числа
-			 * @return       результат проверки
-			 */
-			bool compare(const void * value1, const void * value2, const size_t size) const noexcept;
-		private:
-			/**
-			 * @brief Метод разделения строк на составляющие
-			 *
-			 * @param str    строка для поиска
-			 * @param delim  разделитель
-			 * @param result результирующий вектор
-			 * @return       результирующий вектор
-			 */
-			vector <string> & split(const string & str, const string & delim, vector <string> & result) const noexcept;
 		public:
 			/**
 			 * @brief Метод очистки данных IP-адреса
@@ -232,17 +198,15 @@ namespace awh {
 			/**
 			 * @brief Метод извлечения аппаратного адреса в чистом виде
 			 *
-			 * @param endian флаг формирования адреса в установленном порядке следовании байт
-			 * @return       аппаратный адрес в чистом виде
+			 * @return аппаратный адрес в чистом виде
 			 */
-			uint64_t mac(const endian_t endian = endian_t::LITTLE) const noexcept;
+			std::array <uint8_t, 6> mac() const noexcept;
 			/**
 			 * @brief Метод установки аппаратного адреса в чистом виде
 			 *
-			 * @param addr   аппаратный адрес в чистом виде
-			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 * @param addr аппаратный адрес в чистом виде
 			 */
-			void mac(const uint64_t addr, const endian_t endian = endian_t::LITTLE) noexcept;
+			void mac(const std::array <uint8_t, 6> & addr) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения адреса IPv4 в чистом виде
@@ -603,7 +567,7 @@ namespace awh {
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			Net & operator = (const uint64_t addr) noexcept;
+			Net & operator = (const std::array <uint8_t, 6> & addr) noexcept;
 			/**
 			 * @brief Оператор [=] присвоения IP-адреса
 			 *

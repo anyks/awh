@@ -13,12 +13,59 @@
  */
 
 /**
+ * Если мы используем порядок байтов Little Endian или Big Endian
+ */
+#if __BYTE_ORDER__ && __ORDER_LITTLE_ENDIAN__
+	/**
+	 * Макрос проверки порядка поддержки Little Endian
+	 */
+	#define IS_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+/**
+ * Если мы используем порядок байтов Little Endian
+ */
+#elif __LITTLE_ENDIAN__ || _LITTLE_ENDIAN
+	/**
+	 * Включаем макрос поддержки Little Endian
+	 */
+	#define IS_LITTLE_ENDIAN 1
+/**
+ * Если мы используем порядок байтов Big Endian
+ */
+#elif __BIG_ENDIAN__ || _BIG_ENDIAN
+	/**
+	 * Отключаем макрос поддержки Little Endian
+	 */
+	#define IS_LITTLE_ENDIAN 0
+#else
+	/**
+	 * @brief Проверка поддержки Little Endian
+	 *
+	 * @return результат проверки
+	 */
+	static inline bool isLittleEndian() noexcept {
+		// Тестируем порядок байтов
+		uint16_t test = 1;
+		// Возвращаем результат проверки
+		return ((* reinterpret_cast <uint8_t *> (&test)) == 1);
+	}
+	/**
+	 * Макрос проверки поддержки Little Endian
+	 */
+	#define IS_LITTLE_ENDIAN isLittleEndian()
+#endif
+
+/**
  * Стандартные модули
  */
 #include <cmath>
 #include <bitset>
 #include <cstring>
 #include <algorithm>
+
+/**
+ * Системные модули
+ */
+#include <arpa/inet.h>
 
 /**
  * Подключаем заголовочный файл
@@ -29,6 +76,34 @@
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Вспомогательная функция для получения размера буфера
+ *
+ * @tparam T размер буфера данных
+ */
+template <size_t T = 4>
+/**
+ * @brief Вспомогательная функция конвертации IPv6-адреса в нужный порядок байт
+ *
+ * @param src исходный IPv6-адрес
+ * @param dst результирующий IPv6-адрес
+ */
+static void convertEndian(const uint8_t src[T], uint8_t dst[T]) noexcept {
+	/**
+	 * Если порядок байт Little Endian
+	 */
+	#if IS_LITTLE_ENDIAN
+		// На little-endian: переворачиваем все T байт
+		std::reverse_copy(src, src + T, dst);
+	/**
+	 * Если порядок байт Big Endian
+	 */
+	#else
+		// На big-endian: ничего не делаем
+		::memcpy(dst, src, T);
+	#endif
+}
 
 /**
  * @brief Метод инициализации списка локальных адресов
@@ -403,110 +478,6 @@ void awh::Net::initLocalNet() noexcept {
 	}
 }
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
- *
- * @param value число для конвертации
- * @return      полученная строка в системе счисления
- */
-int64_t awh::Net::atoi(const string & value) const noexcept {
-	// Результат работы функции
-	int64_t result = 0;
-	// Если 16-е число передано
-	if(!value.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаём поток для конвертации
-			stringstream ss;
-			// Записываем число в поток
-			ss << hex << value;
-			// Получаем результат
-			ss >> result;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод конвертации чисел в указанную систему счисления
- *
- * @param value число для конвертации
- * @param radix система счисления
- * @return      полученная строка в системе счисления
- */
-string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если данные переданы
-	if((radix > 0) && (radix < 37)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Убираем отрицательное значение
-			int64_t num = ::abs(value);
-			// Запоминаем являлось ли число отрицательным
-			const bool sign = (value < 0);
-			// Устанавливаем числовые обозначения
-			const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-			// Особый случай: нулю соответствует не пустая строка, а "0"
-			if(num == 0)
-				// Выполняем установку начальных нолей
-				result.insert(result.begin(), digits[0]);
-			/**
-			 * Раскладываем число на цифры (младшими разрядами вперёд)
-			 */
-			while(num != 0){
-				// Добавляем идентификатор числа
-				result.insert(result.begin(), digits[num % radix]);
-				// Выполняем финальное деление
-				num /= radix;
-			}
-			// Дописываем после старшего разряда знак
-			if(sign)
-				// Устанавливаем знак минуса
-				result.insert(result.begin(), '-');
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, radix), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод заполнения недостающих элементов нулями
  *
  * @param num  число для заполнения нулями
@@ -521,9 +492,9 @@ string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 		 */
 		try {
 			// Создаём строку для добавления
-			const string tmp(size - static_cast <uint8_t> (num.size()), '0');
+			const string result(size - static_cast <uint8_t> (num.size()), '0');
 			// Добавляем недостающие нули в наше число
-			num.insert(num.begin(), tmp.begin(), tmp.end());
+			num.insert(num.begin(), result.begin(), result.end());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -533,7 +504,11 @@ string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(num, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(num, size),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -545,170 +520,6 @@ string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 	}
 	// Выводим результат
 	return ::move(num);
-}
-/**
- * @brief Метод проверки больше первое число второго или нет (бинарным методом)
- *
- * @param value1 значение первого числа в бинарном виде
- * @param value2 значение второго числа в бинарном виде
- * @param size   размер бинарного буфера числа
- * @return       результат проверки
- */
-bool awh::Net::compare(const void * value1, const void * value2, const size_t size) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если данные переданы правильно
-	if((value1 != nullptr) && (value2 != nullptr) && (size > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Значений чисел для сравнения
-			bitset <8> num1(0), num2(0);
-			// Индекс перебора всех бит числа
-			uint8_t count = 0, index = static_cast <uint8_t> (size);
-			/**
-			 * Выполняем перебор всех байт буфера
-			 */
-			while(index--){
-				// Получаем значение числа в виде первого байта
-				num1 = reinterpret_cast <const uint8_t *> (value1)[index];
-				// Получаем значение числа в виде второго байта
-				num2 = reinterpret_cast <const uint8_t *> (value2)[index];
-				// Получаем первоначальное значение индексов
-				count = static_cast <uint8_t> (num1.size());
-				/**
-				 * Выполняем перебор всей строки
-				 */
-				while(count--){
-					// Если первый байт больше второго
-					if((result = (num1.test(count) && !num2.test(count))) || (!num1.test(count) && num2.test(count)))
-						// Выходим из функции
-						return result;
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value1, value2, size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод разделения строк на составляющие
- *
- * @param str    строка для поиска
- * @param delim  разделитель
- * @param result результирующий вектор
- * @return       результирующий вектор
- */
-vector <string> & awh::Net::split(const string & str, const string & delim, vector <string> & result) const noexcept {
-	/**
-	 * @brief Метод удаления пробелов вначале и конце текста
-	 *
-	 * @param text текст для удаления пробелов
-	 * @return     результат работы функции
-	 */
-	auto trimFn = [this](const string & text) noexcept -> string {
-		// Результат работы функции
-		string result = text;
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем удаление пробелов в начале текста
-			result.erase(result.begin(), find_if_not(result.begin(),result.end(), [](char c) -> bool {
-				// Выполняем проверку символа на наличие пробела
-				return ::isspace(c);
-			}));
-			// Выполняем удаление пробелов в конце текста
-			result.erase(find_if_not(result.rbegin(), result.rend(), [](char c) -> bool {
-				// Выполняем проверку символа на наличие пробела
-				return ::isspace(c);
-			}).base(), result.end());
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат
-		return result;
-	};
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Очищаем словарь
-		result.clear();
-		// Получаем счётчики перебора
-		size_t i = 0, j = str.find(delim);
-		/**
-		 * Выполняем разбиение строк
-		 */
-		while(j != string::npos){
-			// Вставляем полученный результат в контейнер
-			result.insert(result.end(), trimFn(str.substr(i, j - i)));
-			// Выполняем смещение в тексте
-			i = ++j + (delim.length() - 1);
-			// Выполняем поиск разделителя в тексте
-			j = str.find(delim, j);
-			// Если мы дошли до конца текста
-			if(j == string::npos)
-				// Вставляем полученный результат в контейнер
-				result.insert(result.end(), trimFn(str.substr(i, str.length())));
-		}
-		// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
-		if(!str.empty() && result.empty())
-			// Вставляем полученный результат в контейнер
-			result.insert(result.end(), trimFn(str));
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * @brief Метод очистки данных IP-адреса
@@ -850,42 +661,19 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 /**
  * @brief Метод извлечения аппаратного адреса в чистом виде
  *
- * @param endian флаг формирования адреса в установленном порядке следовании байт
- * @return       аппаратный адрес в чистом виде
+ * @return аппаратный адрес в чистом виде
  */
-uint64_t awh::Net::mac(const endian_t endian) const noexcept {
+std::array <uint8_t, 6> awh::Net::mac() const noexcept {
 	// Результат работы функции
-	uint64_t result = 0;
+	std::array <uint8_t, 6> result = {0};
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 6){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			/**
-			 * Определяем какой порядок следования байт установлен
-			 */
-			switch(static_cast <uint8_t> (endian)){
-				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG): {
-					// Получаем буфер данных IP-адреса
-					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
-					/**
-					 * Выполняем перебор всех октетов адреса
-					 */
-					while(i--){
-						// Выполняем установку байт в обратном порядке
-						::memcpy(reinterpret_cast <uint8_t *> (&result) + j, &this->_buffer[0] + i, 1);
-						// Выполняем смещение в буфере
-						j++;
-					}
-				} break;
-				// Если установлен порядок следования байт от младшего к старшему
-				case static_cast <uint8_t> (endian_t::LITTLE):
-					// Выполняем перевод бинарного буфера MAC-адреса в число
-					::memcpy(&result, &this->_buffer[0], this->_buffer.size());
-				break;
-			}
+			// Выполняем перевод бинарного буфера MAC-адреса в числовой вид
+			::memcpy(&result[0], &this->_buffer[0], this->_buffer.size());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -911,12 +699,11 @@ uint64_t awh::Net::mac(const endian_t endian) const noexcept {
 /**
  * @brief Метод установки аппаратного адреса в чистом виде
  *
- * @param addr   аппаратный адрес в чистом виде
- * @param endian флаг формирования адреса в установленном порядке следовании байт
+ * @param addr аппаратный адрес в чистом виде
  */
-void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
+void awh::Net::mac(const std::array <uint8_t, 6> & addr) noexcept {
 	// Если MAC адрес передан
-	if(addr > 0){
+	if(!addr.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -925,32 +712,8 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
 			this->_type = type_t::MAC;
-			/**
-			 * Определяем какой порядок следования байт установлен
-			 */
-			switch(static_cast <uint8_t> (endian)){
-				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG): {
-					// Получаем буфер данных IP-адреса
-					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
-					// Получаем буфер данных переданного IP-адреса
-					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr);
-					/**
-					 * Выполняем перебор всех октетов адреса
-					 */
-					while(i--){
-						// Выполняем установку байт в обратном порядке
-						::memcpy(&this->_buffer[0] + j, buffer + i, 1);
-						// Выполняем смещение в буфере
-						j++;
-					}
-				} break;
-				// Если установлен порядок следования байт от младшего к старшему
-				case static_cast <uint8_t> (endian_t::LITTLE):
-					// Выполняем копирование данных адреса MAC
-					::memcpy(&this->_buffer[0], &addr, this->_buffer.size());
-				break;
-			}
+			// Выполняем копирование данных адреса MAC
+			::memcpy(&this->_buffer[0], &addr[0], this->_buffer.size());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -960,7 +723,11 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(addr.front(), addr.back()),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -991,19 +758,10 @@ uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG): {
+				case static_cast <uint8_t> (endian_t::BIG):
 					// Получаем буфер данных IP-адреса
-					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
-					/**
-					 * Выполняем перебор всех октетов адреса
-					 */
-					while(i--){
-						// Выполняем установку байт в обратном порядке
-						::memcpy(reinterpret_cast <uint8_t *> (&result) + j, &this->_buffer[0] + i, 1);
-						// Выполняем смещение в буфере
-						j++;
-					}
-				} break;
+					::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&result));
+				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
 					// Выполняем копирование данных адреса IPv4
@@ -1019,7 +777,11 @@ uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(static_cast <uint16_t> (endian)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1054,21 +816,10 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG): {
-					// Получаем буфер данных IP-адреса
-					uint8_t i = static_cast <uint8_t> (sizeof(addr)), j = 0;
-					// Получаем буфер данных переданного IP-адреса
-					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr);
-					/**
-					 * Выполняем перебор всех октетов адреса
-					 */
-					while(i--){
-						// Выполняем установку байт в обратном порядке
-						::memcpy(&this->_buffer[0] + j, buffer + i, 1);
-						// Выполняем смещение в буфере
-						j++;
-					}
-				} break;
+				case static_cast <uint8_t> (endian_t::BIG):
+					// Устанавливаем буфер данных IP-адреса
+					::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
+				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
 					// Выполняем копирование данных адреса IPv4
@@ -1084,7 +835,11 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(addr, static_cast <uint16_t> (endian)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1115,21 +870,10 @@ std::array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG): {
+				case static_cast <uint8_t> (endian_t::BIG):
 					// Получаем буфер данных IP-адреса
-					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
-					// Получаем буфер данных переданного IP-адреса
-					uint8_t * buffer = reinterpret_cast <uint8_t *> (&result[0]);
-					/**
-					 * Выполняем перебор всех октетов адреса
-					 */
-					while(i--){
-						// Выполняем установку байт в обратном порядке
-						::memcpy(buffer + j, &this->_buffer[0] + i, 1);
-						// Выполняем смещение в буфере
-						j++;
-					}
-				} break;
+					::convertEndian <16> (&this->_buffer[0], reinterpret_cast <uint8_t *> (&result[0]));
+				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
 					// Выполняем копирование данных адреса IPv6
@@ -1145,7 +889,11 @@ std::array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(static_cast <uint16_t> (endian)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1180,21 +928,10 @@ void awh::Net::v6(const std::array <uint64_t, 2> & addr, const endian_t endian) 
 			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG): {
-					// Получаем буфер данных IP-адреса
-					uint8_t i = static_cast <uint8_t> (sizeof(addr)), j = 0;
-					// Получаем буфер данных переданного IP-адреса
-					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr[0]);
-					/**
-					 * Выполняем перебор всех октетов адреса
-					 */
-					while(i--){
-						// Выполняем установку байт в обратном порядке
-						::memcpy(&this->_buffer[0] + j, buffer + i, 1);
-						// Выполняем смещение в буфере
-						j++;
-					}
-				} break;
+				case static_cast <uint8_t> (endian_t::BIG):
+					// Устанавливаем буфер данных IP-адреса
+					::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
+				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
 					// Выполняем копирование данных адреса IPv6
@@ -1210,7 +947,11 @@ void awh::Net::v6(const std::array <uint64_t, 2> & addr, const endian_t endian) 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr.front(), addr.back()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(addr.front(), addr.back()),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1298,7 +1039,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 									// Получаем нужное нам значение октета
 									::memcpy(&oct, &this->_buffer[0] + num, sizeof(oct));
 									// Переводим октет в бинарный вид
-									bitset <8> bits(oct);
+									std::bitset <8> bits(oct);
 									// Зануляем все лишние элементы
 									for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
 										// Зануляем все лишние биты
@@ -1322,7 +1063,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 									// Получаем нужное нам значение октета
 									::memcpy(&oct, &this->_buffer[0] + num, sizeof(oct));
 									// Переводим октет в бинарный вид
-									bitset <8> bits(oct);
+									std::bitset <8> bits(oct);
 									// Зануляем все лишние элементы
 									for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
 										// Зануляем все лишние биты
@@ -1359,7 +1100,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 									// Получаем нужное нам значение хексета
 									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
 									// Переводим хексет в бинарный вид
-									bitset <16> bits(hex);
+									std::bitset <16> bits(hex);
 									// Зануляем все лишние элементы
 									for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
 										// Зануляем все лишние биты
@@ -1383,7 +1124,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 									// Получаем нужное нам значение хексета
 									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
 									// Переводим хексет в бинарный вид
-									bitset <16> bits(hex);
+									std::bitset <16> bits(hex);
 									// Зануляем все лишние элементы
 									for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
 										// Зануляем все лишние биты
@@ -1409,7 +1150,11 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1451,7 +1196,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 			// Выполняем парсинг маски
 			if(net.parse(mask) && (type == net.type())){
 				// Бинарный контейнер
-				bitset <8> bits;
+				std::bitset <8> bits;
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -1491,7 +1236,11 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(mask), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(mask, static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1572,7 +1321,11 @@ string awh::Net::prefix2Mask(const uint8_t prefix, const type_t type) const noex
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(prefix), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(prefix, static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1695,7 +1448,11 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix, c
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1815,7 +1572,11 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(begin, end, prefix), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(begin, end, static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1920,7 +1681,11 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(network, static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2015,8 +1780,16 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 							net = this->v4();
 							// Накладываем префикс сети
 							net.impose(prefix, addr);
+							// Получаем данные IPv4 текущего адреса
+							const uint32_t ip = net.v4();
+							// Устанавливаем данные сети
+							net = network;
+							// Накладываем префикс сети
+							net.impose(prefix, addr);
+							// Выполняем получение данных IPv4 сетевого адреса
+							const uint32_t nwk = net.v4();
 							// Выводим результат проверки
-							return (net.v4() == (net = network).v4());
+							return (ip == nwk);
 						} break;
 						// Если IP-адрес определён как IPv6
 						case static_cast <uint8_t> (type_t::IPV6): {
@@ -2025,13 +1798,15 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 							// Накладываем префикс сети
 							net.impose(prefix, addr);
 							// Получаем данные IPv6 текущего адреса
-							const std::array <uint64_t, 2> addr = net.v6();
+							const auto & ip = net.v6();
 							// Устанавливаем данные сети
 							net = network;
+							// Накладываем префикс сети
+							net.impose(prefix, addr);
 							// Выполняем получение данных IPv6 сетевого адреса
-							const std::array <uint64_t, 2> nwk = net.v6();
+							const auto & nwk = net.v6();
 							// Выводим результат проверки
-							return (::memcmp(&addr[0], &nwk[0], sizeof(addr)) == 0);
+							return (::memcmp(&ip[0], &nwk[0], sizeof(ip)) == 0);
 						} break;
 					}
 				}
@@ -2045,7 +1820,11 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network, prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(network, prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2215,7 +1994,7 @@ string awh::Net::arpa() const noexcept {
 						// Добавляем разделитель
 						result.insert(result.begin(), '.');
 					// Выполняем перебор полученного хексета
-					for(auto & item : this->zerro(this->itoa(static_cast <int64_t> (htons(num)), 16), 4)){
+					for(auto & item : this->zerro(this->_fmk->itoa <uint16_t> (htons(num), 16), 4)){
 						// Если последний символ не является точкой
 						if(!result.empty() && (result.front() != '.'))
 							// Добавляем разделитель
@@ -2339,17 +2118,17 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				// Устанавливаем индекс последнего элемента
 				uint8_t index1 = 4, index2 = 8;
 				// Получаем адрес для парсинга
-				const string ip = addr.substr(0, addr.length() - 9);
+				const string & ip = addr.substr(0, addr.length() - 9);
 				/**
 				 * Выполняем поиск разделителя
 				 */
 				while((stop = ip.find('.', start)) != string::npos){
 					// Выполняем установку хексета
-					buffer.hexset[--index1] = ntohs(static_cast <uint8_t> (ip.at(start)));
+					buffer.hexset[--index1] = static_cast <uint8_t> (ip[start]);
 					// Если хексет полностью заполнен
 					if(index1 == 0){
 						// Добавляем хексет в список
-						buffer.address[--index2] = ntohs(static_cast <uint16_t> (this->atoi(reinterpret_cast <const char *> (buffer.hexset))));
+						buffer.address[--index2] = ntohs(this->_fmk->atoi <uint16_t> (reinterpret_cast <const char *> (buffer.hexset), 4, static_cast <uint8_t> (16)));
 						// Выполняем сброс индекса
 						index1 = 4;
 					}
@@ -2357,11 +2136,11 @@ bool awh::Net::arpa(const string & addr) noexcept {
 					start = (stop + 1);
 				}
 				// Выполняем установку хексета
-				buffer.hexset[--index1] = ntohs(static_cast <uint8_t> (ip.at(start)));
+				buffer.hexset[--index1] = static_cast <uint8_t> (ip[start]);
 				// Если хексет полностью заполнен
 				if(index1 == 0)
 					// Добавляем хексет в список
-					buffer.address[--index2] = ntohs(static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (buffer.hexset))));
+					buffer.address[--index2] = ntohs(this->_fmk->atoi <uint16_t> (reinterpret_cast <const char *> (buffer.hexset), 4, static_cast <uint8_t> (16)));
 				// Выполняем копирование бинарных данных в буфер
 				::memcpy(&this->_buffer[0], buffer.address, sizeof(buffer.address));
 			/**
@@ -2424,7 +2203,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Значение последнего символа
 					int32_t last = -1;
 					// Бинарный буфер адреса
-					u_char buffer[6];
+					uint8_t buffer[6];
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
@@ -2447,118 +2226,21 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(4);
-					// Позиция разделителя
-					size_t start = 0, stop = 0, index = 0;
-					/**
-					 * Выполняем поиск разделителя
-					 */
-					while((stop = addr.find('.', start)) != string::npos){
-						// Извлекаем полученное число
-						this->_buffer[index] = this->_fmk->atoi <uint8_t> (addr.c_str() + start, stop - start);
-						// Выполняем смещение
-						start = (stop + 1);
-						// Увеличиваем смещение индекса
-						index++;
-					}
-					// Выполняем установку последнего октета
-					this->_buffer[index] = this->_fmk->atoi <uint8_t> (addr.c_str() + start, addr.length() - start);
+					// Выполняем парсинг IPv4 адреса
+					::inet_pton(AF_INET, addr.c_str(), &this->_buffer[0]);
 				} break;
 				// Если IP-адрес является адресом IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
-					// Создаём список всех хексетов
-					vector <string> data;
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(16);
-					// Выполняем сплит данных IP-адреса
-					this->split(((addr.front() == '[') && (addr.back() == ']') ? addr.substr(1, addr.length() - 2) : addr), ":", data);
-					// Если данные IP-адреса получены
-					if((result = !data.empty())){
-						// Создаём результирующий буфер данных
-						vector <uint16_t> buffer(8);
-						// Если в начале IP-адреса пропущены нули
-						if(data.front().empty()){
-							// Получаем длину хексета
-							const size_t length = data.back().length();
-							// Если последний элемент массива больше 4-х символов
-							if((result = ((length >= 7) && (length <= 15)))){
-								// Выполняем усечение лишних данных буфера
-								buffer.resize(6);
-								// Устанавливаем индекс последнего элемента
-								size_t start = 0, stop = 0, index = 6;
-								// Выполняем перебор всех хексеков
-								for(auto i = data.rbegin() + 1; i != data.rend(); ++i){
-									// Если хексет установлен
-									if(!i->empty())
-										// Добавляем хексет в список
-										buffer[--index] = ntohs(static_cast <uint16_t> (this->atoi(* i)));
-									// Выходим из цикла
-									else break;
-								}
-								// Позиция разделителя
-								index = 12;
-								// Получаем IP-адрес
-								const string & addr = data.back();
-								/**
-								 * Выполняем поиск разделителя
-								 */
-								while((stop = addr.find('.', start)) != string::npos){
-									// Извлекаем полученное число
-									this->_buffer[index] = ntohs(this->_fmk->atoi <uint8_t> (addr.c_str() + start, stop - start));
-									// Выполняем смещение
-									start = (stop + 1);
-									// Увеличиваем смещение индекса
-									index++;
-								}
-								// Выполняем установку последнего октета
-								this->_buffer[index] = ntohs(this->_fmk->atoi <uint8_t> (addr.c_str() + start, addr.length() - start));
-							// Если IP-адрес состоит из нормальных хексетов
-							} else if((result = ((length >= 1) && (length <= 4)))) {
-								// Устанавливаем индекс последнего элемента
-								uint8_t index = 8;
-								// Выполняем перебор всех хексеков
-								for(auto i = data.rbegin(); i != data.rend(); ++i){
-									// Если хексет установлен
-									if(!i->empty())
-										// Добавляем хексет в список
-										buffer[--index] = ntohs(static_cast <uint16_t> (this->atoi(* i)));
-									// Выходим из цикла
-									else break;
-								}
-							// Выводим результат
-							} else return result;
-						// Если IP-адрес передан полностью или не до конца
-						} else {
-							// Устанавливаем индекс первого элемента
-							uint8_t index = 0;
-							// Выполняем перебор всего списка хексетов
-							for(auto i = data.begin(); i != data.end(); ++i){
-								// Если хексет установлен
-								if(!i->empty())
-									// Добавляем хексет в список
-									buffer[index++] = ntohs(static_cast <uint16_t> (this->atoi(* i)));
-								// Выходим из цикла
-								else break;
-							}
-							// Если не все хексеты собраны
-							if(index < 8){
-								// Устанавливаем индекс последнего элемента
-								uint8_t index = 8;
-								// Выполняем перебор всех хексеков
-								for(auto i = data.rbegin(); i != data.rend(); ++i){
-									// Если хексет установлен
-									if(!i->empty())
-										// Добавляем хексет в список
-										buffer[--index] = ntohs(static_cast <uint16_t> (this->atoi(* i)));
-									// Выходим из цикла
-									else break;
-								}
-							}
-						}
-						// Выполняем копирование бинарных данных в буфер
-						::memcpy(&this->_buffer[0], &buffer[0], (buffer.size() * 2));
-					}
+					// Если найдено экранирование адреса
+					if((addr.front() == '[') && (addr.back() == ']'))
+						// Выполняем парсинг IPv6 адреса без экранирования
+						::inet_pton(AF_INET6, addr.substr(1, addr.size() - 2).c_str(), &this->_buffer[0]);
+					// Выполняем парсинг IPv6 адреса
+					else ::inet_pton(AF_INET6, addr.c_str(), &this->_buffer[0]);
 				} break;
 				// Все остальные варианты мы пропускаем
 				default: result = false;
@@ -2572,7 +2254,11 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(addr, static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2624,17 +2310,49 @@ string awh::Net::get(const format_t format) const noexcept {
 				case static_cast <uint8_t> (type_t::IPV4): {
 					// Если формат адреса не принадлежит к IPv6
 					if((format != format_t::LONG_IPV6) && (format != format_t::MIDDLE_IPV6) && (format != format_t::SHORT_IPV6)){
-						// Переходим по всему массиву
-						for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i++){
-							// Если строка уже существует, добавляем разделитель
-							if(!result.empty())
-								// Добавляем разделитель
-								result.append(1, '.');
-							// Добавляем текущий октет в результат
-							result.append(
-								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-								this->zerro(std::to_string(this->_buffer[i])) : std::to_string(this->_buffer[i])
-							);
+						/**
+						 * Определяем формат вывода IPv4 адреса
+						 */
+						switch(static_cast <uint8_t> (format)){
+							// Если необходимо вывести адрес в 16-м формате
+							case static_cast <uint8_t> (format_t::HEX_IPV4): {
+								// Перераспределяем объект результата
+								result.resize(11);
+								// Выполняем получение IPv4 адреса в 16-м формате
+								::sprintf(
+									&result[0],
+									"%02X.%02X.%02X.%02X",
+									this->_buffer[0], this->_buffer[1],
+									this->_buffer[2], this->_buffer[3]
+								);
+							} break;
+							// Если необходимо вывести адрес в 8-м формате
+							case static_cast <uint8_t> (format_t::OCTAL_IPV4): {
+								// Перераспределяем объект результата
+								result.resize(16);
+								// Выполняем получение IPv4 адреса в 8-м формате
+								::sprintf(
+									&result[0],
+									"%03o.%03o.%03o.%03o",
+									this->_buffer[0], this->_buffer[1],
+									this->_buffer[2], this->_buffer[3]
+								);
+							} break;
+							// Во всех остальных случаях выполняем стандартный вывод
+							default: {
+								// Переходим по всему массиву
+								for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i++){
+									// Если строка уже существует, добавляем разделитель
+									if(!result.empty())
+										// Добавляем разделитель
+										result.append(1, '.');
+									// Добавляем текущий октет в результат
+									result.append(
+										(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
+										this->zerro(std::to_string(this->_buffer[i])) : std::to_string(this->_buffer[i])
+									);
+								}
+							}
 						}
 					// Если формат адреса принадлежит к IPv6
 					} else {
@@ -2655,7 +2373,7 @@ string awh::Net::get(const format_t format) const noexcept {
 									// Добавляем разделитель
 									if(!result.empty()) result.append(1, ':');
 									// Добавляем хексет в версию
-									result.append(this->itoa(static_cast <int64_t> (htons(num)), 16));
+									result.append(this->_fmk->itoa <uint16_t> (htons(num), 16));
 								// Заменяем нули разделителем
 								} else if((++separators < 2) || (i == (count - 2)))
 									// Добавляем разделитель
@@ -2669,8 +2387,8 @@ string awh::Net::get(const format_t format) const noexcept {
 								// Добавляем хексет в версию
 								result.append(
 									format == format_t::LONG_IPV6 ?
-									this->zerro(this->itoa(static_cast <int64_t> (htons(num)), 16), 4) :
-									this->itoa(static_cast <int64_t> (htons(num)), 16)
+									this->zerro(this->_fmk->itoa <uint16_t> (htons(num), 16), 4) :
+									this->_fmk->itoa <uint16_t> (htons(num), 16)
 								);
 							}
 						}
@@ -2693,7 +2411,12 @@ string awh::Net::get(const format_t format) const noexcept {
 						// Уменьшаем количество итераций в буфере
 						count -= 4;
 					// Если режим зеркала IPv6 => IPv4 не активен, но установлен формат IPv4, активируем зеркало
-					else if(!broadcast && (broadcast = ((format == format_t::LONG_IPV4) || (format == format_t::MIDDLE_IPV4) || (format == format_t::SHORT_IPV4))))
+					else if(!broadcast && (broadcast = (
+						(format == format_t::LONG_IPV4) ||
+						(format == format_t::MIDDLE_IPV4) ||
+						(format == format_t::SHORT_IPV4) ||
+						(format == format_t::HEX_IPV4) ||
+						(format == format_t::OCTAL_IPV4))))
 						// Уменьшаем количество итераций в буфере
 						count -= 4;
 					// Переходим по всему массиву
@@ -2705,9 +2428,11 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Если Число установлено
 							if(num > 0){
 								// Добавляем разделитель
-								if(!result.empty()) result.append(1, ':');
+								if(!result.empty())
+									// Добавляем разделитель
+									result.append(1, ':');
 								// Добавляем хексет в версию
-								result.append(this->itoa(static_cast <int64_t> (htons(num)), 16));
+								result.append(this->_fmk->itoa <uint16_t> (htons(num), 16));
 							// Заменяем нули разделителем
 							} else if((++separators < 2) || (i == (count - 2)))
 								// Добавляем разделитель
@@ -2721,8 +2446,8 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Добавляем хексет в версию
 							result.append(
 								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-								this->zerro(this->itoa(static_cast <int64_t> (htons(num)), 16), 4) :
-								this->itoa(static_cast <int64_t> (htons(num)), 16)
+								this->zerro(this->_fmk->itoa <uint16_t> (htons(num), 16), 4) :
+								this->_fmk->itoa <uint16_t> (htons(num), 16)
 							);
 						}
 					}
@@ -2732,17 +2457,53 @@ string awh::Net::get(const format_t format) const noexcept {
 						if(result.back() != ':')
 							// Добавляем разделитель
 							result.append(1, ':');
-						// Переходим по всему массиву
-						for(uint8_t i = 0; i < (static_cast <uint8_t> (this->_buffer.size()) - count); i++){
-							// Если строка уже существует, добавляем разделитель
-							if(i > 0)
-								// Добавляем разделитель
-								result.append(1, '.');
-							// Добавляем текущий октет в результат
-							result.append(
-								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-								this->zerro(std::to_string(this->_buffer[count + i])) : std::to_string(this->_buffer[count + i])
-							);
+						/**
+						 * Определяем формат вывода IPv4 адреса
+						 */
+						switch(static_cast <uint8_t> (format)){
+							// Если необходимо вывести адрес в 16-м формате
+							case static_cast <uint8_t> (format_t::HEX_IPV4): {
+								// Определяем текущую позицию результата
+								const size_t pos = result.size();
+								// Перераспределяем объект результата
+								result.resize(pos + 11);
+								// Выполняем получение IPv4 адреса в 16-м формате
+								::sprintf(
+									&result[pos],
+									"%02X.%02X.%02X.%02X",
+									this->_buffer[count + 0], this->_buffer[count + 1],
+									this->_buffer[count + 2], this->_buffer[count + 3]
+								);
+							} break;
+							// Если необходимо вывести адрес в 8-м формате
+							case static_cast <uint8_t> (format_t::OCTAL_IPV4): {
+								// Определяем текущую позицию результата
+								const size_t pos = result.size();
+								// Перераспределяем объект результата
+								result.resize(pos + 16);
+								// Выполняем получение IPv4 адреса в 8-м формате
+								::sprintf(
+									&result[pos],
+									"%03o.%03o.%03o.%03o",
+									this->_buffer[count + 0], this->_buffer[count + 1],
+									this->_buffer[count + 2], this->_buffer[count + 3]
+								);
+							} break;
+							// Во всех остальных случаях выполняем стандартный вывод
+							default: {
+								// Переходим по всему массиву
+								for(uint8_t i = 0; i < (static_cast <uint8_t> (this->_buffer.size()) - count); i++){
+									// Если строка уже существует, добавляем разделитель
+									if(i > 0)
+										// Добавляем разделитель
+										result.append(1, '.');
+									// Добавляем текущий октет в результат
+									result.append(
+										(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
+										this->zerro(std::to_string(this->_buffer[count + i])) : std::to_string(this->_buffer[count + i])
+									);
+								}
+							}
 						}
 					}
 				} break;
@@ -2756,7 +2517,11 @@ string awh::Net::get(const format_t format) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(static_cast <uint16_t> (format)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2800,7 +2565,7 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
 					// Выполняем сравнение адресов
-					result = (this->mac(endian_t::BIG) < addr.mac(endian_t::BIG));
+					result = this->_fmk->isGreater(&addr.mac()[0], &this->mac()[0], 6);
 				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
@@ -2814,7 +2579,7 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 					// Получаем данные сравниваемого адреса IPv6
 					const auto & second = addr.v6(endian_t::BIG);
 					// Выполняем бинарное сравнение
-					result = this->compare(reinterpret_cast <const uint8_t *> (&second[0]), reinterpret_cast <const uint8_t *> (&first[0]), sizeof(first));
+					result = this->_fmk->isGreater(&second[0], &first[0], 16);
 				} break;
 			}
 		/**
@@ -2861,7 +2626,7 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
 					// Выполняем сравнение адресов
-					result = (this->mac(endian_t::BIG) > addr.mac(endian_t::BIG));
+					result = this->_fmk->isGreater(&this->mac()[0], &addr.mac()[0], 6);
 				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
@@ -2875,7 +2640,7 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 					// Получаем данные сравниваемого адреса IPv6
 					const auto & second = addr.v6(endian_t::BIG);
 					// Выполняем бинарное сравнение
-					result = this->compare(reinterpret_cast <const uint8_t *> (&first[0]), reinterpret_cast <const uint8_t *> (&second[0]), sizeof(first));
+					result = this->_fmk->isGreater(&first[0], &second[0], 16);
 				} break;
 			}
 		/**
@@ -2920,10 +2685,18 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
-				case static_cast <uint8_t> (type_t::MAC):
-					// Выполняем сравнение адресов
-					result = (this->mac(endian_t::BIG) <= addr.mac(endian_t::BIG));
-				break;
+				case static_cast <uint8_t> (type_t::MAC): {
+					// Получаем данные текущего адреса MAC
+					const auto & first = this->mac();
+					// Получаем данные сравниваемого адреса MAC
+					const auto & second = addr.mac();
+					// Выполняем проверку совпадают ли адреса
+					result = (::memcmp(&first[0], &second[0], 6) == 0);
+					// Если адреса не совпадают
+					if(!result)
+						// Выполняем сравнение адресов
+						result = this->_fmk->isGreater(&second[0], &first[0], 6);
+				} break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
@@ -2935,12 +2708,12 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 					const auto & first = this->v6(endian_t::BIG);
 					// Получаем данные сравниваемого адреса IPv6
 					const auto & second = addr.v6(endian_t::BIG);
-					// Выполняем сравнение адресов
-					result = ((first[0] == second[0]) && (first[1] == second[1]));
+					// Выполняем проверку совпадают ли адреса
+					result = (::memcmp(&first[0], &second[0], 16) == 0);
 					// Если адреса не совпадают
 					if(!result)
-						// Выполняем бинарное сравнение
-						result = this->compare(reinterpret_cast <const uint8_t *> (&second[0]), reinterpret_cast <const uint8_t *> (&first[0]), sizeof(first));
+						// Выполняем сравнение адресов
+						result = this->_fmk->isGreater(&second[0], &first[0], 16);
 				} break;
 			}
 		/**
@@ -2985,10 +2758,18 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
-				case static_cast <uint8_t> (type_t::MAC):
-					// Выполняем сравнение адресов
-					result = (this->mac(endian_t::BIG) >= addr.mac(endian_t::BIG));
-				break;
+				case static_cast <uint8_t> (type_t::MAC): {
+					// Получаем данные текущего адреса MAC
+					const auto & first = this->mac();
+					// Получаем данные сравниваемого адреса MAC
+					const auto & second = addr.mac();
+					// Выполняем проверку совпадают ли адреса
+					result = (::memcmp(&first[0], &second[0], 6) == 0);
+					// Если адреса не совпадают
+					if(!result)
+						// Выполняем сравнение адресов
+						result = this->_fmk->isGreater(&first[0], &second[0], 6);
+				} break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
@@ -3000,12 +2781,12 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 					const auto & first = this->v6(endian_t::BIG);
 					// Получаем данные сравниваемого адреса IPv6
 					const auto & second = addr.v6(endian_t::BIG);
-					// Выполняем сравнение адресов
-					result = ((first[0] == second[0]) && (first[1] == second[1]));
+					// Выполняем проверку совпадают ли адреса
+					result = (::memcmp(&first[0], &second[0], 16) == 0);
 					// Если адреса не совпадают
 					if(!result)
-						// Выполняем бинарное сравнение
-						result = this->compare(reinterpret_cast <const uint8_t *> (&first[0]), reinterpret_cast <const uint8_t *> (&second[0]), sizeof(first));
+						// Выполняем сравнение адресов
+						result = this->_fmk->isGreater(&first[0], &second[0], 16);
 				} break;
 			}
 		/**
@@ -3050,7 +2831,7 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 			// Если MAC-адрес определён
 			case static_cast <uint8_t> (type_t::MAC):
 				// Выполняем сравнение адресов
-				result = (this->mac() != addr.mac());
+				result = (::memcmp(&this->mac()[0], &addr.mac()[0], 6) != 0);
 			break;
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4):
@@ -3058,14 +2839,10 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 				result = (this->v4() != addr.v4());
 			break;
 			// Если IP-адрес определён как IPv6
-			case static_cast <uint8_t> (type_t::IPV6): {
-				// Получаем данные текущего адреса IPv6
-				const auto & first = this->v6();
-				// Получаем данные сравниваемого адреса IPv6
-				const auto & second = addr.v6();
+			case static_cast <uint8_t> (type_t::IPV6):
 				// Выполняем сравнение адресов
-				result = ((first[0] != second[0]) || (first[1] != second[1]));
-			} break;
+				result = (::memcmp(&this->v6()[0], &addr.v6()[0], 16) != 0);
+			break;
 		}
 	/**
 	 * Если возникает ошибка
@@ -3110,7 +2887,7 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
 					// Выполняем сравнение адресов
-					result = (this->mac() == addr.mac());
+					result = (::memcmp(&this->mac()[0], &addr.mac()[0], 6) == 0);
 				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
@@ -3118,14 +2895,10 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 					result = (this->v4() == addr.v4());
 				break;
 				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6): {
-					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6();
-					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6();
+				case static_cast <uint8_t> (type_t::IPV6):
 					// Выполняем сравнение адресов
-					result = ((first[0] == second[0]) && (first[1] == second[1]));
-				} break;
+					result = (::memcmp(&this->v6()[0], &addr.v6()[0], 16) == 0);
+				break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -3167,7 +2940,7 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 			// Если MAC-адрес определён
 			case static_cast <uint8_t> (type_t::MAC):
 				// Устанавливаем MAC-адресе
-				this->v4(addr.mac());
+				this->mac(addr.mac());
 			break;
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4):
@@ -3243,7 +3016,7 @@ awh::Net & awh::Net::operator = (const uint32_t addr) noexcept {
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
-awh::Net & awh::Net::operator = (const uint64_t addr) noexcept {
+awh::Net & awh::Net::operator = (const std::array <uint8_t, 6> & addr) noexcept {
 	// Устанавливаем MAC-адрес
 	this->mac(addr);
 	// Выводим текущий объект
