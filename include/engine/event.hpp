@@ -226,9 +226,6 @@ namespace awh {
 		 *
 		 */
 		namespace callback {
-			/**
-			 * Типы обратных вызовов событий
-			 */
 			// Обратный вызов события пользователя
 			using user_t = std::function <void (const uint32_t)>;
 			// Обратный вызов при записи в событие

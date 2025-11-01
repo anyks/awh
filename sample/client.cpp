@@ -53,9 +53,9 @@ int32_t main(int32_t argc, char * argv[]){
 	io.port(eid, 8080);
 	// Устанавливаем адрес события (en0 -> ea:ab:fd:74:1d:0d -> 10.9.5.161)
 	// if(io.address(eid, event::address_t::NETWORK, "10.9.5.0/255.255.255.0")){
-	if(io.address(eid, event::address_t::NETWORK, "fe80::105d:12e9:40c7:a76/76")){
+	// if(io.address(eid, event::address_t::NETWORK, "fe80::105d:12e9:40c7:a76/76")){
 	// if(io.address(eid, event::address_t::NETWORK, "192.168.7.0/255.255.255.0")){
-	// if(io.address(eid, event::address_t::NETWORK, "fe80::1cff:84b4:8614:a918/76")){
+	if(io.address(eid, event::address_t::NETWORK, "fe80::1cff:84b4:8614:a918/76")){
 		
 
 		cout << " !!!!! " << io.address(eid, event::address_t::MAC) << ":" << io.port(eid) << " !!!!! " << io.host(eid) << endl;
