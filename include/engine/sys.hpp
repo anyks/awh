@@ -18,6 +18,7 @@
 /**
  * Стандартные модули
  */
+#include <array>
 #include <string>
 #include <cstdint>
 #include <unordered_set>
@@ -113,38 +114,12 @@ namespace awh {
 				virtual ~Address() noexcept = default;
 			} address_t;
 			/**
-			 * @brief Структура IPv4-адреса
-			 *
-			 */
-			typedef struct AddressIPv4 : public address_t {
-				// IP-адрес
-				uint32_t address;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit AddressIPv4() noexcept : address_t(4), address(0) {}
-			} address_ipv4_t;
-			/**
-			 * @brief Структура IPv6-адреса
-			 *
-			 */
-			typedef struct AddressIPv6 : public address_t {
-				// IP-адрес
-				uint8_t address[16];
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit AddressIPv6() noexcept : address_t(16), address{0} {}
-			} address_ipv6_t;
-			/**
 			 * @brief Структура MAC-адреса
 			 *
 			 */
 			typedef struct AddressMAC : public address_t {
-				// MAC-адрес
-				uint8_t address[6];
+				// Буфер MAC-адреса
+				array <uint8_t, 6> address;
 				/**
 				 * @brief Конструктор
 				 *
@@ -190,8 +165,8 @@ namespace awh {
 			 *
 			 */
 			typedef struct AddressNetworkIPv6 : public address_network_t {
-				// IP-адрес сети
-				uint8_t address[16];
+				// Буфер IP-адрес сети
+				array <uint8_t, 16> address;
 				/**
 				 * @brief Конструктор
 				 *
@@ -219,26 +194,17 @@ namespace awh {
 			typedef struct Addresses {
 				// Название сетвого интерфейса
 				string iface;
+				// IP-адрес сети
+				unique_ptr <address_t> ip;
 				// MAC-адрес сети
-				address_t mac;
-				// Хост сети в хостовом порядке
-				address_t host;
-				// Бродкаст сети в хостовом порядке
-				address_t broadcast;
-				// Мультикаст сети в хостовом порядке
-				address_t multicast;
+				unique_ptr <address_t> mac;
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
+				 * @param ip адрес сетевого подключения
 				 */
-				explicit Addresses(
-					address_t host      = address_t{},
-					address_t broadcast = address_t{},
-					address_t multicast = address_t{}
-				) noexcept :
-				 iface{""},
-				 mac(address_mac_t{}), host(host),
-				 broadcast(broadcast), multicast(multicast) {}
+				explicit Addresses(unique_ptr <address_t> ip = make_unique <address_network_ipv4_t> ()) noexcept :
+				 iface{""}, ip(std::move(ip)), mac(make_unique <address_mac_t> ()) {}
 			} addresses_t;
 		public:
 			/**
@@ -267,12 +233,13 @@ namespace awh {
 				// Порт хоста
 				uint16_t port;
 				// IP-адрес хоста
-				address_t ip;
+				unique_ptr <address_t> ip;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit HostIP() noexcept : port(0) {}
+				explicit HostIP() noexcept :
+				 port(0), ip(make_unique <address_network_ipv4_t> ()) {}
 			} host_ip_t;
 			/**
 			 * @brief Структура UNIX-хоста
@@ -280,12 +247,12 @@ namespace awh {
 			 */
 			typedef struct HostUDC : public host_t {
 				// Путь к сокету
-				address_fs_t path;
+				unique_ptr <address_t> path;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit HostUDC() noexcept {}
+				explicit HostUDC() noexcept : path(make_unique <address_fs_t> ()) {}
 			} host_udc_t;
 		public:
 			/**
@@ -420,7 +387,7 @@ namespace awh {
 				// Файловый дескриптор
 				int32_t fd;
 				// Путь к файлу, каталогу или сокету
-				address_fs_t path;
+				unique_ptr <address_t> path;
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
 				// Чёрный список адресов которым запрещён доступ
@@ -432,59 +399,59 @@ namespace awh {
 				 *
 				 */
 				explicit Filesystem() noexcept : fd(-1) {}
-			} fs_t;
+			} filesystem_t;
 			/**
 			 * @brief Структура сервера
 			 *
 			 */
 			typedef struct Server : public node_t {
-				// Хост события
-				host_t host;
 				// Размер очереди ожидания подключения
 				uint16_t backlog;
 				// Объект параметров конечной точки
 				endpoint_t endpoint;
+				// Хост подключения события
+				unique_ptr <host_t> host;
 				// MAC-адрес сетевого интерфейса
-				address_mac_t macAddress;
+				unique_ptr <address_t> mac;
 				// Обратные вызовы события
 				callbacks_server_t callbacks;
-				// Сетевые интерфейсы события
-				unordered_set <string> interfaces;
-				// Опции активных событий
-				unordered_set <awh::event::option_t> options;
+				// Сетевые адреса для выхода в интернет
+				unordered_set <unique_ptr <address_t>> networks;
 				// Чёрный список пиров которым запрещён доступ
 				unordered_set <unique_ptr <address_t>> blacklist;
 				// Белый список пиров которым разрешён доступ
 				unordered_set <unique_ptr <address_t>> whitelist;
-				// Сетевые адреса для выхода в интернет
-				unordered_set <unique_ptr <address_network_t>> networks;
+				// Сетевые интерфейсы события
+				unordered_set <string> interfaces;
+				// Опции активных событий
+				unordered_set <awh::event::option_t> options;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Server() noexcept : backlog{SOMAXCONN} {}
+				explicit Server() noexcept : backlog{SOMAXCONN}, host(nullptr), mac(nullptr) {}
 			} server_t;
 			/**
 			 * @brief Структура клиента
 			 *
 			 */
 			typedef struct Client : public node_t {
-				// Хост события
-				host_t host;
 				// Объект параметров конечной точки
 				endpoint_t endpoint;
+				// Хост подключения события
+				unique_ptr <host_t> host;
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
 				// Сетевые интерфейсы события
 				unordered_set <string> interfaces;
 				// Опции активных событий
 				unordered_set <awh::event::option_t> options;
+				// Сетевые адреса для выхода в интернет
+				unordered_set <unique_ptr <address_t>> networks;
 				// Чёрный список серверов к которым запрещёно подключение
 				unordered_set <unique_ptr <address_t>> blacklist;
 				// Белый список серверов к которым разрешено подключение
 				unordered_set <unique_ptr <address_t>> whitelist;
-				// Сетевые адреса для выхода в интернет
-				unordered_set <unique_ptr <address_network_t>> networks;
 				// Размеры активных буферов события
 				unordered_map <awh::event::action_t, size_t> bufferSize;
 				// Активные таймауты события
@@ -495,17 +462,17 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Client() noexcept {}
+				explicit Client() noexcept : host(nullptr) {}
 			} client_t;
 			/**
 			 * @brief Структура подключённого клиента
 			 *
 			 */
 			typedef struct Peer : public node_t {
-				// Хост события
-				host_t host;
+				// Хост подключения события
+				unique_ptr <host_t> host;
 				// MAC-адрес сетевого интерфейса
-				address_mac_t macAddress;
+				unique_ptr <address_t> mac;
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
 				// Опции активных событий
@@ -520,7 +487,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Peer() noexcept {}
+				explicit Peer() noexcept : host(nullptr), mac(nullptr) {}
 			} peer_t;
 		private:
 			// Объект фреймворка
@@ -555,19 +522,12 @@ namespace awh {
 			void defaultAddress(addresses_t & addresses) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения имени сетевого интерфейса по IP-адресу
+			 * @brief Метод получения имени сетевого интерфейса по адресу
 			 *
-			 * @param ip IP-адрес
-			 * @return   имя сетевого интерфейса
+			 * @param addr адрес сетевого подключения
+			 * @return     имя сетевого интерфейса
 			 */
-			string interfaceName(const address_t & ip) const noexcept;
-			/**
-			 * @brief Метод получения имени сетевого интерфейса по MAC-адресу
-			 *
-			 * @param mac MAC-адрес
-			 * @return    имя сетевого интерфейса
-			 */
-			string interfaceName(const address_mac_t & mac) const noexcept;
+			string interfaceName(const unique_ptr <address_t> & addr) const noexcept;
 		public:
 			/**
 			 * @brief Метод поиска MAC-адреса по имени сетевого интерфейса
@@ -583,7 +543,7 @@ namespace awh {
 			 * @param net       сетевой адрес подсети в хостовом порядке
 			 * @param addresses структура сетевых адресов
 			 */
-			void addresses(const address_t & net, addresses_t & addresses) const noexcept;
+			void addresses(const unique_ptr <address_t> & net, addresses_t & addresses) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки принадлежности IP-адреса подсети
