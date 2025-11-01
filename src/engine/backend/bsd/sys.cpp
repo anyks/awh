@@ -13,6 +13,20 @@
  */
 
 /**
+ * Если включён режим отладки
+ */
+#if DEBUG_MODE
+	// Безопасное приведение типов с проверкой
+	#define awh_cast dynamic_cast
+/**
+ * Если режим отладки не включён
+ */
+#else
+	// Безопасное приведение типов без проверки
+	#define awh_cast static_cast
+#endif
+
+/**
  * Если максимальное количество файловых дескрипторов не передано
  */
 #ifndef AWH_MAX_COUNT_FDS
@@ -20,16 +34,6 @@
 	 * Устанавливаем максимальное количество доступных файловых дескрипторов 131072
 	 */
 	#define AWH_MAX_COUNT_FDS 0x20000
-#endif
-
-/**
- * Если максимальное количество опрашиваемых событий за одну итерацию (64, 128, 256, 512, 1024)
- */
-#ifndef AWH_MAX_POLL_EVENTS_COUNT
-	/**
-	 * Устанавливаем максимальное количество опрашиваемых событий за одну итерацию (64)
-	 */
-	#define AWH_MAX_POLL_EVENTS_COUNT 0x40
 #endif
 
 /**
@@ -347,7 +351,7 @@ void awh::System::peerAddresses(addresses_t & addresses) const noexcept {
 				// Получаем конечное значение итератора
 				char * end = (&buffer[0] + size);
 				// Получаем числовое значение IP-адреса
-				const uint32_t addr = dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->address;
+				const uint32_t addr = awh_cast <address_network_ipv4_t *> (addresses.ip.get())->address;
 				// Переходим по всем сетевым интерфейсам
 				for(begin = &buffer[0]; begin < end;){
 					// Получаем указатель сетевого интерфейса
@@ -377,7 +381,7 @@ void awh::System::peerAddresses(addresses_t & addresses) const noexcept {
 							// Копируем MAC-адрес в результат
 							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Копируем MAC-адрес в результат
-							::memcpy(&dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6);
+							::memcpy(&awh_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6);
 							// Выходим из цикла
 							break;
 						}
@@ -388,9 +392,9 @@ void awh::System::peerAddresses(addresses_t & addresses) const noexcept {
 							// Если MAC-адреса совпадают
 							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Сравниваем MAC-адреса
-							if(::memcmp(&dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6) == 0){
+							if(::memcmp(&awh_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6) == 0){
 								// Копируем IP-адрес в результат
-								dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->address = sin->sin_addr.s_addr;
+								awh_cast <address_network_ipv4_t *> (addresses.ip.get())->address = sin->sin_addr.s_addr;
 								// Выходим из цикла
 								break;
 							}
@@ -466,7 +470,7 @@ void awh::System::peerAddresses(addresses_t & addresses) const noexcept {
 				// Создаём объект подключения
 				struct sockaddr_in6 addr;
 				// Копируем IP-адрес в структуру подключения
-				::memcpy(&addr.sin6_addr, &dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], sizeof(addr.sin6_addr));
+				::memcpy(&addr.sin6_addr, &awh_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], sizeof(addr.sin6_addr));
 				// Переходим по всем сетевым интерфейсам
 				for(begin = &buffer[0]; begin < end;){
 					// Получаем указатель сетевого интерфейса
@@ -522,7 +526,7 @@ void awh::System::peerAddresses(addresses_t & addresses) const noexcept {
 							// Копируем MAC-адрес в результат
 							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Копируем MAC-адрес в результат
-							::memcpy(&dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6);
+							::memcpy(&awh_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6);
 							// Выходим из цикла
 							break;
 						}
@@ -533,9 +537,9 @@ void awh::System::peerAddresses(addresses_t & addresses) const noexcept {
 							// Если MAC-адреса совпадают
 							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Сравниваем MAC-адреса
-							if(::memcmp(&dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6) == 0){
+							if(::memcmp(&awh_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6) == 0){
 								// Копируем IP-адрес в результат
-								::memcpy(&dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
+								::memcpy(&awh_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
 								// Выходим из цикла
 								break;
 							}
@@ -602,7 +606,7 @@ void awh::System::nodeAddresses(addresses_t & addresses) const noexcept {
 				// Временное значение MAC-адреса
 				addresses_t temp;
 				// Получаем числовое значение IP-адреса
-				const uint32_t addr = dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->address;
+				const uint32_t addr = awh_cast <address_network_ipv4_t *> (addresses.ip.get())->address;
 				// Перебираем все сетевые интерфейсы
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не IPv4-интерфейсы
@@ -631,11 +635,11 @@ void awh::System::nodeAddresses(addresses_t & addresses) const noexcept {
 						// Выполняем извлечение MAC-адреса временного объекта
 						this->macAddress(ifa->ifa_name, temp);
 						// Сравниваем MAC-адреса
-						if(::memcmp(&dynamic_cast <address_mac_t *> (temp.mac.get())->address[0], &dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], 6) == 0){
+						if(::memcmp(&awh_cast <address_mac_t *> (temp.mac.get())->address[0], &awh_cast <address_mac_t *> (addresses.mac.get())->address[0], 6) == 0){
 							// Устанавливаем название сетевого интерфейса
 							addresses.iface = ifa->ifa_name;
 							// Копируем IP-адрес в результат
-							dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->address = sin->sin_addr.s_addr;
+							awh_cast <address_network_ipv4_t *> (addresses.ip.get())->address = sin->sin_addr.s_addr;
 							// Выходим из цикла
 							break;
 						}
@@ -671,7 +675,7 @@ void awh::System::nodeAddresses(addresses_t & addresses) const noexcept {
 				// Создаём объект подключения
 				struct sockaddr_in6 addr;
 				// Копируем IP-адрес в структуру подключения
-				::memcpy(&addr.sin6_addr, &dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], sizeof(addr.sin6_addr));
+				::memcpy(&addr.sin6_addr, &awh_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], sizeof(addr.sin6_addr));
 				// Перебираем все сетевые интерфейсы
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не IPv6-интерфейсы
@@ -700,11 +704,11 @@ void awh::System::nodeAddresses(addresses_t & addresses) const noexcept {
 						// Выполняем извлечение MAC-адреса временного объекта
 						this->macAddress(ifa->ifa_name, temp);
 						// Сравниваем MAC-адреса
-						if(::memcmp(&dynamic_cast <address_mac_t *> (temp.mac.get())->address[0], &dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], 6) == 0){
+						if(::memcmp(&awh_cast <address_mac_t *> (temp.mac.get())->address[0], &awh_cast <address_mac_t *> (addresses.mac.get())->address[0], 6) == 0){
 							// Устанавливаем название сетевого интерфейса
 							addresses.iface = ifa->ifa_name;
 							// Копируем IP-адрес в результат
-							::memcpy(&dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
+							::memcpy(&awh_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
 							// Выходим из цикла
 							break;
 						}
@@ -776,7 +780,7 @@ void awh::System::defaultAddress(addresses_t & addresses) const noexcept {
 					// Если ошибки нет
 					if(conn > -1){
 						// Устанавливаем хост сети
-						dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->address = name.sin_addr.s_addr;
+						awh_cast <address_network_ipv4_t *> (addresses.ip.get())->address = name.sin_addr.s_addr;
 						// Устанавливаем название сетевого интерфейса
 						addresses.iface = this->interfaceName(addresses.ip);
 						// Получаем MAC-адрес сетевого интерфейса
@@ -815,7 +819,7 @@ void awh::System::defaultAddress(addresses_t & addresses) const noexcept {
 					// Если ошибки нет
 					if(conn > -1){
 						// Хост: просто копируем найденный адрес
-						::memcpy(&dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], name.sin6_addr.s6_addr, sizeof(name.sin6_addr.s6_addr));
+						::memcpy(&awh_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], name.sin6_addr.s6_addr, sizeof(name.sin6_addr.s6_addr));
 						// Устанавливаем название сетевого интерфейса
 						addresses.iface = this->interfaceName(addresses.ip);
 						// Получаем MAC-адрес сетевого интерфейса
@@ -895,7 +899,7 @@ string awh::System::interfaceName(const unique_ptr <address_t> & addr) const noe
 							// Получаем указатель на MAC-адрес
 							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Сравниваем MAC-адреса
-							if(::memcmp(&dynamic_cast <address_mac_t *> (addr.get())->address[0], ptr, 6) == 0){
+							if(::memcmp(&awh_cast <address_mac_t *> (addr.get())->address[0], ptr, 6) == 0){
 								// Устанавливаем результат
 								result = ifa->ifa_name;
 								// Завершаем поиск
@@ -913,7 +917,7 @@ string awh::System::interfaceName(const unique_ptr <address_t> & addr) const noe
 					// Получаем указатель на структуру IPv4
 					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
 					// Если адреса совпадают
-					if(sin->sin_addr.s_addr == dynamic_cast <const address_network_ipv4_t *> (addr.get())->address){
+					if(sin->sin_addr.s_addr == awh_cast <const address_network_ipv4_t *> (addr.get())->address){
 						// Устанавливаем результат
 						result = ifa->ifa_name;
 						// Завершаем поиск
@@ -929,7 +933,7 @@ string awh::System::interfaceName(const unique_ptr <address_t> & addr) const noe
 					// Получаем указатель на структуру IPv6
 					struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 					// Если адреса совпадают
-					if(::memcmp(&sin->sin6_addr, &dynamic_cast <const address_network_ipv6_t *> (addr.get())->address[0], sizeof(in6_addr)) == 0){
+					if(::memcmp(&sin->sin6_addr, &awh_cast <const address_network_ipv6_t *> (addr.get())->address[0], sizeof(in6_addr)) == 0){
 						// Устанавливаем результат
 						result = ifa->ifa_name;
 						// Завершаем поиск
@@ -993,7 +997,7 @@ void awh::System::macAddress(const char * iface, addresses_t & addresses) const 
 					// Копируем MAC-адрес в результат
 					const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 					// Копируем MAC-адрес в результат
-					::memcpy(&dynamic_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6);
+					::memcpy(&awh_cast <address_mac_t *> (addresses.mac.get())->address[0], ptr, 6);
 					// Завершаем поиск MAC-адреса
 					break;
 				}
@@ -1038,11 +1042,11 @@ void awh::System::addresses(const unique_ptr <address_t> & net, addresses_t & ad
 			// Если адрес является IPv4
 			case 4: {
 				// Получаем сетевой адрес подсети
-				const address_network_ipv4_t * network = dynamic_cast <const address_network_ipv4_t *> (net.get());
+				const address_network_ipv4_t * network = awh_cast <const address_network_ipv4_t *> (net.get());
 				// Проверяем корректность префикса сети
 				if(network->prefix > 32)
 					// Корректируем префикс сети
-					dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->prefix = 32;
+					awh_cast <address_network_ipv4_t *> (addresses.ip.get())->prefix = 32;
 				// Проверка выравнивания сетевого адреса по маске
 				const uint32_t mask = ((network->prefix == 0) ? 0 : (~((1U << (32 - network->prefix)) - 1)));
 				// Если сетевой адрес не выровнен по маске
@@ -1088,7 +1092,7 @@ void awh::System::addresses(const unique_ptr <address_t> & net, addresses_t & ad
 					return;
 				}
 				// Устанавливаем префикс хостового адреса
-				dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->prefix = network->prefix;
+				awh_cast <address_network_ipv4_t *> (addresses.ip.get())->prefix = network->prefix;
 				// Перебираем все сетевые интерфейсы
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не IPv4-интерфейсы
@@ -1112,7 +1116,7 @@ void awh::System::addresses(const unique_ptr <address_t> & net, addresses_t & ad
 						// Получаем MAC-адрес сетевого интерфейса
 						this->macAddress(ifa->ifa_name, addresses);
 						// Устанавливаем хост сети
-						dynamic_cast <address_network_ipv4_t *> (addresses.ip.get())->address = ip;
+						awh_cast <address_network_ipv4_t *> (addresses.ip.get())->address = ip;
 						// Прерываем цикл поиска
 						break;
 					}
@@ -1123,11 +1127,11 @@ void awh::System::addresses(const unique_ptr <address_t> & net, addresses_t & ad
 			// Если адрес является IPv6
 			case 16: {
 				// Получаем сетевой адрес подсети
-				const address_network_ipv6_t * network = dynamic_cast <const address_network_ipv6_t *> (net.get());
+				const address_network_ipv6_t * network = awh_cast <const address_network_ipv6_t *> (net.get());
 				// Проверяем корректность префикса сети
 				if(network->prefix > 128)
 					// Корректируем префикс сети
-					dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->prefix = 128;
+					awh_cast <address_network_ipv6_t *> (addresses.ip.get())->prefix = 128;
 				// Получаем список сетевых интерфейсов
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
@@ -1149,7 +1153,7 @@ void awh::System::addresses(const unique_ptr <address_t> & net, addresses_t & ad
 					return;
 				}
 				// Устанавливаем префикс хостового адреса
-				dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->prefix = network->prefix;
+				awh_cast <address_network_ipv6_t *> (addresses.ip.get())->prefix = network->prefix;
 				// Временный IPv6-адрес
 				struct in6_addr addr;
 				// Перебираем все сетевые интерфейсы
@@ -1175,7 +1179,7 @@ void awh::System::addresses(const unique_ptr <address_t> & net, addresses_t & ad
 						// Получаем MAC-адрес сетевого интерфейса
 						this->macAddress(ifa->ifa_name, addresses);
 						// Хост: просто копируем найденный адрес
-						::memcpy(&dynamic_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], ip.s6_addr, sizeof(ip.s6_addr));
+						::memcpy(&awh_cast <address_network_ipv6_t *> (addresses.ip.get())->address[0], ip.s6_addr, sizeof(ip.s6_addr));
 						// Прерываем цикл поиска
 						break;
 					}
