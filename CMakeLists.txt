@@ -316,8 +316,8 @@ include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 # Выполняем подключение бэкендов IO
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
-    "${CMAKE_SOURCE_DIR}/src/engine/backends/bsd/sys.cpp"
-    "${CMAKE_SOURCE_DIR}/src/engine/backends/bsd/kqueue.cpp"
+    "${CMAKE_SOURCE_DIR}/src/engine/backend/bsd/sys.cpp"
+    "${CMAKE_SOURCE_DIR}/src/engine/backend/bsd/kqueue.cpp"
 )
 
 # Выполняем подключение исходников
