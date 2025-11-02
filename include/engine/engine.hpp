@@ -305,13 +305,28 @@ namespace awh {
 			virtual bool removeNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения сетевого интерфейса события
+			 *
+			 * @param id идентификатор события
+			 * @return   сетевой интерфейс события
+			 */
+			virtual string networkInterface(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки сетевого интерфейса события
+			 *
+			 * @param id   идентификатор события
+			 * @param name имя сетевого интерфейса для установки
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setNetworkInterface(const event::id_t id, const string & name) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод очистки всех сетевых интерфейсов события
 			 *
 			 * @param id идентификатор события
 			 * @return   результат выполнения очистки
 			 */
 			virtual bool clearNetworkInterfaces(const event::id_t id) noexcept = 0;
-		public:
 			/**
 			 * @brief Метод получения списка сетевых интерфейсов события
 			 *

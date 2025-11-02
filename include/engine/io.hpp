@@ -284,13 +284,28 @@ namespace awh {
 			bool removeNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept;
 		public:
 			/**
+			 * @brief Метод получения сетевого интерфейса события
+			 *
+			 * @param id идентификатор события
+			 * @return   сетевой интерфейс события
+			 */
+			string networkInterface(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки сетевого интерфейса события
+			 *
+			 * @param id   идентификатор события
+			 * @param name имя сетевого интерфейса для установки
+			 * @return     результат выполнения установки
+			 */
+			bool setNetworkInterface(const event::id_t id, const string & name) noexcept;
+		public:
+			/**
 			 * @brief Метод очистки всех сетевых интерфейсов события
 			 *
 			 * @param id идентификатор события
 			 * @return   результат выполнения очистки
 			 */
 			bool clearNetworkInterfaces(const event::id_t id) noexcept;
-		public:
 			/**
 			 * @brief Метод получения списка сетевых интерфейсов события
 			 *

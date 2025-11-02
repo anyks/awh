@@ -856,9 +856,9 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv6 в чистом виде
  */
-std::array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
+std::array <uint8_t, 16> awh::Net::v6(const endian_t endian) const noexcept {
 	// Результат работы функции
-	std::array <uint64_t, 2> result;
+	std::array <uint8_t, 16> result;
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 16){
 		/**
@@ -912,7 +912,7 @@ std::array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
  * @param addr   адрес IPv6 в чистом виде
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Net::v6(const std::array <uint64_t, 2> & addr, const endian_t endian) noexcept {
+void awh::Net::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) noexcept {
 	// Если IPv6 адрес передан
 	if(!addr.empty()){
 		/**
@@ -1216,7 +1216,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 					// Если IP-адрес определён как IPv6
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Получаем значение маски в виде адреса
-						const std::array <uint64_t, 2> num = net.v6();
+						const std::array <uint8_t, 16> num = net.v6();
 						// Выполняем перебор всего значения буфера
 						for(uint8_t i = 0; i < 16; i++){
 							// Переводим хексет в бинарный вид
@@ -1652,9 +1652,9 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 							// Буфер данных текущего адреса
 							std::array <uint16_t, 8> nwk, addr;
 							// Получаем значение адреса сети
-							const std::array <uint64_t, 2> & ip1 = net.v6();
+							const std::array <uint8_t, 16> & ip1 = net.v6();
 							// Получаем значение текущего адреса
-							const std::array <uint64_t, 2> & ip2 = this->v6();
+							const std::array <uint8_t, 16> & ip2 = this->v6();
 							// Выполняем копирование данных текущего адреса в буфер
 							::memcpy(&nwk[0], &ip1[0], sizeof(ip1));
 							// Выполняем копирование данных текущего адреса в буфер
@@ -3028,7 +3028,7 @@ awh::Net & awh::Net::operator = (const std::array <uint8_t, 6> & addr) noexcept 
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
-awh::Net & awh::Net::operator = (const std::array <uint64_t, 2> & addr) noexcept {
+awh::Net & awh::Net::operator = (const std::array <uint8_t, 16> & addr) noexcept {
 	// Устанавливаем IPv4
 	this->v6(addr);
 	// Выводим текущий объект

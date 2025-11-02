@@ -229,14 +229,14 @@ namespace awh {
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 * @return       адрес IPv6 в чистом виде
 			 */
-			std::array <uint64_t, 2> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
+			std::array <uint8_t, 16> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
 			 * @brief Метод установки адреса IPv6 в чистом виде
 			 *
 			 * @param addr   адрес IPv6 в чистом виде
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void v6(const std::array <uint64_t, 2> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
+			void v6(const std::array <uint8_t, 16> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * @brief Метод наложения маски сети
@@ -574,7 +574,7 @@ namespace awh {
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			Net & operator = (const std::array <uint64_t, 2> & addr) noexcept;
+			Net & operator = (const std::array <uint8_t, 16> & addr) noexcept;
 		public:
 			/**
 			 * @brief конструктор

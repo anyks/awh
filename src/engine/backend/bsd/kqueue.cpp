@@ -67,6 +67,11 @@
 using namespace std;
 
 /**
+ * Глобальная переменная списка предварительной настройки событий
+ */
+static unordered_map <awh::event::id_t, awh::sys_t::leadup_t> __awh_leadup__;
+
+/**
  * Глобальная переменная списка узлов событий
  */
 static unordered_map <awh::event::id_t, unique_ptr <awh::sys_t::node_t>> __awh_nodes__;
@@ -137,7 +142,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Возвращаем результат работы функции
-							return awh_cast <sys_t::host_ip_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->port;
+							return awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->port;
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Возвращаем результат работы функции
@@ -222,7 +227,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект хоста соседа
-							sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get());
+							sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get());
 							/**
 							 * Определяем семейство сокета
 							 */
@@ -374,7 +379,7 @@ string awh::IO::host(const event::id_t id) const noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Устанавливаем полученный IP-адрес
-							this->_net.v4(awh_cast <sys_t::address_network_ipv4_t *> (awh_cast <sys_t::host_ip_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
+							this->_net.v4(awh_cast <sys_t::address_network_ipv4_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем хост события
 							return static_cast <string> (this->_net);
 						}
@@ -404,34 +409,22 @@ string awh::IO::host(const event::id_t id) const noexcept {
 					switch(static_cast <uint8_t> (i->second->state.node)){
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
-							// Формируем буфер для хранения IP-адреса
-							array <uint64_t, 2> address;
-							// Выполняем копирование установленного IP-адреса
-							::memcpy(&address[0], &awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address[0], sizeof(address));
 							// Устанавливаем полученный IP-адрес
-							this->_net.v6(address, net_t::endian_t::LITTLE);
+							this->_net.v6(awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем результат работы функции
 							return static_cast <string> (this->_net);
 						}
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
-							// Формируем буфер для хранения IP-адреса
-							array <uint64_t, 2> address;
-							// Выполняем копирование установленного IP-адреса
-							::memcpy(&address[0], &awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::client_t *> (i->second.get())->host.get())->ip.get())->address[0], sizeof(address));
 							// Устанавливаем полученный IP-адрес
-							this->_net.v6(address, net_t::endian_t::LITTLE);
+							this->_net.v6(awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::client_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем результат работы функции
 							return static_cast <string> (this->_net);
 						}
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
-							// Формируем буфер для хранения IP-адреса
-							array <uint64_t, 2> address;
-							// Выполняем копирование установленного IP-адреса
-							::memcpy(&address[0], &awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::server_t *> (i->second.get())->host.get())->ip.get())->address[0], sizeof(address));
 							// Устанавливаем полученный IP-адрес
-							this->_net.v6(address, net_t::endian_t::LITTLE);
+							this->_net.v6(awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::server_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем результат работы функции
 							return static_cast <string> (this->_net);
 						}
@@ -446,7 +439,7 @@ string awh::IO::host(const event::id_t id) const noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Возвращаем адрес сокета в UNIX-домене
-							return awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address;
+							return awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address;
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Возвращаем адрес сокета в UNIX-домене
@@ -535,7 +528,7 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 							// Устанавливаем полученный IP-адрес
 							this->_net.parse(host, net_t::type_t::IPV4);
 							// Получаем указатель на объект соседа
-							auto peer = static_cast <sys_t::peer_t *> (i->second.get());
+							auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
 							// Получаем объект адреса для установки данных
 							auto address = awh_cast <sys_t::address_network_ipv4_t *> (awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip.get());
 							// Копируем полученный IP-адрес в объект события
@@ -566,7 +559,7 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 							// Если название сетевого интерфейса не пустое
 							if(!iface.empty())
 								// Устанавливаем название сетевого интерфейса
-								client->interfaces.emplace(::move(iface));
+								client->iface = ::move(iface);
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -585,7 +578,7 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 							// Если название сетевого интерфейса не пустое
 							if(!iface.empty())
 								// Устанавливаем название сетевого интерфейса
-								server->interfaces.emplace(::move(iface));
+								server->iface = ::move(iface);
 							// Параметры сетей интерфейсов
 							sys_t::addresses_t addresses{};
 							// Устанавливаем хост сервера для получения MAC-адреса
@@ -612,15 +605,15 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 							// Устанавливаем полученный IP-адрес
 							this->_net.parse(host, net_t::type_t::IPV6);
 							// Получаем указатель на объект соседа
-							auto peer = static_cast <sys_t::peer_t *> (i->second.get());
+							auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
 							// Получаем объект адреса для установки данных
 							auto & address = awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip;
-							// Копируем полученный IP-адрес в объект события
-							::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+							// Устанавливаем полученный IP-адрес в объект события
+							awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 							// Параметры сетей интерфейсов
 							sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-							// Копируем IP-адрес для получения MAC-адреса
-							::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+							// Устанавливаем IP-адрес для получения MAC-адреса
+							awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 							// Получаем MAC-адрес из системы по IP-адресу
 							this->_sys.peerAddresses(addresses);
 							// Получаем объект адреса для установки данных
@@ -636,14 +629,14 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 							auto client = awh_cast <sys_t::client_t *> (i->second.get());
 							// Получаем объект адреса для установки данных
 							auto & address = awh_cast <sys_t::host_ip_t *> (client->host.get())->ip;
-							// Копируем полученный IP-адрес в объект события
-							::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+							// Устанавливаем полученный IP-адрес в объект события
+							awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 							// Получаем название сетевого интерфейса по IP-адресу
 							string iface = ::move(this->_sys.interfaceName(address));
 							// Если название сетевого интерфейса не пустое
 							if(!iface.empty())
 								// Устанавливаем название сетевого интерфейса
-								client->interfaces.emplace(::move(iface));
+								client->iface = ::move(iface);
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -655,18 +648,18 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 							auto server = awh_cast <sys_t::server_t *> (i->second.get());
 							// Получаем объект адреса для установки данных
 							auto & address = awh_cast <sys_t::host_ip_t *> (server->host.get())->ip;
-							// Копируем полученный IP-адрес в объект события
-							::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+							// Устанавливаем полученный IP-адрес в объект события
+							awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 							// Получаем название сетевого интерфейса по IP-адресу
 							string iface = ::move(this->_sys.interfaceName(address));
 							// Если название сетевого интерфейса не пустое
 							if(!iface.empty())
 								// Устанавливаем название сетевого интерфейса
-								server->interfaces.emplace(::move(iface));
+								server->iface = ::move(iface);
 							// Параметры сетей интерфейсов
 							sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-							// Копируем IP-адрес для получения MAC-адреса
-							::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+							// Устанавливаем IP-адрес для получения MAC-адреса
+							awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 							// Получаем MAC-адрес из системы по IP-адресу
 							this->_sys.nodeAddresses(addresses);
 							// Получаем объект адреса для установки данных
@@ -685,7 +678,7 @@ bool awh::IO::host(const event::id_t id, const string & host) noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Устанавливаем адрес сокета в UNIX-домене
-							awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address = host;
+							awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address = host;
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -869,23 +862,15 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					switch(static_cast <uint8_t> (i->second->state.node)){
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
-							// Контейнер MAC-адреса
-							array <uint8_t, 6> address = {0};
-							// Копируем MAC-адрес из объекта события
-							::memcpy(&address[0], &awh_cast <sys_t::address_mac_t *> (static_cast <sys_t::peer_t *> (i->second.get())->mac.get())->address[0], 6);
 							// Устанавливаем полученный MAC-адрес
-							this->_net.mac(address);
+							this->_net.mac(awh_cast <sys_t::address_mac_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->mac.get())->address);
 							// Возвращаем хост события
 							return static_cast <string> (this->_net);
 						} break;
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
-							// Контейнер MAC-адреса
-							array <uint8_t, 6> address = {0};
-							// Копируем MAC-адрес из объекта события
-							::memcpy(&address[0], &awh_cast <sys_t::address_mac_t *> (awh_cast <sys_t::server_t *> (i->second.get())->mac.get())->address[0], 6);
 							// Устанавливаем полученный MAC-адрес
-							this->_net.mac(address);
+							this->_net.mac(awh_cast <sys_t::address_mac_t *> (awh_cast <sys_t::server_t *> (i->second.get())->mac.get())->address);
 							// Возвращаем хост события
 							return static_cast <string> (this->_net);
 						} break;
@@ -900,7 +885,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Возвращаем адрес сокета в UNIX-домене
-							return awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address;
+							return awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address;
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Возвращаем адрес сокета в UNIX-домене
@@ -926,7 +911,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Устанавливаем полученный IP-адрес
-							this->_net.v4(awh_cast <sys_t::address_network_ipv4_t *> (awh_cast <sys_t::host_ip_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
+							this->_net.v4(awh_cast <sys_t::address_network_ipv4_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем хост события
 							return static_cast <string> (this->_net);
 						}
@@ -954,34 +939,22 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					switch(static_cast <uint8_t> (i->second->state.node)){
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
-							// Формируем буфер для хранения IP-адреса
-							array <uint64_t, 2> address;
-							// Выполняем копирование установленного IP-адреса
-							::memcpy(&address[0], &awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address[0], sizeof(address));
 							// Устанавливаем полученный IP-адрес
-							this->_net.v6(address, net_t::endian_t::LITTLE);
+							this->_net.v6(awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем результат работы функции
 							return static_cast <string> (this->_net);
 						}
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
-							// Формируем буфер для хранения IP-адреса
-							array <uint64_t, 2> address;
-							// Выполняем копирование установленного IP-адреса
-							::memcpy(&address[0], &awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::client_t *> (i->second.get())->host.get())->ip.get())->address[0], sizeof(address));
 							// Устанавливаем полученный IP-адрес
-							this->_net.v6(address, net_t::endian_t::LITTLE);
+							this->_net.v6(awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::client_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем результат работы функции
 							return static_cast <string> (this->_net);
 						}
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
-							// Формируем буфер для хранения IP-адреса
-							array <uint64_t, 2> address;
-							// Выполняем копирование установленного IP-адреса
-							::memcpy(&address[0], &awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::server_t *> (i->second.get())->host.get())->ip.get())->address[0], sizeof(address));
 							// Устанавливаем полученный IP-адрес
-							this->_net.v6(address, net_t::endian_t::LITTLE);
+							this->_net.v6(awh_cast <sys_t::address_network_ipv6_t *> (awh_cast <sys_t::host_ip_t *> (awh_cast <sys_t::server_t *> (i->second.get())->host.get())->ip.get())->address, net_t::endian_t::LITTLE);
 							// Возвращаем результат работы функции
 							return static_cast <string> (this->_net);
 						}
@@ -989,80 +962,36 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 				} break;
 				// Если тип адреса принадлежит к сетям
 				case static_cast <uint8_t> (event::address_t::NETWORK): {
-					/**
-					 * Определяем чем является текущая нода
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT): {
-							// Получаем объект клиента
-							auto client = awh_cast <sys_t::client_t *> (i->second.get());
-							// Если список сетей у клиента не пустой
-							if(!client->networks.empty()){
-								// Получаем первую сеть из списка
-								const auto & i = client->networks.begin();
-								// Получаем параметры сети
-								const sys_t::address_network_t & network = awh_cast <sys_t::address_network_t &> (* i->get());
-								/**
-								 * Определяем тип адреса сети
-								 */
-								switch(static_cast <uint8_t> (network.size)){
-									// Если тип адреса сети является IPv4
-									case 4: {
-										// Устанавливаем полученный сетевой адрес
-										this->_net.v4(static_cast <const sys_t::address_network_ipv4_t &> (network).address, net_t::endian_t::LITTLE);
-										// Возвращаем хост события
-										return (static_cast <string> (this->_net) + "/" + std::to_string(static_cast <const sys_t::address_network_ipv4_t &> (network).prefix));
-									} break;
-									// Если тип адреса сети является IPv6
-									case 16: {
-										// Формируем буфер для хранения IP-адреса
-										array <uint64_t, 2> address;
-										// Выполняем копирование установленного IP-адреса
-										::memcpy(&address[0], &static_cast <const sys_t::address_network_ipv6_t &> (network).address[0], sizeof(address));
-										// Устанавливаем полученный сетевой адрес
-										this->_net.v6(address, net_t::endian_t::LITTLE);
-										// Возвращаем результат работы функции
-										return (static_cast <string> (this->_net) + "/" + std::to_string(static_cast <const sys_t::address_network_ipv6_t &> (network).prefix));
-									} break;
-								}
+					// Выполняем поиск предварительных настроек события
+					auto i = ::__awh_leadup__.find(id);
+					// Если предварительные настройки события найдены
+					if(i != ::__awh_leadup__.end()){
+						// Если в предварительных настройках указана сеть
+						if(!i->second.networks.empty()){
+							// Получаем первую сеть из списка
+							const auto & j = i->second.networks.begin();
+							// Получаем параметры сети
+							const sys_t::address_network_t & network = awh_cast <sys_t::address_network_t &> (* j->get());
+							/**
+							 * Определяем тип адреса сети
+							 */
+							switch(static_cast <uint8_t> (network.size)){
+								// Если тип адреса сети является IPv4
+								case 4: {
+									// Устанавливаем полученный сетевой адрес
+									this->_net.v4(static_cast <const sys_t::address_network_ipv4_t &> (network).address, net_t::endian_t::LITTLE);
+									// Возвращаем хост события
+									return (static_cast <string> (this->_net) + "/" + std::to_string(static_cast <const sys_t::address_network_ipv4_t &> (network).prefix));
+								} break;
+								// Если тип адреса сети является IPv6
+								case 16: {
+									// Устанавливаем полученный сетевой адрес
+									this->_net.v6(static_cast <const sys_t::address_network_ipv6_t &> (network).address, net_t::endian_t::LITTLE);
+									// Возвращаем результат работы функции
+									return (static_cast <string> (this->_net) + "/" + std::to_string(static_cast <const sys_t::address_network_ipv6_t &> (network).prefix));
+								} break;
 							}
-						} break;
-						// Если нода является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER): {
-							// Получаем объект клиента
-							auto server = awh_cast <sys_t::server_t *> (i->second.get());
-							// Если список сетей у клиента не пустой
-							if(!server->networks.empty()){
-								// Получаем первую сеть из списка
-								const auto & i = server->networks.begin();
-								// Получаем параметры сети
-								const sys_t::address_network_t & network = awh_cast <sys_t::address_network_t &> (* i->get());
-								/**
-								 * Определяем тип адреса сети
-								 */
-								switch(static_cast <uint8_t> (network.size)){
-									// Если тип адреса сети является IPv4
-									case 4: {
-										// Устанавливаем полученный сетевой адрес
-										this->_net.v4(static_cast <const sys_t::address_network_ipv4_t &> (network).address, net_t::endian_t::LITTLE);
-										// Возвращаем хост события
-										return (static_cast <string> (this->_net) + "/" + std::to_string(static_cast <const sys_t::address_network_ipv4_t &> (network).prefix));
-									} break;
-									// Если тип адреса сети является IPv6
-									case 16: {
-										// Формируем буфер для хранения IP-адреса
-										array <uint64_t, 2> address;
-										// Выполняем копирование установленного IP-адреса
-										::memcpy(&address[0], &static_cast <const sys_t::address_network_ipv6_t &> (network).address[0], sizeof(address));
-										// Устанавливаем полученный сетевой адрес
-										this->_net.v6(address, net_t::endian_t::LITTLE);
-										// Возвращаем результат работы функции
-										return (static_cast <string> (this->_net) + "/" + std::to_string(static_cast <const sys_t::address_network_ipv6_t &> (network).prefix));
-									} break;
-								}
-							}
-						} break;
+						}
 					}
 				} break;
 			}
@@ -1138,15 +1067,13 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Устанавливаем полученный MAC-адрес
 								this->_net.parse(value, net_t::type_t::MAC);
 								// Получаем указатель на объект соседа
-								auto peer = static_cast <sys_t::peer_t *> (i->second.get());
-								// Получаем текущее значение MAC-адреса
-								const auto & mac = this->_net.mac();
-								// Копируем полученный MAC-адрес в объект события
-								::memcpy(&awh_cast <sys_t::address_mac_t *> (peer->mac.get())->address[0], &mac[0], peer->mac->size);
+								auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
+								// Устанавливаем полученный MAC-адрес в объект события
+								awh_cast <sys_t::address_mac_t *> (peer->mac.get())->address = ::move(this->_net.mac());
 								// Параметры сетей интерфейсов
 								sys_t::addresses_t addresses{};
 								// Добавляем MAC-адрес для поиска
-								::memcpy(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], &mac[0], mac.size());
+								awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
 								// Получаем MAC-адрес из системы по IP-адресу
 								this->_sys.peerAddresses(addresses);
 								// Устанавливаем полученный IP-адрес в объект события
@@ -1160,16 +1087,14 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								this->_net.parse(value, net_t::type_t::MAC);
 								// Получаем указатель на объект сервера
 								auto server = awh_cast <sys_t::server_t *> (i->second.get());
-								// Получаем текущее значение MAC-адреса
-								const auto & mac = this->_net.mac();
-								// Копируем полученный MAC-адрес в объект события
-								::memcpy(&awh_cast <sys_t::address_mac_t *> (server->mac.get())->address[0], &mac[0], server->mac->size);
+								// Устанавливаем полученный MAC-адрес в объект события
+								awh_cast <sys_t::address_mac_t *> (server->mac.get())->address = ::move(this->_net.mac());
 								// Получаем название сетевого интерфейса по MAC-адресу
 								string iface = ::move(this->_sys.interfaceName(server->mac));
 								// Если название сетевого интерфейса не пустое
 								if(!iface.empty())
 									// Устанавливаем название сетевого интерфейса
-									server->interfaces.emplace(::move(iface));
+									server->iface = ::move(iface);
 								/**
 								 * Определяем семейство сокета
 								 */
@@ -1181,7 +1106,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Параметры сетей интерфейсов
 										sys_t::addresses_t addresses{};
 										// Устанавливаем хост сервера для получения MAC-адреса
-										::memcpy(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], &mac[0], mac.size());
+										awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
 										// Получаем IP-адрес из системы по MAC-адресу
 										this->_sys.nodeAddresses(addresses);
 										// Устанавливаем полученный IP-адрес
@@ -1194,7 +1119,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Параметры сетей интерфейсов
 										sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
 										// Устанавливаем хост сервера для получения MAC-адреса
-										::memcpy(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], &mac[0], mac.size());
+										awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
 										// Получаем IP-адрес из системы по MAC-адресу
 										this->_sys.nodeAddresses(addresses);
 										// Устанавливаем полученный IP-адрес
@@ -1231,7 +1156,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							// Если нода является соседом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Устанавливаем адрес сокета в UNIX-домене
-								awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (static_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address = value;
+								awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address = value;
 								// Возвращаем результат работы функции
 								return true;
 							}
@@ -1271,7 +1196,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Устанавливаем полученный IP-адрес
 								this->_net.parse(value, net_t::type_t::IPV4);
 								// Получаем указатель на объект соседа
-								auto peer = static_cast <sys_t::peer_t *> (i->second.get());
+								auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
 								// Получаем текущее значение адреса сокета в UNIX-домене
 								sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (peer->host.get());
 								// Копируем полученный IP-адрес в объект события
@@ -1302,7 +1227,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Если название сетевого интерфейса не пустое
 								if(!iface.empty())
 									// Устанавливаем название сетевого интерфейса
-									client->interfaces.emplace(::move(iface));
+									client->iface = ::move(iface);
 								// Возвращаем результат работы функции
 								return true;
 							}
@@ -1321,7 +1246,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Если название сетевого интерфейса не пустое
 								if(!iface.empty())
 									// Устанавливаем название сетевого интерфейса
-									server->interfaces.emplace(::move(iface));
+									server->iface = ::move(iface);
 								// Параметры сетей интерфейсов
 								sys_t::addresses_t addresses{};
 								// Устанавливаем хост сервера для получения MAC-адреса
@@ -1346,15 +1271,15 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Устанавливаем полученный IP-адрес
 								this->_net.parse(value, net_t::type_t::IPV6);
 								// Получаем указатель на объект соседа
-								auto peer = static_cast <sys_t::peer_t *> (i->second.get());
+								auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
 								// Получаем объект адреса для установки данных
 								auto & address = awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip;
-								// Копируем полученный IP-адрес в объект события
-								::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+								// Устанавливаем полученный IP-адрес в объект события
+								awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Параметры сетей интерфейсов
 								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-								// Копируем IP-адрес для получения MAC-адреса
-								::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+								// Устанавливаем IP-адрес для получения MAC-адреса
+								awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Получаем MAC-адрес из системы по IP-адресу
 								this->_sys.peerAddresses(addresses);
 								// Получаем объект адреса для установки данных
@@ -1370,14 +1295,14 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								auto client = awh_cast <sys_t::client_t *> (i->second.get());
 								// Получаем объект адреса для установки данных
 								auto & address = awh_cast <sys_t::host_ip_t *> (client->host.get())->ip;
-								// Копируем полученный IP-адрес в объект события
-								::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+								// Устанавливаем полученный IP-адрес в объект события
+								awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Получаем название сетевого интерфейса по IP-адресу
 								string iface = ::move(this->_sys.interfaceName(address));
 								// Если название сетевого интерфейса не пустое
 								if(!iface.empty())
 									// Устанавливаем название сетевого интерфейса
-									client->interfaces.emplace(::move(iface));
+									client->iface = ::move(iface);
 								// Возвращаем результат работы функции
 								return true;
 							}
@@ -1389,18 +1314,18 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								auto server = awh_cast <sys_t::server_t *> (i->second.get());
 								// Получаем объект адреса для установки данных
 								auto & address = awh_cast <sys_t::host_ip_t *> (server->host.get())->ip;
-								// Копируем полученный IP-адрес в объект события
-								::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+								// Устанавливаем полученный IP-адрес в объект события
+								awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Получаем название сетевого интерфейса по IP-адресу
 								string iface = ::move(this->_sys.interfaceName(address));
 								// Если название сетевого интерфейса не пустое
 								if(!iface.empty())
 									// Устанавливаем название сетевого интерфейса
-									server->interfaces.emplace(::move(iface));
+									server->iface = ::move(iface);
 								// Параметры сетей интерфейсов
 								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-								// Копируем IP-адрес для получения MAC-адреса
-								::memcpy(&awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+								// Устанавливаем IP-адрес для получения MAC-адреса
+								awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Получаем MAC-адрес из системы по IP-адресу
 								this->_sys.nodeAddresses(addresses);
 								// Получаем объект адреса для установки данных
@@ -1483,7 +1408,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Если нода является соседом
 									case static_cast <uint8_t> (event::node_t::PEER): {
 										// Получаем объект клиента
-										sys_t::peer_t * peer = static_cast <sys_t::peer_t *> (i->second.get());
+										sys_t::peer_t * peer = awh_cast <sys_t::peer_t *> (i->second.get());
 										// Получаем объект адреса для установки данных
 										peer->mac = ::move(addresses.mac);
 										// Копируем полученный IP-адрес в объект события
@@ -1496,15 +1421,9 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Получаем объект клиента
 										auto client = awh_cast <sys_t::client_t *> (i->second.get());
 										// Устанавливаем название сетевого интерфейса
-										client->interfaces.emplace(::move(addresses.iface));
+										client->iface = ::move(addresses.iface);
 										// Копируем полученный IP-адрес в объект события
 										awh_cast <sys_t::host_ip_t *> (client->host.get())->ip = ::move(addresses.ip);
-										// Добавляем адрес сети для выхода в интернет
-										auto ret = client->networks.emplace(make_unique <sys_t::address_network_ipv4_t> ());
-										// Копируем значение IP-адреса сети
-										awh_cast <sys_t::address_network_ipv4_t *> (ret.first->get())->address = addr->address;
-										// Возвращаем результат работы функции
-										return true;
 									}
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -1513,16 +1432,35 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Получаем объект адреса для установки данных
 										server->mac = ::move(addresses.mac);
 										// Устанавливаем название сетевого интерфейса
-										server->interfaces.emplace(::move(addresses.iface));
+										server->iface = ::move(addresses.iface);
 										// Копируем полученный IP-адрес в объект события
 										awh_cast<sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
-										// Добавляем адрес сети для выхода в интернет
-										auto ret = server->networks.emplace(make_unique <sys_t::address_network_ipv4_t> ());
-										// Копируем значение IP-адреса сети
-										awh_cast <sys_t::address_network_ipv4_t *> (ret.first->get())->address = addr->address;
+									}
+								}
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Выполняем поиск предварительных настроек события
+										auto i = ::__awh_leadup__.find(id);
+										// Если предварительные настройки события найдены
+										if(i != ::__awh_leadup__.end())
+											// Добавляем адрес сети для выхода в интернет
+											i->second.networks.emplace(::move(network));
+										// Если предварительные настройки события не найдены
+										else {
+											// Создаём предварительные настройки события
+											auto i = ::__awh_leadup__.emplace(id, sys_t::leadup_t{});
+											// Добавляем адрес сети для выхода в интернет
+											i.first->second.networks.emplace(::move(network));
+										}
 										// Возвращаем результат работы функции
 										return true;
-									}
+									} break;
 								}
 							} break;
 							// Для типа IPv6
@@ -1533,8 +1471,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								unique_ptr <sys_t::address_t> network = make_unique <sys_t::address_network_ipv6_t> ();
 								// Получаем адрес сети
 								auto addr = awh_cast <sys_t::address_network_ipv6_t *> (network.get());
-								// Копируем значение IP-адреса сети
-								::memcpy(&addr->address[0], &this->_net.v6(net_t::endian_t::LITTLE)[0], 16);
+								// Устанавливаем значение IP-адреса сети
+								addr->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Если маска является префиксом сети
 								if(this->_fmk->is(mask, fmk_t::check_t::NUMBER))
 									// Устанавливаем префикс сети
@@ -1554,7 +1492,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Если нода является соседом
 									case static_cast <uint8_t> (event::node_t::PEER): {
 										// Получаем объект клиента
-										sys_t::peer_t * peer = static_cast <sys_t::peer_t *> (i->second.get());
+										sys_t::peer_t * peer = awh_cast <sys_t::peer_t *> (i->second.get());
 										// Получаем объект адреса для установки данных
 										peer->mac = ::move(addresses.mac);
 										// Копируем полученный IP-адрес в объект события
@@ -1567,15 +1505,9 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Получаем объект клиента
 										auto client = awh_cast <sys_t::client_t *> (i->second.get());
 										// Добавляем название сетевого интерфейса
-										client->interfaces.emplace(::move(addresses.iface));
+										client->iface = ::move(addresses.iface);
 										// Копируем полученный IP-адрес в объект события
 										awh_cast <sys_t::host_ip_t *> (client->host.get())->ip = ::move(addresses.ip);
-										// Добавляем адрес сети для выхода в интернет
-										auto ret = client->networks.emplace(make_unique <sys_t::address_network_ipv6_t> ());
-										// Устанавливаем значение IP-адреса сети
-										awh_cast <sys_t::address_network_ipv6_t *> (ret.first->get())->address = ::move(addr->address);
-										// Возвращаем результат работы функции
-										return true;
 									}
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -1584,16 +1516,35 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Получаем объект адреса для установки данных
 										server->mac = ::move(addresses.mac);
 										// Устанавливаем название сетевого интерфейса
-										server->interfaces.emplace(::move(addresses.iface));
+										server->iface = ::move(addresses.iface);
 										// Копируем полученный IP-адрес в объект события
 										awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
-										// Добавляем адрес сети для выхода в интернет
-										auto ret = server->networks.emplace(make_unique <sys_t::address_network_ipv6_t> ());
-										// Устанавливаем значение IP-адреса сети
-										awh_cast <sys_t::address_network_ipv6_t *> (ret.first->get())->address = ::move(addr->address);
+									}
+								}
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Выполняем поиск предварительных настроек события
+										auto i = ::__awh_leadup__.find(id);
+										// Если предварительные настройки события найдены
+										if(i != ::__awh_leadup__.end())
+											// Добавляем адрес сети для выхода в интернет
+											i->second.networks.emplace(::move(network));
+										// Если предварительные настройки события не найдены
+										else {
+											// Создаём предварительные настройки события
+											auto i = ::__awh_leadup__.emplace(id, sys_t::leadup_t{});
+											// Добавляем адрес сети для выхода в интернет
+											i.first->second.networks.emplace(::move(network));
+										}
 										// Возвращаем результат работы функции
 										return true;
-									}
+									} break;
 								}
 							} break;
 						}
@@ -4929,6 +4880,27 @@ bool awh::IO::addNetworks(const event::id_t id, const std::unordered_set <string
  * @return         результат выполнения удаления
  */
 bool awh::IO::removeNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept {
+
+	return false;
+}
+/**
+ * @brief Метод получения сетевого интерфейса события
+ *
+ * @param id идентификатор события
+ * @return   сетевой интерфейс события
+ */
+string awh::IO::networkInterface(const event::id_t id) const noexcept {
+
+	return "";
+}
+/**
+ * @brief Метод установки сетевого интерфейса события
+ *
+ * @param id   идентификатор события
+ * @param name имя сетевого интерфейса для установки
+ * @return     результат выполнения установки
+ */
+bool awh::IO::setNetworkInterface(const event::id_t id, const string & name) noexcept {
 
 	return false;
 }

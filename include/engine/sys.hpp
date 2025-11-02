@@ -352,6 +352,19 @@ namespace awh {
 			} endpoint_t;
 		public:
 			/**
+			 * @brief Структура предварительной настройки
+			 *
+			 */
+			typedef struct LeadUp {
+				// Сетевые интерфейсы события
+				unordered_set <string> interfaces;
+				// Опции активных событий
+				unordered_set <awh::event::option_t> options;
+				// Сетевые адреса для выхода в интернет
+				unordered_set <unique_ptr <address_t>> networks;
+			} leadup_t;
+		public:
+			/**
 			 * @brief Структура узла события
 			 *
 			 */
@@ -398,13 +411,15 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Filesystem() noexcept : fd(-1) {}
+				explicit Filesystem() noexcept : fd(-1), path(nullptr) {}
 			} filesystem_t;
 			/**
 			 * @brief Структура сервера
 			 *
 			 */
 			typedef struct Server : public node_t {
+				// Название сетевого интерфейса
+				string iface;
 				// Размер очереди ожидания подключения
 				uint16_t backlog;
 				// Объект параметров конечной точки
@@ -415,39 +430,29 @@ namespace awh {
 				unique_ptr <address_t> mac;
 				// Обратные вызовы события
 				callbacks_server_t callbacks;
-				// Сетевые адреса для выхода в интернет
-				unordered_set <unique_ptr <address_t>> networks;
 				// Чёрный список пиров которым запрещён доступ
 				unordered_set <unique_ptr <address_t>> blacklist;
 				// Белый список пиров которым разрешён доступ
 				unordered_set <unique_ptr <address_t>> whitelist;
-				// Сетевые интерфейсы события
-				unordered_set <string> interfaces;
-				// Опции активных событий
-				unordered_set <awh::event::option_t> options;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Server() noexcept : backlog{SOMAXCONN}, host(nullptr), mac(nullptr) {}
+				explicit Server() noexcept : iface{""}, backlog{SOMAXCONN}, host(nullptr), mac(nullptr) {}
 			} server_t;
 			/**
 			 * @brief Структура клиента
 			 *
 			 */
 			typedef struct Client : public node_t {
+				// Название сетевого интерфейса
+				string iface;
 				// Объект параметров конечной точки
 				endpoint_t endpoint;
 				// Хост подключения события
 				unique_ptr <host_t> host;
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
-				// Сетевые интерфейсы события
-				unordered_set <string> interfaces;
-				// Опции активных событий
-				unordered_set <awh::event::option_t> options;
-				// Сетевые адреса для выхода в интернет
-				unordered_set <unique_ptr <address_t>> networks;
 				// Чёрный список серверов к которым запрещёно подключение
 				unordered_set <unique_ptr <address_t>> blacklist;
 				// Белый список серверов к которым разрешено подключение
@@ -462,7 +467,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Client() noexcept : host(nullptr) {}
+				explicit Client() noexcept : iface{""}, host(nullptr) {}
 			} client_t;
 			/**
 			 * @brief Структура подключённого клиента
@@ -475,8 +480,6 @@ namespace awh {
 				unique_ptr <address_t> mac;
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
-				// Опции активных событий
-				unordered_set <awh::event::option_t> options;
 				// Размеры активных буферов события
 				unordered_map <awh::event::action_t, size_t> bufferSize;
 				// Активные таймауты события
