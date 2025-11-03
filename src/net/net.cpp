@@ -254,7 +254,7 @@ namespace {
 	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
 	 * @return                основание системы счисления
 	 */
-	uint8_t detectBase(string_view token, bool allowNonDecimal) noexcept {
+	uint8_t detectBase(string_view token, const bool allowNonDecimal) noexcept {
 		// Если не разрешена не-десятичная система счисления
 		if(!allowNonDecimal)
 			// Возвращаем десятичную систему счисления
@@ -333,7 +333,7 @@ namespace {
 			// Иначе неверное основание системы счисления
 			} else return false;
 			// Проверка переполнения
-			if(result > ((std::numeric_limits <uint64_t>::max() - static_cast <uint64_t> (dig)) / static_cast <uint64_t> (base)))
+			if(result > ((numeric_limits <uint64_t>::max() - static_cast <uint64_t> (dig)) / static_cast <uint64_t> (base)))
 				// Возвращаем ошибку
 				return false;
 			// Обновляем результат парсинга
@@ -397,9 +397,9 @@ namespace {
 		// Проверяем форму с 3-мя октетами
 		if(octets.size() == 3){
 			// a.b.c  => a(8), b(8), c(16)
-			uint8_t baseA = ::detectBase(octets[0], allowNonDecimal);
-			uint8_t baseB = ::detectBase(octets[1], allowNonDecimal);
-			uint8_t baseC = ::detectBase(octets[2], allowNonDecimal);
+			const uint8_t baseA = ::detectBase(octets[0], allowNonDecimal);
+			const uint8_t baseB = ::detectBase(octets[1], allowNonDecimal);
+			const uint8_t baseC = ::detectBase(octets[2], allowNonDecimal);
 			// Парсим первый октет строки IP-адреса
 			if(!::parse64(octets[0], baseA, a) || (a > 0xFF))
 				// Возвращаем ошибку
@@ -430,8 +430,8 @@ namespace {
 		// Если форма с 2-мя октетами
 		} else if(octets.size() == 2) {
 			// a.b => a(8), b(24)
-			uint8_t baseA = ::detectBase(octets[0], allowNonDecimal);
-			uint8_t baseB = ::detectBase(octets[1], allowNonDecimal);
+			const uint8_t baseA = ::detectBase(octets[0], allowNonDecimal);
+			const uint8_t baseB = ::detectBase(octets[1], allowNonDecimal);
 			// Парсим первый октет строки IP-адреса
 			if(!::parse64(octets[0], baseA, a) || (a > 0xFF))
 				// Возвращаем ошибку
@@ -441,7 +441,7 @@ namespace {
 				// Возвращаем ошибку
 				return false;
 			// Формируем 32-битный адрес
-			uint32_t addr = (static_cast <uint32_t> (a) << 24) | static_cast <uint32_t> (b);
+			const uint32_t addr = ((static_cast <uint32_t> (a) << 24) | static_cast <uint32_t> (b));
 			/**
 			 * Формируем результат парсинга
 			 */
@@ -454,13 +454,13 @@ namespace {
 		// Если форма с 1-м октетом
 		} else if(octets.size() == 1) {
 			// Получаем основание системы счисления
-			uint8_t base = ::detectBase(octets[0], allowNonDecimal);
+			const uint8_t base = ::detectBase(octets[0], allowNonDecimal);
 			// Парсим единственный октет строки IP-адреса
 			if(!::parse64(octets[0], base, d) || (d > 0xFFFFFFFFull))
 				// Возвращаем ошибку
 				return false;
 			// Формируем 32-битный адрес
-			uint32_t addr = static_cast <uint32_t> (d);
+			const uint32_t addr = static_cast <uint32_t> (d);
 			/**
 			 * Формируем результат парсинга
 			 */
@@ -813,7 +813,7 @@ namespace {
 			// Если найдено значение "%25"
 			if(pos != string_view::npos){
 				// Извлекаем зону
-				zone = ::move(string(addr.substr(pos + 3)));
+				zone = addr.substr(pos + 3);
 				// Обрезаем основной IP-адрес
 				addr = addr.substr(0, pos);
 			// Иначе ищем обычный '%'
@@ -823,7 +823,7 @@ namespace {
 				// Если найдено значение '%'
 				if(pos != string_view::npos){
 					// Извлекаем зону
-					zone = ::move(string(addr.substr(pos + 1)));
+					zone = addr.substr(pos + 1);
 					// Обрезаем основной IP-адрес
 					addr = addr.substr(0, pos);
 				}
@@ -1211,50 +1211,6 @@ void awh::Net::initLocalNet() noexcept {
 	}
 }
 /**
- * @brief Метод заполнения недостающих элементов нулями
- *
- * @param num  число для заполнения нулями
- * @param size максимальная длина строки
- * @return     полученное число строки
- */
-string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
-	// Если число меньше максимальной длины строки
-	if(static_cast <uint8_t> (num.size()) < size){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаём строку для добавления
-			const string result(size - static_cast <uint8_t> (num.size()), '0');
-			// Добавляем недостающие нули в наше число
-			num.insert(num.begin(), result.begin(), result.end());
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug(
-					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(num, size),
-					log_t::flag_t::CRITICAL, error.what()
-				);
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return ::move(num);
-}
-/**
  * @brief Метод очистки данных IP-адреса
  *
  */
@@ -1481,10 +1437,10 @@ void awh::Net::mac(const std::array <uint8_t, 6> & addr) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем выделение памяти для MAC адреса
-			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
 			this->_type = type_t::MAC;
+			// Выполняем выделение памяти для MAC адреса
+			this->_buffer.resize(6, 0);
 			// Выполняем копирование данных адреса MAC
 			::memcpy(&this->_buffer[0], &addr[0], this->_buffer.size());
 		/**
@@ -1580,10 +1536,10 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем выделение памяти для IPv4 адреса
-			this->_buffer.resize(4);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV4;
+			// Выполняем выделение памяти для IPv4 адреса
+			this->_buffer.resize(4, 0);
 			/**
 			 * Определяем какой порядок следования байт установлен
 			 */
@@ -1692,10 +1648,10 @@ void awh::Net::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем выделение памяти для IPv6 адреса
-			this->_buffer.resize(16);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV6;
+			// Выполняем выделение памяти для IPv6 адреса
+			this->_buffer.resize(16, 0);
 			/**
 			 * Определяем какой порядок следования байт установлен
 			 */
@@ -2992,28 +2948,26 @@ string awh::Net::arpa() const noexcept {
 			} break;
 			// Если IP-адрес определён как IPv6
 			case static_cast <uint8_t> (type_t::IPV6): {
-				// Значение хекстета
-				uint16_t num = 0;
-				// Переходим по всему массиву
-				for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i += 2){
-					// Выполняем получение значение числа
-					::memcpy(&num, &this->_buffer[0] + i, sizeof(num));
-					// Если строка уже существует, добавляем разделитель
-					if(!result.empty())
-						// Добавляем разделитель
-						result.insert(result.begin(), '.');
-					// Выполняем перебор полученного хекстета
-					for(auto & item : this->zerro(this->_fmk->itoa <uint16_t> (htons(num), 16), 4)){
-						// Если последний символ не является точкой
-						if(!result.empty() && (result.front() != '.'))
-							// Добавляем разделитель
-							result.insert(result.begin(), '.');
-						// Добавляем хекстет в версию
-						result.insert(result.begin(), tolower(item));
-					}
+				/**
+				 * Шестнадцатеричные цифры
+				 */
+				static constexpr char hex[] = "0123456789abcdef";
+				// 32 hex-цифры + 31 точка + ".ip6.arpa" = ~72 символов
+				result.reserve(64 + 10);
+				// IPv6: каждый байт → две hex-цифры, в обратном порядке битов (но не байтов!)
+				// RFC 3596: каждый nibble (полубайт) отдельно, в обратном порядке байтов
+				for(int8_t i = 15; i >= 0; --i){
+					// Младший полубайт → сначала
+					result.append(1, hex[this->_buffer[i] & 0x0F]);
+					// Добавляем разделитель
+					result.append(1, '.');
+					// Старший полубайт
+					result.append(1, hex[(this->_buffer[i] >> 4) & 0x0F]);
+					// Добавляем разделитель
+					result.append(1, '.');
 				}
 				// Добавляем запись ARPA
-				result.append(".ip6.arpa");
+				result.append("ip6.arpa");
 			} break;
 		}
 	/**
@@ -3044,138 +2998,123 @@ string awh::Net::arpa() const noexcept {
  * @return     результат установки записи
  */
 bool awh::Net::arpa(const string & addr) noexcept {
-	// Результат работы функции
-	bool result = false;
 	// Если запись передана
 	if(!addr.empty() && (addr.length() > 13)){
-		// Если адрес является адресом IPv4
-		if((result = (addr.substr(addr.length() - 13).compare(".in-addr.arpa") == 0))){
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
-				// Выполняем очистку буфера данных
-				this->_buffer.clear();
-				// Выполняем инициализацию буфера
-				this->_buffer.resize(4);
-				// Устанавливаем тип адреса
-				this->_type = type_t::IPV4;
-				// Позиция разделителя
-				size_t start = 0, stop = 0, index = 3;
-				// Получаем адрес для парсинга
-				const string ip = addr.substr(0, addr.length() - 13);
-				/**
-				 * Выполняем поиск разделителя
-				 */
-				while((stop = ip.find('.', start)) != string::npos){
-					// Извлекаем полученное число
-					this->_buffer[index] = this->_fmk->atoi <uint8_t> (ip.c_str() + start, stop - start);
-					// Выполняем смещение
-					start = (stop + 1);
-					// Уменьшаем смещение индекса
-					index--;
-				}
-				// Выполняем установку последнего октета
-				this->_buffer[index] = this->_fmk->atoi <uint8_t> (ip.c_str() + start, ip.length() - start);
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			}
-		// Если адрес является адресом IPv6
-		} else if((result = (addr.substr(addr.length() - 9).compare(".ip6.arpa") == 0))) {
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
-				/**
-				 * @brief Структура бинарного буфера
-				 *
-				 */
-				struct Buffer {
-					// Временный буфер хекстета
-					uint8_t hexset[4];
-					// Результирующий буфер данных
-					uint16_t address[8];
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					Buffer() noexcept :
-					 hexset{0,0,0,0},
-					 address{0,0,0,0,0,0,0,0} {}
-				} __attribute__((packed)) buffer;
-				// Выполняем очистку буфера данных
-				this->_buffer.clear();
-				// Выполняем инициализацию буфера
-				this->_buffer.resize(16);
-				// Устанавливаем тип адреса
-				this->_type = type_t::IPV6;
-				// Позиция разделителя
-				size_t start = 0, stop = 0;
-				// Устанавливаем индекс последнего элемента
-				uint8_t index1 = 4, index2 = 8;
-				// Получаем адрес для парсинга
-				const string & ip = addr.substr(0, addr.length() - 9);
-				/**
-				 * Выполняем поиск разделителя
-				 */
-				while((stop = ip.find('.', start)) != string::npos){
-					// Выполняем установку хекстета
-					buffer.hexset[--index1] = static_cast <uint8_t> (ip[start]);
-					// Если хекстет полностью заполнен
-					if(index1 == 0){
-						// Добавляем хекстет в список
-						buffer.address[--index2] = ntohs(this->_fmk->atoi <uint16_t> (reinterpret_cast <const char *> (buffer.hexset), 4, static_cast <uint8_t> (16)));
-						// Выполняем сброс индекса
-						index1 = 4;
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем поиск суффикса записи
+			size_t pos = addr.rfind(".arpa");
+			// Если суффикс найден
+			if(pos != string::npos){
+				// Ещем следующую точку перед суффиксом
+				pos = addr.rfind('.', pos - 1);
+				// Если точка найдена
+				if(pos != string::npos){
+					// Если мы нашли суффикс IPv4
+					if(::strncmp(".in-addr.arpa", addr.c_str() + pos, 14) == 0){
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						// Выполняем инициализацию буфера
+						this->_buffer.resize(4, 0);
+						// Позиция разделителя и индекс октета
+						size_t begin = 0, index = 3;
+						/**
+						 * Выполняем поиск разделителя
+						 */
+						for(uint8_t i = 0; i < (pos + 1); i++){
+							/**
+							 * Определяем текущий символ
+							 */
+							if((addr[i] == '.') || (i == pos)){
+								// Извлекаем полученное число
+								this->_buffer[index] = this->_fmk->atoi <uint8_t> (addr.c_str() + begin, i - begin);
+								// Выполняем смещение
+								begin = (i + 1);
+								// Уменьшаем смещение индекса
+								index--;
+							}
+						}
+						// Устанавливаем тип адреса
+						this->_type = type_t::IPV4;
+						// Выводим положительный результат
+						return true;
+					// Если мы нашли суффикс IPv6
+					} else if(::strncmp(".ip6.arpa", addr.c_str() + pos, 10) == 0){
+						// Извлекаем основную часть (без ".ip6.arpa")
+						string_view data(addr.data(), addr.size() - 9);
+						// Должно быть ровно 63 символа: 32 hex + 31 точка
+						if(data.size() != 63)
+							// Неверный формат записи
+							return false;
+						// Текущее значение символа
+						char letter = 0;
+						// Значение символа в числовом формате
+						int32_t value = 0;
+						// Позиция для прохода по строке и текущее значение индекса
+						uint8_t pos = 0, index = 0;
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						// Выполняем инициализацию буфера
+						this->_buffer.resize(16, 0);
+						// Проходим по 32 nibble: 0..31
+						for(uint8_t i = 0; i < 32; ++i){
+							// Позиция символа (каждый nibble + точка, кроме последнего)
+							pos = (i * 2);
+							// Проверяем выход за границы строки
+							if(pos >= static_cast <uint8_t> (data.size()))
+								// Неверный формат записи
+								return false;
+							// Проверяем наличие точки (кроме последнего nibble)
+							if((i < 31) && (((pos + 1) >= static_cast <uint8_t> (data.size())) || (data[pos + 1] != '.')))
+								// Неверный формат записи
+								return false;
+							// Текущий символ
+							letter = data[pos];
+							// Преобразуем символ в числовой формат
+							value = ::hexval(letter);
+							// Если преобразование не удалось
+							if(value == -1)
+								// Неверный формат записи
+								return false;
+							// Определяем, в какой байт и в какой nibble писать
+							index = (15 - (i / 2)); // байты идут от 15 к 0
+							// Записываем значение nibble в соответствующий байт
+							if(i % 2 == 0)
+								// Записываем младший nibble
+								this->_buffer[index] = ((this->_buffer[index] & 0xF0) | value);
+							// Иначе записываем старший nibble
+							else this->_buffer[index] = ((this->_buffer[index] & 0x0F) | (value << 4));
+						}
+						// Устанавливаем тип адреса
+						this->_type = type_t::IPV6;
+						// Выводим положительный результат
+						return true;
 					}
-					// Выполняем смещение
-					start = (stop + 1);
 				}
-				// Выполняем установку хекстета
-				buffer.hexset[--index1] = static_cast <uint8_t> (ip[start]);
-				// Если хекстет полностью заполнен
-				if(index1 == 0)
-					// Добавляем хекстет в список
-					buffer.address[--index2] = ntohs(this->_fmk->atoi <uint16_t> (reinterpret_cast <const char *> (buffer.hexset), 4, static_cast <uint8_t> (16)));
-				// Выполняем копирование бинарных данных в буфер
-				::memcpy(&this->_buffer[0], buffer.address, sizeof(buffer.address));
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
-	return result;
+	return false;
 }
 /**
  * @brief Метод парсинга адреса
@@ -3201,7 +3140,7 @@ bool awh::Net::parse(const string & addr) noexcept {
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем инициализацию буфера
-						this->_buffer.resize(4);
+						this->_buffer.resize(4, 0);
 						// Выполняем парсинг IPv4 адреса
 						if(::ipv4(addr, this->_buffer)){
 							// Устанавливаем тип адреса
@@ -3217,7 +3156,7 @@ bool awh::Net::parse(const string & addr) noexcept {
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем инициализацию буфера
-						this->_buffer.resize(16);
+						this->_buffer.resize(16, 0);
 						// Выполняем парсинг IPv6 адреса
 						if(::ipv6(addr, this->_buffer, this->_zone)){
 							// Устанавливаем тип адреса
@@ -3233,7 +3172,7 @@ bool awh::Net::parse(const string & addr) noexcept {
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем инициализацию буфера
-						this->_buffer.resize(6);
+						this->_buffer.resize(6, 0);
 						// Выполняем парсинг MAC адреса
 						const int32_t rc = ::sscanf(
 							addr.c_str(),
@@ -3297,7 +3236,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
-					this->_buffer.resize(4);
+					this->_buffer.resize(4, 0);
 					// Выполняем парсинг IPv4 адреса
 					if(::ipv4(addr, this->_buffer)){
 						// Устанавливаем тип адреса
@@ -3313,7 +3252,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
-					this->_buffer.resize(16);
+					this->_buffer.resize(16, 0);
 					// Выполняем парсинг IPv6 адреса
 					if(::ipv6(addr, this->_buffer, this->_zone)){
 						// Устанавливаем тип адреса
@@ -3329,7 +3268,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
-					this->_buffer.resize(6);
+					this->_buffer.resize(6, 0);
 					// Выполняем парсинг MAC адреса
 					const int32_t rc = ::sscanf(
 						addr.c_str(),

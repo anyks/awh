@@ -150,15 +150,6 @@ namespace awh {
 			 *
 			 */
 			void initLocalNet() noexcept;
-		private:
-			/**
-			 * @brief Метод заполнения недостающих элементов нулями
-			 *
-			 * @param num  число для заполнения нулями
-			 * @param size максимальная длина строки
-			 * @return     полученное число строки
-			 */
-			string && zerro(string && num, const uint8_t size = 3) const noexcept;
 		public:
 			/**
 			 * @brief Метод очистки данных IP-адреса
