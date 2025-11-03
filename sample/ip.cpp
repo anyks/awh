@@ -40,12 +40,12 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим тесты IP-адресов
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";
 	// Выводим IP-адрес в консоль
-	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] || DEFAULT: " << net << " === LONG: " << net.print(net_t::format_size_t::LONG) << " === MIDDLE: " << net.print(net_t::format_size_t::MIDDLE) << " === SHORT: " << net.print(net_t::format_size_t::SHORT) << " == SHORT DEC: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::DECIMAL) << " == SHORT OCT: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::OCTAL) << endl;
+	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] || DEFAULT: " << net << " === LONG: " << net.print(net_t::format_size_t::LONG) << " === MIDDLE: " << net.print(net_t::format_size_t::MIDDLE) << " === SHORT: " << net.print(net_t::format_size_t::SHORT) << " == SHORT DEC: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::DECIMAL) << " == SHORT OCT: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::OCTAL) << " == SHORT IPv4 => IPv6: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX_IPV4) << endl;
 
 	// Выводим тесты IP-адресов
 	net = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
 	// Выводим IP-адрес в консоль
-	cout << " 2001:0db8:0000:0000:0000:0000:ae21:ad12 || " << net << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::BROADCAST) << endl;
+	cout << " 2001:0db8:0000:0000:0000:0000:ae21:ad12 || " << net << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX_IPV4) << endl;
 
 	// Выводим тесты IP-адресов
 	net = "2001:db8::ae21:ad12";
@@ -55,12 +55,12 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим тесты IP-адресов
 	net = "0000:0000:0000:0000:0000:0000:ae21:ad12";
 	// Выводим IP-адрес в консоль
-	cout << " 0000:0000:0000:0000:0000:0000:ae21:ad12 || " << net.print(net_t::format_size_t::SHORT) << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::BROADCAST) << endl;
+	cout << " 0000:0000:0000:0000:0000:0000:ae21:ad12 || " << net.print(net_t::format_size_t::SHORT) << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX) << endl;
 
 	// Выводим тесты IP-адресов
 	net = "::ae21:ad12";
 	// Выводим IP-адрес в консоль
-	cout << " ::ae21:ad12 || " << net.print(net_t::format_size_t::MIDDLE) << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::BROADCAST) << endl;
+	cout << " ::ae21:ad12 || " << net.print(net_t::format_size_t::MIDDLE) << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX) << endl;
 
 	// Выводим тесты IP-адресов
 	net = "2001:0db8:11a3:09d7:1f34::";
@@ -72,7 +72,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Разрешаем вывод булевых переменных
 	cout << boolalpha;
 	// Выводим IP-адрес в консоль
-	cout << " ::ffff:192.0.2.1 || " << net << " ==== " << net.broadcastIPv6ToIPv4() << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::BROADCAST) << endl;
+	cout << " ::ffff:192.0.2.1 || " << net << " ==== " << net.broadcastIPv6ToIPv4() << " == IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX) << endl;
 
 	// Выводим тесты IP-адресов
 	net = "[::1]";
@@ -380,7 +380,13 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << " ========================= " << endl;
 
 	net = "192.168.0.1";
-	cout << " IP1: " << net << endl << endl;
+	cout << " IP1: " << net << endl;
+	cout << " IP2: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX_IPV6) << endl;
+	cout << " IP3: " << net.print(net_t::format_size_t::MIDDLE, net_t::format_flag_t::HEX_IPV6) << endl;
+	cout << " IP4: " << net.print(net_t::format_size_t::LONG, net_t::format_flag_t::HEX_IPV6) << endl;
+	cout << " IP5: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX_IPV4) << endl;
+	cout << " IP6: " << net.print(net_t::format_size_t::MIDDLE, net_t::format_flag_t::HEX_IPV4) << endl;
+	cout << " IP7: " << net.print(net_t::format_size_t::LONG, net_t::format_flag_t::HEX_IPV4) << endl << endl;
 
 	net = "10.1";
 	cout << " IP2: " << net << endl << endl;
@@ -399,7 +405,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	net = "::ffff:192.0.2.128";
 	cout << " IP7: " << net << endl;
-	cout << " IP7: as IPv4: " << net.print(net_t::format_size_t::MIDDLE, net_t::format_flag_t::HEX) << endl << endl;
+	cout << " IP7: as IPv4: " << net.print(net_t::format_size_t::SHORT, net_t::format_flag_t::HEX_IPV6) << endl << endl;
 
 	net = "fe80::1%eth0";
 	cout << " IP8: " << net << " == " << net.zone() << endl << endl;
