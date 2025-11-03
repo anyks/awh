@@ -1387,8 +1387,6 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								unique_ptr <sys_t::address_t> network = make_unique <sys_t::address_network_ipv4_t> ();
 								// Получаем адрес сети
 								auto addr = awh_cast <sys_t::address_network_ipv4_t *> (network.get());
-								// Получаем значение IP-адреса сети
-								addr->address = this->_net.v4(net_t::endian_t::LITTLE);
 								// Если маска является префиксом сети
 								if(this->_fmk->is(mask, fmk_t::check_t::NUMBER))
 									// Устанавливаем префикс сети
@@ -1397,6 +1395,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								else
 									// Устанавливаем префикс сети
 									addr->prefix = this->_net.mask2Prefix(mask, type);
+								// Выполняем наложение маски
+								this->_net.impose(addr->prefix, net_t::addr_t::NETWORK, net_t::type_t::IPV4);
+								// Получаем значение IP-адреса сети
+								addr->address = this->_net.v4(net_t::endian_t::LITTLE);
 								// Параметры сетей интерфейсов
 								sys_t::addresses_t addresses{};
 								// Выполняем поиск интерфейса в указанной сети по префиксу
@@ -1471,8 +1473,6 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								unique_ptr <sys_t::address_t> network = make_unique <sys_t::address_network_ipv6_t> ();
 								// Получаем адрес сети
 								auto addr = awh_cast <sys_t::address_network_ipv6_t *> (network.get());
-								// Устанавливаем значение IP-адреса сети
-								addr->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Если маска является префиксом сети
 								if(this->_fmk->is(mask, fmk_t::check_t::NUMBER))
 									// Устанавливаем префикс сети
@@ -1481,6 +1481,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								else
 									// Устанавливаем префикс сети
 									addr->prefix = this->_net.mask2Prefix(mask, type);
+								// Выполняем наложение маски
+								this->_net.impose(addr->prefix, net_t::addr_t::NETWORK, net_t::type_t::IPV6);
+								// Устанавливаем значение IP-адреса сети
+								addr->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
 								// Параметры сетей интерфейсов
 								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
 								// Выполняем поиск интерфейса в указанной сети по префиксу

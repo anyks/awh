@@ -30,7 +30,6 @@
  * Наши модуля
  */
 #include "../sys/os.hpp"
-#include "../sys/reg.hpp"
 #include "../sys/log.hpp"
 
 /**
@@ -74,34 +73,37 @@ namespace awh {
 				LITTLE = 0x02  // Порядок байт от младшего к старшему
 			};
 			/**
-			 * Форматирование IP-адреса
+			 * Размер формата IP-адреса
 			 */
-			enum class format_t : uint8_t {
-				NONE        = 0x00, // Формат IP-адреса не указан
-				LONG        = 0x01, // Полный формат IP-адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
-				SHORT       = 0x02, // Короткий формат IP-адреса [::ae21:ad12 / 192.168.0.1]
-				MIDDLE      = 0x03, // Средний формат IP-адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
-				HEX_IPV4    = 0x04, // Шестнадцатеричный формат IP-адреса для IPv4
-				OCTAL_IPV4  = 0x05, // Восьмеричный формат IP-адреса для IPv4
-				LONG_IPV4   = 0x06, // Полный формат IP-адреса для IPv4
-				LONG_IPV6   = 0x07, // Полный формат IP-адреса для IPv6
-				SHORT_IPV4  = 0x08, // Короткий формат IP-адреса для IPv4
-				SHORT_IPV6  = 0x09, // Короткий формат IP-адреса для IPv6
-				MIDDLE_IPV4 = 0x0A, // Средний формат IP-адреса для IPv4
-				MIDDLE_IPV6 = 0x0B  // Средний формат IP-адреса для IPv6
+			enum class format_size_t : uint8_t {
+				NONE   = 0x00, // Размер формата не установлен
+				LONG   = 0x01, // Полный формат IP-адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
+				SHORT  = 0x02, // Короткий формат IP-адреса [::ae21:ad12 / 192.168.0.1]
+				MIDDLE = 0x03  // Средний формат IP-адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
+			};
+			/**
+			 * Флаги форматирования IP-адреса
+			 */
+			enum class format_flag_t : uint8_t {
+				NONE      = 0x00, // Флаг не установлен
+				HEX       = 0x01, // Шестнадцатеричный формат
+				OCTAL     = 0x02, // Восьмеричный формат
+				DECIMAL   = 0x03, // Десятичный формат
+				BROADCAST = 0x04  // Флаг зеркального вещания IPv6 => IPv4
 			};
 			/**
 			 * Идентификаторы разновидностей адресов
 			 */
 			enum class type_t : uint8_t {
-				NONE    = 0x00, // Не определено
-				FS      = 0x01, // Адрес в файловой системе
-				MAC     = 0x02, // Аппаратный адрес сетевого интерфейса
-				URL     = 0x03, // URL-адрес
-				IPV4    = 0x04, // Адрес подключения IPv4
-				IPV6    = 0x05, // Адрес подключения IPv6
-				FQDN    = 0x06, // Доменная зона
-				NETWORK = 0x07  // Адрес/Маска сети
+				NONE  = 0x00, // Не определено
+				FS    = 0x01, // Адрес в файловой системе
+				MAC   = 0x02, // Аппаратный адрес сетевого интерфейса
+				URL   = 0x03, // URL-адрес
+				IPV4  = 0x04, // Адрес подключения IPv4
+				IPV6  = 0x05, // Адрес подключения IPv6
+				FQDN  = 0x06, // Доменная зона
+				NETV4 = 0x07, // Адрес/Маска сети
+				NETV6 = 0x08  // Адрес/Маска сети
 			};
 		private:
 			/**
@@ -116,24 +118,20 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param exp регулярное выражение для установки
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				LocalNet(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept :
+				LocalNet(const fmk_t * fmk, const log_t * log) noexcept :
 				 reserved(false), prefix(0),
-				 end(new Net(exp, fmk, log)),
-				 begin(new Net(exp, fmk, log)) {}
+				 end(std::make_unique <Net> (fmk, log)),
+				 begin(std::make_unique <Net> (fmk, log)) {}
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
 			type_t _type;
 		private:
-			// Объект регулярного выражения
-			regexp_t _regexp;
-		private:
-			// Регулярное выражение для проверки адреса
-			regexp_t::exp_t _exp;
+			// Зона IPv6 адреса
+			string _zone;
 		private:
 			// Бинарный буфер данных
 			vector <uint8_t> _buffer;
@@ -173,6 +171,19 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool broadcastIPv6ToIPv4() const noexcept;
+		public:
+			/**
+			 * @brief Метод извлечения зоны IPv6 адреса
+			 *
+			 * @return зона IPv6 адреса
+			 */
+			const string & zone() const noexcept;
+			/**
+			 * @brief Метод установки зоны IPv6 адреса
+			 *
+			 * @param zone зона IPv6 адреса для установки
+			 */
+			void zone(const string & zone) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения типа IP-адреса
@@ -237,6 +248,15 @@ namespace awh {
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
 			void v6(const std::array <uint8_t, 16> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки валидности IP-адреса
+			 *
+			 * @param addr адрес аппаратный или интернет подключения для проверки
+			 * @param type тип адреса аппаратного или интернет подключения для проверки
+			 * @return     результат проверки
+			 */
+			bool check(const string_view addr, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод наложения маски сети
@@ -478,10 +498,12 @@ namespace awh {
 			/**
 			 * @brief Метод извлечения данных IP-адреса
 			 *
-			 * @param format формат формирования IP-адреса
-			 * @return       сформированная строка IP-адреса
+			 * @param size  размер формата формирования IP-адреса
+			 * @param flag  флаг форматирования IP-адреса
+			 * @param delim разделитель формата формирования IP-адреса
+			 * @return      сформированная строка IP-адреса
 			 */
-			string get(const format_t format = format_t::SHORT) const noexcept;
+			string print(const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const char delim = -1) const noexcept;
 		public:
 			/**
 			 * @brief Оператор вывода IP-адреса в качестве строки
@@ -583,15 +605,6 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			explicit Net(const fmk_t * fmk, const log_t * log) noexcept;
-		private:
-			/**
-			 * @brief конструктор
-			 *
-			 * @param exp регулярное выражение для установки
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 */
-			explicit Net(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief деструктор

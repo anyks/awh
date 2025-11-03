@@ -59,13 +59,11 @@
  */
 #include <cmath>
 #include <bitset>
+#include <limits>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <algorithm>
-
-/**
- * Системные модули
- */
-#include <arpa/inet.h>
 
 /**
  * Подключаем заголовочный файл
@@ -78,32 +76,755 @@
 using namespace std;
 
 /**
- * @brief Вспомогательная функция для получения размера буфера
- *
- * @tparam T размер буфера данных
+ * Вспомогательное пространство имён для парсера
  */
-template <size_t T = 4>
-/**
- * @brief Вспомогательная функция конвертации IPv6-адреса в нужный порядок байт
- *
- * @param src исходный IPv6-адрес
- * @param dst результирующий IPv6-адрес
- */
-static void convertEndian(const uint8_t src[T], uint8_t dst[T]) noexcept {
+namespace parser {
 	/**
-	 * Если порядок байт Little Endian
+	 * @brief Вспомогательная функция для получения размера буфера
+	 *
+	 * @tparam T размер буфера данных
 	 */
-	#if IS_LITTLE_ENDIAN
-		// На little-endian: переворачиваем все T байт
-		std::reverse_copy(src, src + T, dst);
+	template <size_t T = 4>
 	/**
-	 * Если порядок байт Big Endian
+	 * @brief Вспомогательная функция конвертации IPv6-адреса в нужный порядок байт
+	 *
+	 * @param src исходный IPv6-адрес
+	 * @param dst результирующий IPv6-адрес
 	 */
-	#else
-		// На big-endian: ничего не делаем
-		::memcpy(dst, src, T);
-	#endif
-}
+	static void convertEndian(const uint8_t src[T], uint8_t dst[T]) noexcept {
+		/**
+		 * Если порядок байт Little Endian
+		 */
+		#if IS_LITTLE_ENDIAN
+			// На little-endian: переворачиваем все T байт
+			std::reverse_copy(src, src + T, dst);
+		/**
+		 * Если порядок байт Big Endian
+		 */
+		#else
+			// На big-endian: ничего не делаем
+			::memcpy(dst, src, T);
+		#endif
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки шестнадцатеричного символа
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 */
+	inline bool ishex(const char letter) noexcept {
+		// Возвращаем результат проверки
+		return (
+			((letter >= '0') && (letter <= '9')) ||
+			((letter >= 'a') && (letter <= 'f')) ||
+			((letter >= 'A') && (letter <= 'F'))
+		);
+	}
+	/**
+	 * @brief Вспомогательная функция для получения числового значения шестнадцатеричного символа
+	 *
+	 * @param letter проверяемый символ
+	 * @return       числовое значение символа
+	 */
+	inline int32_t hexval(const char letter) noexcept {
+		// Проверяем шестнадцатеричный символ
+		if((letter >= '0') && (letter <= '9'))
+			// Возвращаем числовое значение символа
+			return (letter - '0');
+		// Проверяем шестнадцатеричный символ в нижнем регистре
+		if((letter >= 'a') && (letter <= 'f'))
+			// Возвращаем числовое значение символа
+			return (10 + (letter - 'a'));
+		// Проверяем шестнадцатеричный символ в верхнем регистре
+		if((letter >= 'A') && (letter <= 'F'))
+			// Возвращаем числовое значение символа
+			return (10 + (letter - 'A'));
+		// Возвращаем ошибку
+		return -1;
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки десятичного символа
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 */
+	inline bool isdec(const char letter) noexcept {
+		// Возвращаем результат проверки
+		return ((letter >= '0') && (letter <= '9'));
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки восьмеричного символа
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 */
+	inline bool isoct(const char letter) noexcept {
+		// Возвращаем результат проверки
+		return ((letter >= '0') && (letter <= '7'));
+	}
+	/**
+	 * @brief Вспомогательная функция для обрезки пробелов в строке
+	 *
+	 * @param text исходный текст для обрезки
+	 * @return     обрезанный текст
+	 */
+	inline string_view trim(string_view text) noexcept {
+		// Позиции начала и конца обрезанной строки
+		size_t i = 0, j = text.size();
+		/**
+		 * Выполняем обрезку пробелов в начале и конце строки
+		 */
+		while(i < j && std::isspace(static_cast <uint8_t> (text[i]))) ++i;
+		/**
+		 * Обрезаем пробелы в конце строки
+		 */
+		while(j > i && std::isspace(static_cast <uint8_t> (text[j-1]))) --j;
+		// Возвращаем обрезанную строку
+		return text.substr(i, j - i);
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки префикса строки
+	 *
+	 * @param text исходный текст для проверки
+	 * @param pfx  префикс для проверки
+	 * @return     результат проверки
+	 */
+	inline bool startWith(string_view text, string_view pfx) noexcept {
+		// Возвращаем результат проверки
+		return ((text.size() >= pfx.size()) && std::equal(pfx.begin(), pfx.end(), text.begin()));
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки суффикса строки
+	 *
+	 * @param text исходный текст для проверки
+	 * @param sfx  суффикс для проверки
+	 * @return     результат проверки
+	 */
+	inline bool endWith(string_view text, string_view sfx) noexcept {
+		// Возвращаем результат проверки
+		return ((text.size() >= sfx.size()) && std::equal(text.end() - sfx.size(), text.end(), sfx.begin()));
+	}
+	/**
+	 * @brief Вспомогательная функция для разбиения строки по разделителю
+	 *
+	 * @param text   исходный текст для разбиения
+	 * @param delim  разделитель для разбиения
+	 * @param result результирующий массив частей строки
+	 * @param max    максимальное количество частей строки
+	 */
+	inline void split(string_view text, const char delim, vector <string_view> & result, const size_t max = numeric_limits <size_t>::max()) noexcept {
+		// Очищаем результирующий массив частей строки
+		result.clear();
+		// Позиция в строке, её размер и следующая позиция разделителя
+		size_t pos = 0, length = text.size(), next = 0;
+		/**
+		 * Пока не достигнут конец строки и не превышено максимальное количество частей строки
+		 */
+		while((pos <= length) && (result.size() < max)){
+			// Ищем следующую позицию разделителя
+			next = ((pos < length) ? text.find(delim, pos) : string_view::npos);
+			// Если разделитель не найден
+			if(next == string_view::npos)
+				// Устанавливаем позицию конца строки
+				next = length;
+			// Добавляем часть строки в результирующий массив
+			result.emplace_back(text.substr(pos, next - pos));
+			// Устанавливаем позицию следующего символа после разделителя
+			pos = (next + 1);
+			// Если достигнут конец строки
+			if(next == length)
+				// Прекращаем разбиение строки
+				break;
+		}
+	}
+	/**
+	 * @brief Вспомогательная функция определения основания для legacy IPv4 части
+	 * 
+	 * @param token           строка части IP-адреса
+	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
+	 * @return                основание системы счисления
+	 */
+	inline uint8_t detectBase(string_view token, bool allowNonDecimal) noexcept {
+		// Если не разрешена не-десятичная система счисления
+		if(!allowNonDecimal)
+			// Возвращаем десятичную систему счисления
+			return 10;
+		// Проверяем префиксы системы счисления
+		if((token.size() >= 2) && (token[0] == '0') && ((token[1] == 'x') || (token[1] == 'X')))
+			// Возвращаем шестнадцатеричную систему счисления
+			return 16;
+		// Проверяем восьмеричную систему счисления
+		if((token.size() > 1) && (token[0] == '0')){
+			// Если только 0-7 -> oct, иначе decimal
+			if(std::all_of(token.begin()+1, token.end(), isoct))
+				// Возвращаем восьмеричную систему счисления
+				return 8;
+		}
+		// Возвращаем десятичную систему счисления
+		return 10;
+	}
+	/**
+	 * @brief Вспомогательная функция для парсинга 64-битного числа из строки
+	 *
+	 * @param token  строка для парсинга
+	 * @param base   основание системы счисления
+	 * @param result результат парсинга
+	 * @return       результат выполнения парсинга
+	 */
+	inline bool parse64(string_view token, const uint8_t base, uint64_t & result) noexcept {
+		// Если строка пуста
+		if(token.empty())
+			// Возвращаем ошибку
+			return false;
+		// Инициализируем результат парсинга
+		result = 0;
+		// Парсим строку посимвольно
+		size_t i = 0;
+		// Если основание шестнадцатеричное
+		if((base == 16) && (token.size() >= 2) && (token[0] == '0') && ((token[1] == 'x') || (token[1] == 'X')))
+			// Начинаем парсинг с третьего символа
+			i = 2;
+		// Переменная для текущего символа
+		char letter = 0;
+		// Переменная для числового значения символа
+		int32_t dig = -1;
+		/**
+		 * Парсим строку посимвольно
+		 */
+		for(; i < token.size(); ++i){
+			// Инициализируем числовое значение символа
+			dig = -1;
+			// Текущий символ строки
+			letter = token[i];
+			// Проверяем символ в зависимости от основания системы счисления
+			if(base == 10){
+				// Проверяем десятичный символ
+				if(!isdec(letter))
+					// Возвращаем ошибку
+					return false;
+				// Получаем числовое значение символа
+				dig = (letter - '0');
+			// Если основание восьмеричное
+			} else if(base == 8) {
+				// Проверяем восьмеричный символ
+				if(!isoct(letter))
+					// Возвращаем ошибку
+					return false;
+				// Получаем числовое значение символа
+				dig = (letter - '0');
+			// Если основание шестнадцатеричное
+			} else if(base == 16) {
+				// Проверяем шестнадцатеричный символ
+				dig = hexval(letter);
+				// Если символ не шестнадцатеричный
+				if(dig < 0)
+					// Возвращаем ошибку
+					return false;
+			// Иначе неверное основание системы счисления
+			} else return false;
+			// Проверка переполнения
+			if(result > ((numeric_limits<uint64_t>::max() - static_cast <uint64_t> (dig)) / static_cast <uint64_t> (base)))
+				// Возвращаем ошибку
+				return false;
+			// Обновляем результат парсинга
+			result = (result * static_cast <uint64_t> (base) + static_cast <uint64_t> (dig));
+		}
+		// Возвращаем успешный результат парсинга
+		return true;
+	}
+	/**
+	 * @brief Вспомогательная функция для парсинга всех форм IPv4-адреса
+	 *
+	 * @param ip              строка с IPv4-адресом
+	 * @param result          результат парсинга в виде массива байт
+	 * @param allowLegacy     флаг разрешения legacy форм
+	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
+	 * @return                результат выполнения парсинга
+	 */
+	inline bool parseIPv4(string_view ip, vector <uint8_t> & result, const bool allowLegacy, const bool allowNonDecimal) noexcept {
+		// Части строки IP-адреса
+		vector <string_view> octets;
+		// Разбиваем строку IP-адреса на части
+		split(ip, '.', octets);
+		// Если частей ровно 4
+		if(octets.size() == 4){
+			// Основание системы счисления
+			uint8_t base = 0;
+			// Значение результата парсинга
+			uint64_t value = 0;
+			// Каждая часть в 0..255, при allowNonDecimal можно 0x/0..oct
+			for(uint8_t i = 0; i < 4; ++i){
+				// Текущая часть строки IP-адреса
+				auto octet = octets[i];
+				// Если часть пустая
+				if(octet.empty())
+					// Возвращаем ошибку
+					return false;
+				// Определяем основание системы счисления
+				base = detectBase(octet, allowNonDecimal);
+				// Сбрасываем значение результата парсинга
+				value = 0;
+				// Парсим часть строки IP-адреса
+				if(!parse64(octet, base, value))
+					// Возвращаем ошибку
+					return false;
+				// Проверяем диапазон значения части
+				if(value > 255)
+					// Возвращаем ошибку
+					return false;
+				// Устанавливаем значение части в результат парсинга
+				result[i] = static_cast <uint8_t> (value);
+			}
+			// Возвращаем успешный результат парсинга
+			return true;
+		}
+		// Если legacy формы не разрешены
+		if(!allowLegacy)
+			// Возвращаем ошибку
+			return false;
+		// legacy формы октетов
+		uint64_t a = 0, b = 0, c = 0, d = 0;
+		// Проверяем форму с 3-мя октетами
+		if(octets.size() == 3){
+			// a.b.c  => a(8), b(8), c(16)
+			uint8_t baseA = detectBase(octets[0], allowNonDecimal);
+			uint8_t baseB = detectBase(octets[1], allowNonDecimal);
+			uint8_t baseC = detectBase(octets[2], allowNonDecimal);
+			// Парсим первый октет строки IP-адреса
+			if(!parse64(octets[0], baseA, a) || (a > 0xFF))
+				// Возвращаем ошибку
+				return false;
+			// Парсим второй октет строки IP-адреса
+			if(!parse64(octets[1], baseB, b) || (b > 0xFF))
+				// Возвращаем ошибку
+				return false;
+			// Парсим третий октет строки IP-адреса
+			if(!parse64(octets[2], baseC, c) || (c > 0xFFFF))
+				// Возвращаем ошибку
+				return false;
+			// Формируем 32-битный адрес
+			const uint32_t addr = (
+				(static_cast <uint32_t> (a) << 24) |
+				(static_cast <uint32_t> (b) << 16) |
+				static_cast <uint32_t> (c)
+			);
+			/**
+			 * Формируем результат парсинга
+			 */
+			result[0] = static_cast <uint8_t> ((addr >> 24) & 0xFF);
+			result[1] = static_cast <uint8_t> ((addr >> 16) & 0xFF);
+			result[2] = static_cast <uint8_t> ((addr >> 8) & 0xFF);
+			result[3] = static_cast <uint8_t> (addr & 0xFF);
+			// Возвращаем успешный результат парсинга
+			return true;
+		// Если форма с 2-мя октетами
+		} else if(octets.size() == 2) {
+			// a.b => a(8), b(24)
+			uint8_t baseA = detectBase(octets[0], allowNonDecimal);
+			uint8_t baseB = detectBase(octets[1], allowNonDecimal);
+			// Парсим первый октет строки IP-адреса
+			if(!parse64(octets[0], baseA, a) || (a > 0xFF))
+				// Возвращаем ошибку
+				return false;
+			// Парсим второй октет строки IP-адреса
+			if(!parse64(octets[1], baseB, b) || (b > 0xFFFFFF))
+				// Возвращаем ошибку
+				return false;
+			// Формируем 32-битный адрес
+			uint32_t addr = (static_cast <uint32_t> (a) << 24) | static_cast <uint32_t> (b);
+			/**
+			 * Формируем результат парсинга
+			 */
+			result[0] = static_cast <uint8_t> ((addr >> 24) & 0xFF);
+			result[1] = static_cast <uint8_t> ((addr >> 16) & 0xFF);
+			result[2] = static_cast <uint8_t> ((addr >> 8) & 0xFF);
+			result[3] = static_cast <uint8_t> (addr & 0xFF);
+			// Возвращаем успешный результат парсинга
+			return true;
+		// Если форма с 1-м октетом
+		} else if(octets.size() == 1) {
+			// Получаем основание системы счисления
+			uint8_t base = detectBase(octets[0], allowNonDecimal);
+			// Парсим единственный октет строки IP-адреса
+			if(!parse64(octets[0], base, d) || (d > 0xFFFFFFFFull))
+				// Возвращаем ошибку
+				return false;
+			// Формируем 32-битный адрес
+			uint32_t addr = static_cast <uint32_t> (d);
+			/**
+			 * Формируем результат парсинга
+			 */
+			result[0] = static_cast <uint8_t> ((addr >> 24) & 0xFF);
+			result[1] = static_cast <uint8_t> ((addr >> 16) & 0xFF);
+			result[2] = static_cast <uint8_t> ((addr >> 8) & 0xFF);
+			result[3] = static_cast <uint8_t> (addr & 0xFF);
+			// Возвращаем успешный результат парсинга
+			return true;
+		}
+		// Возвращаем ошибку
+		return false;
+	}
+	/**
+	 * @brief Вспомогательная функция для парсинга десятичного квадрата IPv4-адреса
+	 *
+	 * @param ip     строка с десятичным квадратом IPv4-адреса
+	 * @param result результат парсинга в виде массива байт
+	 * @return       результат выполнения парсинга
+	 */
+	inline bool parseIPv4DecQuad(string_view ip, vector <uint8_t> & result) noexcept {
+		// Части строки IP-адреса
+		vector <string_view> octets;
+		// Разбиваем строку IP-адреса на октеты
+		split(ip, '.', octets);
+		// Проверяем количество октетов строки IP-адреса
+		if(octets.size() != 4)
+			// Возвращаем ошибку
+			return false;
+		// Значение результата парсинга
+		uint64_t value = 0;
+		// Парсим каждый октет строки IP-адреса
+		for(uint8_t i = 0; i < 4; ++i){
+			// Текущий октет строки IP-адреса
+			auto octet = octets[i];
+			// Проверяем октет строки IP-адреса
+			if(octet.empty() || ((octet.size() > 1) && (octet[0] == '+')))
+				// Возвращаем ошибку
+				return false;
+			// Проверяем каждый символ октета строки IP-адреса
+			if(!std::all_of(octet.begin(), octet.end(), isdec))
+				// Возвращаем ошибку
+				return false;
+			// Разрешаем ведущие нули, но это всё равно десятичный формат
+			if((octet.size() > 1) && (octet[0] == '0')){
+				/**
+				 * Разрешаем ведущие нули, но это всё равно десятичный формат
+				 */
+			}
+			// Сбрасываем значение результата парсинга
+			value = 0;
+			// Парсим октет строки IP-адреса
+			if(!parse64(octet, 10, value))
+				// Возвращаем ошибку
+				return false;
+			// Проверяем диапазон значения октета
+			if(value > 255)
+				// Возвращаем ошибку
+				return false;
+			// Устанавливаем значение октета в результат парсинга
+			result[i] = static_cast <uint8_t> (value);
+		}
+		// Возвращаем успешный результат парсинга
+		return true;
+	}
+	/**
+	 * @brief Вспомогательная функция для парсинга IPv6-адреса
+	 *
+	 * @param ip              строка с IPv6-адресом
+	 * @param result          результат парсинга в виде массива байт
+	 * @param allowEmbeddedV4 флаг разрешения встроенного IPv4-адреса
+	 * @return                результат выполнения парсинга
+	 */
+	inline bool parseIPv6(string_view ip, vector <uint8_t> & result, const bool allowEmbeddedV4) noexcept {
+		// Специальный случай "::"
+		if(ip.compare("::") == 0){
+			// Зануляем результат
+			::memset(&result[0], 0, result.size());
+			// Возвращаем успешный результат парсинга
+			return true;
+		}
+		// Найдём "::" (не более одного)
+		size_t dcol = ip.find("::");
+		// Проверяем, найден ли "::"
+		const bool hasDcol = (dcol != string_view::npos);
+		// Части левой и правой части адреса
+		vector <string_view> leftParts, rightParts;
+		// Разбиваем адрес на левую и правую части
+		if(hasDcol){
+			// Получаем левую часть IP-адреса
+			string_view left = ip.substr(0, dcol);
+			// Получаем правую часть IP-адреса
+			string_view right = ip.substr(dcol + 2);
+			// Если левая часть не пуста
+			if(!left.empty())
+				// Разбиваем левую часть на хексеты
+				split(left, ':', leftParts);
+			// Если правая часть не пуста
+			if(!right.empty())
+				// Разбиваем правую часть на хексеты
+				split(right, ':', rightParts);
+		// Иначе разбиваем весь адрес на хексеты
+		} else split(ip, ':', leftParts);
+		/**
+		 * @brief Парсинг хексета IPv6-адреса
+		 *
+		 * @param hextet строка с хексетом
+		 * @param result значение полученного хексета
+		 * @return       результат выполнения парсинга
+		 */
+		auto parseHextet = [](string_view hextet, uint16_t & result) noexcept -> bool {
+			// Проверяем длину хексета
+			if(hextet.empty() || (hextet.size() > 4))
+				// Возвращаем ошибку
+				return false;
+			// Парсим хексет посимвольно
+			uint32_t value = 0;
+			// Проходим по каждому символу хексета
+			for(char letter : hextet){
+				// Проверяем шестнадцатеричный символ
+				if(!ishex(letter))
+					// Возвращаем ошибку
+					return false;
+				// Обновляем значение хексета
+				value = ((value << 4) | static_cast <uint32_t> (hexval(letter)));
+				// Проверяем переполнение хексета
+				if(value > 0xFFFF)
+					// Возвращаем ошибку
+					return false;
+			}
+			// Устанавливаем результат парсинга
+			result = static_cast <uint16_t> (value);
+			// Возвращаем успешный результат парсинга
+			return true;
+		};
+		/**
+		 * @brief Парсинг IPv4-адреса в виде двух хексетов
+		 *
+		 * @param ip строка с IPv4-адресом
+		 * @param h1 первый хексет
+		 * @param h2 второй хексет
+		 * @return   результат выполнения парсинга
+		 */
+		auto parseIPv4TailAsTwoHextets = [](string_view ip, uint16_t & h1, uint16_t & h2) noexcept -> bool {
+			// Спарсеный IPv4-адрес
+			vector <uint8_t> v4(4, 0);
+			// Парсим IPv4-адрес
+			if(!parseIPv4DecQuad(ip, v4))
+				// Возвращаем ошибку
+				return false;
+			// Преобразуем первый хексет
+			h1 = static_cast <uint16_t> ((static_cast <uint16_t> (v4[0]) << 8) | v4[1]);
+			// Преобразуем второй хексет
+			h2 = static_cast <uint16_t> ((static_cast <uint16_t> (v4[2]) << 8) | v4[3]);
+			// Возвращаем успешный результат парсинга
+			return true;
+		};
+		// Собранные слова IPv6-адреса
+		vector <uint16_t> words;
+		// Резервируем место под 8 слов
+		words.reserve(8);
+		// Первый и второй хексеты IPv4-адреса
+		uint16_t hextet1 = 0, hextet2 = 0;
+		// Разбираем левую часть
+		for(uint8_t i = 0; i < static_cast <uint8_t> (leftParts.size()); ++i){
+			// Текущий токен левой части
+			auto part = leftParts[i];
+			// Проверяем пустой токен
+			if(part.empty())
+				// Пустой токен допустим только как часть "::"
+				return false;
+			// Проверяем встроенный IPv4-адрес
+			if(allowEmbeddedV4 && (part.find('.') != string_view::npos)){
+				// IPv4 разрешён только если это последний токен слева и при отсутствии правой части
+				if((i != static_cast <uint8_t> (leftParts.size() - 1)) || hasDcol)
+					// Возвращаем ошибку
+					return false;
+				// Сбрасываем значение хексетов
+				hextet1 = 0, hextet2 = 0;
+				// Парсим IPv4 как два хексета
+				if(!parseIPv4TailAsTwoHextets(part, hextet1, hextet2))
+					// Возвращаем ошибку
+					return false;
+				// Добавляем хексеты в IPv6-адрес
+				words.push_back(hextet1);
+				words.push_back(hextet2);
+			// Иначе парсим обычный хексет
+			} else {
+				// Сбрасываем значение хексета
+				hextet1 = 0;
+				// Парсим хексет
+				if(!parseHextet(part, hextet1))
+					// Возвращаем ошибку
+					return false;
+				// Добавляем хексет в IPv6-адрес
+				words.push_back(hextet1);
+			}
+		}
+		// Количество слов в правой части
+		uint8_t rightWordsCount = 0;
+		// Собранные слова правой части IPv6-адреса
+		vector <uint16_t> rightWords;
+		// Разбираем правую часть при наличии
+		if(hasDcol){
+			// Разобрать правую часть; если там IPv4 — только в самом последнем токене
+			for(uint8_t i = 0; i < static_cast <uint8_t> (rightParts.size()); ++i){
+				// Текущий токен правой части
+				auto part = rightParts[i];
+				// Проверяем пустой токен
+				if(part.empty())
+					// Пустой токен допустим только как часть "::"
+					return false;
+				// Проверяем встроенный IPv4-адрес
+				if(allowEmbeddedV4 && (i == static_cast <uint8_t> (rightParts.size() - 1)) && (part.find('.') != string_view::npos)){
+					// Сбрасываем значение хексетов
+					hextet1 = 0, hextet2 = 0;
+					// Парсим IPv4 как два хексета
+					if(!parseIPv4TailAsTwoHextets(part, hextet1, hextet2))
+						// Возвращаем ошибку
+						return false;
+					// Добавляем хексеты в правую часть IPv6-адреса
+					rightWords.push_back(hextet1);
+					rightWords.push_back(hextet2);
+				// Иначе парсим обычный хексет
+				} else {
+					// Сбрасываем значение хексета
+					hextet1 = 0;
+					// Парсим хексет
+					if(!parseHextet(part, hextet1))
+						// Возвращаем ошибку
+						return false;
+					// Добавляем хексет в правую часть IPv6-адреса
+					rightWords.push_back(hextet1);
+				}
+			}
+			// Запоминаем количество слов в правой части
+			rightWordsCount = static_cast <uint8_t> (rightWords.size());
+		}
+		// Сборка полного адреса
+		if(hasDcol){
+			// Со сжатием — общее количество слов должно быть не более 8
+			if((static_cast <uint8_t> (words.size()) + rightWordsCount) > 8)
+				// Возвращаем ошибку
+				return false;
+			// Вычисляем количество нулевых слов для вставки
+			const uint8_t zerosToInsert = (8 - (static_cast <uint8_t> (words.size()) + rightWordsCount));
+			// Полный набор слов IPv6-адреса
+			vector <uint16_t> full;
+			// Резервируем место под 8 слов
+			full.reserve(8);
+			// Собираем полный адрес
+			full.insert(full.end(), words.begin(), words.end());
+			// Вставляем нулевые слова
+			for(uint8_t i = 0; i < zerosToInsert; ++i)
+				// Вставляем нулевое слово
+				full.push_back(0);
+			// Добавляем правые слова
+			full.insert(full.end(), rightWords.begin(), rightWords.end());
+			// Проверяем размер полного адреса
+			if(full.size() != 8)
+				// Возвращаем ошибку
+				return false;
+			// Перебираем все слова полного адреса
+			for(uint8_t i = 0; i < 8; ++i){
+				/**
+				 * Выполняем формирование результата парсинга
+				 */
+				result[2 * i] = static_cast <uint8_t> ((full[i] >> 8) & 0xFF);
+				result[2 * i + 1] = static_cast <uint8_t> (full[i] & 0xFF);
+			}
+			// Возвращаем успешный результат парсинга
+			return true;
+		// Иначе без сжатия
+		} else {
+			// Без сжатия — либо 8 слов, либо 6 слов + IPv4 уже переведённый в 2 слова
+			if(words.size() != 8)
+				// Возвращаем ошибку
+				return false;
+			// Перебираем все слова полного адреса
+			for(uint8_t i = 0; i < 8; ++i){
+				/**
+				 * Выполняем формирование результата парсинга
+				 */
+				result[2 * i]   = static_cast <uint8_t> ((words[i] >> 8) & 0xFF);
+				result[2 * i + 1] = static_cast <uint8_t> (words[i] & 0xFF);
+			}
+			// Возвращаем успешный результат парсинга
+			return true;
+		}
+	}
+	/**
+	 * @brief Структура опций парсинга IPv4-адреса
+	 * 
+	 */
+	typedef struct Options {
+		bool allowLegacyV4 = true;     // a.b.c, a.b, a и др.
+		bool allowNonDecimalV4 = true; // 0xHEX, 0... OCT
+		bool allowBrackets = true;     // [addr]
+		bool allowZoneId = true;       // %zone, %25 в [ ]
+		bool allowEmbeddedV4 = true;   // a:b:c:d:e:f:w.x.y.z
+	} options_t;
+	/**
+	 * @brief Функция парсинга IPv4-адреса из строки
+	 *
+	 * @param ip      строка с IPv4-адресом
+	 * @param result  результат парсинга в бинарном виде
+	 * @param options опции парсинга
+	 * @return        результат выполнения парсинга
+	 */
+	inline bool ipv4(string_view ip, vector <uint8_t> & result, const options_t & options = {}) noexcept {
+		// Тримминг строки IP-адреса
+		auto addr = trim(ip);
+		// Обрабатываем скобки
+		if(addr.empty())
+			// Возвращаем ошибку
+			return false;
+		// Парсим IPv4-адрес
+		if(!parseIPv4(addr, result, options.allowLegacyV4, options.allowNonDecimalV4))
+			// Возвращаем ошибку
+			return false;
+		//  Возвращаем успешный результат парсинга
+		return true;
+	}
+	/**
+	 * @brief Функция парсинга IPv6-адреса из строки
+	 *
+	 * @param ip      строка с IPv6-адресом
+	 * @param result  результат парсинга в бинарном виде
+	 * @param zone    зона (zone-id) IPv6-адреса
+	 * @param options опции парсинга
+	 * @return        результат выполнения парсинга
+	 */
+	inline bool ipv6(string_view ip, vector <uint8_t> & result, string & zone, const options_t & options = {}) noexcept {
+		// Тримминг строки IP-адреса
+		auto addr = trim(ip);
+		// Обрабатываем скобки
+		if(addr.empty())
+			// Возвращаем ошибку
+			return false;
+		// Проверяем квадратные скобки вокруг адреса
+		if(options.allowBrackets && startWith(addr, "[") && endWith(addr, "]"))
+			// Убираем скобки
+			addr = addr.substr(1, addr.size() - 2);
+		// Если разрешён zone-id
+		if(options.allowZoneId){
+			// Внутри скобок RFC 6874 требует %25 как экранированный '%'
+			size_t pos = addr.find("%25");
+			// Если найдено значение "%25"
+			if(pos != string_view::npos){
+				// Извлекаем зону
+				zone = ::move(string(addr.substr(pos + 3)));
+				// Обрезаем основной IP-адрес
+				addr = addr.substr(0, pos);
+			// Иначе ищем обычный '%'
+			} else {
+				// Ищем обычный '%'
+				pos = addr.find('%');
+				// Если найдено значение '%'
+				if(pos != string_view::npos){
+					// Извлекаем зону
+					zone = ::move(string(addr.substr(pos + 1)));
+					// Обрезаем основной IP-адрес
+					addr = addr.substr(0, pos);
+				}
+			}
+		}
+		// Парсим IPv6-адрес
+		if(!parseIPv6(addr, result, options.allowEmbeddedV4))
+			// Возвращаем ошибку
+			return false;
+		// Возвращаем успешный результат парсинга
+		return true;
+	}
+};
 
 /**
  * @brief Метод инициализации списка локальных адресов
@@ -118,7 +839,7 @@ void awh::Net::initLocalNet() noexcept {
 		if(this->_localsNet.empty()){
 			{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 128;
 				// Устанавливаем зарезервированный флаг
@@ -129,7 +850,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 128;
 				// Устанавливаем IP-адрес
@@ -138,7 +859,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем зарезервированный флаг
@@ -149,7 +870,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -158,7 +879,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 96;
 				// Устанавливаем зарезервированный флаг
@@ -169,7 +890,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 16;
 				// Устанавливаем зарезервированный флаг
@@ -180,7 +901,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 10;
 				// Устанавливаем IP-адрес начала диапазона
@@ -191,7 +912,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 10;
 				// Устанавливаем IP-адрес начала диапазона
@@ -202,7 +923,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 7;
 				// Устанавливаем IP-адрес
@@ -211,7 +932,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -222,7 +943,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -233,7 +954,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем зарезервированный флаг
@@ -244,7 +965,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 10;
 				// Устанавливаем зарезервированный флаг
@@ -255,7 +976,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 16;
 				// Устанавливаем зарезервированный флаг
@@ -266,7 +987,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 4;
 				// Устанавливаем зарезервированный флаг
@@ -277,7 +998,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем зарезервированный флаг
@@ -288,7 +1009,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -299,7 +1020,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -310,7 +1031,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 4;
 				// Устанавливаем зарезервированный флаг
@@ -321,7 +1042,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем зарезервированный флаг
@@ -332,7 +1053,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем IP-адрес
@@ -341,7 +1062,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем IP-адрес
@@ -350,7 +1071,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 12;
 				// Устанавливаем IP-адрес
@@ -359,7 +1080,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -368,7 +1089,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 29;
 				// Устанавливаем IP-адрес
@@ -377,7 +1098,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -386,7 +1107,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -395,7 +1116,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -404,7 +1125,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -413,7 +1134,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -422,7 +1143,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 16;
 				// Устанавливаем IP-адрес
@@ -431,7 +1152,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -440,7 +1161,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 15;
 				// Устанавливаем IP-адрес
@@ -449,7 +1170,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_exp, this->_fmk, this->_log);
+				localNet_t localNet(this->_fmk, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -574,6 +1295,46 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 	return result;
 }
 /**
+ * @brief Метод извлечения зоны IPv6 адреса
+ *
+ * @return зона IPv6 адреса
+ */
+const string & awh::Net::zone() const noexcept {
+	// Выводим результат
+	return this->_zone;
+}
+/**
+ * @brief Метод установки зоны IPv6 адреса
+ *
+ * @param zone зона IPv6 адреса для установки
+ */
+void awh::Net::zone(const string & zone) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем установку зоны IPv6 адреса
+		this->_zone = zone;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод извлечения типа IP-адреса
  *
  * @return тип IP-адреса
@@ -606,35 +1367,35 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем проверку хоста
-			const auto & match = this->_regexp.exec(host, this->_exp);
-			// Если результат получен
-			if(!match.empty()){
-				// Выполняем перебор всех полученных вариантов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (match.size()); i++){
-					// Если данные получены
-					if(!match[i].empty()){
-						/**
-						 * Определяем тип хоста
-						 */
-						switch(i){
-							// Если мы определили MAC-адрес
-							case 1: return type_t::MAC;
-							// Если мы определили IPv4-адрес
-							case 2: return type_t::IPV4;
-							// Если мы определили IPv6-адрес
-							case 3: return type_t::IPV6;
-							// Если мы определили сеть
-							case 4: return type_t::NETWORK;
-							// Если мы определили доменная зона
-							case 5: return type_t::FQDN;
-							// Если мы определили URL-адрес
-							case 6: return type_t::URL;
-							// Если мы определили адрес в файловой системе
-							case 7: return type_t::FS;
-						}
-					}
+			// Выполняем полную проверку всех типов хостов
+			for(uint8_t i = 0; i < 9; i++){
+				/**
+				 * Устанавливаем тип для проверки
+				 */
+				switch(i){
+					// Если проверяем IPv4-адрес
+					case 0: result = type_t::IPV4; break;
+					// Если проверяем IPv6-адрес
+					case 1: result = type_t::IPV6; break;
+					// Если проверяем MAC-адрес
+					case 2: result = type_t::MAC; break;
+					// Если проверяем сеть IPv4
+					case 3: result = type_t::NETV4; break;
+					// Если проверяем сеть IPv6
+					case 4: result = type_t::NETV6; break;
+					// Если проверяем URL-адрес
+					case 5: result = type_t::URL; break;
+					// Если проверяем адрес файловой системы
+					case 6: result = type_t::FS; break;
+					// Если проверяем доменное имя
+					case 7: result = type_t::FQDN; break;
+					// По умолчанию устанавливаем тип NONE
+					default: result = type_t::NONE;
 				}
+				// Если проверка пройдена успешно
+				if((result != type_t::NONE) && this->check(host, result))
+					// Выводим результат
+					return result;
 			}
 		/**
 		 * Если возникает ошибка
@@ -760,7 +1521,7 @@ uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Получаем буфер данных IP-адреса
-					::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&result));
+					parser::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&result));
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -818,7 +1579,7 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Устанавливаем буфер данных IP-адреса
-					::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
+					parser::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -872,7 +1633,7 @@ std::array <uint8_t, 16> awh::Net::v6(const endian_t endian) const noexcept {
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Получаем буфер данных IP-адреса
-					::convertEndian <16> (&this->_buffer[0], reinterpret_cast <uint8_t *> (&result[0]));
+					parser::convertEndian <16> (&this->_buffer[0], reinterpret_cast <uint8_t *> (&result[0]));
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -930,7 +1691,7 @@ void awh::Net::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) 
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Устанавливаем буфер данных IP-адреса
-					::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
+					parser::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -961,6 +1722,242 @@ void awh::Net::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) 
 			#endif
 		}
 	}
+}
+/**
+ * @brief Метод проверки валидности IP-адреса
+ *
+ * @param addr адрес аппаратный или интернет подключения для проверки
+ * @param type тип адреса аппаратного или интернет подключения для проверки
+ * @return     результат проверки
+ */
+bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
+	// Если адрес передан
+	if(!addr.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			/**
+			 * Определяем тип IP-адреса
+			 */
+			switch(static_cast <uint8_t> (type)){
+				// Если адрес является адресом MAC
+				case static_cast <uint8_t> (type_t::MAC): {
+					// Проверяем длину MAC-адреса
+					if((addr.length() != 17) && (addr.length() != 12))
+						// Если длина MAC-адреса некорректна
+						return false;
+					/**
+					 * @brief Функция проверки является ли символ шестнадцатеричным
+					 *
+					 * @param c проверяемый символ
+					 * @return  результат проверки
+					 */
+					auto ishex = [](const char c) noexcept -> bool {
+						// Проверяем является ли символ шестнадцатеричным
+						return (
+							((c >= '0') && (c <= '9')) ||
+							((c >= 'a') && (c <= 'f')) ||
+							((c >= 'A') && (c <= 'F'))
+						);
+					};
+					// Если длина MAC-адреса равна 12 символам
+					if(addr.length() == 12){
+						// Выполняем проверку каждого символа MAC-адреса
+						for(char c : addr){
+							// Если символ не является шестнадцатеричным
+							if(!ishex(c))
+								// Возвращаем результат проверки
+								return false;
+						}
+						// Возвращаем результат проверки
+						return true;
+					}
+					// Выполняем проверку каждого символа MAC-адреса
+					for(size_t i = 0; i < 17; ++i){
+						// Если символ не является шестнадцатеричным
+						if((i % 3) == 2){
+							// Если символ не является разделителем
+							if((addr[i] != ':') && (addr[i] != '-'))
+								// Возвращаем результат проверки
+								return false;
+						// Если символ является частью шестнадцатеричного числа
+						} else {
+							// Если символ не является шестнадцатеричным
+							if(!ishex(addr[i]))
+								// Возвращаем результат проверки
+								return false;
+						}
+					}
+					// Возвращаем результат проверки
+					return true;
+				}
+				// Если IP-адрес определён как IPv4
+				case static_cast <uint8_t> (type_t::IPV4): {
+					// Временный буфер для проверки IP-адреса
+					vector <uint8_t> buffer(4, 0);
+					// Выполняем проверку IP-адреса IPv4
+					return parser::ipv4(addr, buffer);
+				}
+				// Если IP-адрес определён как IPv6
+				case static_cast <uint8_t> (type_t::IPV6): {
+					// Временное значение зоны для проверки IP-адреса
+					string zone = "";
+					// Временный буфер для проверки IP-адреса
+					vector <uint8_t> buffer(16, 0);
+					// Выполняем проверку IP-адреса IPv6
+					return parser::ipv6(addr, buffer, zone);
+				}
+				// Если IP-адрес определён как NetV4
+				case static_cast <uint8_t> (type_t::NETV4): {
+					// Разделяем адрес и маску сети
+					const auto pos = addr.find('/');
+					// Если разделитель найден
+					if(pos != string::npos){
+						// Временный буфер для проверки IP-адреса
+						vector <uint8_t> buffer(4, 0);
+						// Получаем IP-адрес без маски сети
+						const string_view ip = addr.substr(0, pos);
+						// Получаем маску переданной сети
+						const string_view suffix = addr.substr(pos + 1);
+						// Проверяем является ли суффикс числом
+						if(std::all_of(suffix.begin(), suffix.end(), ::isdigit)){
+							// Получаем префикс сети
+							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 32)
+								// Если префикс сети больше допустимого значения
+								return false;
+						// Если суффикс не является числом и не является корректной маской сети
+						} else if(!parser::ipv4(suffix, buffer))
+							// Возвращаем результат проверки
+							return false;
+						// Зануляем структуру 
+						::memset(&buffer[0], 0, buffer.size());
+						// Выполняем проверку IP-адреса IPv4
+						return parser::ipv4(ip, buffer);
+					}
+				} break;
+				// Если IP-адрес определён как NetV6
+				case static_cast <uint8_t> (type_t::NETV6): {
+					// Разделяем адрес и маску сети
+					const auto pos = addr.find('/');
+					// Если разделитель найден
+					if(pos != string::npos){
+						// Временное значение зоны для проверки IP-адреса
+						string zone = "";
+						// Временный буфер для проверки IP-адреса
+						vector <uint8_t> buffer(16, 0);
+						// Получаем IP-адрес без маски сети
+						const string_view ip = addr.substr(0, pos);
+						// Получаем маску переданной сети
+						const string_view suffix = addr.substr(pos + 1);
+						// Проверяем является ли суффикс числом
+						if(std::all_of(suffix.begin(), suffix.end(), ::isdigit)){
+							// Получаем префикс сети
+							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 128)
+								// Если префикс сети больше допустимого значения
+								return false;
+						// Если суффикс не является числом и не является корректной маской сети
+						} else if(!parser::ipv6(suffix, buffer, zone))
+							// Возвращаем результат проверки
+							return false;
+						// Зануляем структуру 
+						::memset(&buffer[0], 0, buffer.size());
+						// Выполняем проверку IP-адреса IPv6
+						return parser::ipv6(ip, buffer, zone);
+					}
+				} break;
+				// Если адрес принадлежит к URL-адресам
+				case static_cast <uint8_t> (type_t::URL): {
+					// Проверяем длину URL-адреса
+					if(addr.length() < 8)
+						// Если длина URL-адреса некорректна
+						return false;
+					// Проверяем префикс URL-адреса
+					return (
+						this->_fmk->compare("http://", string(addr.data(), 7).c_str()) ||
+						this->_fmk->compare("https://", string(addr.data(), 8).c_str())
+					);
+				}
+				// Если адрес принадлежит к адресу файловой системы
+				case static_cast <uint8_t> (type_t::FS): {
+					// Windows: X:\ или X:/
+					if((addr.length() >= 3) && 
+					 (((addr[1] == ':') && ((addr[2] == '\\') || (addr[2] == '/'))) ||
+					  ((addr[0] == '\\') && (addr[1] == '\\'))))
+						// Возвращаем результат проверки
+						return true;
+					// Unix: начинается с /
+					return (addr.front() == '/');
+				}
+				// Если адрес принадлежит к доменным именам
+				case static_cast <uint8_t> (type_t::FQDN): {
+					// Создаём представление строки для проверки
+					if(addr.length() > 253)
+						// Если длина доменного имени превышает допустимое значение
+						return false;
+					// Разрешаем localhost как особый случай
+					if(this->_fmk->compare("localhost", addr.data()))
+						// Если адрес равен localhost
+						return true;
+					// Начальное и конечное значение итератора
+					size_t start = 0, end = 0;
+					// Выполняем проверку каждой метки доменного имени
+					while(start < addr.length()) {
+						// Находим конец текущей метки
+						end = addr.find('.', start);
+						// Если точка не найдена
+						if(end == string::npos)
+							// Устанавливаем конец на размер строки
+							end = addr.length();
+						// Извлекаем текущую метку
+						const string_view label = addr.substr(start, end - start);
+						// Проверяем корректность метки
+						if(label.empty() || (label.length() > 63))
+							// Если метка пустая или превышает допустимую длину
+							return false;
+						// Метка не должна начинаться или заканчиваться дефисом
+						if((label[0] == '-') || (label.back() == '-'))
+							// Если метка начинается или заканчивается дефисом
+							return false;
+						// Проверяем каждый символ метки
+						for(char c : label){
+							// Если символ не является допустимым
+							if(!(std::isalnum(c) || (c == '-')))
+								// Возвращаем результат проверки
+								return false;
+						}
+						// Переходим к следующей метке
+						start = (end + 1);
+					}
+					// Должно быть хотя бы две метки (example.com)
+					return (addr.rfind('.') != string::npos);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(addr, static_cast <uint16_t> (type)),
+					log_t::flag_t::CRITICAL, error.what()
+				);
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат проверки адреса
+	return false;
 }
 /**
  * @brief Метод наложения маски сети
@@ -1192,7 +2189,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_t net(this->_exp, this->_fmk, this->_log);
+			net_t net(this->_fmk, this->_log);
 			// Выполняем парсинг маски
 			if(net.parse(mask) && (type == net.type())){
 				// Бинарный контейнер
@@ -1280,7 +2277,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix, const type_t type) const noex
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_t net(this->_exp, this->_fmk, this->_log);
+			net_t net(this->_fmk, this->_log);
 			/**
 			 * Определяем тип IP-адреса
 			 */
@@ -1323,7 +2320,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix, const type_t type) const noex
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(prefix, static_cast <uint16_t> (type)),
+					std::make_tuple(static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -1405,9 +2402,9 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix, c
 		 */
 		try {
 			// Создаём объекты сетевых модулей
-			net_t net1(this->_exp, this->_fmk, this->_log),
-			      net2(this->_exp, this->_fmk, this->_log),
-			      net3(this->_exp, this->_fmk, this->_log);
+			net_t net1(this->_fmk, this->_log),
+			      net2(this->_fmk, this->_log),
+			      net3(this->_fmk, this->_log);
 			/**
 			 * Определяем тип IP-адреса
 			 */
@@ -1532,9 +2529,9 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 		 */
 		try {
 			// Создаём объекты сетевых модулей
-			net_t net1(this->_exp, this->_fmk, this->_log),
-			      net2(this->_exp, this->_fmk, this->_log),
-			      net3(this->_exp, this->_fmk, this->_log);
+			net_t net1(this->_fmk, this->_log),
+			      net2(this->_fmk, this->_log),
+			      net3(this->_fmk, this->_log);
 			// Устанавливаем новое значение адреса для начала и конца диапазона адресов
 			net2 = begin; net3 = end;
 			/**
@@ -1616,7 +2613,7 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_t net(this->_exp, this->_fmk, this->_log);
+			net_t net(this->_fmk, this->_log);
 			// Если парсинг адреса сети выполнен
 			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
@@ -1765,7 +2762,7 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_t net(this->_exp, this->_fmk, this->_log);
+			net_t net(this->_fmk, this->_log);
 			// Если парсинг адреса сети выполнен
 			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
@@ -1852,7 +2849,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_t net(this->_exp, this->_fmk, this->_log);
+			net_t net(this->_fmk, this->_log);
 			// Выполняем инициализацию списка локальных адресов
 			const_cast <net_t *> (this)->initLocalNet();
 			// Выполняем группировку нужного нам вида адресов
@@ -1913,7 +2910,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 							// Устанавливаем префикс сети
 							net.impose(i->second.prefix, net_t::addr_t::NETWORK);
 							// Если проверяемые сети совпадают
-							if(::memcmp(&net.v6()[0], &i->second.begin->v6()[0], (sizeof(uint64_t) * 2)) == 0){
+							if(::memcmp(&net.v6()[0], &i->second.begin->v6()[0], 16) == 0){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
@@ -2173,8 +3170,95 @@ bool awh::Net::arpa(const string & addr) noexcept {
  * @return     результат работы парсинга
  */
 bool awh::Net::parse(const string & addr) noexcept {
-	// Выполняем парсинг переданного адреса
-	return this->parse(addr, this->host(addr));
+	// Если адрес передан
+	if(!addr.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем полную проверку всех типов адресов
+			for(uint8_t i = 0; i < 3; i++){
+				/**
+				 * Устанавливаем тип для проверки
+				 */
+				switch(i){
+					// Если проверяем IPv4-адрес
+					case 0: {
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						// Выполняем инициализацию буфера
+						this->_buffer.resize(4);
+						// Выполняем парсинг IPv4 адреса
+						if(parser::ipv4(addr, this->_buffer)){
+							// Устанавливаем тип адреса
+							this->_type = type_t::IPV4;
+							// Выводрим положительный результат
+							return true;
+						}
+					} break;
+					// Если проверяем IPv6-адрес
+					case 1: {
+						// Выполняем очистку зоны
+						this->_zone.clear();
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						// Выполняем инициализацию буфера
+						this->_buffer.resize(16);
+						// Выполняем парсинг IPv6 адреса
+						if(parser::ipv6(addr, this->_buffer, this->_zone)){
+							// Устанавливаем тип адреса
+							this->_type = type_t::IPV6;
+							// Выводрим положительный результат
+							return true;
+						}
+					} break;
+					// Если проверяем MAC-адрес
+					case 2: {
+						// Значение последнего символа
+						int32_t last = -1;
+						// Выполняем очистку буфера данных
+						this->_buffer.clear();
+						// Выполняем инициализацию буфера
+						this->_buffer.resize(6);
+						// Выполняем парсинг MAC адреса
+						const int32_t rc = ::sscanf(
+							addr.c_str(),
+							"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
+							&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
+							&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
+						);
+						// Если MAC адрес удано распарсен
+						if((rc == 6) && (static_cast <int32_t> (addr.size()) == last)){
+							// Устанавливаем тип адреса
+							this->_type = type_t::MAC;
+							// Выводрим положительный результат
+							return true;
+						// Иначе выполняем очистку буфера данных
+						} else this->_buffer.clear();
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод парсинга адреса
@@ -2184,42 +3268,16 @@ bool awh::Net::parse(const string & addr) noexcept {
  * @return     результат работы парсинга
  */
 bool awh::Net::parse(const string & addr, const type_t type) noexcept {
-	// Результат работы функции
-	bool result = false;
 	// Если адрес аппаратный или интернет подключения передан
-	if((result = !addr.empty() && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6)))){
+	if(!addr.empty() && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Устанавливаем тип адреса
-			this->_type = type;
 			/**
 			 * Определяем тип переданного адреса
 			 */
 			switch(static_cast <uint8_t> (type)){
-				// Если - это не IP-адрес, а MAC-адрес
-				case static_cast <uint8_t> (type_t::MAC): {
-					// Значение последнего символа
-					int32_t last = -1;
-					// Бинарный буфер адреса
-					uint8_t buffer[6];
-					// Выполняем очистку буфера данных
-					this->_buffer.clear();
-					// Выполняем инициализацию буфера
-					this->_buffer.resize(6);
-					// Выполняем парсинг MAC адреса
-					const int32_t rc = sscanf(
-						addr.c_str(),
-						"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
-						buffer + 0, buffer + 1, buffer + 2,
-						buffer + 3, buffer + 4, buffer + 5, &last
-					);
-					// Если MAC адрес удано распарсен
-					if((result = ((rc == 6) && (static_cast <int32_t> (addr.size()) == last))))
-						// Выполняем копирование бинарных данных MAC-адреса в буфер
-						::memcpy(&this->_buffer[0], buffer, sizeof(buffer));
-				} break;
 				// Если IP-адрес является адресом IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
 					// Выполняем очистку буфера данных
@@ -2227,23 +3285,53 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(4);
 					// Выполняем парсинг IPv4 адреса
-					::inet_pton(AF_INET, addr.c_str(), &this->_buffer[0]);
+					if(parser::ipv4(addr, this->_buffer)){
+						// Устанавливаем тип адреса
+						this->_type = type;
+						// Выводрим положительный результат
+						return true;
+					}
 				} break;
 				// Если IP-адрес является адресом IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
+					// Выполняем очистку зоны
+					this->_zone.clear();
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(16);
-					// Если найдено экранирование адреса
-					if((addr.front() == '[') && (addr.back() == ']'))
-						// Выполняем парсинг IPv6 адреса без экранирования
-						::inet_pton(AF_INET6, addr.substr(1, addr.size() - 2).c_str(), &this->_buffer[0]);
 					// Выполняем парсинг IPv6 адреса
-					else ::inet_pton(AF_INET6, addr.c_str(), &this->_buffer[0]);
+					if(parser::ipv6(addr, this->_buffer, this->_zone)){
+						// Устанавливаем тип адреса
+						this->_type = type;
+						// Выводрим положительный результат
+						return true;
+					}
 				} break;
-				// Все остальные варианты мы пропускаем
-				default: result = false;
+				// Если адрес является адресом MAC
+				case static_cast <uint8_t> (type_t::MAC): {
+					// Значение последнего символа
+					int32_t last = -1;
+					// Выполняем очистку буфера данных
+					this->_buffer.clear();
+					// Выполняем инициализацию буфера
+					this->_buffer.resize(6);
+					// Выполняем парсинг MAC адреса
+					const int32_t rc = ::sscanf(
+						addr.c_str(),
+						"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
+						&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
+						&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
+					);
+					// Если MAC адрес удано распарсен
+					if((rc == 6) && (static_cast <int32_t> (addr.size()) == last)){
+						// Устанавливаем тип адреса
+						this->_type = type;
+						// Выводрим положительный результат
+						return true;
+					// Иначе выполняем очистку буфера данных
+					} else this->_buffer.clear();
+				} break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -2269,15 +3357,17 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return false;
 }
 /**
  * @brief Метод извлечения данных IP-адреса
  *
- * @param format формат формирования IP-адреса
- * @return       сформированная строка IP-адреса
+ * @param size  размер формата формирования IP-адреса
+ * @param flag  флаг форматирования IP-адреса
+ * @param delim разделитель формата формирования IP-адреса
+ * @return      сформированная строка IP-адреса
  */
-string awh::Net::get(const format_t format) const noexcept {
+string awh::Net::print(const format_size_t size, const format_flag_t flag, const char delim) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если бинарный буфер данных существует
@@ -2294,217 +3384,1067 @@ string awh::Net::get(const format_t format) const noexcept {
 				case static_cast <uint8_t> (type_t::MAC): {
 					// Если размера данных достаточно
 					if(this->_buffer.size() >= 6){
-						// Перераспределяем объект результата
-						result.resize(17);
-						// Выполняем получение MAC адреса
-						::sprintf(
-							&result[0],
-							"%02X:%02X:%02X:%02X:%02X:%02X",
-							this->_buffer[0], this->_buffer[1],
-							this->_buffer[2], this->_buffer[3],
-							this->_buffer[4], this->_buffer[5]
-						);
+						// Если разделитель установлен по умолчанию
+						if(delim == -1)
+							// Устанавливаем стандартный разделитель
+							const_cast <char &> (delim) = ':';
+						// Определяем размер формата вывода IPv4 адреса
+						switch(static_cast <uint8_t> (size)){
+							// Если размер не указан
+							case static_cast <uint8_t> (format_size_t::NONE):
+							// Если размер указан как средний
+							case static_cast <uint8_t> (format_size_t::MIDDLE): {
+								/**
+								 * Определяем формат вывода MAC адреса
+								 */
+								switch(static_cast <uint8_t> (flag)){
+									// Если формат не указан
+									case static_cast <uint8_t> (format_flag_t::NONE):
+									// Если формат указан в 16-м виде
+									case static_cast <uint8_t> (format_flag_t::HEX): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(12);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%02X%02X%02X%02X%02X%02X",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(17);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%02X%c%02X%c%02X%c%02X%c%02X%c%02X",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+									// Если указан формат в десятичном виде
+									case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%02u%02u%02u%02u%02u%02u",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%02u%c%02u%c%02u%c%02u%c%02u%c%02u",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+									// Если указан формат в восьмеричном виде
+									case static_cast <uint8_t> (format_flag_t::OCTAL): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%02o%02o%02o%02o%02o%02o",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%02o%c%02o%c%02o%c%02o%c%02o%c%02o",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+								}
+							} break;
+							// Если размер указан как короткий
+							case static_cast <uint8_t> (format_size_t::SHORT): {
+								/**
+								 * Определяем формат вывода MAC адреса
+								 */
+								switch(static_cast <uint8_t> (flag)){
+									// Если формат не указан
+									case static_cast <uint8_t> (format_flag_t::NONE):
+									// Если формат указан в 16-м виде
+									case static_cast <uint8_t> (format_flag_t::HEX): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(12);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%X%X%X%X%X%X",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(17);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%X%c%X%c%X%c%X%c%X%c%X",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+									// Если указан формат в десятичном виде
+									case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%u%u%u%u%u%u",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%u%c%u%c%u%c%u%c%u%c%u",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+									// Если указан формат в восьмеричном виде
+									case static_cast <uint8_t> (format_flag_t::OCTAL): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%o%o%o%o%o%o",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%o%c%o%c%o%c%o%c%o%c%o",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+								}
+							} break;
+							// Если размер указан как длинный
+							case static_cast <uint8_t> (format_size_t::LONG): {
+								/**
+								 * Определяем формат вывода MAC адреса
+								 */
+								switch(static_cast <uint8_t> (flag)){
+									// Если формат не указан
+									case static_cast <uint8_t> (format_flag_t::NONE):
+									// Если формат указан в 16-м виде
+									case static_cast <uint8_t> (format_flag_t::HEX): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%03X%03X%03X%03X%03X%03X",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%03X%c%03X%c%03X%c%03X%c%03X%c%03X",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+									// Если указан формат в десятичном виде
+									case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%03u%03u%03u%03u%03u%03u",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%03u%c%03u%c%03u%c%03u%c%03u%c%03u",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+									// Если указан формат в восьмеричном виде
+									case static_cast <uint8_t> (format_flag_t::OCTAL): {
+										// Если разделитель не указан
+										if(delim == 0){
+											// Перераспределяем объект результата
+											result.resize(18);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%03o%03o%03o%03o%03o%03o",
+												this->_buffer[0], this->_buffer[1],
+												this->_buffer[2], this->_buffer[3],
+												this->_buffer[4], this->_buffer[5]
+											);
+										// Если разделитель указан
+										} else {
+											// Перераспределяем объект результата
+											result.resize(23);
+											// Выполняем получение MAC адреса
+											::sprintf(
+												&result[0],
+												"%03o%c%03o%c%03o%c%03o%c%03o%c%03o",
+												this->_buffer[0], delim, this->_buffer[1], delim,
+												this->_buffer[2], delim, this->_buffer[3], delim,
+												this->_buffer[4], delim, this->_buffer[5]
+											);
+										}
+									} break;
+								}
+							} break;
+						}
 					}
 				} break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
-					// Если формат адреса не принадлежит к IPv6
-					if((format != format_t::LONG_IPV6) && (format != format_t::MIDDLE_IPV6) && (format != format_t::SHORT_IPV6)){
-						/**
-						 * Определяем формат вывода IPv4 адреса
-						 */
-						switch(static_cast <uint8_t> (format)){
-							// Если необходимо вывести адрес в 16-м формате
-							case static_cast <uint8_t> (format_t::HEX_IPV4): {
-								// Перераспределяем объект результата
-								result.resize(11);
-								// Выполняем получение IPv4 адреса в 16-м формате
-								::sprintf(
-									&result[0],
-									"%02X.%02X.%02X.%02X",
-									this->_buffer[0], this->_buffer[1],
-									this->_buffer[2], this->_buffer[3]
-								);
-							} break;
-							// Если необходимо вывести адрес в 8-м формате
-							case static_cast <uint8_t> (format_t::OCTAL_IPV4): {
-								// Перераспределяем объект результата
-								result.resize(16);
-								// Выполняем получение IPv4 адреса в 8-м формате
-								::sprintf(
-									&result[0],
-									"%03o.%03o.%03o.%03o",
-									this->_buffer[0], this->_buffer[1],
-									this->_buffer[2], this->_buffer[3]
-								);
-							} break;
-							// Во всех остальных случаях выполняем стандартный вывод
-							default: {
-								// Переходим по всему массиву
-								for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i++){
-									// Если строка уже существует, добавляем разделитель
-									if(!result.empty())
-										// Добавляем разделитель
-										result.append(1, '.');
-									// Добавляем текущий октет в результат
-									result.append(
-										(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-										this->zerro(std::to_string(this->_buffer[i])) : std::to_string(this->_buffer[i])
-									);
-								}
+					// Если разделитель установлен по умолчанию
+					if(delim == -1)
+						// Устанавливаем стандартный разделитель
+						const_cast <char &> (delim) = '.';
+					// Определяем размер формата вывода IPv4 адреса
+					switch(static_cast <uint8_t> (size)){
+						// Если размер не указан
+						case static_cast <uint8_t> (format_size_t::NONE):
+						// Если размер указан как короткий
+						case static_cast <uint8_t> (format_size_t::SHORT): {
+							/**
+							 * Определяем формат вывода IP-адреса
+							 */
+							switch(static_cast <uint8_t> (flag)){
+								// Если формат не указан
+								case static_cast <uint8_t> (format_flag_t::NONE):
+								// Если формат указан в 10-м виде
+								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 10-м формате
+										::sprintf(
+											&result[0],
+											"%u%u%u%u",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 10-м формате
+										::sprintf(
+											&result[0],
+											"%u%c%u%c%u%c%u",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+								// Если формат указан в 16-м виде
+								case static_cast <uint8_t> (format_flag_t::HEX): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(8);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%X%X%X%X",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(11);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%X%c%X%c%X%c%X",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+								// Если формат указан в 8-м виде
+								case static_cast <uint8_t> (format_flag_t::OCTAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 8-м формате
+										::sprintf(
+											&result[0],
+											"%o%o%o%o",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 8-м формате
+										::sprintf(
+											&result[0],
+											"%o%c%o%c%o%c%o",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
 							}
-						}
-					// Если формат адреса принадлежит к IPv6
-					} else {
-						// Значение хексета
-						uint16_t num = 0;
-						// Количество разделителей и количество хексетов в буфере
-						uint8_t separators = 0, count = static_cast <uint8_t> (this->_buffer.size());
-						// Добавляем в результат начальный разделитель
-						result.append(1, ':');
-						// Переходим по всему массиву
-						for(uint8_t i = 0; i < count; i += 2){
-							// Выполняем получение значение числа
-							::memcpy(&num, &this->_buffer[0] + i, sizeof(num));
-							// Если нужно выводить в кратком виде
-							if(format == format_t::SHORT_IPV6){
-								// Если Число установлено
-								if(num > 0){
-									// Добавляем разделитель
-									if(!result.empty()) result.append(1, ':');
-									// Добавляем хексет в версию
-									result.append(this->_fmk->itoa <uint16_t> (htons(num), 16));
-								// Заменяем нули разделителем
-								} else if((++separators < 2) || (i == (count - 2)))
-									// Добавляем разделитель
-									result.append(1, ':');
-							// Если форматы вывода указаны полные
-							} else {
-								// Если строка уже существует, добавляем разделитель
-								if(!result.empty())
-									// Добавляем разделитель
-									result.append(1, ':');
-								// Добавляем хексет в версию
-								result.append(
-									format == format_t::LONG_IPV6 ?
-									this->zerro(this->_fmk->itoa <uint16_t> (htons(num), 16), 4) :
-									this->_fmk->itoa <uint16_t> (htons(num), 16)
-								);
+						} break;
+						// Если размер указан как средний
+						case static_cast <uint8_t> (format_size_t::MIDDLE): {
+							/**
+							 * Определяем формат вывода IP-адреса
+							 */
+							switch(static_cast <uint8_t> (flag)){
+								// Если формат не указан
+								case static_cast <uint8_t> (format_flag_t::NONE):
+								// Если формат указан в 10-м виде
+								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 10-м формате
+										::sprintf(
+											&result[0],
+											"%02u%02u%02u%02u",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 10-м формате
+										::sprintf(
+											&result[0],
+											"%02u%c%02u%c%02u%c%02u",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+								// Если формат указан в 16-м виде
+								case static_cast <uint8_t> (format_flag_t::HEX): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(8);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%02X%02X%02X%02X",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(11);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%02X%c%02X%c%02X%c%02X",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+								// Если формат указан в 8-м виде
+								case static_cast <uint8_t> (format_flag_t::OCTAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 8-м формате
+										::sprintf(
+											&result[0],
+											"%02o%02o%02o%02o",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 8-м формате
+										::sprintf(
+											&result[0],
+											"%02o%c%02o%c%02o%c%02o",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
 							}
-						}
+						} break;
+						// Если размер указан как длинный
+						case static_cast <uint8_t> (format_size_t::LONG): {
+							/**
+							 * Определяем формат вывода IP-адреса
+							 */
+							switch(static_cast <uint8_t> (flag)){
+								// Если формат не указан
+								case static_cast <uint8_t> (format_flag_t::NONE):
+								// Если формат указан в 10-м виде
+								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 10-м формате
+										::sprintf(
+											&result[0],
+											"%03u%03u%03u%03u",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 10-м формате
+										::sprintf(
+											&result[0],
+											"%03u%c%03u%c%03u%c%03u",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+								// Если формат указан в 16-м виде
+								case static_cast <uint8_t> (format_flag_t::HEX): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%03X%03X%03X%03X",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%03X%c%03X%c%03X%c%03X",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+								// Если формат указан в 8-м виде
+								case static_cast <uint8_t> (format_flag_t::OCTAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(12);
+										// Выполняем получение IPv4 адреса в 8-м формате
+										::sprintf(
+											&result[0],
+											"%03o%03o%03o%03o",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(15);
+										// Выполняем получение IPv4 адреса в 8-м формате
+										::sprintf(
+											&result[0],
+											"%03o%c%03o%c%03o%c%03o",
+											this->_buffer[0], delim, this->_buffer[1], delim,
+											this->_buffer[2], delim, this->_buffer[3]
+										);
+									}
+								} break;
+							}
+						} break;
 					}
 				} break;
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
-					// Значение хексета
-					uint16_t num = 0;
-					// Количество разделителей и количество хексетов в буфере
-					uint8_t separators = 0, count = static_cast <uint8_t> (this->_buffer.size());
-					// Создаём временный буфер данных для сравнения
-					vector <uint16_t> buffer(6);
-					// Устанавливаем хексет маски
-					buffer[5] = 0xFFFF;
-					// Флаг зеркального вещания IPv6 => IPv4
-					bool broadcast = false;
-					// Если буфер данных принадлежит к вещанию IPv6 => IPv4
-					if((broadcast = (::memcmp(&buffer[0], &this->_buffer[0], (buffer.size() * 2)) == 0)))
-						// Уменьшаем количество итераций в буфере
-						count -= 4;
-					// Если режим зеркала IPv6 => IPv4 не активен, но установлен формат IPv4, активируем зеркало
-					else if(!broadcast && (broadcast = (
-						(format == format_t::LONG_IPV4) ||
-						(format == format_t::MIDDLE_IPV4) ||
-						(format == format_t::SHORT_IPV4) ||
-						(format == format_t::HEX_IPV4) ||
-						(format == format_t::OCTAL_IPV4))))
-						// Уменьшаем количество итераций в буфере
-						count -= 4;
-					// Переходим по всему массиву
-					for(uint8_t i = 0; i < count; i += 2){
-						// Выполняем получение значение числа
-						::memcpy(&num, &this->_buffer[0] + i, sizeof(num));
-						// Если нужно выводить в кратком виде
-						if((format == format_t::SHORT) || (format == format_t::SHORT_IPV4)){
-							// Если Число установлено
-							if(num > 0){
-								// Добавляем разделитель
-								if(!result.empty())
-									// Добавляем разделитель
-									result.append(1, ':');
-								// Добавляем хексет в версию
-								result.append(this->_fmk->itoa <uint16_t> (htons(num), 16));
-							// Заменяем нули разделителем
-							} else if((++separators < 2) || (i == (count - 2)))
-								// Добавляем разделитель
-								result.append(1, ':');
-						// Если форматы вывода указаны полные
-						} else {
-							// Если строка уже существует, добавляем разделитель
-							if(!result.empty())
-								// Добавляем разделитель
-								result.append(1, ':');
-							// Добавляем хексет в версию
-							result.append(
-								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-								this->zerro(this->_fmk->itoa <uint16_t> (htons(num), 16), 4) :
-								this->_fmk->itoa <uint16_t> (htons(num), 16)
-							);
-						}
-					}
-					// Если активирован флаг зеркального вещания IPv6 => IPv4
-					if(broadcast){
-						// Если предыдущий символ не является разделителем
-						if(result.back() != ':')
-							// Добавляем разделитель
-							result.append(1, ':');
-						/**
-						 * Определяем формат вывода IPv4 адреса
-						 */
-						switch(static_cast <uint8_t> (format)){
-							// Если необходимо вывести адрес в 16-м формате
-							case static_cast <uint8_t> (format_t::HEX_IPV4): {
-								// Определяем текущую позицию результата
-								const size_t pos = result.size();
-								// Перераспределяем объект результата
-								result.resize(pos + 11);
-								// Выполняем получение IPv4 адреса в 16-м формате
-								::sprintf(
-									&result[pos],
-									"%02X.%02X.%02X.%02X",
-									this->_buffer[count + 0], this->_buffer[count + 1],
-									this->_buffer[count + 2], this->_buffer[count + 3]
-								);
-							} break;
-							// Если необходимо вывести адрес в 8-м формате
-							case static_cast <uint8_t> (format_t::OCTAL_IPV4): {
-								// Определяем текущую позицию результата
-								const size_t pos = result.size();
-								// Перераспределяем объект результата
-								result.resize(pos + 16);
-								// Выполняем получение IPv4 адреса в 8-м формате
-								::sprintf(
-									&result[pos],
-									"%03o.%03o.%03o.%03o",
-									this->_buffer[count + 0], this->_buffer[count + 1],
-									this->_buffer[count + 2], this->_buffer[count + 3]
-								);
-							} break;
-							// Во всех остальных случаях выполняем стандартный вывод
-							default: {
-								// Переходим по всему массиву
-								for(uint8_t i = 0; i < (static_cast <uint8_t> (this->_buffer.size()) - count); i++){
-									// Если строка уже существует, добавляем разделитель
-									if(i > 0)
-										// Добавляем разделитель
-										result.append(1, '.');
-									// Добавляем текущий октет в результат
-									result.append(
-										(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-										this->zerro(std::to_string(this->_buffer[count + i])) : std::to_string(this->_buffer[count + i])
-									);
-								}
+					// Если разделитель установлен по умолчанию
+					if(delim == -1)
+						// Устанавливаем стандартный разделитель
+						const_cast <char &> (delim) = ':';
+					// Определяем размер формата вывода IPv4 адреса
+					switch(static_cast <uint8_t> (size)){
+						// Если размер не указан
+						case static_cast <uint8_t> (format_size_t::NONE):
+						// Если размер указан как короткий
+						case static_cast <uint8_t> (format_size_t::SHORT): {
+							/**
+							 * Определяем формат вывода IP-адреса
+							 */
+							switch(static_cast <uint8_t> (flag)){
+								// Если формат не указан
+								case static_cast <uint8_t> (format_flag_t::NONE):
+								// Если формат указан в 16-м виде
+								case static_cast <uint8_t> (format_flag_t::HEX):
+								// Если формат зеркального вещания IPv6 => IPv4 активен
+								case static_cast <uint8_t> (format_flag_t::BROADCAST): {
+
+
+									result.resize(64);
+
+								
+									int pos = 0;
+
+									// 1. Собираем хексеты
+									uint16_t h[8];
+									for (int i = 0; i < 8; ++i) {
+										h[i] = (static_cast<uint16_t>(this->_buffer[i * 2]) << 8) | this->_buffer[i * 2 + 1];
+									}
+
+									// 2. Проверка IPv4-встраивания (опционально)
+									bool use_ipv4 = false;
+									if (flag == format_flag_t::BROADCAST) {
+										if ((h[0] == 0 && h[1] == 0 && h[2] == 0 && h[3] == 0 && h[4] == 0 && h[5] == 0xFFFF) ||
+											(h[0] == 0 && h[1] == 0 && h[2] == 0 && h[3] == 0 && h[4] == 0 && h[5] == 0)) {
+											use_ipv4 = true;
+										}
+									}
+
+									if (use_ipv4) {
+										// Простой вывод для IPv4-суффикса
+										if (h[0] == 0 && h[1] == 0 && h[2] == 0 && h[3] == 0 && h[4] == 0) {
+											if (h[5] == 0xFFFF) {
+												pos = sprintf(&result[0], "%c%cFFFF%c%u.%u.%u.%u", delim, delim, delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+											} else {
+												pos = sprintf(&result[0], "%c%c%u.%u.%u.%u", delim, delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+											}
+										} else {
+											// fallback (маловероятно)
+											pos = sprintf(&result[0], "%X%c%X%c%X%c%X%c%X%c%X%c%u.%u.%u.%u",
+												h[0], delim, h[1], delim, h[2], delim, h[3], delim, h[4], delim, h[5], delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+										}
+									} else {
+
+										// 2. Находим лучшее сжатие (минимум 2 нуля)
+										int best_start = -1, best_len = 1;
+										for (int i = 0; i < 8; ) {
+											if (h[i] == 0) {
+												int j = i;
+												while (j < 8 && h[j] == 0) j++;
+												if (j - i > best_len) {
+													best_len = j - i;
+													best_start = i;
+												}
+												i = j;
+											} else {
+												i++;
+											}
+										}
+
+										// 3. Формируем строку — ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ
+										if (best_len <= 1) {
+											// Без сжатия
+											pos = sprintf(&result[0], "%X%c%X%c%X%c%X%c%X%c%X%c%X%c%X",
+												h[0], delim, h[1], delim, h[2], delim, h[3], delim, h[4], delim, h[5], delim, h[6], delim, h[7]);
+										} else {
+											// С сжатием — выводим ТОЛЬКО то, что нужно
+											if (best_start == 0) {
+												// ::xxx
+												pos = sprintf(&result[0], "%c%c", delim, delim);
+												for (int i = best_len; i < 8; ++i) {
+													pos += sprintf(&result[0] + pos, "%c%X", (i == best_len) ? 0 : delim, h[i]);
+												}
+											} else if (best_start + best_len == 8) {
+												// xxx::
+												for (int i = 0; i < best_start; ++i) {
+													pos += sprintf(&result[0] + pos, "%c%X", (i == 0) ? 0 : delim, h[i]);
+												}
+												pos += sprintf(&result[0] + pos, "%c%c", delim, delim);
+											} else {
+												// xxx::xxx
+												for (int i = 0; i < best_start; ++i) {
+													pos += sprintf(&result[0] + pos, "%c%X", (i == 0) ? 0 : delim, h[i]);
+												}
+												pos += sprintf(&result[0] + pos, "%c%c", delim, delim);
+												for (int i = best_start + best_len; i < 8; ++i) {
+													pos += sprintf(&result[0] + pos, "%X%c", h[i], (i == 7) ? 0 : delim);
+												}
+											}
+										}
+									}
+
+									result.resize(pos);
+
+									
+
+								} break;
+								// Если формат указан в 10-м виде
+								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+
+									result.resize(64);
+
+								
+									int pos = 0;
+
+									// 1. Собираем хексеты
+									uint16_t h[8];
+									for (int i = 0; i < 8; ++i) {
+										h[i] = (static_cast<uint16_t>(this->_buffer[i * 2]) << 8) | this->_buffer[i * 2 + 1];
+									}
+
+									// 2. Находим лучшее сжатие (минимум 2 нуля)
+									int best_start = -1, best_len = 1;
+									for (int i = 0; i < 8; ) {
+										if (h[i] == 0) {
+											int j = i;
+											while (j < 8 && h[j] == 0) j++;
+											if (j - i > best_len) {
+												best_len = j - i;
+												best_start = i;
+											}
+											i = j;
+										} else {
+											i++;
+										}
+									}
+
+									// 3. Формируем строку — ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ
+									if (best_len <= 1) {
+										// Без сжатия
+										pos = sprintf(&result[0], "%u%c%u%c%u%c%u%c%u%c%u%c%u%c%u",
+											h[0], delim, h[1], delim, h[2], delim, h[3], delim, h[4], delim, h[5], delim, h[6], delim, h[7]);
+									} else {
+										// С сжатием — выводим ТОЛЬКО то, что нужно
+										if (best_start == 0) {
+											// ::xxx
+											pos = sprintf(&result[0], "%c%c", delim, delim);
+											for (int i = best_len; i < 8; ++i) {
+												pos += sprintf(&result[0] + pos, "%c%u", (i == best_len) ? 0 : delim, h[i]);
+											}
+										} else if (best_start + best_len == 8) {
+											// xxx::
+											for (int i = 0; i < best_start; ++i) {
+												pos += sprintf(&result[0] + pos, "%c%u", (i == 0) ? 0 : delim, h[i]);
+											}
+											pos += sprintf(&result[0] + pos, "%c%c", delim, delim);
+										} else {
+											// xxx::xxx
+											for (int i = 0; i < best_start; ++i) {
+												pos += sprintf(&result[0] + pos, "%c%u", (i == 0) ? 0 : delim, h[i]);
+											}
+											pos += sprintf(&result[0] + pos, "%c%c", delim, delim);
+											for (int i = best_start + best_len; i < 8; ++i) {
+												pos += sprintf(&result[0] + pos, "%u%c", h[i], (i == 7) ? 0 : delim);
+											}
+										}
+									}
+									
+
+									result.resize(pos);
+
+								} break;
+								// Если формат указан в 8-м виде
+								case static_cast <uint8_t> (format_flag_t::OCTAL): {
+
+									result.resize(64);
+
+								
+									int pos = 0;
+
+									// 1. Собираем хексеты
+									uint16_t h[8];
+									for (int i = 0; i < 8; ++i) {
+										h[i] = (static_cast<uint16_t>(this->_buffer[i * 2]) << 8) | this->_buffer[i * 2 + 1];
+									}
+
+									// 2. Находим лучшее сжатие (минимум 2 нуля)
+									int best_start = -1, best_len = 1;
+									for (int i = 0; i < 8; ) {
+										if (h[i] == 0) {
+											int j = i;
+											while (j < 8 && h[j] == 0) j++;
+											if (j - i > best_len) {
+												best_len = j - i;
+												best_start = i;
+											}
+											i = j;
+										} else {
+											i++;
+										}
+									}
+
+									// 3. Формируем строку — ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ
+									if (best_len <= 1) {
+										// Без сжатия
+										pos = sprintf(&result[0], "%o%c%o%c%o%c%o%c%o%c%o%c%o%c%o",
+											h[0], delim, h[1], delim, h[2], delim, h[3], delim, h[4], delim, h[5], delim, h[6], delim, h[7]);
+									} else {
+										// С сжатием — выводим ТОЛЬКО то, что нужно
+										if (best_start == 0) {
+											// ::xxx
+											pos = sprintf(&result[0], "%c%c", delim, delim);
+											for (int i = best_len; i < 8; ++i) {
+												pos += sprintf(&result[0] + pos, "%c%o", (i == best_len) ? 0 : delim, h[i]);
+											}
+										} else if (best_start + best_len == 8) {
+											// xxx::
+											for (int i = 0; i < best_start; ++i) {
+												pos += sprintf(&result[0] + pos, "%c%o", (i == 0) ? 0 : delim, h[i]);
+											}
+											pos += sprintf(&result[0] + pos, "%c%c", delim, delim);
+										} else {
+											// xxx::xxx
+											for (int i = 0; i < best_start; ++i) {
+												pos += sprintf(&result[0] + pos, "%c%o", (i == 0) ? 0 : delim, h[i]);
+											}
+											pos += sprintf(&result[0] + pos, "%c%c", delim, delim);
+											for (int i = best_start + best_len; i < 8; ++i) {
+												pos += sprintf(&result[0] + pos, "%o%c", h[i], (i == 7) ? 0 : delim);
+											}
+										}
+									}
+									
+
+									result.resize(pos);
+
+								} break;
 							}
-						}
+						} break;
+						// Если размер указан как средний
+						case static_cast <uint8_t> (format_size_t::MIDDLE): {
+							/**
+							 * Определяем формат вывода IP-адреса
+							 */
+							switch(static_cast <uint8_t> (flag)){
+								// Если формат не указан
+								case static_cast <uint8_t> (format_flag_t::NONE):
+								// Если формат указан в 16-м виде
+								case static_cast <uint8_t> (format_flag_t::HEX): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(32);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%X%X%X%X%X%X%X%X",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											(this->_buffer[12] << 8) | this->_buffer[13],
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(39);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%X%c%X%c%X%c%X%c%X%c%X%c%X%c%X",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											(this->_buffer[12] << 8) | this->_buffer[13], delim,
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									}
+								} break;
+								// Если формат указан в 10-м виде
+								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(40);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%u%u%u%u%u%u%u%u",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											(this->_buffer[12] << 8) | this->_buffer[13],
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(47);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%u%c%u%c%u%c%u%c%u%c%u%c%u%c%u",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											(this->_buffer[12] << 8) | this->_buffer[13], delim,
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									}
+								} break;
+								// Если формат указан в 8-м виде
+								case static_cast <uint8_t> (format_flag_t::OCTAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(48);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%o%o%o%o%o%o%o%o",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											(this->_buffer[12] << 8) | this->_buffer[13],
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(55);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%o%c%o%c%o%c%o%c%o%c%o%c%o%c%o",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											(this->_buffer[12] << 8) | this->_buffer[13], delim,
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									}
+								} break;
+							}
+						} break;
+						// Если размер указан как длинный
+						case static_cast <uint8_t> (format_size_t::LONG): {
+							/**
+							 * Определяем формат вывода IP-адреса
+							 */
+							switch(static_cast <uint8_t> (flag)){
+								// Если формат не указан
+								case static_cast <uint8_t> (format_flag_t::NONE):
+								// Если формат указан в 16-м виде
+								case static_cast <uint8_t> (format_flag_t::HEX): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(32);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+											this->_buffer[0], this->_buffer[1],
+											this->_buffer[2], this->_buffer[3],
+											this->_buffer[4], this->_buffer[5],
+											this->_buffer[6], this->_buffer[7],
+											this->_buffer[8], this->_buffer[9],
+											this->_buffer[10], this->_buffer[11],
+											this->_buffer[12], this->_buffer[13],
+											this->_buffer[14], this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(39);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X",
+											this->_buffer[0], this->_buffer[1], delim,
+											this->_buffer[2], this->_buffer[3], delim,
+											this->_buffer[4], this->_buffer[5], delim,
+											this->_buffer[6], this->_buffer[7], delim,
+											this->_buffer[8], this->_buffer[9], delim,
+											this->_buffer[10], this->_buffer[11], delim,
+											this->_buffer[12], this->_buffer[13], delim,
+											this->_buffer[14], this->_buffer[15]
+										);
+									}
+								} break;
+								// Если формат указан в 10-м виде
+								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(40);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%03u%03u%03u%03u%03u%03u%03u%03u",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											(this->_buffer[12] << 8) | this->_buffer[13],
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(47);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%03u%c%03u%c%03u%c%03u%c%03u%c%03u%c%03u%c%03u",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											(this->_buffer[12] << 8) | this->_buffer[13], delim,
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									}
+								} break;
+								// Если формат указан в 8-м виде
+								case static_cast <uint8_t> (format_flag_t::OCTAL): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(48);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%03o%03o%03o%03o%03o%03o%03o%03o",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											(this->_buffer[12] << 8) | this->_buffer[13],
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(55);
+										// Выполняем получение IPv4 адреса в 16-м формате
+										::sprintf(
+											&result[0],
+											"%03o%c%03o%c%03o%c%03o%c%03o%c%03o%c%03o%c%03o",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											(this->_buffer[12] << 8) | this->_buffer[13], delim,
+											(this->_buffer[14] << 8) | this->_buffer[15]
+										);
+									}
+								} break;
+							}
+						} break;
 					}
 				} break;
 			}
@@ -2519,7 +4459,7 @@ string awh::Net::get(const format_t format) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (format)),
+					std::make_tuple(static_cast <uint16_t> (size), static_cast <uint16_t> (flag)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2531,6 +4471,10 @@ string awh::Net::get(const format_t format) const noexcept {
 			#endif
 		}
 	}
+	// Если результат не пустой и зона адреса определена
+	if(!result.empty() && !this->_zone.empty())
+		// Добавляем зону адреса к результату
+		result += ('%' + this->_zone);
 	// Выводим результат
 	return result;
 }
@@ -2541,7 +4485,7 @@ string awh::Net::get(const format_t format) const noexcept {
  */
 awh::Net::operator string() const noexcept {
 	// Выводим данные IP-адреса в виде строки
-	return this->get();
+	return this->print();
 }
 /**
  * @brief Оператор [<] сравнения IP-адреса
@@ -3041,37 +4985,7 @@ awh::Net & awh::Net::operator = (const std::array <uint8_t, 16> & addr) noexcept
  * @param log объект для работы с логами
  */
 awh::Net::Net(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _regexp(log), _fmk(fmk), _log(log) {
-	// Устанавливаем регулярное выражение для проверки адреса
-	this->_exp = this->_regexp.build(
-		// Определение MAC адреса
-		"^(?:([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
-		// Определение IPv4 адреса
-		"(?:(\\d{1,3}(?:\\.\\d{1,3}){3})(?:\\:\\d+){0,1})|"
-		// Определение IPv6 адреса
-		"(?:\\[?(\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:\\:\\:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){1,7})?)|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))(?:\\](?:\\:\\d+){0,1})?)|"
-		// Определение сети
-		"((?:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\/(?:\\d{1,3}(?:\\.\\d{1,3}){3}|\\d+))|"
-		// Определение домена
-		"(?:((?:\\*\\.)?[\\w\\-\\.\\*]+\\.(?:xn\\-{2})?[a-z1]+)(?:\\:\\d+){0,1})|"
-		// Определение HTTP адреса
-		"(https?\\:\\/\\/[^\\r\\n\\t\\s]+(?:\\/(?:[^\\r\\n\\t\\s]+)?)?)|"
-		// Определение адреса файловой системы
-		"(\\.{0,2}\\/\\w+(?:\\/[\\w\\.\\-]+)*))$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
-	);
-}
-/**
- * @brief конструктор
- *
- * @param exp регулярное выражение для установки
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Net::Net(const regexp_t::exp_t & exp, const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _regexp(log), _fmk(fmk), _log(log) {
-	// Устанавливаем регулярное выражение для проверки адреса
-	this->_exp = exp;
-}
+ _type(type_t::NONE), _fmk(fmk), _log(log) {}
 /**
  * @brief Оператор [>>] чтения из потока IP-адреса
  *
@@ -3098,7 +5012,7 @@ istream & awh::operator >> (istream & is, net_t & addr) noexcept {
  */
 ostream & awh::operator << (ostream & os, const net_t & addr) noexcept {
 	// Записываем в поток IP-адрес
-	os << addr.get();
+	os << addr.print();
 	// Выводим результат
 	return os;
 }
