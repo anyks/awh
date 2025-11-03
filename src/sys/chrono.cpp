@@ -38,61 +38,66 @@
 using namespace std;
 
 /**
- * @brief Структура параметров даты
- *
+ * Инкапсулируем статические функции в пространство имён
  */
-static struct Params {
-	// Таблица множителей месяцев
-	vector <uint8_t> rateMonths;
-	// Таблица количества дней в месяцах
-	vector <uint8_t> daysInMonths;
-	// Названия дней недели
-	vector <std::pair <string, string>> nameDays;
-	// Названия месяцев
-	vector <std::pair <string, string>> nameMonths;
-	// Таблица множителей високосных годов
-	std::unordered_map <uint16_t, uint8_t> rateLeapYears;
+namespace {
 	/**
-	 * @brief Конструктор
+	 * @brief Структура параметров даты
 	 *
 	 */
-	Params() noexcept :
-	 rateMonths({
-		6,2,2,5,0,3,
-		5,1,4,6,2,4
-	 }),
-	 daysInMonths({
-		31,28,31,30,31,30,
-		31,31,30,31,30,31
-	 }),
-	 nameDays({
-		{"Mon", "Monday"},
-		{"Tue", "Tuesday"},
-		{"Wed", "Wednesday"},
-		{"Thu", "Thursday"},
-		{"Fri", "Friday"},
-		{"Sat", "Saturday"},
-		{"Sun", "Sunday"}
-	 }),
-	 nameMonths({
-		{"Jan", "January"},
-		{"Feb", "February"},
-		{"Mar", "March"},
-		{"Apr", "April"},
-		{"May", "May"},
-		{"Jun", "June"},
-		{"Jul", "July"},
-		{"Aug", "August"},
-		{"Sep", "September"},
-		{"Oct", "October"},
-		{"Nov", "November"},
-		{"Dec", "December"}
-	 }),
-	 rateLeapYears({
-		{0,6},{1,2},{2,5},
-		{3,1},{4,4},{5,0},{6,3}
-	 }) {}
-} params;
+	struct Params {
+		// Таблица множителей месяцев
+		vector <uint8_t> rateMonths;
+		// Таблица количества дней в месяцах
+		vector <uint8_t> daysInMonths;
+		// Названия дней недели
+		vector <std::pair <string, string>> nameDays;
+		// Названия месяцев
+		vector <std::pair <string, string>> nameMonths;
+		// Таблица множителей високосных годов
+		std::unordered_map <uint16_t, uint8_t> rateLeapYears;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Params() noexcept :
+		rateMonths({
+			6,2,2,5,0,3,
+			5,1,4,6,2,4
+		}),
+		daysInMonths({
+			31,28,31,30,31,30,
+			31,31,30,31,30,31
+		}),
+		nameDays({
+			{"Mon", "Monday"},
+			{"Tue", "Tuesday"},
+			{"Wed", "Wednesday"},
+			{"Thu", "Thursday"},
+			{"Fri", "Friday"},
+			{"Sat", "Saturday"},
+			{"Sun", "Sunday"}
+		}),
+		nameMonths({
+			{"Jan", "January"},
+			{"Feb", "February"},
+			{"Mar", "March"},
+			{"Apr", "April"},
+			{"May", "May"},
+			{"Jun", "June"},
+			{"Jul", "July"},
+			{"Aug", "August"},
+			{"Sep", "September"},
+			{"Oct", "October"},
+			{"Nov", "November"},
+			{"Dec", "December"}
+		}),
+		rateLeapYears({
+			{0,6},{1,2},{2,5},
+			{3,1},{4,4},{5,0},{6,3}
+		}) {}
+	} params;
+}
 
 /**
  * @brief Метод очистку всех локальных данных

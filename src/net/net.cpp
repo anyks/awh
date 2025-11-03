@@ -76,9 +76,9 @@
 using namespace std;
 
 /**
- * Вспомогательное пространство имён для парсера
+ * Инкапсулируем статические функции в пространство имён
  */
-namespace parser {
+namespace {
 	/**
 	 * @brief Вспомогательная функция для получения размера буфера
 	 *
@@ -91,7 +91,7 @@ namespace parser {
 	 * @param src исходный IPv6-адрес
 	 * @param dst результирующий IPv6-адрес
 	 */
-	static void convertEndian(const uint8_t src[T], uint8_t dst[T]) noexcept {
+	void convertEndian(const uint8_t src[T], uint8_t dst[T]) noexcept {
 		/**
 		 * Если порядок байт Little Endian
 		 */
@@ -112,7 +112,7 @@ namespace parser {
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
 	 */
-	inline bool ishex(const char letter) noexcept {
+	bool ishex(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			((letter >= '0') && (letter <= '9')) ||
@@ -126,7 +126,7 @@ namespace parser {
 	 * @param letter проверяемый символ
 	 * @return       числовое значение символа
 	 */
-	inline int32_t hexval(const char letter) noexcept {
+	int32_t hexval(const char letter) noexcept {
 		// Проверяем шестнадцатеричный символ
 		if((letter >= '0') && (letter <= '9'))
 			// Возвращаем числовое значение символа
@@ -148,7 +148,7 @@ namespace parser {
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
 	 */
-	inline bool isdec(const char letter) noexcept {
+	bool isdec(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return ((letter >= '0') && (letter <= '9'));
 	}
@@ -158,7 +158,7 @@ namespace parser {
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
 	 */
-	inline bool isoct(const char letter) noexcept {
+	bool isoct(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return ((letter >= '0') && (letter <= '7'));
 	}
@@ -168,7 +168,7 @@ namespace parser {
 	 * @param text исходный текст для обрезки
 	 * @return     обрезанный текст
 	 */
-	inline string_view trim(string_view text) noexcept {
+	string_view trim(string_view text) noexcept {
 		// Позиции начала и конца обрезанной строки
 		size_t i = 0, j = text.size();
 		/**
@@ -189,7 +189,7 @@ namespace parser {
 	 * @param pfx  префикс для проверки
 	 * @return     результат проверки
 	 */
-	inline bool startWith(string_view text, string_view pfx) noexcept {
+	bool startWith(string_view text, string_view pfx) noexcept {
 		// Возвращаем результат проверки
 		return ((text.size() >= pfx.size()) && std::equal(pfx.begin(), pfx.end(), text.begin()));
 	}
@@ -200,7 +200,7 @@ namespace parser {
 	 * @param sfx  суффикс для проверки
 	 * @return     результат проверки
 	 */
-	inline bool endWith(string_view text, string_view sfx) noexcept {
+	bool endWith(string_view text, string_view sfx) noexcept {
 		// Возвращаем результат проверки
 		return ((text.size() >= sfx.size()) && std::equal(text.end() - sfx.size(), text.end(), sfx.begin()));
 	}
@@ -212,7 +212,7 @@ namespace parser {
 	 * @param result результирующий массив частей строки
 	 * @param max    максимальное количество частей строки
 	 */
-	inline void split(string_view text, const char delim, vector <string_view> & result, const size_t max = numeric_limits <size_t>::max()) noexcept {
+	void split(string_view text, const char delim, vector <string_view> & result, const size_t max = numeric_limits <size_t>::max()) noexcept {
 		// Очищаем результирующий массив частей строки
 		result.clear();
 		// Позиция в строке, её размер и следующая позиция разделителя
@@ -244,7 +244,7 @@ namespace parser {
 	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
 	 * @return                основание системы счисления
 	 */
-	inline uint8_t detectBase(string_view token, bool allowNonDecimal) noexcept {
+	uint8_t detectBase(string_view token, bool allowNonDecimal) noexcept {
 		// Если не разрешена не-десятичная система счисления
 		if(!allowNonDecimal)
 			// Возвращаем десятичную систему счисления
@@ -271,7 +271,7 @@ namespace parser {
 	 * @param result результат парсинга
 	 * @return       результат выполнения парсинга
 	 */
-	inline bool parse64(string_view token, const uint8_t base, uint64_t & result) noexcept {
+	bool parse64(string_view token, const uint8_t base, uint64_t & result) noexcept {
 		// Если строка пуста
 		if(token.empty())
 			// Возвращаем ошибку
@@ -341,7 +341,7 @@ namespace parser {
 	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
 	 * @return                результат выполнения парсинга
 	 */
-	inline bool parseIPv4(string_view ip, vector <uint8_t> & result, const bool allowLegacy, const bool allowNonDecimal) noexcept {
+	bool parseIPv4(string_view ip, vector <uint8_t> & result, const bool allowLegacy, const bool allowNonDecimal) noexcept {
 		// Части строки IP-адреса
 		vector <string_view> octets;
 		// Разбиваем строку IP-адреса на части
@@ -471,7 +471,7 @@ namespace parser {
 	 * @param result результат парсинга в виде массива байт
 	 * @return       результат выполнения парсинга
 	 */
-	inline bool parseIPv4DecQuad(string_view ip, vector <uint8_t> & result) noexcept {
+	bool parseIPv4DecQuad(string_view ip, vector <uint8_t> & result) noexcept {
 		// Части строки IP-адреса
 		vector <string_view> octets;
 		// Разбиваем строку IP-адреса на октеты
@@ -524,7 +524,7 @@ namespace parser {
 	 * @param allowEmbeddedV4 флаг разрешения встроенного IPv4-адреса
 	 * @return                результат выполнения парсинга
 	 */
-	inline bool parseIPv6(string_view ip, vector <uint8_t> & result, const bool allowEmbeddedV4) noexcept {
+	bool parseIPv6(string_view ip, vector <uint8_t> & result, const bool allowEmbeddedV4) noexcept {
 		// Специальный случай "::"
 		if(ip.compare("::") == 0){
 			// Зануляем результат
@@ -760,7 +760,7 @@ namespace parser {
 	 * @param options опции парсинга
 	 * @return        результат выполнения парсинга
 	 */
-	inline bool ipv4(string_view ip, vector <uint8_t> & result, const options_t & options = {}) noexcept {
+	bool ipv4(string_view ip, vector <uint8_t> & result, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
 		auto addr = trim(ip);
 		// Обрабатываем скобки
@@ -783,7 +783,7 @@ namespace parser {
 	 * @param options опции парсинга
 	 * @return        результат выполнения парсинга
 	 */
-	inline bool ipv6(string_view ip, vector <uint8_t> & result, string & zone, const options_t & options = {}) noexcept {
+	bool ipv6(string_view ip, vector <uint8_t> & result, string & zone, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
 		auto addr = trim(ip);
 		// Обрабатываем скобки
@@ -1521,7 +1521,7 @@ uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Получаем буфер данных IP-адреса
-					parser::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&result));
+					::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&result));
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -1579,7 +1579,7 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Устанавливаем буфер данных IP-адреса
-					parser::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
+					::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -1633,7 +1633,7 @@ std::array <uint8_t, 16> awh::Net::v6(const endian_t endian) const noexcept {
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Получаем буфер данных IP-адреса
-					parser::convertEndian <16> (&this->_buffer[0], reinterpret_cast <uint8_t *> (&result[0]));
+					::convertEndian <16> (&this->_buffer[0], reinterpret_cast <uint8_t *> (&result[0]));
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -1691,7 +1691,7 @@ void awh::Net::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) 
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
 					// Устанавливаем буфер данных IP-адреса
-					parser::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
+					::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -1797,7 +1797,7 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 					// Временный буфер для проверки IP-адреса
 					vector <uint8_t> buffer(4, 0);
 					// Выполняем проверку IP-адреса IPv4
-					return parser::ipv4(addr, buffer);
+					return ::ipv4(addr, buffer);
 				}
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
@@ -1806,7 +1806,7 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 					// Временный буфер для проверки IP-адреса
 					vector <uint8_t> buffer(16, 0);
 					// Выполняем проверку IP-адреса IPv6
-					return parser::ipv6(addr, buffer, zone);
+					return ::ipv6(addr, buffer, zone);
 				}
 				// Если IP-адрес определён как NetV4
 				case static_cast <uint8_t> (type_t::NETV4): {
@@ -1827,13 +1827,13 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом и не является корректной маской сети
-						} else if(!parser::ipv4(suffix, buffer))
+						} else if(!::ipv4(suffix, buffer))
 							// Возвращаем результат проверки
 							return false;
 						// Зануляем структуру 
 						::memset(&buffer[0], 0, buffer.size());
 						// Выполняем проверку IP-адреса IPv4
-						return parser::ipv4(ip, buffer);
+						return ::ipv4(ip, buffer);
 					}
 				} break;
 				// Если IP-адрес определён как NetV6
@@ -1857,13 +1857,13 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом и не является корректной маской сети
-						} else if(!parser::ipv6(suffix, buffer, zone))
+						} else if(!::ipv6(suffix, buffer, zone))
 							// Возвращаем результат проверки
 							return false;
 						// Зануляем структуру 
 						::memset(&buffer[0], 0, buffer.size());
 						// Выполняем проверку IP-адреса IPv6
-						return parser::ipv6(ip, buffer, zone);
+						return ::ipv6(ip, buffer, zone);
 					}
 				} break;
 				// Если адрес принадлежит к URL-адресам
@@ -3189,7 +3189,7 @@ bool awh::Net::parse(const string & addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(4);
 						// Выполняем парсинг IPv4 адреса
-						if(parser::ipv4(addr, this->_buffer)){
+						if(::ipv4(addr, this->_buffer)){
 							// Устанавливаем тип адреса
 							this->_type = type_t::IPV4;
 							// Выводрим положительный результат
@@ -3205,7 +3205,7 @@ bool awh::Net::parse(const string & addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(16);
 						// Выполняем парсинг IPv6 адреса
-						if(parser::ipv6(addr, this->_buffer, this->_zone)){
+						if(::ipv6(addr, this->_buffer, this->_zone)){
 							// Устанавливаем тип адреса
 							this->_type = type_t::IPV6;
 							// Выводрим положительный результат
@@ -3285,7 +3285,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(4);
 					// Выполняем парсинг IPv4 адреса
-					if(parser::ipv4(addr, this->_buffer)){
+					if(::ipv4(addr, this->_buffer)){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат
@@ -3301,7 +3301,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(16);
 					// Выполняем парсинг IPv6 адреса
-					if(parser::ipv6(addr, this->_buffer, this->_zone)){
+					if(::ipv6(addr, this->_buffer, this->_zone)){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат

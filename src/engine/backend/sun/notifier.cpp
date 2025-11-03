@@ -56,183 +56,188 @@
 using namespace std;
 
 /**
- * Для операционной системы MS Windows
+ * Инкапсулируем статические функции в пространство имён
  */
-#if _WIN32 || _WIN64
+namespace {
 	/**
-	 * @brief Функция установки неблокирующего режима сокета
-	 *
-	 * @param sock сокет для установки режима
-	 * @param log  объект для работы с логами
+	 * Для операционной системы MS Windows
 	 */
-	static void noblocking(const SOCKET sock, const awh::log_t * log) noexcept {
-		// Формируем флаг разблокировки
-		u_long flag = 1;
-		// Выполняем разблокировку сокета
-		if(static_cast <bool> (::ioctlsocket(sock, FIONBIO, &flag))){
+	#if _WIN32 || _WIN64
+		/**
+		 * @brief Функция установки неблокирующего режима сокета
+		 *
+		 * @param sock сокет для установки режима
+		 * @param log  объект для работы с логами
+		 */
+		void noblocking(const SOCKET sock, const awh::log_t * log) noexcept {
+			// Формируем флаг разблокировки
+			u_long flag = 1;
+			// Выполняем разблокировку сокета
+			if(static_cast <bool> (::ioctlsocket(sock, FIONBIO, &flag))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Создаём буфер сообщения ошибки
+					wchar_t message[256] = {0};
+					// Выполняем формирование текста ошибки
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					// Выводим в лог информацию
+					log->print(L"Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, message);
+				#endif
+			}
+		}
+		/**
+		 * @brief Метод создания пары сокетов
+		 *
+		 * @param socks      список сокетов которые будут инициализированы
+		 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
+		 * @return           результат выполнения операции
+		 */
+		int64_t socketpair(SOCKET socks[2], const bool overlapped = true) noexcept {
 			/**
-			 * Если включён режим отладки
+			 * Объединение сетевых интерфейсов
 			 */
-			#if DEBUG_MODE
-				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
-				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
-				// Выводим в лог информацию
-				log->print(L"Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, message);
-			#endif
-		}
-	}
-	/**
-	 * @brief Метод создания пары сокетов
-	 *
-	 * @param socks      список сокетов которые будут инициализированы
-	 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
-	 * @return           результат выполнения операции
-	 */
-	static int64_t socketpair(SOCKET socks[2], const bool overlapped = true) noexcept {
-		/**
-		 * Объединение сетевых интерфейсов
-		 */
-		union {
-			struct sockaddr_in inaddr; // Объект слушателя
-			struct sockaddr addr;      // Объект подключения
-		} a;
-		// Получаем размер структуры слушателя
-		socklen_t addrlen = sizeof(a.inaddr);
-		// Получаем флаги инициализации сокета
-		DWORD flags = (overlapped ? WSA_FLAG_OVERLAPPED : 0);
-		// Если сокеты пустые
-		if(socks == 0){
-			// Выполняем формирование ошибки
-			::WSASetLastError(WSAEINVAL);
-			// Выводим ошибку
-			return INVALID_SOCKET;
-		}
-		// Выполняем изначальную инициализацию структуры сокетов
-		socks[0] = socks[1] = INVALID_SOCKET;
-		// Создаём сокет слушателя
-		const SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		// Если сокет слушателя не создан
-		if(listener == INVALID_SOCKET)
-			// Выводим ошибку
-			return INVALID_SOCKET;
-		// Выполняем инициализацию всех сетевых интерфейсов
-		::memset(&a, 0, sizeof(a));
-		// Устанавливаем нулевой порт так-как он нам не нужен
-		a.inaddr.sin_port = 0;
-		// Устанавливаем семейство сокетов
-		a.inaddr.sin_family = AF_INET;
-		// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
-		a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-		// Формируем флаг разрешающий переиспользовать данные сокеты
-		const int32_t reuse = 1;
-		/**
-		 * Выполняем инициализацию сокетов на чтение и запись
-		 */
-		for(;;){
-			// Устанавливаем флаг разрешающий переиспользование сокетов
-			if(::setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&reuse), (socklen_t) sizeof(reuse)) == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
-			// Выполняем биндинг полученного сокета
-			if(::bind(listener, &a.addr, sizeof(a.inaddr)) == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
-			// Обнуляем все сетевые интерфейсы
+			union {
+				struct sockaddr_in inaddr; // Объект слушателя
+				struct sockaddr addr;      // Объект подключения
+			} a;
+			// Получаем размер структуры слушателя
+			socklen_t addrlen = sizeof(a.inaddr);
+			// Получаем флаги инициализации сокета
+			DWORD flags = (overlapped ? WSA_FLAG_OVERLAPPED : 0);
+			// Если сокеты пустые
+			if(socks == 0){
+				// Выполняем формирование ошибки
+				::WSASetLastError(WSAEINVAL);
+				// Выводим ошибку
+				return INVALID_SOCKET;
+			}
+			// Выполняем изначальную инициализацию структуры сокетов
+			socks[0] = socks[1] = INVALID_SOCKET;
+			// Создаём сокет слушателя
+			const SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+			// Если сокет слушателя не создан
+			if(listener == INVALID_SOCKET)
+				// Выводим ошибку
+				return INVALID_SOCKET;
+			// Выполняем инициализацию всех сетевых интерфейсов
 			::memset(&a, 0, sizeof(a));
-			// Извлекаем имя указанного слушателя сокета
-			if(::getsockname(listener, &a.addr, &addrlen) == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
-			/**
-			 * Win32 GetockName может установить только номер порта, p = 0,0005.
-			 * ( http://msdn.microsoft.com/library/ms738543.aspx )
-			 */
-			// Устанавливаем семейство IPv4-адресов
+			// Устанавливаем нулевой порт так-как он нам не нужен
+			a.inaddr.sin_port = 0;
+			// Устанавливаем семейство сокетов
 			a.inaddr.sin_family = AF_INET;
 			// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
 			a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-			// Запускаем прослушивание порта
-			if(::listen(listener, 1) == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
-			// Создаём сокет для чтения данных
-			socks[0] = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, flags);
-			// Если сокет не создан
-			if(socks[0] == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
-			// Выполняем подключение к сокету на чтение данных
-			if(::connect(socks[0], &a.addr, sizeof(a.inaddr)) == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
-			// Выполняем разрешение подключения к сокету и это у нас будет сокет на запись
-			socks[1] = ::accept(listener, nullptr, nullptr);
-			// Если сокет не создан
-			if(socks[1] == INVALID_SOCKET)
-				// Выходим из цикла
-				break;
+			// Формируем флаг разрешающий переиспользовать данные сокеты
+			const int32_t reuse = 1;
+			/**
+			 * Выполняем инициализацию сокетов на чтение и запись
+			 */
+			for(;;){
+				// Устанавливаем флаг разрешающий переиспользование сокетов
+				if(::setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&reuse), (socklen_t) sizeof(reuse)) == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				// Выполняем биндинг полученного сокета
+				if(::bind(listener, &a.addr, sizeof(a.inaddr)) == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				// Обнуляем все сетевые интерфейсы
+				::memset(&a, 0, sizeof(a));
+				// Извлекаем имя указанного слушателя сокета
+				if(::getsockname(listener, &a.addr, &addrlen) == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				/**
+				 * Win32 GetockName может установить только номер порта, p = 0,0005.
+				 * ( http://msdn.microsoft.com/library/ms738543.aspx )
+				 */
+				// Устанавливаем семейство IPv4-адресов
+				a.inaddr.sin_family = AF_INET;
+				// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
+				a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+				// Запускаем прослушивание порта
+				if(::listen(listener, 1) == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				// Создаём сокет для чтения данных
+				socks[0] = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, flags);
+				// Если сокет не создан
+				if(socks[0] == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				// Выполняем подключение к сокету на чтение данных
+				if(::connect(socks[0], &a.addr, sizeof(a.inaddr)) == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				// Выполняем разрешение подключения к сокету и это у нас будет сокет на запись
+				socks[1] = ::accept(listener, nullptr, nullptr);
+				// Если сокет не создан
+				if(socks[1] == INVALID_SOCKET)
+					// Выходим из цикла
+					break;
+				// Закрываем сокет слушателя
+				::closesocket(listener);
+				// Выходим из функции и сообщаем, что все сокеты созданы удачно
+				return 0;
+			}
+			// Получаем ошибки сгенерированные системой
+			const int32_t error = ::WSAGetLastError();
 			// Закрываем сокет слушателя
 			::closesocket(listener);
-			// Выходим из функции и сообщаем, что все сокеты созданы удачно
-			return 0;
+			// Закрываем сокет чтение данных
+			::closesocket(socks[0]);
+			// Закрываем сокет для записи данных
+			::closesocket(socks[1]);
+			// Выполняем регистрацию ошибки
+			::WSASetLastError(error);
+			// Выполняем сброс значения сокетов
+			socks[0] = socks[1] = INVALID_SOCKET;
+			// Выводим ошибку
+			return INVALID_SOCKET;
 		}
-		// Получаем ошибки сгенерированные системой
-		const int32_t error = ::WSAGetLastError();
-		// Закрываем сокет слушателя
-		::closesocket(listener);
-		// Закрываем сокет чтение данных
-		::closesocket(socks[0]);
-		// Закрываем сокет для записи данных
-		::closesocket(socks[1]);
-		// Выполняем регистрацию ошибки
-		::WSASetLastError(error);
-		// Выполняем сброс значения сокетов
-		socks[0] = socks[1] = INVALID_SOCKET;
-		// Выводим ошибку
-		return INVALID_SOCKET;
-	}
-/**
- * Для операционной системы OpenBSD или Sun Solaris
- */
-#elif __OpenBSD__ || __sun__
 	/**
-	 * @brief Функция установки неблокирующего режима сокета
-	 *
-	 * @param sock сокет для установки режима
-	 * @param log  объект для работы с логами
+	 * Для операционной системы OpenBSD или Sun Solaris
 	 */
-	static void noblocking(const SOCKET sock, const awh::log_t * log) noexcept {
-		// Флаги сетевого сокета
-		int32_t flags = 0;
-		// Получаем флаги сетевого сокета
-		if(!((flags = ::fcntl(sock, F_GETFL, nullptr)) >= 0)){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим в лог информацию
-				log->print("Cannot get \"BLOCK\" option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, ::strerror(errno));
-			#endif
-			// Выходим из функции
-			return;
-		}
-		// Если флаг ещё не установлен
-		if(!(flags & O_NONBLOCK)){
-			// Устанавливаем неблокирующий режим
-			if(!(::fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0)){
+	#elif __OpenBSD__ || __sun__
+		/**
+		 * @brief Функция установки неблокирующего режима сокета
+		 *
+		 * @param sock сокет для установки режима
+		 * @param log  объект для работы с логами
+		 */
+		void noblocking(const SOCKET sock, const awh::log_t * log) noexcept {
+			// Флаги сетевого сокета
+			int32_t flags = 0;
+			// Получаем флаги сетевого сокета
+			if(!((flags = ::fcntl(sock, F_GETFL, nullptr)) >= 0)){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					log->print("Cannot set \"NON_BLOCK\" option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, ::strerror(errno));
+					log->print("Cannot get \"BLOCK\" option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, ::strerror(errno));
 				#endif
+				// Выходим из функции
+				return;
+			}
+			// Если флаг ещё не установлен
+			if(!(flags & O_NONBLOCK)){
+				// Устанавливаем неблокирующий режим
+				if(!(::fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим в лог информацию
+						log->print("Cannot set \"NON_BLOCK\" option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, ::strerror(errno));
+					#endif
+				}
 			}
 		}
-	}
-#endif
+	#endif
+}
 
 /**
  * @brief Метод сброса уведомителя

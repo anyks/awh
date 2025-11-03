@@ -1982,9 +1982,9 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 						/**
 						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 						 */
-						result = (::convert(domain) + "\\" + ::convert(name));
+						result = ::move(::convert(domain) + "\\" + ::convert(name));
 					// Если доменное имя не получено
-					} else result = ::convert(name);
+					} else result = ::move(::convert(name));
 				}
 				// Освобождаем память выделенную под идентификатор пользователя
 				::LocalFree(pSid);
@@ -2031,7 +2031,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			wstring account = ::convert(name), actualDomain = L"";
+			wstring account = ::move(::convert(name)), actualDomain = L"";
 			// Выполняем поиск разделителя
 			const size_t pos = account.find(L"\\");
 			// Если позиция разделителя доменного имя найдена
@@ -2105,7 +2105,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			// Размер SID-а пользователя и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			const wstring & account = ::convert(user);
+			const wstring account = ::move(::convert(user));
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
@@ -2623,7 +2623,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 				 */
 				while(::fgetws(buffer, sizeof(buffer), stream) != nullptr){
 					// Выполняем конвертирование в utf-8 строку
-					result.append(::convert(buffer));
+					result.append(::move(::convert(buffer)));
 					// Если это не мультилайн
 					if(!multiline)
 						// Выходим из цикла

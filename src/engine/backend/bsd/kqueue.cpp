@@ -67,25 +67,28 @@
 using namespace std;
 
 /**
- * Глобальная переменная списка предварительной настройки событий
+ * Инкапсулируем статические функции в пространство имён
  */
-static unordered_map <awh::event::id_t, awh::sys_t::leadup_t> __awh_leadup__;
-
-/**
- * Глобальная переменная списка узлов событий
- */
-static unordered_map <awh::event::id_t, unique_ptr <awh::sys_t::node_t>> __awh_nodes__;
-
-/**
- * @brief Функция генерации уникального идентификатора
- *
- * @return уникальный идентификатор
- */
-static uint32_t identifier() noexcept {
-	// Начинаем с 1 (0 можно оставить как "invalid")
-	static atomic_uint32_t id{1};
-	// Выводим новое значение идентификатора
-	return id.fetch_add(1, memory_order_relaxed);
+namespace {
+	/**
+	 * Глобальная переменная списка предварительной настройки событий
+	 */
+	unordered_map <awh::event::id_t, awh::sys_t::leadup_t> __awh_leadup__;
+	/**
+	 * Глобальная переменная списка узлов событий
+	 */
+	unordered_map <awh::event::id_t, unique_ptr <awh::sys_t::node_t>> __awh_nodes__;
+	/**
+	 * @brief Функция генерации уникального идентификатора
+	 *
+	 * @return уникальный идентификатор
+	 */
+	uint32_t identifier() noexcept {
+		// Начинаем с 1 (0 можно оставить как "invalid")
+		static atomic_uint32_t id{1};
+		// Выводим новое значение идентификатора
+		return id.fetch_add(1, memory_order_relaxed);
+	}
 }
 
 /**

@@ -61,240 +61,320 @@
 using namespace std;
 
 /**
- * @brief Функция определения количества знаков после запятой
- *
- * @param number число в котором нужно определить количество знаков
- * @param log    объект работы с логами
- * @return       количество знаков после запятой
+ * Инкапсулируем статические функции в пространство имён
  */
-static uint8_t decimalPlaces(double number, const awh::log_t * log) noexcept {
-	// Результат работы функции
-	uint8_t result = 0;
+namespace {
 	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Результирующее число
-		double intpart = 0;
-		// Если у числа нет дробной части
-		if(::modf(number, &intpart) > 0){
-			// Получаем остаток от деления
-			int64_t remainder = -1, item = 0;
-			/**
-			 * Если у числа есть дробная часть
-			 */
-			while((::modf(number, &intpart) > 0) && (result < 15)){
-				// Если остаток от деления совпадает
-				if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
-					// Выходим из цикла
-					break;
-				// Если результат уже собран
-				if(result > 0)
-					// Запоминаем остаток от деления
-					remainder = item;
-				// Увеличиваем число на один порядок
-				number *= 10.;
-				// Считаем количество чисел
-				result++;
-			}
-			/**
-			 * Если собранное число больше нуля
-			 */
-			while(intpart > 0){
-				// Если последний символ нулевой
-				if((result > 0) && ((static_cast <uint64_t> (intpart) % 10L) == 0)){
-					// Уменьшаем размер числа
-					result--;
-					// Уменьшаем размер числа
-					intpart /= 10.;
-				// Выходим из цикла
-				} else break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Выполняем сброс количества знаков после запятой
-		result = 0;
-		// Если объект логирования установлен
-		if(log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(number), awh::log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-
-/**
- * Для операционной системы не являющейся MS Windows
- */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Если используется модуль IDN
-	 */
-	#if AWH_IDN
-		/**
-		 * @brief Функция конвертирования из одной кодировки в другую
-		 *
-		 * @param data данные для конвертирования
-		 * @param from название кодировки из которой необходимо выполнить конвертирование
-		 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
-		 * @param log  объект работы с логами
-		 * @return     получившееся в результате значение
-		 */
-		static string convertEncoding(const string & data, const string & from, const string & to, const awh::log_t * log){
-			// Результат работы функции
-			string result = "";
-			// Если данные переданы на вход правильно
-			if(!data.empty() && !from.empty() && !to.empty()){
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Выполняем инициализацию конвертера
-					iconv_t convert = ::iconv_open(to.c_str(), from.c_str());
-					// Если инициализировать конвертер не вышло
-					if(convert == (iconv_t)(-1))
-						// Выполняем генерацию ошибки
-						throw ::logic_error("Unable to create convertion descriptor");
-					// Получаем размер входящей строки
-					size_t size = data.size();
-					// Выполняем получение указатель на входящую строку
-					char * ptr = const_cast <char *> (data.c_str());
-					// Выполняем создание буфера для получения результата
-					result.resize(6 * data.size(), 0);
-					// Выполняем получения указателя на результирующий буфер
-					char * output = result.data();
-					// Получаем длину результирующего буфера
-					size_t length = result.size();
-					// Выполняем конвертацию текста из одной кодировки в другую
-					const size_t status = ::iconv(convert, &ptr, &size, &output, &length);
-					// Выполняем закрытие конвертера
-					::iconv_close(convert);
-					// Если конвертация не выполнена
-					if(status == static_cast <size_t> (-1)){
-						// Выполняем очистку полученного результата
-						result.clear();
-						// Выполняем формирование ответа
-						result.append("Unable to convert ");
-						result.append(data);
-						result.append(" from ");
-						result.append(from);
-						result.append(" to ");
-						result.append(to);
-						// Выполняем генерацию ошибки
-						throw ::logic_error(result);
-					}
-					// Выполняем коррекцию полученной длины строки
-					result.resize(result.size() - length);
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
-					// Если объект логирования установлен
-					if(log != nullptr){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data, from, to), awh::log_t::flag_t::CRITICAL, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-						#endif
-					// Если объект логирования не установлен
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n\n", error.what());
-						#endif
-					}
-				}
-			}
-			// Выводим результат
-			return result;
-		}
-	#endif
-#endif
-
-/**
- * @brief Шаблон функции разделения строк на составляющие
- *
- * @tparam T тип контейнера в котором извлекается результат
- */
-template <typename T>
-/**
- * @brief Функция разделения строк на составляющие
- *
- * @param str       строка для поиска
- * @param delim     разделитель
- * @param container контенер содержащий данные
- * @param log       объект работы с логами
- * @return          контенер содержащий данные
- */
-static T & split(const string & str, const string & delim, T & container, const awh::log_t * log) noexcept {
-	/**
-	 * @brief Функция удаления пробелов вначале и конце текста
+	 * @brief Функция определения количества знаков после запятой
 	 *
-	 * @param text текст для удаления пробелов
-	 * @return     результат работы функции
+	 * @param number число в котором нужно определить количество знаков
+	 * @param log    объект работы с логами
+	 * @return       количество знаков после запятой
 	 */
-	auto trimFn = [&](string & text) noexcept -> string & {
+	uint8_t decimalPlaces(double number, const awh::log_t * log) noexcept {
+		// Результат работы функции
+		uint8_t result = 0;
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем удаление пробелов в начале текста
-			text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) noexcept -> bool {
-				// Выполняем проверку символа на наличие пробела
-				return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
-			}));
-			// Выполняем удаление пробелов в конце текста
-			text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) noexcept -> bool {
-				// Выполняем проверку символа на наличие пробела
-				return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
-			}).base(), text.end());
+			// Результирующее число
+			double intpart = 0;
+			// Если у числа нет дробной части
+			if(::modf(number, &intpart) > 0){
+				// Получаем остаток от деления
+				int64_t remainder = -1, item = 0;
+				/**
+				 * Если у числа есть дробная часть
+				 */
+				while((::modf(number, &intpart) > 0) && (result < 15)){
+					// Если остаток от деления совпадает
+					if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
+						// Выходим из цикла
+						break;
+					// Если результат уже собран
+					if(result > 0)
+						// Запоминаем остаток от деления
+						remainder = item;
+					// Увеличиваем число на один порядок
+					number *= 10.;
+					// Считаем количество чисел
+					result++;
+				}
+				/**
+				 * Если собранное число больше нуля
+				 */
+				while(intpart > 0){
+					// Если последний символ нулевой
+					if((result > 0) && ((static_cast <uint64_t> (intpart) % 10L) == 0)){
+						// Уменьшаем размер числа
+						result--;
+						// Уменьшаем размер числа
+						intpart /= 10.;
+					// Выходим из цикла
+					} else break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Выполняем сброс количества знаков после запятой
+			result = 0;
+			// Если объект логирования установлен
+			if(log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(number), awh::log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
+		}
+		// Выводим результат
+		return result;
+	}
+
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		/**
+		 * Если используется модуль IDN
+		 */
+		#if AWH_IDN
+			/**
+			 * @brief Функция конвертирования из одной кодировки в другую
+			 *
+			 * @param data данные для конвертирования
+			 * @param from название кодировки из которой необходимо выполнить конвертирование
+			 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
+			 * @param log  объект работы с логами
+			 * @return     получившееся в результате значение
+			 */
+			string convertEncoding(const string & data, const string & from, const string & to, const awh::log_t * log){
+				// Результат работы функции
+				string result = "";
+				// Если данные переданы на вход правильно
+				if(!data.empty() && !from.empty() && !to.empty()){
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Выполняем инициализацию конвертера
+						iconv_t convert = ::iconv_open(to.c_str(), from.c_str());
+						// Если инициализировать конвертер не вышло
+						if(convert == (iconv_t)(-1))
+							// Выполняем генерацию ошибки
+							throw ::logic_error("Unable to create convertion descriptor");
+						// Получаем размер входящей строки
+						size_t size = data.size();
+						// Выполняем получение указатель на входящую строку
+						char * ptr = const_cast <char *> (data.c_str());
+						// Выполняем создание буфера для получения результата
+						result.resize(6 * data.size(), 0);
+						// Выполняем получения указателя на результирующий буфер
+						char * output = result.data();
+						// Получаем длину результирующего буфера
+						size_t length = result.size();
+						// Выполняем конвертацию текста из одной кодировки в другую
+						const size_t status = ::iconv(convert, &ptr, &size, &output, &length);
+						// Выполняем закрытие конвертера
+						::iconv_close(convert);
+						// Если конвертация не выполнена
+						if(status == static_cast <size_t> (-1)){
+							// Выполняем очистку полученного результата
+							result.clear();
+							// Выполняем формирование ответа
+							result.append("Unable to convert ");
+							result.append(data);
+							result.append(" from ");
+							result.append(from);
+							result.append(" to ");
+							result.append(to);
+							// Выполняем генерацию ошибки
+							throw ::logic_error(result);
+						}
+						// Выполняем коррекцию полученной длины строки
+						result.resize(result.size() - length);
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						// Если объект логирования установлен
+						if(log != nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data, from, to), awh::log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+							#endif
+						// Если объект логирования не установлен
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", error.what());
+							#endif
+						}
+					}
+				}
+				// Выводим результат
+				return result;
+			}
+		#endif
+	#endif
+
+	/**
+	 * @brief Шаблон функции разделения строк на составляющие
+	 *
+	 * @tparam T тип контейнера в котором извлекается результат
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция разделения строк на составляющие
+	 *
+	 * @param str       строка для поиска
+	 * @param delim     разделитель
+	 * @param container контенер содержащий данные
+	 * @param log       объект работы с логами
+	 * @return          контенер содержащий данные
+	 */
+	T & split(const string & str, const string & delim, T & container, const awh::log_t * log) noexcept {
+		/**
+		 * @brief Функция удаления пробелов вначале и конце текста
+		 *
+		 * @param text текст для удаления пробелов
+		 * @return     результат работы функции
+		 */
+		auto trimFn = [&](string & text) noexcept -> string & {
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем удаление пробелов в начале текста
+				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) noexcept -> bool {
+					// Выполняем проверку символа на наличие пробела
+					return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
+				}));
+				// Выполняем удаление пробелов в конце текста
+				text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) noexcept -> bool {
+					// Выполняем проверку символа на наличие пробела
+					return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
+				}).base(), text.end());
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Если объект логирования установлен
+				if(log != nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim, container.size()), awh::log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+					#endif
+				// Если объект логирования не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "ERROR! %s\n\n", error.what());
+					#endif
+				}
+			}
+			// Выводим результат
+			return text;
+		};
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Очищаем словарь
+			container.clear();
+			// Результат работы функции
+			string result = "";
+			// Получаем счётчики перебора
+			size_t index = 0, pos = str.find(delim);
+			/**
+			 * Выполняем разбиение строк
+			 */
+			while(pos != string::npos){
+				// Получаем полученный текст
+				result = str.substr(index, pos - index);
+				// Вставляем полученный результат в контейнер
+				container.insert(container.end(), trimFn(result));
+				// Выполняем смещение в тексте
+				index = ++pos + (delim.length() - 1);
+				// Выполняем поиск разделителя в тексте
+				pos = str.find(delim, pos);
+				// Если мы дошли до конца текста
+				if(pos == string::npos){
+					// Получаем полученный текст
+					result = str.substr(index, str.length());
+					// Вставляем полученный результат в контейнер
+					container.insert(container.end(), trimFn(result));
+				}
+			}
+			// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
+			if(!str.empty() && container.empty()){
+				// Получаем полученный текст
+				result = str.substr(index, pos - index);
+				// Вставляем полученный результат в контейнер
+				container.insert(container.end(), trimFn(result));
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -332,121 +412,121 @@ static T & split(const string & str, const string & delim, T & container, const 
 			}
 		}
 		// Выводим результат
-		return text;
-	};
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Очищаем словарь
-		container.clear();
-		// Результат работы функции
-		string result = "";
-		// Получаем счётчики перебора
-		size_t index = 0, pos = str.find(delim);
-		/**
-		 * Выполняем разбиение строк
-		 */
-		while(pos != string::npos){
-			// Получаем полученный текст
-			result = str.substr(index, pos - index);
-			// Вставляем полученный результат в контейнер
-			container.insert(container.end(), trimFn(result));
-			// Выполняем смещение в тексте
-			index = ++pos + (delim.length() - 1);
-			// Выполняем поиск разделителя в тексте
-			pos = str.find(delim, pos);
-			// Если мы дошли до конца текста
-			if(pos == string::npos){
-				// Получаем полученный текст
-				result = str.substr(index, str.length());
-				// Вставляем полученный результат в контейнер
-				container.insert(container.end(), trimFn(result));
-			}
-		}
-		// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
-		if(!str.empty() && container.empty()){
-			// Получаем полученный текст
-			result = str.substr(index, pos - index);
-			// Вставляем полученный результат в контейнер
-			container.insert(container.end(), trimFn(result));
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim, container.size()), awh::log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		return container;
 	}
-	// Выводим результат
-	return container;
-}
-/**
- * @brief Шаблон функции разделения строк на составляющие
- *
- * @tparam T тип контейнера в котором извлекается результат
- */
-template <typename T>
-/**
- * @brief Функция разделения строк на составляющие
- *
- * @param str       строка для поиска
- * @param delim     разделитель
- * @param container контенер содержащий данные
- * @param log       объект работы с логами
- * @return          контенер содержащий данные
- */
-static T & split(const wstring & str, const wstring & delim, T & container, const awh::log_t * log) noexcept {
 	/**
-	 * @brief Функция удаления пробелов вначале и конце текста
+	 * @brief Шаблон функции разделения строк на составляющие
 	 *
-	 * @param text текст для удаления пробелов
-	 * @return     результат работы функции
+	 * @tparam T тип контейнера в котором извлекается результат
 	 */
-	auto trimFn = [&](wstring & text) noexcept -> wstring & {
+	template <typename T>
+	/**
+	 * @brief Функция разделения строк на составляющие
+	 *
+	 * @param str       строка для поиска
+	 * @param delim     разделитель
+	 * @param container контенер содержащий данные
+	 * @param log       объект работы с логами
+	 * @return          контенер содержащий данные
+	 */
+	T & split(const wstring & str, const wstring & delim, T & container, const awh::log_t * log) noexcept {
+		/**
+		 * @brief Функция удаления пробелов вначале и конце текста
+		 *
+		 * @param text текст для удаления пробелов
+		 * @return     результат работы функции
+		 */
+		auto trimFn = [&](wstring & text) noexcept -> wstring & {
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем удаление пробелов в начале текста
+				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) noexcept -> bool {
+					// Выполняем проверку символа на наличие пробела
+					return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
+				}));
+				// Выполняем удаление пробелов в конце текста
+				text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) noexcept -> bool {
+					// Выполняем проверку символа на наличие пробела
+					return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
+				}).base(), text.end());
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Если объект логирования установлен
+				if(log != nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str.size(), delim.size(), container.size()), awh::log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+					#endif
+				// Если объект логирования не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "ERROR! %s\n\n", error.what());
+					#endif
+				}
+			}
+			// Выводим результат
+			return text;
+		};
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем удаление пробелов в начале текста
-			text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) noexcept -> bool {
-				// Выполняем проверку символа на наличие пробела
-				return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
-			}));
-			// Выполняем удаление пробелов в конце текста
-			text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) noexcept -> bool {
-				// Выполняем проверку символа на наличие пробела
-				return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
-			}).base(), text.end());
+			// Очищаем словарь
+			container.clear();
+			// Результат работы функции
+			wstring result = L"";
+			// Получаем счётчики перебора
+			size_t index = 0, pos = str.find(delim);
+			/**
+			 * Выполняем разбиение строк
+			 */
+			while(pos != wstring::npos){
+				// Получаем полученный текст
+				result = str.substr(index, pos - index);
+				// Вставляем полученный результат в контейнер
+				container.insert(container.end(), trimFn(result));
+				// Выполняем смещение в тексте
+				index = ++pos + (delim.length() - 1);
+				// Выполняем поиск разделителя в тексте
+				pos = str.find(delim, pos);
+				// Если мы дошли до конца текста
+				if(pos == wstring::npos){
+					// Получаем полученный текст
+					result = str.substr(index, str.length());
+					// Вставляем полученный результат в контейнер
+					container.insert(container.end(), trimFn(result));
+				}
+			}
+			// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
+			if(!str.empty() && container.empty()){
+				// Получаем полученный текст
+				result = str.substr(index, pos - index);
+				// Вставляем полученный результат в контейнер
+				container.insert(container.end(), trimFn(result));
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -484,372 +564,297 @@ static T & split(const wstring & str, const wstring & delim, T & container, cons
 			}
 		}
 		// Выводим результат
-		return text;
-	};
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Очищаем словарь
-		container.clear();
-		// Результат работы функции
-		wstring result = L"";
-		// Получаем счётчики перебора
-		size_t index = 0, pos = str.find(delim);
-		/**
-		 * Выполняем разбиение строк
-		 */
-		while(pos != wstring::npos){
-			// Получаем полученный текст
-			result = str.substr(index, pos - index);
-			// Вставляем полученный результат в контейнер
-			container.insert(container.end(), trimFn(result));
-			// Выполняем смещение в тексте
-			index = ++pos + (delim.length() - 1);
-			// Выполняем поиск разделителя в тексте
-			pos = str.find(delim, pos);
-			// Если мы дошли до конца текста
-			if(pos == wstring::npos){
-				// Получаем полученный текст
-				result = str.substr(index, str.length());
-				// Вставляем полученный результат в контейнер
-				container.insert(container.end(), trimFn(result));
-			}
-		}
-		// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
-		if(!str.empty() && container.empty()){
-			// Получаем полученный текст
-			result = str.substr(index, pos - index);
-			// Вставляем полученный результат в контейнер
-			container.insert(container.end(), trimFn(result));
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str.size(), delim.size(), container.size()), awh::log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		return container;
 	}
-	// Выводим результат
-	return container;
-}
 
-/**
- * @brief структура Римских чисел
- *
- */
-static struct RomanNumerals {
-	// Шаблоны римских форматов
-	const wstring m[5]  = {L"", L"M", L"MM", L"MMM", L"MMMM"};
-	const wstring i[10] = {L"", L"I", L"II", L"III", L"IV", L"V", L"VI", L"VII", L"VIII", L"IX"};
-	const wstring x[10] = {L"", L"X", L"XX", L"XXX", L"XL", L"L", L"LX", L"LXX", L"LXXX", L"XC"};
-	const wstring c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
-} romanNumerals;
-/**
- * @brief Класс основных символов
- *
- */
-static class Symbols {
-	private:
-		// Контейнер римских чисел
-		std::unordered_map <char, uint16_t> _romes;
-		// Контейнер арабских чисел
-		std::unordered_map <char, uint8_t> _arabics;
-	private:
-		// Контейнер латинских символов
-		std::unordered_map <char, wchar_t> _letters;
-		// Контейнер латинских символов для UTF-8
-		std::unordered_map <wchar_t, char> _wideLetters;
-	private:
-		// Контейнер римских чисел для UTF-8
-		std::unordered_map <wchar_t, uint16_t> _wideRomes;
-		// Контейнер арабских чисел для UTF-8
-		std::unordered_map <wchar_t, uint8_t> _wideArabics;
-	public:
-		/**
-		 * @brief Метод проверки соответствия римской цифре
-		 *
-		 * @param num римская цифра для проверки
-		 * @return    результат проверки
-		 */
-		bool isRome(const char num) const noexcept {
-			// Выполняем проверку сущестования цифры
-			return (this->_romes.find(::toupper(num)) != this->_romes.end());
-		}
-		/**
-		 * @brief Метод проверки соответствия римской цифре
-		 *
-		 * @param num римская цифра для проверки
-		 * @return    результат проверки
-		 */
-		bool isRome(const wchar_t num) const noexcept {
-			// Выполняем проверку сущестования цифры
-			return (this->_wideRomes.find(::towupper(num)) != this->_wideRomes.end());
-		}
-	public:
-		/**
-		 * @brief Метод проверки соответствия арабской цифре
-		 *
-		 * @param num арабская цифра для проверки
-		 * @return    результат проверки
-		 */
-		bool isArabic(const char num) const noexcept {
-			// Выполняем проверку сущестования цифры
-			return ::isdigit(static_cast <int32_t> (num));
-		}
-		/**
-		 * @brief Метод проверки соответствия арабской цифре
-		 *
-		 * @param num арабская цифра для проверки
-		 * @return    результат проверки
-		 */
-		bool isArabic(const wchar_t num) const noexcept {
-			// Выполняем проверку сущестования цифры
-			return ::iswdigit(static_cast <wint_t> (num));
-		}
-	public:
-		/**
-		 * @brief Метод проверки соответствия латинской букве
-		 *
-		 * @param letter латинская буква для проверки
-		 * @return       результат проверки
-		 */
-		bool isLetter(const char letter) const noexcept {
-			// Выполняем проверку сущестования латинской буквы
-			return (this->_letters.find(::tolower(letter)) != this->_letters.end());
-		}
-		/**
-		 * @brief Метод проверки соответствия латинской букве
-		 *
-		 * @param letter латинская буква для проверки
-		 * @return       результат проверки
-		 */
-		bool isLetter(const wchar_t letter) const noexcept {
-			// Выполняем проверку сущестования латинской буквы
-			return (this->_wideLetters.find(::towlower(letter)) != this->_wideLetters.end());
-		}
-	public:
-		/**
-		 * @brief Метод извлечения римской цифры
-		 *
-		 * @param num римская цифра для извлечения
-		 * @return    арабская цифрва в виде числа
-		 */
-		uint16_t getRome(const char num) const noexcept {
-			// Результат работы функции
-			uint16_t result = 0;
-			// Выполняем поиск римского числа
-			auto i = this->_romes.find(::toupper(num));
-			// Если римское число найдено
-			if(i != this->_romes.end())
-				// Получаем римское число в чистом виде
-				result = i->second;
-			// Выводим результат
-			return result;
-		}
-		/**
-		 * @brief Метод извлечения римской цифры
-		 *
-		 * @param num римская цифра для извлечения
-		 * @return    арабская цифрва в виде числа
-		 */
-		uint16_t getRome(const wchar_t num) const noexcept {
-			// Результат работы функции
-			uint16_t result = 0;
-			// Выполняем поиск римского числа
-			auto i = this->_wideRomes.find(::towupper(num));
-			// Если римское число найдено
-			if(i != this->_wideRomes.end())
-				// Получаем римское число в чистом виде
-				result = i->second;
-			// Выводим результат
-			return result;
-		}
-	public:
-		/**
-		 * @brief Метод извлечения арабской цифры
-		 *
-		 * @param num арабская цифра для извлечения
-		 * @return    арабская цифрва в виде числа
-		 */
-		uint8_t getArabic(const char num) const noexcept {
-			// Результат работы функции
-			uint8_t result = 0;
-			// Выполняем поиск арабского числа
-			auto i = this->_arabics.find(num);
-			// Если арабское число найдено
-			if(i != this->_arabics.end())
-				// Получаем арабское число в чистом виде
-				result = i->second;
-			// Выводим результат
-			return result;
-		}
-		/**
-		 * @brief Метод извлечения арабской цифры
-		 *
-		 * @param num арабская цифра для извлечения
-		 * @return    арабская цифрва в виде числа
-		 */
-		uint8_t getArabic(const wchar_t num) const noexcept {
-			// Результат работы функции
-			uint8_t result = 0;
-			// Выполняем поиск арабского числа
-			auto i = this->_wideArabics.find(num);
-			// Если арабское число найдено
-			if(i != this->_wideArabics.end())
-				// Получаем арабское число в чистом виде
-				result = i->second;
-			// Выводим результат
-			return result;
-		}
-	public:
-		/**
-		 * @brief Метод извлечения латинской буквы
-		 *
-		 * @param letter латинская буква для извлечения
-		 * @return       латинская буква в виде символа
-		 */
-		wchar_t getLetter(const char letter) const noexcept {
-			// Результат работы функции
-			wchar_t result = 0;
-			// Выполняем поиск латинской буквы
-			auto i = this->_letters.find(::tolower(letter));
-			// Если латинская буква найдена
-			if(i != this->_letters.end())
-				// Получаем латинскую букву в чистом виде
-				result = i->second;
-			// Выводим результат
-			return result;
-		}
-		/**
-		 * @brief Метод извлечения латинской буквы
-		 *
-		 * @param letter латинская буква для извлечения
-		 * @return       латинская буква в виде символа
-		 */
-		char getLetter(const wchar_t letter) const noexcept {
-			// Результат работы функции
-			char result = 0;
-			// Выполняем поиск латинской буквы
-			auto i = this->_wideLetters.find(::towlower(letter));
-			// Если латинская буква найдена
-			if(i != this->_wideLetters.end())
-				// Получаем латинскую букву в чистом виде
-				result = i->second;
-			// Выводим результат
-			return result;
-		}
-	public:
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Symbols() noexcept {
+	/**
+	 * @brief структура Римских чисел
+	 *
+	 */
+	struct RomanNumerals {
+		// Шаблоны римских форматов
+		const wstring m[5]  = {L"", L"M", L"MM", L"MMM", L"MMMM"};
+		const wstring i[10] = {L"", L"I", L"II", L"III", L"IV", L"V", L"VI", L"VII", L"VIII", L"IX"};
+		const wstring x[10] = {L"", L"X", L"XX", L"XXX", L"XL", L"L", L"LX", L"LXX", L"LXXX", L"XC"};
+		const wstring c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
+	} romanNumerals;
+	/**
+	 * @brief Класс основных символов
+	 *
+	 */
+	class Symbols {
+		private:
+			// Контейнер римских чисел
+			std::unordered_map <char, uint16_t> _romes;
+			// Контейнер арабских чисел
+			std::unordered_map <char, uint8_t> _arabics;
+		private:
+			// Контейнер латинских символов
+			std::unordered_map <char, wchar_t> _letters;
+			// Контейнер латинских символов для UTF-8
+			std::unordered_map <wchar_t, char> _wideLetters;
+		private:
+			// Контейнер римских чисел для UTF-8
+			std::unordered_map <wchar_t, uint16_t> _wideRomes;
+			// Контейнер арабских чисел для UTF-8
+			std::unordered_map <wchar_t, uint8_t> _wideArabics;
+		public:
 			/**
-			 * Выполняем заполнение арабских чисел
+			 * @brief Метод проверки соответствия римской цифре
+			 *
+			 * @param num римская цифра для проверки
+			 * @return    результат проверки
 			 */
-			this->_arabics = {
-				{'0', 0}, {'1', 1},
-				{'2', 2}, {'3', 3},
-				{'4', 4}, {'5', 5},
-				{'6', 6}, {'7', 7},
-				{'8', 8}, {'9', 9}
-			};
+			bool isRome(const char num) const noexcept {
+				// Выполняем проверку сущестования цифры
+				return (this->_romes.find(::toupper(num)) != this->_romes.end());
+			}
 			/**
-			 * Выполняем заполнение арабских чисел для UTF-8
+			 * @brief Метод проверки соответствия римской цифре
+			 *
+			 * @param num римская цифра для проверки
+			 * @return    результат проверки
 			 */
-			this->_wideArabics = {
-				{L'0',0}, {L'1',1},
-				{L'2',2}, {L'3',3},
-				{L'4',4}, {L'5',5},
-				{L'6',6}, {L'7',7},
-				{L'8',8}, {L'9',9}
-			};
+			bool isRome(const wchar_t num) const noexcept {
+				// Выполняем проверку сущестования цифры
+				return (this->_wideRomes.find(::towupper(num)) != this->_wideRomes.end());
+			}
+		public:
 			/**
-			 * Выполняем заполнение римских чисел
+			 * @brief Метод проверки соответствия арабской цифре
+			 *
+			 * @param num арабская цифра для проверки
+			 * @return    результат проверки
 			 */
-			this->_romes = {
-				{'I',1}, {'V',5},
-				{'X',10}, {'L',50},
-				{'C',100}, {'D',500},
-				{'M',1000}
-			};
+			bool isArabic(const char num) const noexcept {
+				// Выполняем проверку сущестования цифры
+				return ::isdigit(static_cast <int32_t> (num));
+			}
 			/**
-			 * Выполняем заполнение римских чисел для UTF-8
+			 * @brief Метод проверки соответствия арабской цифре
+			 *
+			 * @param num арабская цифра для проверки
+			 * @return    результат проверки
 			 */
-			this->_wideRomes = {
-				{L'I',1}, {L'V',5},
-				{L'X',10}, {L'L',50},
-				{L'C',100}, {L'D',500},
-				{L'M',1000}
-			};
+			bool isArabic(const wchar_t num) const noexcept {
+				// Выполняем проверку сущестования цифры
+				return ::iswdigit(static_cast <wint_t> (num));
+			}
+		public:
 			/**
-			 * Выполняем заполнение латинских символов
+			 * @brief Метод проверки соответствия латинской букве
+			 *
+			 * @param letter латинская буква для проверки
+			 * @return       результат проверки
 			 */
-			this->_letters = {
-				{'a',L'a'}, {'b',L'b'},
-				{'c',L'c'}, {'d',L'd'},
-				{'e',L'e'}, {'f',L'f'},
-				{'g',L'g'}, {'h',L'h'},
-				{'i',L'i'}, {'j',L'j'},
-				{'k',L'k'}, {'l',L'l'},
-				{'m',L'm'}, {'n',L'n'},
-				{'o',L'o'}, {'p',L'p'},
-				{'q',L'q'}, {'r',L'r'},
-				{'s',L's'}, {'t',L't'},
-				{'u',L'u'}, {'v',L'v'},
-				{'w',L'w'}, {'x',L'x'},
-				{'y',L'y'}, {'z',L'z'}
-			};
+			bool isLetter(const char letter) const noexcept {
+				// Выполняем проверку сущестования латинской буквы
+				return (this->_letters.find(::tolower(letter)) != this->_letters.end());
+			}
 			/**
-			 * Выполняем заполнение латинских символов для UTF-8
+			 * @brief Метод проверки соответствия латинской букве
+			 *
+			 * @param letter латинская буква для проверки
+			 * @return       результат проверки
 			 */
-			this->_wideLetters = {
-				{L'a','a'}, {L'b','b'},
-				{L'c','c'}, {L'd','d'},
-				{L'e','e'}, {L'f','f'},
-				{L'g','g'}, {L'h','h'},
-				{L'i','i'}, {L'j','j'},
-				{L'k','k'}, {L'l','l'},
-				{L'm','m'}, {L'n','n'},
-				{L'o','o'}, {L'p','p'},
-				{L'q','q'}, {L'r','r'},
-				{L's','s'}, {L't','t'},
-				{L'u','u'}, {L'v','v'},
-				{L'w','w'}, {L'x','x'},
-				{L'y','y'}, {L'z','z'}
-			};
-		}
-} symbols;
+			bool isLetter(const wchar_t letter) const noexcept {
+				// Выполняем проверку сущестования латинской буквы
+				return (this->_wideLetters.find(::towlower(letter)) != this->_wideLetters.end());
+			}
+		public:
+			/**
+			 * @brief Метод извлечения римской цифры
+			 *
+			 * @param num римская цифра для извлечения
+			 * @return    арабская цифрва в виде числа
+			 */
+			uint16_t getRome(const char num) const noexcept {
+				// Результат работы функции
+				uint16_t result = 0;
+				// Выполняем поиск римского числа
+				auto i = this->_romes.find(::toupper(num));
+				// Если римское число найдено
+				if(i != this->_romes.end())
+					// Получаем римское число в чистом виде
+					result = i->second;
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * @brief Метод извлечения римской цифры
+			 *
+			 * @param num римская цифра для извлечения
+			 * @return    арабская цифрва в виде числа
+			 */
+			uint16_t getRome(const wchar_t num) const noexcept {
+				// Результат работы функции
+				uint16_t result = 0;
+				// Выполняем поиск римского числа
+				auto i = this->_wideRomes.find(::towupper(num));
+				// Если римское число найдено
+				if(i != this->_wideRomes.end())
+					// Получаем римское число в чистом виде
+					result = i->second;
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * @brief Метод извлечения арабской цифры
+			 *
+			 * @param num арабская цифра для извлечения
+			 * @return    арабская цифрва в виде числа
+			 */
+			uint8_t getArabic(const char num) const noexcept {
+				// Результат работы функции
+				uint8_t result = 0;
+				// Выполняем поиск арабского числа
+				auto i = this->_arabics.find(num);
+				// Если арабское число найдено
+				if(i != this->_arabics.end())
+					// Получаем арабское число в чистом виде
+					result = i->second;
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * @brief Метод извлечения арабской цифры
+			 *
+			 * @param num арабская цифра для извлечения
+			 * @return    арабская цифрва в виде числа
+			 */
+			uint8_t getArabic(const wchar_t num) const noexcept {
+				// Результат работы функции
+				uint8_t result = 0;
+				// Выполняем поиск арабского числа
+				auto i = this->_wideArabics.find(num);
+				// Если арабское число найдено
+				if(i != this->_wideArabics.end())
+					// Получаем арабское число в чистом виде
+					result = i->second;
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * @brief Метод извлечения латинской буквы
+			 *
+			 * @param letter латинская буква для извлечения
+			 * @return       латинская буква в виде символа
+			 */
+			wchar_t getLetter(const char letter) const noexcept {
+				// Результат работы функции
+				wchar_t result = 0;
+				// Выполняем поиск латинской буквы
+				auto i = this->_letters.find(::tolower(letter));
+				// Если латинская буква найдена
+				if(i != this->_letters.end())
+					// Получаем латинскую букву в чистом виде
+					result = i->second;
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * @brief Метод извлечения латинской буквы
+			 *
+			 * @param letter латинская буква для извлечения
+			 * @return       латинская буква в виде символа
+			 */
+			char getLetter(const wchar_t letter) const noexcept {
+				// Результат работы функции
+				char result = 0;
+				// Выполняем поиск латинской буквы
+				auto i = this->_wideLetters.find(::towlower(letter));
+				// Если латинская буква найдена
+				if(i != this->_wideLetters.end())
+					// Получаем латинскую букву в чистом виде
+					result = i->second;
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			Symbols() noexcept {
+				/**
+				 * Выполняем заполнение арабских чисел
+				 */
+				this->_arabics = {
+					{'0', 0}, {'1', 1},
+					{'2', 2}, {'3', 3},
+					{'4', 4}, {'5', 5},
+					{'6', 6}, {'7', 7},
+					{'8', 8}, {'9', 9}
+				};
+				/**
+				 * Выполняем заполнение арабских чисел для UTF-8
+				 */
+				this->_wideArabics = {
+					{L'0',0}, {L'1',1},
+					{L'2',2}, {L'3',3},
+					{L'4',4}, {L'5',5},
+					{L'6',6}, {L'7',7},
+					{L'8',8}, {L'9',9}
+				};
+				/**
+				 * Выполняем заполнение римских чисел
+				 */
+				this->_romes = {
+					{'I',1}, {'V',5},
+					{'X',10}, {'L',50},
+					{'C',100}, {'D',500},
+					{'M',1000}
+				};
+				/**
+				 * Выполняем заполнение римских чисел для UTF-8
+				 */
+				this->_wideRomes = {
+					{L'I',1}, {L'V',5},
+					{L'X',10}, {L'L',50},
+					{L'C',100}, {L'D',500},
+					{L'M',1000}
+				};
+				/**
+				 * Выполняем заполнение латинских символов
+				 */
+				this->_letters = {
+					{'a',L'a'}, {'b',L'b'},
+					{'c',L'c'}, {'d',L'd'},
+					{'e',L'e'}, {'f',L'f'},
+					{'g',L'g'}, {'h',L'h'},
+					{'i',L'i'}, {'j',L'j'},
+					{'k',L'k'}, {'l',L'l'},
+					{'m',L'm'}, {'n',L'n'},
+					{'o',L'o'}, {'p',L'p'},
+					{'q',L'q'}, {'r',L'r'},
+					{'s',L's'}, {'t',L't'},
+					{'u',L'u'}, {'v',L'v'},
+					{'w',L'w'}, {'x',L'x'},
+					{'y',L'y'}, {'z',L'z'}
+				};
+				/**
+				 * Выполняем заполнение латинских символов для UTF-8
+				 */
+				this->_wideLetters = {
+					{L'a','a'}, {L'b','b'},
+					{L'c','c'}, {L'd','d'},
+					{L'e','e'}, {L'f','f'},
+					{L'g','g'}, {L'h','h'},
+					{L'i','i'}, {L'j','j'},
+					{L'k','k'}, {L'l','l'},
+					{L'm','m'}, {L'n','n'},
+					{L'o','o'}, {L'p','p'},
+					{L'q','q'}, {L'r','r'},
+					{L's','s'}, {L't','t'},
+					{L'u','u'}, {L'v','v'},
+					{L'w','w'}, {L'x','x'},
+					{L'y','y'}, {L'z','z'}
+				};
+			}
+	} symbols;
+}
 
 /**
  * @brief Метод генерации уникального идентификатора
@@ -4480,7 +4485,7 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 			// Преобразуем слово в число
 			const uint32_t number = this->atoi <uint32_t> (word);
 			// Выполняем расчет
-			result = this->convert(this->arabic2rome(number));
+			result = ::move(this->convert(this->arabic2rome(number)));
 		/**
 		 * Если возникает ошибка
 		 */
