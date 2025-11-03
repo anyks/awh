@@ -1715,26 +1715,12 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 					if((addr.length() != 17) && (addr.length() != 12))
 						// Если длина MAC-адреса некорректна
 						return false;
-					/**
-					 * @brief Функция проверки является ли символ шестнадцатеричным
-					 *
-					 * @param c проверяемый символ
-					 * @return  результат проверки
-					 */
-					auto ishex = [](const char c) noexcept -> bool {
-						// Проверяем является ли символ шестнадцатеричным
-						return (
-							((c >= '0') && (c <= '9')) ||
-							((c >= 'a') && (c <= 'f')) ||
-							((c >= 'A') && (c <= 'F'))
-						);
-					};
 					// Если длина MAC-адреса равна 12 символам
 					if(addr.length() == 12){
 						// Выполняем проверку каждого символа MAC-адреса
-						for(char c : addr){
+						for(char letter : addr){
 							// Если символ не является шестнадцатеричным
-							if(!ishex(c))
+							if(!::ishex(letter))
 								// Возвращаем результат проверки
 								return false;
 						}
@@ -1752,7 +1738,7 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 						// Если символ является частью шестнадцатеричного числа
 						} else {
 							// Если символ не является шестнадцатеричным
-							if(!ishex(addr[i]))
+							if(!::ishex(addr[i]))
 								// Возвращаем результат проверки
 								return false;
 						}
