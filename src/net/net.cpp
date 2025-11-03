@@ -4712,7 +4712,7 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (size), static_cast <uint16_t> (flag)),
+					std::make_tuple(static_cast <uint16_t> (size), static_cast <uint16_t> (flag), static_cast <uint16_t> (delim)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
