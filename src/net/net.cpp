@@ -3160,14 +3160,14 @@ bool awh::Net::parse(const string & addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(6, 0);
 						// Выполняем парсинг MAC адреса
-						const int32_t rc = ::sscanf(
+						const int32_t pos = ::sscanf(
 							addr.c_str(),
 							"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
 							&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
 							&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
 						);
 						// Если MAC адрес удано распарсен
-						if((rc == 6) && (static_cast <int32_t> (addr.size()) == last)){
+						if((pos == 6) && (static_cast <int32_t> (addr.size()) == last)){
 							// Устанавливаем тип адреса
 							this->_type = type_t::MAC;
 							// Выводрим положительный результат
@@ -3256,14 +3256,14 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(6, 0);
 					// Выполняем парсинг MAC адреса
-					const int32_t rc = ::sscanf(
+					const int32_t pos = ::sscanf(
 						addr.c_str(),
 						"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
 						&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
 						&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
 					);
 					// Если MAC адрес удано распарсен
-					if((rc == 6) && (static_cast <int32_t> (addr.size()) == last)){
+					if((pos == 6) && (static_cast <int32_t> (addr.size()) == last)){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат
