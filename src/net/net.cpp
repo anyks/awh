@@ -1,6 +1,6 @@
 /**
  * @file: net.cpp
- * @date: 2023-02-14
+ * @date: 2025-10-31
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -4200,7 +4200,7 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 						// Если размер указан как короткий
 						case static_cast <uint8_t> (format_size_t::SHORT): {
 							// Перераспределяем объект результата
-							result.resize(64);
+							result.resize(45);
 							// Хексеты IPv6
 							uint16_t hexets[8];
 							// 1. Преобразуем байты в 8 хекстетов
@@ -4455,7 +4455,9 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 								// Если формат не указан
 								case static_cast <uint8_t> (format_flag_t::NONE):
 								// Если формат указан в 16-м виде
-								case static_cast <uint8_t> (format_flag_t::HEX): {
+								case static_cast <uint8_t> (format_flag_t::HEX):
+								// Если разрешено выводить только формат IPv6
+								case static_cast <uint8_t> (format_flag_t::HEX_IPV6): {
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
@@ -4492,12 +4494,48 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 										);
 									}
 								} break;
+								// Если разрешено выводить хвост адреса в формате IPv4
+								case static_cast <uint8_t> (format_flag_t::HEX_IPV4): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(39);
+										// Выводим результат в формате xxxxxxwx.y.z
+										pos = ::sprintf(
+											&result[0],
+											"%02X%02X%02X%02X%02X%02X%u.%u.%u.%u",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(45);
+										// Выводим результат в формате x:x:x:x:x:x:w.x.y.z
+										pos = ::sprintf(
+											&result[0],
+											"%02X%c%02X%c%02X%c%02X%c%02X%c%02X%c%u.%u.%u.%u",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]
+										);
+									}
+								} break;
 								// Если формат указан в 10-м виде
 								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(40);
+										result.resize(45);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
 											&result[0],
@@ -4579,7 +4617,9 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 								// Если формат не указан
 								case static_cast <uint8_t> (format_flag_t::NONE):
 								// Если формат указан в 16-м виде
-								case static_cast <uint8_t> (format_flag_t::HEX): {
+								case static_cast <uint8_t> (format_flag_t::HEX):
+								// Если разрешено выводить только формат IPv6
+								case static_cast <uint8_t> (format_flag_t::HEX_IPV6): {
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
@@ -4616,12 +4656,48 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 										);
 									}
 								} break;
+								// Если разрешено выводить хвост адреса в формате IPv4
+								case static_cast <uint8_t> (format_flag_t::HEX_IPV4): {
+									// Если разделитель не указан
+									if(delim == 0){
+										// Перераспределяем объект результата
+										result.resize(39);
+										// Выводим результат в формате xxxxxxwx.y.z
+										pos = ::sprintf(
+											&result[0],
+											"%04X%04X%04X%04X%04X%04X%u.%u.%u.%u",
+											(this->_buffer[0] << 8) | this->_buffer[1],
+											(this->_buffer[2] << 8) | this->_buffer[3],
+											(this->_buffer[4] << 8) | this->_buffer[5],
+											(this->_buffer[6] << 8) | this->_buffer[7],
+											(this->_buffer[8] << 8) | this->_buffer[9],
+											(this->_buffer[10] << 8) | this->_buffer[11],
+											this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]
+										);
+									// Если разделитель указан
+									} else {
+										// Перераспределяем объект результата
+										result.resize(45);
+										// Выводим результат в формате x:x:x:x:x:x:w.x.y.z
+										pos = ::sprintf(
+											&result[0],
+											"%04X%c%04X%c%04X%c%04X%c%04X%c%04X%c%u.%u.%u.%u",
+											(this->_buffer[0] << 8) | this->_buffer[1], delim,
+											(this->_buffer[2] << 8) | this->_buffer[3], delim,
+											(this->_buffer[4] << 8) | this->_buffer[5], delim,
+											(this->_buffer[6] << 8) | this->_buffer[7], delim,
+											(this->_buffer[8] << 8) | this->_buffer[9], delim,
+											(this->_buffer[10] << 8) | this->_buffer[11], delim,
+											this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]
+										);
+									}
+								} break;
 								// Если формат указан в 10-м виде
 								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(40);
+										result.resize(45);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
 											&result[0],
