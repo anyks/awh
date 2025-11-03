@@ -4013,7 +4013,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 											#endif
-										}	
+										}
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
@@ -4233,7 +4233,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 											#endif
-										}	
+										}
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {

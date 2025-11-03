@@ -174,11 +174,15 @@ namespace {
 		/**
 		 * Выполняем обрезку пробелов в начале и конце строки
 		 */
-		while(i < j && std::isspace(static_cast <uint8_t> (text[i]))) ++i;
+		while((i < j) && std::isspace(static_cast <uint8_t> (text[i])))
+			// Увеличиваем позицию начала строки
+			++i;
 		/**
 		 * Обрезаем пробелы в конце строки
 		 */
-		while(j > i && std::isspace(static_cast <uint8_t> (text[j-1]))) --j;
+		while((j > i) && std::isspace(static_cast <uint8_t> (text[j - 1])))
+			// Уменьшаем позицию конца строки
+			--j;
 		// Возвращаем обрезанную строку
 		return text.substr(i, j - i);
 	}
@@ -191,7 +195,10 @@ namespace {
 	 */
 	bool startWith(string_view text, string_view pfx) noexcept {
 		// Возвращаем результат проверки
-		return ((text.size() >= pfx.size()) && std::equal(pfx.begin(), pfx.end(), text.begin()));
+		return (
+			(text.size() >= pfx.size()) &&
+			std::equal(pfx.begin(), pfx.end(), text.begin())
+		);
 	}
 	/**
 	 * @brief Вспомогательная функция для проверки суффикса строки
@@ -202,7 +209,10 @@ namespace {
 	 */
 	bool endWith(string_view text, string_view sfx) noexcept {
 		// Возвращаем результат проверки
-		return ((text.size() >= sfx.size()) && std::equal(text.end() - sfx.size(), text.end(), sfx.begin()));
+		return (
+			(text.size() >= sfx.size()) &&
+			std::equal(text.end() - sfx.size(), text.end(), sfx.begin())
+		);
 	}
 	/**
 	 * @brief Вспомогательная функция для разбиения строки по разделителю
@@ -216,7 +226,7 @@ namespace {
 		// Очищаем результирующий массив частей строки
 		result.clear();
 		// Позиция в строке, её размер и следующая позиция разделителя
-		size_t pos = 0, length = text.size(), next = 0;
+		size_t pos = 0, next = 0, length = text.size();
 		/**
 		 * Пока не достигнут конец строки и не превышено максимальное количество частей строки
 		 */
@@ -239,7 +249,7 @@ namespace {
 	}
 	/**
 	 * @brief Вспомогательная функция определения основания для legacy IPv4 части
-	 * 
+	 *
 	 * @param token           строка части IP-адреса
 	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
 	 * @return                основание системы счисления
@@ -256,7 +266,7 @@ namespace {
 		// Проверяем восьмеричную систему счисления
 		if((token.size() > 1) && (token[0] == '0')){
 			// Если только 0-7 -> oct, иначе decimal
-			if(std::all_of(token.begin()+1, token.end(), isoct))
+			if(std::all_of(token.begin() + 1, token.end(), ::isoct))
 				// Возвращаем восьмеричную систему счисления
 				return 8;
 		}
@@ -299,7 +309,7 @@ namespace {
 			// Проверяем символ в зависимости от основания системы счисления
 			if(base == 10){
 				// Проверяем десятичный символ
-				if(!isdec(letter))
+				if(!::isdec(letter))
 					// Возвращаем ошибку
 					return false;
 				// Получаем числовое значение символа
@@ -307,7 +317,7 @@ namespace {
 			// Если основание восьмеричное
 			} else if(base == 8) {
 				// Проверяем восьмеричный символ
-				if(!isoct(letter))
+				if(!::isoct(letter))
 					// Возвращаем ошибку
 					return false;
 				// Получаем числовое значение символа
@@ -315,7 +325,7 @@ namespace {
 			// Если основание шестнадцатеричное
 			} else if(base == 16) {
 				// Проверяем шестнадцатеричный символ
-				dig = hexval(letter);
+				dig = ::hexval(letter);
 				// Если символ не шестнадцатеричный
 				if(dig < 0)
 					// Возвращаем ошибку
@@ -323,7 +333,7 @@ namespace {
 			// Иначе неверное основание системы счисления
 			} else return false;
 			// Проверка переполнения
-			if(result > ((numeric_limits<uint64_t>::max() - static_cast <uint64_t> (dig)) / static_cast <uint64_t> (base)))
+			if(result > ((std::numeric_limits <uint64_t>::max() - static_cast <uint64_t> (dig)) / static_cast <uint64_t> (base)))
 				// Возвращаем ошибку
 				return false;
 			// Обновляем результат парсинга
@@ -345,7 +355,7 @@ namespace {
 		// Части строки IP-адреса
 		vector <string_view> octets;
 		// Разбиваем строку IP-адреса на части
-		split(ip, '.', octets);
+		::split(ip, '.', octets);
 		// Если частей ровно 4
 		if(octets.size() == 4){
 			// Основание системы счисления
@@ -361,11 +371,11 @@ namespace {
 					// Возвращаем ошибку
 					return false;
 				// Определяем основание системы счисления
-				base = detectBase(octet, allowNonDecimal);
+				base = ::detectBase(octet, allowNonDecimal);
 				// Сбрасываем значение результата парсинга
 				value = 0;
 				// Парсим часть строки IP-адреса
-				if(!parse64(octet, base, value))
+				if(!::parse64(octet, base, value))
 					// Возвращаем ошибку
 					return false;
 				// Проверяем диапазон значения части
@@ -387,19 +397,19 @@ namespace {
 		// Проверяем форму с 3-мя октетами
 		if(octets.size() == 3){
 			// a.b.c  => a(8), b(8), c(16)
-			uint8_t baseA = detectBase(octets[0], allowNonDecimal);
-			uint8_t baseB = detectBase(octets[1], allowNonDecimal);
-			uint8_t baseC = detectBase(octets[2], allowNonDecimal);
+			uint8_t baseA = ::detectBase(octets[0], allowNonDecimal);
+			uint8_t baseB = ::detectBase(octets[1], allowNonDecimal);
+			uint8_t baseC = ::detectBase(octets[2], allowNonDecimal);
 			// Парсим первый октет строки IP-адреса
-			if(!parse64(octets[0], baseA, a) || (a > 0xFF))
+			if(!::parse64(octets[0], baseA, a) || (a > 0xFF))
 				// Возвращаем ошибку
 				return false;
 			// Парсим второй октет строки IP-адреса
-			if(!parse64(octets[1], baseB, b) || (b > 0xFF))
+			if(!::parse64(octets[1], baseB, b) || (b > 0xFF))
 				// Возвращаем ошибку
 				return false;
 			// Парсим третий октет строки IP-адреса
-			if(!parse64(octets[2], baseC, c) || (c > 0xFFFF))
+			if(!::parse64(octets[2], baseC, c) || (c > 0xFFFF))
 				// Возвращаем ошибку
 				return false;
 			// Формируем 32-битный адрес
@@ -420,14 +430,14 @@ namespace {
 		// Если форма с 2-мя октетами
 		} else if(octets.size() == 2) {
 			// a.b => a(8), b(24)
-			uint8_t baseA = detectBase(octets[0], allowNonDecimal);
-			uint8_t baseB = detectBase(octets[1], allowNonDecimal);
+			uint8_t baseA = ::detectBase(octets[0], allowNonDecimal);
+			uint8_t baseB = ::detectBase(octets[1], allowNonDecimal);
 			// Парсим первый октет строки IP-адреса
-			if(!parse64(octets[0], baseA, a) || (a > 0xFF))
+			if(!::parse64(octets[0], baseA, a) || (a > 0xFF))
 				// Возвращаем ошибку
 				return false;
 			// Парсим второй октет строки IP-адреса
-			if(!parse64(octets[1], baseB, b) || (b > 0xFFFFFF))
+			if(!::parse64(octets[1], baseB, b) || (b > 0xFFFFFF))
 				// Возвращаем ошибку
 				return false;
 			// Формируем 32-битный адрес
@@ -444,9 +454,9 @@ namespace {
 		// Если форма с 1-м октетом
 		} else if(octets.size() == 1) {
 			// Получаем основание системы счисления
-			uint8_t base = detectBase(octets[0], allowNonDecimal);
+			uint8_t base = ::detectBase(octets[0], allowNonDecimal);
 			// Парсим единственный октет строки IP-адреса
-			if(!parse64(octets[0], base, d) || (d > 0xFFFFFFFFull))
+			if(!::parse64(octets[0], base, d) || (d > 0xFFFFFFFFull))
 				// Возвращаем ошибку
 				return false;
 			// Формируем 32-битный адрес
@@ -475,7 +485,7 @@ namespace {
 		// Части строки IP-адреса
 		vector <string_view> octets;
 		// Разбиваем строку IP-адреса на октеты
-		split(ip, '.', octets);
+		::split(ip, '.', octets);
 		// Проверяем количество октетов строки IP-адреса
 		if(octets.size() != 4)
 			// Возвращаем ошибку
@@ -491,7 +501,7 @@ namespace {
 				// Возвращаем ошибку
 				return false;
 			// Проверяем каждый символ октета строки IP-адреса
-			if(!std::all_of(octet.begin(), octet.end(), isdec))
+			if(!std::all_of(octet.begin(), octet.end(), ::isdec))
 				// Возвращаем ошибку
 				return false;
 			// Разрешаем ведущие нули, но это всё равно десятичный формат
@@ -503,7 +513,7 @@ namespace {
 			// Сбрасываем значение результата парсинга
 			value = 0;
 			// Парсим октет строки IP-адреса
-			if(!parse64(octet, 10, value))
+			if(!::parse64(octet, 10, value))
 				// Возвращаем ошибку
 				return false;
 			// Проверяем диапазон значения октета
@@ -547,13 +557,13 @@ namespace {
 			// Если левая часть не пуста
 			if(!left.empty())
 				// Разбиваем левую часть на хексеты
-				split(left, ':', leftParts);
+				::split(left, ':', leftParts);
 			// Если правая часть не пуста
 			if(!right.empty())
 				// Разбиваем правую часть на хексеты
-				split(right, ':', rightParts);
+				::split(right, ':', rightParts);
 		// Иначе разбиваем весь адрес на хексеты
-		} else split(ip, ':', leftParts);
+		} else ::split(ip, ':', leftParts);
 		/**
 		 * @brief Парсинг хексета IPv6-адреса
 		 *
@@ -571,11 +581,11 @@ namespace {
 			// Проходим по каждому символу хексета
 			for(char letter : hextet){
 				// Проверяем шестнадцатеричный символ
-				if(!ishex(letter))
+				if(!::ishex(letter))
 					// Возвращаем ошибку
 					return false;
 				// Обновляем значение хексета
-				value = ((value << 4) | static_cast <uint32_t> (hexval(letter)));
+				value = ((value << 4) | static_cast <uint32_t> (::hexval(letter)));
 				// Проверяем переполнение хексета
 				if(value > 0xFFFF)
 					// Возвращаем ошибку
@@ -589,22 +599,22 @@ namespace {
 		/**
 		 * @brief Парсинг IPv4-адреса в виде двух хексетов
 		 *
-		 * @param ip строка с IPv4-адресом
-		 * @param h1 первый хексет
-		 * @param h2 второй хексет
-		 * @return   результат выполнения парсинга
+		 * @param ip      строка с IPv4-адресом
+		 * @param hextet1 первый хексет
+		 * @param hextet2 второй хексет
+		 * @return        результат выполнения парсинга
 		 */
-		auto parseIPv4TailAsTwoHextets = [](string_view ip, uint16_t & h1, uint16_t & h2) noexcept -> bool {
+		auto parseIPv4TailAsTwoHextets = [](string_view ip, uint16_t & hextet1, uint16_t & hextet2) noexcept -> bool {
 			// Спарсеный IPv4-адрес
 			vector <uint8_t> v4(4, 0);
 			// Парсим IPv4-адрес
-			if(!parseIPv4DecQuad(ip, v4))
+			if(!::parseIPv4DecQuad(ip, v4))
 				// Возвращаем ошибку
 				return false;
 			// Преобразуем первый хексет
-			h1 = static_cast <uint16_t> ((static_cast <uint16_t> (v4[0]) << 8) | v4[1]);
+			hextet1 = static_cast <uint16_t> ((static_cast <uint16_t> (v4[0]) << 8) | v4[1]);
 			// Преобразуем второй хексет
-			h2 = static_cast <uint16_t> ((static_cast <uint16_t> (v4[2]) << 8) | v4[3]);
+			hextet2 = static_cast <uint16_t> ((static_cast <uint16_t> (v4[2]) << 8) | v4[3]);
 			// Возвращаем успешный результат парсинга
 			return true;
 		};
@@ -655,7 +665,9 @@ namespace {
 		vector <uint16_t> rightWords;
 		// Разбираем правую часть при наличии
 		if(hasDcol){
-			// Разобрать правую часть; если там IPv4 — только в самом последнем токене
+			/**
+			 * Разобрать правую часть; если там IPv4 — только в самом последнем токене
+			 */
 			for(uint8_t i = 0; i < static_cast <uint8_t> (rightParts.size()); ++i){
 				// Текущий токен правой части
 				auto part = rightParts[i];
@@ -743,7 +755,7 @@ namespace {
 	}
 	/**
 	 * @brief Структура опций парсинга IPv4-адреса
-	 * 
+	 *
 	 */
 	typedef struct Options {
 		bool allowLegacyV4 = true;     // a.b.c, a.b, a и др.
@@ -762,13 +774,13 @@ namespace {
 	 */
 	bool ipv4(string_view ip, vector <uint8_t> & result, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
-		auto addr = trim(ip);
+		auto addr = ::trim(ip);
 		// Обрабатываем скобки
 		if(addr.empty())
 			// Возвращаем ошибку
 			return false;
 		// Парсим IPv4-адрес
-		if(!parseIPv4(addr, result, options.allowLegacyV4, options.allowNonDecimalV4))
+		if(!::parseIPv4(addr, result, options.allowLegacyV4, options.allowNonDecimalV4))
 			// Возвращаем ошибку
 			return false;
 		//  Возвращаем успешный результат парсинга
@@ -785,13 +797,13 @@ namespace {
 	 */
 	bool ipv6(string_view ip, vector <uint8_t> & result, string & zone, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
-		auto addr = trim(ip);
+		auto addr = ::trim(ip);
 		// Обрабатываем скобки
 		if(addr.empty())
 			// Возвращаем ошибку
 			return false;
 		// Проверяем квадратные скобки вокруг адреса
-		if(options.allowBrackets && startWith(addr, "[") && endWith(addr, "]"))
+		if(options.allowBrackets && ::startWith(addr, "[") && ::endWith(addr, "]"))
 			// Убираем скобки
 			addr = addr.substr(1, addr.size() - 2);
 		// Если разрешён zone-id
@@ -818,7 +830,7 @@ namespace {
 			}
 		}
 		// Парсим IPv6-адрес
-		if(!parseIPv6(addr, result, options.allowEmbeddedV4))
+		if(!::parseIPv6(addr, result, options.allowEmbeddedV4))
 			// Возвращаем ошибку
 			return false;
 		// Возвращаем успешный результат парсинга
@@ -1830,7 +1842,7 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 						} else if(!::ipv4(suffix, buffer))
 							// Возвращаем результат проверки
 							return false;
-						// Зануляем структуру 
+						// Зануляем структуру
 						::memset(&buffer[0], 0, buffer.size());
 						// Выполняем проверку IP-адреса IPv4
 						return ::ipv4(ip, buffer);
@@ -1860,7 +1872,7 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 						} else if(!::ipv6(suffix, buffer, zone))
 							// Возвращаем результат проверки
 							return false;
-						// Зануляем структуру 
+						// Зануляем структуру
 						::memset(&buffer[0], 0, buffer.size());
 						// Выполняем проверку IP-адреса IPv6
 						return ::ipv6(ip, buffer, zone);
@@ -1881,7 +1893,7 @@ bool awh::Net::check(const string_view addr, const type_t type) const noexcept {
 				// Если адрес принадлежит к адресу файловой системы
 				case static_cast <uint8_t> (type_t::FS): {
 					// Windows: X:\ или X:/
-					if((addr.length() >= 3) && 
+					if((addr.length() >= 3) &&
 					 (((addr[1] == ':') && ((addr[2] == '\\') || (addr[2] == '/'))) ||
 					  ((addr[0] == '\\') && (addr[1] == '\\'))))
 						// Возвращаем результат проверки

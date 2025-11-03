@@ -858,7 +858,7 @@ namespace {
 
 /**
  * @brief Метод генерации уникального идентификатора
- * 
+ *
  * @return уникальный идентификатор
  */
 uint32_t awh::Framework::identifier() const noexcept {
