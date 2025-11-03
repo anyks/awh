@@ -758,11 +758,11 @@ namespace {
 	 *
 	 */
 	typedef struct Options {
-		bool allowLegacyV4 = true;     // a.b.c, a.b, a и др.
+		bool allowZoneId       = true; // %zone, %25 в [ ]
+		bool allowLegacyV4     = true; // a.b.c, a.b, a и др.
+		bool allowBrackets     = true; // [addr]
+		bool allowEmbeddedV4   = true; // a:b:c:d:e:f:w.x.y.z
 		bool allowNonDecimalV4 = true; // 0xHEX, 0... OCT
-		bool allowBrackets = true;     // [addr]
-		bool allowZoneId = true;       // %zone, %25 в [ ]
-		bool allowEmbeddedV4 = true;   // a:b:c:d:e:f:w.x.y.z
 	} options_t;
 	/**
 	 * @brief Функция парсинга IPv4-адреса из строки
@@ -3114,7 +3114,9 @@ bool awh::Net::arpa(const string & addr) noexcept {
 					 * @brief Конструктор
 					 *
 					 */
-					Buffer() noexcept : hexset{0,0,0,0}, address{0,0,0,0,0,0,0,0} {}
+					Buffer() noexcept :
+					 hexset{0,0,0,0},
+					 address{0,0,0,0,0,0,0,0} {}
 				} __attribute__((packed)) buffer;
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
@@ -3400,7 +3402,9 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 						if(delim == -1)
 							// Устанавливаем стандартный разделитель
 							const_cast <char &> (delim) = ':';
-						// Определяем размер формата вывода IPv4 адреса
+						/**
+						 * Определяем размер формата вывода IPv4 адреса
+						 */
 						switch(static_cast <uint8_t> (size)){
 							// Если размер не указан
 							case static_cast <uint8_t> (format_size_t::NONE):
@@ -3695,7 +3699,9 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 					if(delim == -1)
 						// Устанавливаем стандартный разделитель
 						const_cast <char &> (delim) = '.';
-					// Определяем размер формата вывода IPv4 адреса
+					/**
+					 * Определяем размер формата вывода IPv4 адреса
+					 */
 					switch(static_cast <uint8_t> (size)){
 						// Если размер не указан
 						case static_cast <uint8_t> (format_size_t::NONE):
@@ -3971,7 +3977,9 @@ string awh::Net::print(const format_size_t size, const format_flag_t flag, const
 					if(delim == -1)
 						// Устанавливаем стандартный разделитель
 						const_cast <char &> (delim) = ':';
-					// Определяем размер формата вывода IPv4 адреса
+					/**
+					 * Определяем размер формата вывода IPv4 адреса
+					 */
 					switch(static_cast <uint8_t> (size)){
 						// Если размер не указан
 						case static_cast <uint8_t> (format_size_t::NONE):
