@@ -146,6 +146,7 @@ namespace awh {
 			 * @return   результат выполнения удаления
 			 */
 			virtual bool destroy(const event::id_t id) noexcept = 0;
+		public:
 			/**
 			 * @brief Метод создания нового события на основе существующего
 			 *
@@ -175,6 +176,7 @@ namespace awh {
 			 * @return         пара идентификаторов созданных событий
 			 */
 			virtual std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept = 0;
+		public:
 			/**
 			 * @brief Метод получения режима действия события
 			 *
@@ -182,7 +184,7 @@ namespace awh {
 			 * @param action действие события
 			 * @return       режим действия события
 			 */
-			virtual event::notify_t action(const event::id_t id, const event::action_t action) noexcept = 0;
+			virtual event::notify_t action(const event::id_t id, const event::action_t action) const noexcept = 0;
 			/**
 			 * @brief Метод установки режима действия события
 			 *
@@ -194,23 +196,29 @@ namespace awh {
 			virtual bool action(const event::id_t id, const event::action_t action, const event::notify_t notify) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод установки флага только IPv6 для события
+			 * @brief Метод получения опций события
 			 *
-			 * @param id     идентификатор события
-			 * @param enable флаг только IPv6
-			 * @return       результат выполнения установки
+			 * @param id идентификатор события
+			 * @return   опции события
 			 */
-			virtual bool onlyIPv6(const event::id_t id, const bool enable) noexcept = 0;
-		public:
+			virtual uint16_t options(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки опций события
+			 *
+			 * @param id      идентификатор события
+			 * @param options опции события для установки
+			 * @return        результат выполнения установки
+			 */
+			virtual bool options(const event::id_t id, const uint16_t options) noexcept = 0;
 			/**
 			 * @brief Метод установки опции события
 			 *
 			 * @param id     идентификатор события
-			 * @param option опция события
-			 * @param value  значение опции события
+			 * @param option опция события для установки
+			 * @param mode   режим установки опции события
 			 * @return       результат выполнения установки
 			 */
-			virtual bool option(const event::id_t id, const event::option_t option, const int32_t value) noexcept = 0;
+			virtual bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод отключения события
@@ -478,7 +486,7 @@ namespace awh {
 			 * @param action тип действия с буфером
 			 * @return       размер буфера события
 			 */
-			virtual size_t bufferSize(const event::id_t id, const event::action_t action) noexcept = 0;
+			virtual size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept = 0;
 			/**
 			 * @brief Метод установки размера буфера события
 			 *
@@ -549,28 +557,28 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   режим события
 			 */
-			virtual event::mode_t mode(const event::id_t id) noexcept = 0;
+			virtual event::mode_t mode(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод получения типа события
 			 *
 			 * @param id идентификатор события
 			 * @return   тип события
 			 */
-			virtual event::type_t type(const event::id_t id) noexcept = 0;
+			virtual event::type_t type(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод получения семейства события
 			 *
 			 * @param id идентификатор события
 			 * @return   семейство события
 			 */
-			virtual event::family_t family(const event::id_t id) noexcept = 0;
+			virtual event::family_t family(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод получения статуса события
 			 *
 			 * @param id идентификатор события
 			 * @return   статус события
 			 */
-			virtual event::status_t status(const event::id_t id) noexcept = 0;
+			virtual event::status_t status(const event::id_t id) const noexcept = 0;
 		public:
 			/**
 			 * @brief Методы установки функции обратного вызова на чтение события

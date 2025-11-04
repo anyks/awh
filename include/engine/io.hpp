@@ -124,6 +124,7 @@ namespace awh {
 			 * @return   результат выполнения удаления
 			 */
 			bool destroy(const event::id_t id) noexcept;
+		public:
 			/**
 			 * @brief Метод создания нового события на основе существующего
 			 *
@@ -161,7 +162,7 @@ namespace awh {
 			 * @param action действие события
 			 * @return       режим действия события
 			 */
-			event::notify_t action(const event::id_t id, const event::action_t action) noexcept;
+			event::notify_t action(const event::id_t id, const event::action_t action) const noexcept;
 			/**
 			 * @brief Метод установки режима действия события
 			 *
@@ -173,23 +174,29 @@ namespace awh {
 			bool action(const event::id_t id, const event::action_t action, const event::notify_t notify) noexcept;
 		public:
 			/**
-			 * @brief Метод установки флага только IPv6 для события
+			 * @brief Метод получения опций события
 			 *
-			 * @param id     идентификатор события
-			 * @param enable флаг только IPv6
-			 * @return       результат выполнения установки
+			 * @param id идентификатор события
+			 * @return   опции события
 			 */
-			bool onlyIPv6(const event::id_t id, const bool enable) noexcept;
-		public:
+			uint16_t options(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки опций события
+			 *
+			 * @param id      идентификатор события
+			 * @param options опции события для установки
+			 * @return        результат выполнения установки
+			 */
+			bool options(const event::id_t id, const uint16_t options) noexcept;
 			/**
 			 * @brief Метод установки опции события
 			 *
 			 * @param id     идентификатор события
-			 * @param option опция события
-			 * @param value  значение опции события
+			 * @param option опция события для установки
+			 * @param mode   режим установки опции события
 			 * @return       результат выполнения установки
 			 */
-			bool option(const event::id_t id, const event::option_t option, const int32_t value) noexcept;
+			bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод отключения события
@@ -457,7 +464,7 @@ namespace awh {
 			 * @param action тип действия с буфером
 			 * @return       размер буфера события
 			 */
-			size_t bufferSize(const event::id_t id, const event::action_t action) noexcept;
+			size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept;
 			/**
 			 * @brief Метод установки размера буфера события
 			 *
@@ -528,28 +535,28 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   режим события
 			 */
-			event::mode_t mode(const event::id_t id) noexcept;
+			event::mode_t mode(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод получения типа события
 			 *
 			 * @param id идентификатор события
 			 * @return   тип события
 			 */
-			event::type_t type(const event::id_t id) noexcept;
+			event::type_t type(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод получения семейства события
 			 *
 			 * @param id идентификатор события
 			 * @return   семейство события
 			 */
-			event::family_t family(const event::id_t id) noexcept;
+			event::family_t family(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод получения статуса события
 			 *
 			 * @param id идентификатор события
 			 * @return   статус события
 			 */
-			event::status_t status(const event::id_t id) noexcept;
+			event::status_t status(const event::id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Методы установки функции обратного вызова на чтение события

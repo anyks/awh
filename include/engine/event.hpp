@@ -55,9 +55,10 @@ namespace awh {
 		 */
 		enum class node_t : uint8_t {
 			NONE   = 0x00, // Тип узла не определён
-			PEER   = 0x01, // Узел-сосед
-			CLIENT = 0x02, // Клиентский узел
-			SERVER = 0x03  // Серверный узел
+			FSYS   = 0x01, // Файловая система
+			PEER   = 0x02, // Узел-сосед
+			CLIENT = 0x03, // Клиентский узел
+			SERVER = 0x04  // Серверный узел
 		};
 		/**
 		 * @brief Типы адресов событий
@@ -206,39 +207,87 @@ namespace awh {
 			SEQPACKET = 0x04  // Сокет с последовательными пакетами
 		};
 		/**
-		 * @brief Опции сокетов
+		 * @brief пространство имён опций событий
 		 *
 		 */
-		enum class option_t : uint8_t {
-			NONE       = 0x00, // Опция не определена
-			REUSEADDR  = 0x01, // Опция повторного использования адреса
-			KEEPALIVE  = 0x02, // Опция поддержания активности соединения
-			NOSIGPIPE  = 0x03, // Опция отключения сигнала SIGPIPE
-			TCPNODELAY = 0x04, // Опция отключения алгоритма Нейгла
-			BROADCAST  = 0x05, // Опция разрешения широковещательных сообщений
-			MCASTJOIN  = 0x06, // Опция присоединения к мультикаст группе
-			MCASTLEAVE = 0x07, // Опция выхода из мультикаст группы
-			RCVTIMEO   = 0x08, // Опция таймаута приёма данных
-			SNDTIMEO   = 0x09  // Опция таймаута отправки данных
+		namespace options {
+			/**
+			 * Опция не определена
+			 */
+			static constexpr uint16_t NONE = 0x00;
+			/**
+			 * Опция отложенной отправки TCP пакетов
+			 */
+			static constexpr uint16_t TCPCORK = 0x01;
+			/**
+			 * Опция только IPv6 для сокета
+			 */
+			static constexpr uint16_t IPV6ONLY = 0x02;
+			/**
+			 * Опция отключения сигнала SIGILL
+			 */
+			static constexpr uint16_t NOSIGILL = 0x04;
+			/**
+			 * Опция отключения сигнала SIGPIPE
+			 */
+			static constexpr uint16_t NOSIGPIPE = 0x08;
+			/**
+			 * Опция блокировки ввода-вывода
+			 */
+			static constexpr uint16_t NOIOBLOCK = 0x10;
+			/**
+			 * Опция повторного использования адреса
+			 */
+			static constexpr uint16_t REUSEADDR = 0x20;
+			/**
+			 * Опция повторного использования порта
+			 */
+			static constexpr uint16_t REUSEPORT = 0x40;
+			/**
+			 * Опция отключения алгоритма Нейгла
+			 */
+			static constexpr uint16_t TCPNODELAY = 0x80;
+			/**
+			 * Опция включения TCP keepalive
+			 */
+			static constexpr uint16_t KEEPALIVE = 0x100;
+			/**
+			 * Опция закрытия сокета при выполнении exec
+			 */
+			static constexpr uint16_t CLOSEONEXEC = 0x200;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами
 		 *
 		 */
 		namespace callback {
-			// Обратный вызов события пользователя
+			/**
+			 * Обратный вызов события пользователя
+			 */
 			using user_t = std::function <void (const uint32_t)>;
-			// Обратный вызов при записи в событие
-			using write_t = std::function <void (const id_t, const size_t)>;
-			// Обратный вызов при подключении события
-			using connect_t = std::function <void (const id_t, const bool)>;
-			// Обратный вызов при ошибке события
-			using error_t = std::function <void (const id_t, const std::string &)>;
-			// Обратный вызов при принятии события
+			/**
+			 * Обратный вызов при принятии события
+			 */
 			using accept_t = std::function <void (const id_t, const id_t)>;
-			// Обратный вызов при изменении статуса события
+			/**
+			 * Обратный вызов при подключении события
+			 */
+			using connect_t = std::function <void (const id_t, const bool)>;
+			/**
+			 * Обратный вызов при записи в событие
+			 */
+			using write_t = std::function <void (const id_t, const size_t)>;
+			/**
+			 * Обратный вызов при изменении статуса события
+			 */
 			using status_t = std::function <void (const id_t, const status_t)>;
-			// Обратный вызов при чтении из события
+			/**
+			 * Обратный вызов при ошибке события
+			 */
+			using error_t = std::function <void (const id_t, const std::string &)>;
+			/**
+			 * Обратный вызов при чтении из события
+			 */
 			using read_t = std::function <void (const id_t, const uint8_t *, const size_t)>;
 		};
 	};

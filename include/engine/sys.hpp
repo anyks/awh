@@ -95,6 +95,14 @@ namespace awh {
 			#endif
 		public:
 			/**
+			 * Режимы установки типа сокета
+			 */
+			enum class socket_mode_t : uint8_t {
+				ENABLED  = 0x01, // Включено
+				DISABLED = 0x02  // Выключено
+			};
+		public:
+			/**
 			 * @brief Структура адреса
 			 *
 			 */
@@ -260,7 +268,7 @@ namespace awh {
 			 *
 			 */
 			typedef struct State {
-				bool onlyIPv6;              // Флаг активации только IPv6
+				uint16_t options;           // Флаги опций события
 				event::mode_t mode;         // Флаг режима события
 				event::node_t node;         // Флаг узла события
 				event::type_t type;         // Флаг типа события
@@ -273,7 +281,7 @@ namespace awh {
 				 *
 				 */
 				explicit State() noexcept :
-				 onlyIPv6(false),
+				 options(event::options::NONE),
 				 mode(event::mode_t::NONE),
 				 node(event::node_t::NONE),
 				 type(event::type_t::NONE),
@@ -281,7 +289,7 @@ namespace awh {
 				 status(event::status_t::NONE),
 				 address(event::address_t::NONE),
 				 protocol(event::protocol_t::NONE) {}
-			} state_t;
+			} __attribute__((packed)) state_t;
 		public:
 			/**
 			 * @brief Структура обратных вызовов события
@@ -358,8 +366,6 @@ namespace awh {
 			typedef struct LeadUp {
 				// Сетевые интерфейсы события
 				unordered_set <string> interfaces;
-				// Опции активных событий
-				unordered_set <awh::event::option_t> options;
 				// Сетевые адреса для выхода в интернет
 				unordered_set <unique_ptr <address_t>> networks;
 			} leadup_t;
@@ -566,6 +572,87 @@ namespace awh {
 			 * @return       Результат сравнения
 			 */
 			bool ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const uint8_t length) const noexcept;
+		public:
+			/**
+			 * @brief Метод блокировки сигнала SIGILL
+			 *
+			 * @return результат работы функции
+			 */
+			bool nosigill() const noexcept;
+			/**
+			 * @brief Метод активации TCP/CORK
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool tcpcork(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод включающий или отключающий режим отображения IPv4 => IPv6
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим активации или деактивации
+			 * @return     результат работы функции
+			 */
+			bool ipv6only(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод разрешающий повторно использовать сокет после его удаления
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool reuseaddr(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод разрешающий повторно использовать один и тот же порт для нескольких сокетов
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool reuseport(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод игнорирования отключения сигнала записи в убитый сокет
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool nosigpipe(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод отключения алгоритма Нейгла
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool tcpnodelay(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод установки блокирующего сокета
+			 *
+			 * @param sock сетевого сокета
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool noblocking(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод установки режима автоматического закрытия файлового дескриптора при вызове exec
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим активации или деактивации
+			 * @return     результат работы функции
+			 */
+			bool closeonexec(const socket_t sock, const socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод устанавливает постоянное подключение на сокет
+			 *
+			 * @param sock  сетевой сокет
+			 * @param cnt   максимальное количество попыток
+			 * @param idle  время через которое происходит проверка подключения
+			 * @param intvl время между попытками
+			 * @return      результат работы функции
+			 */
+			bool keepalive(const socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор

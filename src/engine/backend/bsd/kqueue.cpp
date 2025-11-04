@@ -35,21 +35,10 @@
 /**
  * Подключаем системные заголовки
  */
-#include <fcntl.h>
-#include <netdb.h>
-#include <ifaddrs.h>
-#include <net/if.h>
-#include <net/if_dl.h>
-#include <net/route.h>
-#include <net/ethernet.h>
 #include <sys/un.h>
 #include <sys/event.h>
-#include <sys/sysctl.h>
 #include <sys/socket.h>
-#include <sys/sockio.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
 
 /**
  * Подключаем наши заголовочные файлы
@@ -71,14 +60,6 @@ using namespace std;
  */
 namespace {
 	/**
-	 * Глобальная переменная списка предварительной настройки событий
-	 */
-	unordered_map <awh::event::id_t, awh::sys_t::leadup_t> __awh_leadup__;
-	/**
-	 * Глобальная переменная списка узлов событий
-	 */
-	unordered_map <awh::event::id_t, unique_ptr <awh::sys_t::node_t>> __awh_nodes__;
-	/**
 	 * @brief Функция генерации уникального идентификатора
 	 *
 	 * @return уникальный идентификатор
@@ -89,6 +70,14 @@ namespace {
 		// Выводим новое значение идентификатора
 		return id.fetch_add(1, memory_order_relaxed);
 	}
+	/**
+	 * Глобальная переменная списка предварительной настройки событий
+	 */
+	unordered_map <awh::event::id_t, awh::sys_t::leadup_t> __awh_leadup__;
+	/**
+	 * Глобальная переменная списка узлов событий
+	 */
+	unordered_map <awh::event::id_t, unique_ptr <awh::sys_t::node_t>> __awh_nodes__;
 }
 
 /**
@@ -786,6 +775,15 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Выполняем создание новой ноды
+					unique_ptr <sys_t::filesystem_t> node = make_unique <sys_t::filesystem_t> ();
+					// Выполняем перенос состояний ноды
+					node->state = ::move(i->second->state);
+					// Выполняем перенос всей ноды
+					i->second = ::move(node);
+				} break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Выполняем создание новой ноды
@@ -3634,7 +3632,10 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 	 */
 	try {
 		// Список сокетов для инициализации
-		int32_t fds[2] = {-1,-1};
+		int32_t fds[2] = {
+			sys_t::invalid_socket_t,
+			sys_t::invalid_socket_t
+		};
 		/**
 		 * Определяем семейство сокета
 		 */
@@ -4649,7 +4650,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 			} break;
 		}
 		// Если пара сокетов создана удачно
-		if((fds[0] != -1) && (fds[1] != -1)){
+		if((fds[0] != sys_t::invalid_socket_t) && (fds[1] != sys_t::invalid_socket_t)){
 			// Переходим по всему списку идентификаторов событий
 			for(uint8_t i = 0; i < 2; i++){
 				// Выполняем создание события
@@ -4732,7 +4733,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
  * @param action действие события
  * @return       режим действия события
  */
-awh::event::notify_t awh::IO::action(const event::id_t id, const event::action_t action) noexcept {
+awh::event::notify_t awh::IO::action(const event::id_t id, const event::action_t action) const noexcept {
 
 	return event::notify_t::DISABLED;
 }
@@ -4749,27 +4750,454 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 	return false;
 }
 /**
- * @brief Метод установки флага только IPv6 для события
+ * @brief Метод получения опций события
  *
- * @param id     идентификатор события
- * @param enable флаг только IPv6
- * @return       результат выполнения установки
+ * @param id идентификатор события
+ * @return   опции события
  */
-bool awh::IO::onlyIPv6(const event::id_t id, const bool enable) noexcept {
-
-	return false;
+uint16_t awh::IO::options(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Возвращаем опции события
+			return i->second->state.options;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем опции события
+	return event::options::NONE;
+}
+/**
+ * @brief Метод установки опций события
+ *
+ * @param id      идентификатор события
+ * @param options опции события для установки
+ * @return        результат выполнения установки
+ */
+bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Файловый дескриптор события
+			 */
+			sys_t::socket_t fd = sys_t::invalid_socket_t;
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::filesystem_t *> (i->second.get())->fd;
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::peer_t *> (i->second.get())->host->fd;
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::client_t *> (i->second.get())->host->fd;
+				break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::server_t *> (i->second.get())->host->fd;
+				break;
+				// Для других типов нод
+				default: return false;
+			}
+			// Если файловый дескриптор события получен успешно
+			if((result = (fd != sys_t::invalid_socket_t))){
+				// Флаг установки опции
+				bool isSetup = false;
+				// Если опция передана как TCP_CORK
+				if(event::options::TCPCORK & options){
+					// Активируем алгоритм TCP/CORK
+					if((isSetup = this->_sys.tcpcork(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::TCPCORK;
+				// Если опция не передана как TCP_CORK
+				} else {
+					// Деактивируем алгоритм TCP/CORK
+					if((isSetup = this->_sys.tcpcork(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::TCPCORK;
+				}
+				// Если опция не установлена
+				if(!isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как IPV6_V6ONLY
+				if(event::options::IPV6ONLY & options){
+					// Устанавливаем режим отображения IPv4 => IPv6
+					if((isSetup = this->_sys.ipv6only(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::IPV6ONLY;
+				// Если опция не передана как IPV6_V6ONLY
+				} else {
+					// Снимаем режим отображения IPv4 => IPv6
+					if((isSetup = this->_sys.ipv6only(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::IPV6ONLY;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как NO_SIGILL
+				if(event::options::NOSIGILL & options){
+					// Устанавливаем игнорирование сигнала SIGILL
+					if((isSetup = this->_sys.nosigill()))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::NOSIGILL;
+				// Если опция не передана как NOSIGILL
+				} else i->second->state.options &= ~event::options::NOSIGILL;
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как NO_SIGPIPE
+				if(event::options::NOSIGPIPE & options){
+					// Устанавливаем игнорирование сигнала SIGPIPE
+					if((isSetup = this->_sys.nosigpipe(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::NOSIGPIPE;
+				// Если опция не передана как NO_SIGPIPE
+				} else {
+					// Снимаем игнорирование сигнала SIGPIPE
+					if((isSetup = this->_sys.nosigpipe(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::NOSIGPIPE;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как NOIOBLOCK
+				if(event::options::NOIOBLOCK & options){
+					// Устанавливаем неблокирующий режим ввода/вывода
+					if((isSetup = this->_sys.noblocking(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::NOIOBLOCK;
+				// Если опция не передана как NOIOBLOCK
+				} else {
+					// Снимаем неблокирующий режим ввода/вывода
+					if((isSetup = this->_sys.noblocking(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::NOIOBLOCK;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как REUSEADDR
+				if(event::options::REUSEADDR & options){
+					// Устанавливаем режим повторного использования адреса
+					if((isSetup = this->_sys.reuseaddr(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::REUSEADDR;
+				// Если опция не передана как REUSEADDR
+				} else {
+					// Снимаем режим повторного использования адреса
+					if((isSetup = this->_sys.reuseaddr(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::REUSEADDR;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как REUSEPORT
+				if(event::options::REUSEPORT & options){
+					// Устанавливаем режим повторного использования порта
+					if((isSetup = this->_sys.reuseport(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::REUSEPORT;
+				// Если опция не передана как REUSEPORT
+				} else {
+					// Снимаем режим повторного использования порта
+					if((isSetup = this->_sys.reuseport(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::REUSEPORT;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как TCP_NODELAY
+				if(event::options::TCPNODELAY & options){
+					// Устанавливаем режим отключения алгоритма Нейгла
+					if((isSetup = this->_sys.tcpnodelay(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::TCPNODELAY;
+				// Если опция не передана как TCP_NODELAY
+				} else {
+					// Снимаем режим отключения алгоритма Нейгла
+					if((isSetup = this->_sys.tcpnodelay(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::TCPNODELAY;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+				// Если опция передана как CLOSE_ON_EXEC
+				if(event::options::CLOSEONEXEC & options){
+					// Устанавливаем режим закрытия дескриптора при выполнении exec
+					if((isSetup = this->_sys.closeonexec(fd, sys_t::socket_mode_t::ENABLED)))
+						// Устанавливаем опцию события
+						i->second->state.options |= event::options::CLOSEONEXEC;
+				// Если опция не передана как CLOSE_ON_EXEC
+				} else {
+					// Снимаем режим закрытия дескриптора при выполнении exec
+					if((isSetup = this->_sys.closeonexec(fd, sys_t::socket_mode_t::DISABLED)))
+						// Снимаем опцию события
+						i->second->state.options &= ~event::options::CLOSEONEXEC;
+				}
+				// Если опция не установлена
+				if(result && !isSetup)
+					// Устанавливаем результат работы функции как ложь
+					result = false;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (options)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод установки опции события
  *
  * @param id     идентификатор события
- * @param option опция события
- * @param value  значение опции события
+ * @param option опция события для установки
+ * @param mode   режим установки опции события
  * @return       результат выполнения установки
  */
-bool awh::IO::option(const event::id_t id, const event::option_t option, const int32_t value) noexcept {
-	
-	return false;
+bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mode) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Файловый дескриптор события
+			 */
+			sys_t::socket_t fd = sys_t::invalid_socket_t;
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::filesystem_t *> (i->second.get())->fd;
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::peer_t *> (i->second.get())->host->fd;
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::client_t *> (i->second.get())->host->fd;
+				break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::server_t *> (i->second.get())->host->fd;
+				break;
+				// Для других типов нод
+				default: return false;
+			}
+			// Если файловый дескриптор события получен успешно
+			if((result = (fd != sys_t::invalid_socket_t))){
+				/**
+				 * Определяем опцию события которую необходимо установить или снять
+				 */
+				switch(option){
+					// Если опция передана как TCP_CORK
+					case event::options::TCPCORK: {
+						// Устанавливаем или снимаем режим алгоритма TCP/CORK
+						if((result = this->_sys.tcpcork(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать режим алгоритма TCP/CORK
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::TCPCORK;
+							// Если необходимо деактивировать режим алгоритма TCP/CORK
+							else i->second->state.options ^= event::options::TCPCORK;
+						}
+					} break;
+					// Если опция передана как IPV6_V6ONLY
+					case event::options::IPV6ONLY: {
+						// Устанавливаем или снимаем режим отображения IPv4 => IPv6
+						if((result = this->_sys.ipv6only(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать режим отображения IPv4 => IPv6
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::IPV6ONLY;
+							// Если необходимо деактивировать режим отображения IPv4 => IPv6
+							else i->second->state.options ^= event::options::IPV6ONLY;
+						}
+					} break;
+					// Если опция передана как NO_SIGILL
+					case event::options::NOSIGILL: {
+						// Отключаем или включаем генерацию сигнала SIGILL при записи в закрытый сокет
+						if((result = this->_sys.nosigill())){
+							// Если необходимо отключить генерацию сигнала SIGILL
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::NOSIGILL;
+							// Если необходимо включить генерацию сигнала SIGILL
+							else i->second->state.options ^= event::options::NOSIGILL;
+						}
+					} break;
+					// Если опция передана как NO_SIGPIPE
+					case event::options::NOSIGPIPE: {
+						// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
+						if((result = this->_sys.nosigpipe(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо отключить генерацию сигнала SIGPIPE
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::NOSIGPIPE;
+							// Если необходимо включить генерацию сигнала SIGPIPE
+							else i->second->state.options ^= event::options::NOSIGPIPE;
+						}
+					} break;
+					// Если опция передана как NOIOBLOCK
+					case event::options::NOIOBLOCK: {
+						// Устанавливаем или снимаем режим неблокирующий режим сокета
+						if((result = this->_sys.noblocking(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать неблокирующий режим
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::NOIOBLOCK;
+							// Если необходимо деактивировать режим неблокирующий режим
+							else i->second->state.options ^= event::options::NOIOBLOCK;
+						}
+					} break;
+					// Если опция передана как REUSEADDR
+					case event::options::REUSEADDR: {
+						// Устанавливаем или снимаем режим повторного использования адреса сокета
+						if((result = this->_sys.reuseaddr(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать режим повторного использования адреса сокета
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::REUSEADDR;
+							// Если необходимо деактивировать режим повторного использования адреса сокета
+							else i->second->state.options ^= event::options::REUSEADDR;
+						}
+					} break;
+					// Если опция передана как REUSEPORT
+					case event::options::REUSEPORT: {
+						// Устанавливаем или снимаем режим повторного использования порта сокета
+						if((result = this->_sys.reuseport(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать режим повторного использования порта сокета
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::REUSEPORT;
+							// Если необходимо деактивировать режим повторного использования порта сокета
+							else i->second->state.options ^= event::options::REUSEPORT;
+						}
+					} break;
+					// Если опция передана как TCP_NODELAY
+					case event::options::TCPNODELAY: {
+						// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+						if((result = this->_sys.tcpnodelay(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать алгоритм Нейгла для TCP сокета
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::TCPNODELAY;
+							// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+							else i->second->state.options ^= event::options::TCPNODELAY;
+						}
+					} break;
+					// Если опция передана как CLOSE_ON_EXEC
+					case event::options::CLOSEONEXEC: {
+						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
+						if((result = this->_sys.closeonexec(fd, (mode ? sys_t::socket_mode_t::ENABLED : sys_t::socket_mode_t::DISABLED)))){
+							// Если необходимо активировать режим закрытия сокета при выполнении exec()
+							if(mode)
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::CLOSEONEXEC;
+							// Если необходимо деактивировать режим закрытия сокета при выполнении exec()
+							else i->second->state.options ^= event::options::CLOSEONEXEC;
+						}
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, option, mode), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод отключения события
@@ -5116,7 +5544,7 @@ void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool ada
  * @param action тип действия с буфером
  * @return       размер буфера события
  */
-size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) noexcept {
+size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) const noexcept {
 
 	return 0;
 }
@@ -5142,8 +5570,72 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
  * @return      результат выполнения установки
  */
 bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
-
-	return false;
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Файловый дескриптор события
+			 */
+			sys_t::socket_t fd = sys_t::invalid_socket_t;
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::peer_t *> (i->second.get())->host->fd;
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::client_t *> (i->second.get())->host->fd;
+				break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Получаем файловый дескриптор события
+					fd = awh_cast <sys_t::server_t *> (i->second.get())->host->fd;
+				break;
+				// Для других типов нод
+				default: return false;
+			}
+			// Если файловый дескриптор события получен успешно
+			if((result = (fd != sys_t::invalid_socket_t))){
+				// Устанавливаем параметры keep-alive для сокета события
+				if((result = this->_sys.keepalive(fd, cnt, idle, intvl)))
+					// Устанавливаем флаг keep-alive в состояние включено
+					i->second->state.options |= event::options::KEEPALIVE;
+				// Если не удалось установить параметры keep-alive для сокета события
+				else i->second->state.options &= ~event::options::KEEPALIVE;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, cnt, idle, intvl), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод приостановки события
@@ -5209,7 +5701,7 @@ bool awh::IO::isInitialized() const noexcept {
  * @param id идентификатор события
  * @return   режим события
  */
-awh::event::mode_t awh::IO::mode(const event::id_t id) noexcept {
+awh::event::mode_t awh::IO::mode(const event::id_t id) const noexcept {
 	
 	return event::mode_t::NONE;
 }
@@ -5219,7 +5711,7 @@ awh::event::mode_t awh::IO::mode(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   тип события
  */
-awh::event::type_t awh::IO::type(const event::id_t id) noexcept {
+awh::event::type_t awh::IO::type(const event::id_t id) const noexcept {
 
 	return event::type_t::NONE;
 }
@@ -5229,7 +5721,7 @@ awh::event::type_t awh::IO::type(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   семейство события
  */
-awh::event::family_t awh::IO::family(const event::id_t id) noexcept {
+awh::event::family_t awh::IO::family(const event::id_t id) const noexcept {
 
 	return event::family_t::NONE;
 }
@@ -5239,7 +5731,7 @@ awh::event::family_t awh::IO::family(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   статус события
  */
-awh::event::status_t awh::IO::status(const event::id_t id) noexcept {
+awh::event::status_t awh::IO::status(const event::id_t id) const noexcept {
 
 	return event::status_t::NONE;
 }
