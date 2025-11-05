@@ -253,7 +253,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   список адресов сетей события
 			 */
-			std::unordered_set <string> networks(const event::id_t id) const noexcept;
+			const std::unordered_set <string> & networks(const event::id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод добавления адреса сети для выхода в интернет
@@ -318,7 +318,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   список сетевых интерфейсов события
 			 */
-			std::unordered_set <string> networkInterfaces(const event::id_t id) const noexcept;
+			const std::unordered_set <string> & networkInterfaces(const event::id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод добавления сетевого интерфейса для события

@@ -2308,12 +2308,12 @@ char awh::Framework::transform(char letter, const transform_t flag) const noexce
 	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
-		case static_cast <uint8_t> (transform_t::UPPER): {
+		case static_cast <uint8_t> (transform_t::UPPER_CASE): {
 			// Выполняем перевод символа в верхний регистр
 			letter = ::toupper(letter);
 		} break;
 		// Если передан флаг перевода строки в нижний регистр
-		case static_cast <uint8_t> (transform_t::LOWER): {
+		case static_cast <uint8_t> (transform_t::LOWER_CASE): {
 			// Выполняем перевод символа в нижний регистр
 			letter = ::tolower(letter);
 		} break;
@@ -2334,12 +2334,12 @@ wchar_t awh::Framework::transform(wchar_t letter, const transform_t flag) const 
 	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
-		case static_cast <uint8_t> (transform_t::UPPER): {
+		case static_cast <uint8_t> (transform_t::UPPER_CASE): {
 			// Выполняем перевод символа в верхний регистр
 			letter = ::towupper(letter);
 		} break;
 		// Если передан флаг перевода строки в нижний регистр
-		case static_cast <uint8_t> (transform_t::LOWER): {
+		case static_cast <uint8_t> (transform_t::LOWER_CASE): {
 			// Выполняем перевод символа в нижний регистр
 			letter = ::towlower(letter);
 		} break;
@@ -2379,7 +2379,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 					}).base(), text.end());
 				} break;
 				// Если передан флаг перевода строки в верхний регистр
-				case static_cast <uint8_t> (transform_t::UPPER): {
+				case static_cast <uint8_t> (transform_t::UPPER_CASE): {
 					// Выполняем приведение к верхнему регистру
 					::transform(text.begin(), text.end(), text.begin(), [](char c){
 						// Приводим к верхнему регистру каждую букву
@@ -2387,7 +2387,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 					});
 				} break;
 				// Если передан флаг перевода строки в нижний регистр
-				case static_cast <uint8_t> (transform_t::LOWER): {
+				case static_cast <uint8_t> (transform_t::LOWER_CASE): {
 					// Выполняем приведение к нижнему регистру
 					::transform(text.begin(), text.end(), text.begin(), [](char c){
 						// Приводим к нижнему регистру каждую букву
@@ -2395,7 +2395,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 					});
 				} break;
 				// Если передан флаг умного перевода начальных символов в верхний регистр
-				case static_cast <uint8_t> (transform_t::SMART): {
+				case static_cast <uint8_t> (transform_t::SMART_CASE): {
 					// Символ с которым ведётся работа в данный момент
 					char letter = 0;
 					// Флаг детекции символа
@@ -2487,7 +2487,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 					}).base(), text.end());
 				} break;
 				// Если передан флаг перевода строки в верхний регистр
-				case static_cast <uint8_t> (transform_t::UPPER): {
+				case static_cast <uint8_t> (transform_t::UPPER_CASE): {
 					// Выполняем приведение к верхнему регистру
 					::transform(text.begin(), text.end(), text.begin(), [](wchar_t c){
 						// Приводим к верхнему регистру каждую букву
@@ -2495,7 +2495,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 					});
 				} break;
 				// Если передан флаг перевода строки в нижний регистр
-				case static_cast <uint8_t> (transform_t::LOWER): {
+				case static_cast <uint8_t> (transform_t::LOWER_CASE): {
 					// Выполняем приведение к нижнему регистру
 					::transform(text.begin(), text.end(), text.begin(), [](wchar_t c){
 						// Приводим к нижнему регистру каждую букву
@@ -2503,7 +2503,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 					});
 				} break;
 				// Если передан флаг умного перевода начальных символов в верхний регистр
-				case static_cast <uint8_t> (transform_t::SMART): {
+				case static_cast <uint8_t> (transform_t::SMART_CASE): {
 					// Флаг детекции символа
 					bool mode = true;
 					// Символ с которым ведётся работа в данный момент
@@ -3577,7 +3577,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					number.erase(0, 2);
 			}
 			// Выполняем перевод число в верхний регистр
-			this->transform(number, transform_t::UPPER);
+			this->transform(number, transform_t::UPPER_CASE);
 			// Количество перебираемых элементов
 			const uint8_t count = static_cast <uint8_t> (number.length());
 			/**

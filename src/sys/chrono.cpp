@@ -7175,7 +7175,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 						// Получаем название временной зоны
 						string name = data.at(1);
 						// Выполняем поиск временной зоны в списке временных зон
-						auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER));
+						auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
 						// Если временная зона найдена
 						if(i != this->_timeZones.end())
 							// Устанавливаем значение временной зоны
@@ -8208,7 +8208,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 		// Выполняем блокировку потока
 		const locker_t lock(this->_mtx.tz);
 		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), offset);
+		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE), offset);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -8243,7 +8243,7 @@ void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zone
 		// Получаем название временной зоны
 		name = zone.first;
 		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), zone.second);
+		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE), zone.second);
 	}
 }
 /**

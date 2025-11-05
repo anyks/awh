@@ -5469,7 +5469,7 @@ bool awh::IO::clearNetworks(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   список адресов сетей события
  */
-std::unordered_set <string> awh::IO::networks(const event::id_t id) const noexcept {
+const std::unordered_set <string> & awh::IO::networks(const event::id_t id) const noexcept {
 	
 	return {};
 }
@@ -5514,7 +5514,55 @@ bool awh::IO::addNetworks(const event::id_t id, const std::unordered_set <string
  * @return         результат выполнения удаления
  */
 bool awh::IO::removeNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	// Если список сетей для удаления не пустой
+	if(!networks.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск объекта предварительных настроек события
+			auto i = ::__awh_leadup__.find(id);
+			// Если объект предварительных настроек события найден
+			if(i != ::__awh_leadup__.end()){
+				// Выполняем переход по списку сетей для удаления
+				for(const auto & name : networks){
+					
+					
+					/*
+					// Если сеть найдена в списке события
+					auto j = i->second.networks.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+					// Если сетевой интерфейс найден
+					if(j != i->second.networks.end()){
+						// Устанавливаем результат работы функции
+						result = true;
+						// Удаляем сетевой интерфейс из списка события
+						i->second.networks.erase(j);
+					}
+					*/
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, networks.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -5524,7 +5572,47 @@ bool awh::IO::removeNetworks(const event::id_t id, const std::unordered_set <str
  * @return   сетевой интерфейс события
  */
 string awh::IO::networkInterface(const event::id_t id) const noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выводим сетевой интерфейс клиента события
+					return awh_cast <sys_t::client_t *> (i->second.get())->iface;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выводим сетевой интерфейс сервера события
+					return awh_cast <sys_t::server_t *> (i->second.get())->iface;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводиим результат по умолчанию
 	return "";
 }
 /**
@@ -5535,8 +5623,145 @@ string awh::IO::networkInterface(const event::id_t id) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::IO::setNetworkInterface(const event::id_t id, const string & name) noexcept {
-
-	return false;
+	// Результат работы функции
+	bool result = false;
+	// Если название сетевого интерфейса не пустое
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден
+			if(i != ::__awh_nodes__.end()){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем объект клиента события
+						auto client = awh_cast <sys_t::client_t *> (i->second.get());
+						// Устанавливаем сетевой интерфейс для клиента события
+						client->iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
+						/**
+						* Определяем семейство сокета
+						*/
+						switch(static_cast <uint8_t> (i->second->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства UDPv4
+							case static_cast <uint8_t> (event::family_t::UDPV4): {
+								// Параметры сетей интерфейсов
+								sys_t::addresses_t addresses{};
+								// Выполняем получение MAC-адреса сетевого интерфейса
+								this->_sys.macAddress(client->iface.c_str(), addresses);
+								// Если MAC-адрес найден
+								if((result = (::memcmp(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0))){
+									// Устанавливаем тип адреса
+									i->second->state.address = event::address_t::IPV4;
+									// Получаем IP-адрес из системы по MAC-адресу
+									this->_sys.nodeAddresses(addresses);
+									// Устанавливаем полученный IP-адрес
+									awh_cast <sys_t::host_ip_t *> (client->host.get())->ip = ::move(addresses.ip);
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+							// Для семейства UDPv6
+							case static_cast <uint8_t> (event::family_t::UDPV6): {
+								// Параметры сетей интерфейсов
+								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
+								// Выполняем получение MAC-адреса сетевого интерфейса
+								this->_sys.macAddress(client->iface.c_str(), addresses);
+								// Если MAC-адрес найден
+								if((result = (::memcmp(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0))){
+									// Устанавливаем тип адреса
+									i->second->state.address = event::address_t::IPV6;
+									// Получаем IP-адрес из системы по MAC-адресу
+									this->_sys.nodeAddresses(addresses);
+									// Устанавливаем полученный IP-адрес
+									awh_cast <sys_t::host_ip_t *> (client->host.get())->ip = ::move(addresses.ip);
+								}
+							} break;
+						}
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект сервера события
+						auto server = awh_cast <sys_t::server_t *> (i->second.get());
+						// Устанавливаем сетевой интерфейс для сервера события
+						server->iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
+						/**
+						* Определяем семейство сокета
+						*/
+						switch(static_cast <uint8_t> (i->second->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства UDPv4
+							case static_cast <uint8_t> (event::family_t::UDPV4): {
+								// Параметры сетей интерфейсов
+								sys_t::addresses_t addresses{};
+								// Выполняем получение MAC-адреса сетевого интерфейса
+								this->_sys.macAddress(server->iface.c_str(), addresses);
+								// Если MAC-адрес найден
+								if((result = (::memcmp(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0))){
+									// Устанавливаем тип адреса
+									i->second->state.address = event::address_t::IPV4;
+									// Получаем IP-адрес из системы по MAC-адресу
+									this->_sys.nodeAddresses(addresses);
+									// Устанавливаем полученный MAC-адрес в объект события
+									server->mac = ::move(addresses.mac);
+									// Устанавливаем полученный IP-адрес
+									awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+							// Для семейства UDPv6
+							case static_cast <uint8_t> (event::family_t::UDPV6): {
+								// Параметры сетей интерфейсов
+								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
+								// Выполняем получение MAC-адреса сетевого интерфейса
+								this->_sys.macAddress(server->iface.c_str(), addresses);
+								// Если MAC-адрес найден
+								if((result = (::memcmp(&awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0))){
+									// Устанавливаем тип адреса
+									i->second->state.address = event::address_t::IPV6;
+									// Получаем IP-адрес из системы по MAC-адресу
+									this->_sys.nodeAddresses(addresses);
+									// Устанавливаем полученный MAC-адрес в объект события
+									server->mac = ::move(addresses.mac);
+									// Устанавливаем полученный IP-адрес
+									awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
+								}
+							} break;
+						}
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат работы функции
+	return result;
 }
 /**
  * @brief Метод очистки всех сетевых интерфейсов события
@@ -5545,7 +5770,38 @@ bool awh::IO::setNetworkInterface(const event::id_t id, const string & name) noe
  * @return   результат выполнения очистки
  */
 bool awh::IO::clearNetworkInterfaces(const event::id_t id) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск объекта предварительных настроек события
+		auto i = ::__awh_leadup__.find(id);
+		// Если объект предварительных настроек события найден
+		if(i != ::__awh_leadup__.end()){
+			// Очищаем список сетевых интерфейсов события
+			i->second.interfaces.clear();
+			// Выводим результат работы функции
+			return i->second.interfaces.empty();
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -5554,9 +5810,39 @@ bool awh::IO::clearNetworkInterfaces(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   список сетевых интерфейсов события
  */
-std::unordered_set <string> awh::IO::networkInterfaces(const event::id_t id) const noexcept {
-
-	return {};
+const std::unordered_set <string> & awh::IO::networkInterfaces(const event::id_t id) const noexcept {
+	// Результат работы функции
+	static const std::unordered_set <string> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск объекта предварительных настроек события
+		auto i = ::__awh_leadup__.find(id);
+		// Если объект предварительных настроек события найден
+		if(i != ::__awh_leadup__.end())
+			// Возвращаем список сетевых интерфейсов события
+			return i->second.interfaces;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод добавления сетевого интерфейса для события
@@ -5566,7 +5852,38 @@ std::unordered_set <string> awh::IO::networkInterfaces(const event::id_t id) con
  * @return     результат выполнения добавления
  */
 bool awh::IO::addNetworkInterface(const event::id_t id, const string & name) noexcept {
-	
+	// Если название сетевого интерфейса не пустое
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск объекта предварительных настроек события
+			auto i = ::__awh_leadup__.find(id);
+			// Если объект предварительных настроек события найден
+			if(i != ::__awh_leadup__.end())
+				// Добавляем сетевой интерфейс в список события
+				return i->second.interfaces.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE)).second;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -5577,7 +5894,46 @@ bool awh::IO::addNetworkInterface(const event::id_t id, const string & name) noe
  * @return     результат выполнения удаления
  */
 bool awh::IO::removeNetworkInterface(const event::id_t id, const string & name) noexcept {
-	
+	// Если название сетевого интерфейса не пустое
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск объекта предварительных настроек события
+			auto i = ::__awh_leadup__.find(id);
+			// Если объект предварительных настроек события найден
+			if(i != ::__awh_leadup__.end()){
+				// Если сетевой интерфейс найден в списке события
+				auto j = i->second.interfaces.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+				// Если сетевой интерфейс найден
+				if(j != i->second.interfaces.end()){
+					// Удаляем сетевой интерфейс из списка события
+					i->second.interfaces.erase(j);
+					// Возвращаем результат работы функции
+					return true;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -5588,7 +5944,43 @@ bool awh::IO::removeNetworkInterface(const event::id_t id, const string & name) 
  * @return      результат выполнения добавления
  */
 bool awh::IO::addNetworkInterfaces(const event::id_t id, const std::unordered_set <string> & names) noexcept {
-	
+	// Результат работы функции
+	bool result = false;
+	// Если список сетевых интерфейсов для удаления не пустой
+	if(!names.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск объекта предварительных настроек события
+			auto i = ::__awh_leadup__.find(id);
+			// Если объект предварительных настроек события найден
+			if((result = (i != ::__awh_leadup__.end()))){
+				// Выполняем переход по списку сетевых интерфейсов для добавления
+				for(const auto & name : names)
+					// Добавляем сетевой интерфейс в список события
+					i->second.interfaces.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, names.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -5599,7 +5991,51 @@ bool awh::IO::addNetworkInterfaces(const event::id_t id, const std::unordered_se
  * @return      результат выполнения удаления
  */
 bool awh::IO::removeNetworkInterfaces(const event::id_t id, const std::unordered_set <string> & names) noexcept {
-	
+	// Результат работы функции
+	bool result = false;
+	// Если список сетевых интерфейсов для удаления не пустой
+	if(!names.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск объекта предварительных настроек события
+			auto i = ::__awh_leadup__.find(id);
+			// Если объект предварительных настроек события найден
+			if(i != ::__awh_leadup__.end()){
+				// Выполняем переход по списку сетевых интерфейсов для удаления
+				for(const auto & name : names){
+					// Если сетевой интерфейс найден в списке события
+					auto j = i->second.interfaces.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+					// Если сетевой интерфейс найден
+					if(j != i->second.interfaces.end()){
+						// Устанавливаем результат работы функции
+						result = true;
+						// Удаляем сетевой интерфейс из списка события
+						i->second.interfaces.erase(j);
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, names.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -5796,7 +6232,7 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует IPv6-адресу
 									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Выполняем добавление нового адреса в чёрный список
-										return awh_cast <sys_t::client_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+										return awh_cast <sys_t::client_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -5868,7 +6304,7 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует IPv6-адресу
 									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Выполняем добавление нового адреса в чёрный список
-										return awh_cast <sys_t::server_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+										return awh_cast <sys_t::server_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -5991,7 +6427,7 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 								// Если тип адреса принадлежит к IPv6-адресам
 								case static_cast <uint8_t> (event::address_t::IPV6): {
 									// Выполняем поиск указанного адреса
-									auto i = node->blacklist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									auto i = node->blacklist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE));
 									// Если адрес найден, удаляем его
 									if((result = (i != node->blacklist.end())))
 										// Выполняем удаление указанного адреса
@@ -6024,7 +6460,7 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 								// Если тип адреса принадлежит к IPv6-адресам
 								case static_cast <uint8_t> (event::address_t::IPV6): {
 									// Выполняем поиск указанного адреса
-									auto i = node->blacklist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									auto i = node->blacklist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE));
 									// Если адрес найден, удаляем его
 									if((result = (i != node->blacklist.end())))
 										// Выполняем удаление указанного адреса
@@ -6317,7 +6753,7 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует IPv6-адресу
 									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Выполняем добавление нового адреса в белый список
-										return awh_cast <sys_t::client_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+										return awh_cast <sys_t::client_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -6389,7 +6825,7 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует IPv6-адресу
 									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Выполняем добавление нового адреса в белый список
-										return awh_cast <sys_t::server_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+										return awh_cast <sys_t::server_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -6512,7 +6948,7 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 								// Если тип адреса принадлежит к IPv6-адресам
 								case static_cast <uint8_t> (event::address_t::IPV6): {
 									// Выполняем поиск указанного адреса
-									auto i = node->whitelist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									auto i = node->whitelist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE));
 									// Если адрес найден, удаляем его
 									if((result = (i != node->whitelist.end())))
 										// Выполняем удаление указанного адреса
@@ -6545,7 +6981,7 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 								// Если тип адреса принадлежит к IPv6-адресам
 								case static_cast <uint8_t> (event::address_t::IPV6): {
 									// Выполняем поиск указанного адреса
-									auto i = node->whitelist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									auto i = node->whitelist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE));
 									// Если адрес найден, удаляем его
 									if((result = (i != node->whitelist.end())))
 										// Выполняем удаление указанного адреса
