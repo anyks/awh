@@ -58,21 +58,20 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
+			 * @brief Метод настройки события
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения настройки
+			 */
+			virtual bool setup(const event::id_t id) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод опроса событий
 			 *
 			 * @param timeout таймаут опроса в миллисекундах
 			 * @return        результат выполнения опроса
 			 */
 			virtual bool poll(const int32_t timeout = -1) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод настройки события
-			 *
-			 * @param id    идентификатор события
-			 * @param delay задержка таймера события в миллисекундах
-			 * @return      результат выполнения настройки
-			 */
-			virtual bool setup(const event::id_t id, const uint16_t delay = 0) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения порта события
@@ -404,26 +403,26 @@ namespace awh {
 			/**
 			 * @brief Метод добавления адреса в чёрный список события
 			 *
-			 * @param id      идентификатор события
-			 * @param address адрес для добавления в чёрный список
-			 * @return        результат выполнения добавления
+			 * @param id    идентификатор события
+			 * @param value значение адреса события
+			 * @return      результат выполнения установки
 			 */
-			virtual bool addToBlacklist(const event::id_t id, const string & address) noexcept = 0;
+			virtual bool addToBlacklist(const event::id_t id, const string & value) noexcept = 0;
 			/**
 			 * @brief Метод удаления адреса из чёрного списка события
 			 *
-			 * @param id      идентификатор события
-			 * @param address адрес для удаления из чёрного списка
-			 * @return        результат выполнения удаления
+			 * @param id    идентификатор события
+			 * @param value адрес для удаления из чёрного списка
+			 * @return      результат выполнения удаления
 			 */
-			virtual bool removeFromBlacklist(const event::id_t id, const string & address) noexcept = 0;
+			virtual bool removeFromBlacklist(const event::id_t id, const string & value) noexcept = 0;
 			/**
 			 * @brief Метод получения чёрного списка события
 			 *
 			 * @param id идентификатор события
 			 * @return   чёрный список события
 			 */
-			virtual std::unordered_map <event::address_t, string> blacklist(const event::id_t id) const noexcept = 0;
+			virtual const std::unordered_map <string, event::address_t> & blacklist(const event::id_t id) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод очистки белого списка события
@@ -434,41 +433,27 @@ namespace awh {
 			virtual bool clearWhitelist(const event::id_t id) noexcept = 0;
 			/**
 			 * @brief Метод добавления адреса в белый список события
-			 * @param id      идентификатор события
-			 * @param address адрес для добавления в белый список
-			 * @return        результат выполнения добавления
+			 *
+			 * @param id    идентификатор события
+			 * @param value значение адреса события
+			 * @return      результат выполнения установки
 			 */
-			virtual bool addToWhitelist(const event::id_t id, const string & address) noexcept = 0;
+			virtual bool addToWhitelist(const event::id_t id, const string & value) noexcept = 0;
 			/**
 			 * @brief Метод удаления адреса из белого списка события
 			 *
-			 * @param id      идентификатор события
-			 * @param address адрес для удаления из белого списка
-			 * @return        результат выполнения удаления
+			 * @param id    идентификатор события
+			 * @param value адрес для удаления из белого списка
+			 * @return      результат выполнения удаления
 			 */
-			virtual bool removeFromWhitelist(const event::id_t id, const string & address) noexcept = 0;
+			virtual bool removeFromWhitelist(const event::id_t id, const string & value) noexcept = 0;
 			/**
 			 * @brief Метод получения белого списка события
 			 *
 			 * @param id идентификатор события
 			 * @return   белый список события
 			 */
-			virtual std::unordered_map <event::address_t, string> whitelist(const event::id_t id) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод установки таймаута на чтение события
-			 *
-			 * @param id      идентификатор события
-			 * @param timeout значение таймаута в миллисекундах
-			 */
-			virtual void readTimeout(const event::id_t id, const uint16_t timeout) noexcept = 0;
-			/**
-			 * @brief Метод установки таймаута на запись события
-			 *
-			 * @param id      идентификатор события
-			 * @param timeout значение таймаута в миллисекундах
-			 */
-			virtual void writeTimeout(const event::id_t id, const uint16_t timeout) noexcept = 0;
+			virtual const std::unordered_map <string, event::address_t> & whitelist(const event::id_t id) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -496,6 +481,23 @@ namespace awh {
 			 * @return       результат выполнения установки
 			 */
 			virtual bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения таймаута события
+			 *
+			 * @param id     идентификатор события
+			 * @param action тип действия события
+			 * @return       значение таймаута в миллисекундах
+			 */
+			virtual uint16_t timeout(const event::id_t id, const event::action_t action) const noexcept = 0;
+			/**
+			 * @brief Метод установки таймаута события
+			 *
+			 * @param id      идентификатор события
+			 * @param action  тип действия события
+			 * @param timeout значение таймаута в миллисекундах
+			 */
+			virtual void timeout(const event::id_t id, const event::action_t action, const uint16_t timeout) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод установки параметров keep-alive для события

@@ -81,6 +81,16 @@ namespace {
 }
 
 /**
+ * @brief Метод настройки события
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения настройки
+ */
+bool awh::IO::setup(const event::id_t id) noexcept {
+
+	return false;
+}
+/**
  * @brief Метод опроса событий
  *
  * @param timeout таймаут опроса в миллисекундах
@@ -88,16 +98,6 @@ namespace {
  */
 bool awh::IO::poll(const int32_t timeout) noexcept {
 
-	return false;
-}
-/**
- * @brief Метод настройки события
- *
- * @param id    идентификатор события
- * @param delay задержка таймера события в миллисекундах
- * @return      результат выполнения настройки
- */
-bool awh::IO::setup(const event::id_t id, const uint16_t delay) noexcept {
 	return false;
 }
 /**
@@ -775,6 +775,20 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER): {
+					// Выполняем создание новой ноды
+					unique_ptr <sys_t::user_t> node = make_unique <sys_t::user_t> ();
+					// Выполняем перенос всей ноды
+					i->second = ::move(node);
+				} break;
+				// Если нода является таймером
+				case static_cast <uint8_t> (event::node_t::TIMER): {
+					// Выполняем создание новой ноды
+					unique_ptr <sys_t::timer_t> node = make_unique <sys_t::timer_t> ();
+					// Выполняем перенос всей ноды
+					i->second = ::move(node);
+				} break;
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FSYS): {
 					// Выполняем создание новой ноды
@@ -1048,7 +1062,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Address type NONE cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+							this->_log->debug("Address type NONE cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1060,90 +1074,147 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					// Если тип адреса принадлежит к MAC-адресам
 					case static_cast <uint8_t> (event::address_t::MAC): {
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем проверку соответствует ли адрес
 						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является соседом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Устанавливаем полученный MAC-адрес
-								this->_net.parse(value, net_t::type_t::MAC);
-								// Получаем указатель на объект соседа
-								auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
-								// Устанавливаем полученный MAC-адрес в объект события
-								awh_cast <sys_t::address_mac_t *> (peer->mac.get())->address = ::move(this->_net.mac());
-								// Параметры сетей интерфейсов
-								sys_t::addresses_t addresses{};
-								// Добавляем MAC-адрес для поиска
-								awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
-								// Получаем MAC-адрес из системы по IP-адресу
-								this->_sys.peerAddresses(addresses);
-								// Устанавливаем полученный IP-адрес в объект события
-								awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip = ::move(addresses.ip);
-								// Возвращаем результат работы функции
-								return true;
-							} break;
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем полученный MAC-адрес
-								this->_net.parse(value, net_t::type_t::MAC);
-								// Получаем указатель на объект сервера
-								auto server = awh_cast <sys_t::server_t *> (i->second.get());
-								// Устанавливаем полученный MAC-адрес в объект события
-								awh_cast <sys_t::address_mac_t *> (server->mac.get())->address = ::move(this->_net.mac());
-								// Получаем название сетевого интерфейса по MAC-адресу
-								string iface = ::move(this->_sys.interfaceName(server->mac));
-								// Если название сетевого интерфейса не пустое
-								if(!iface.empty())
-									// Устанавливаем название сетевого интерфейса
-									server->iface = ::move(iface);
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует MAC-адресу
+							case static_cast <uint8_t> (net_t::type_t::MAC): {
 								/**
-								 * Определяем семейство сокета
+								 * Определяем чем является текущая нода
 								 */
-								switch(static_cast <uint8_t> (i->second->state.family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-									// Для семейства UDPv4
-									case static_cast <uint8_t> (event::family_t::UDPV4): {
-										// Параметры сетей интерфейсов
-										sys_t::addresses_t addresses{};
-										// Устанавливаем хост сервера для получения MAC-адреса
-										awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
-										// Получаем IP-адрес из системы по MAC-адресу
-										this->_sys.nodeAddresses(addresses);
-										// Устанавливаем полученный IP-адрес
-										awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если нода является соседом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный MAC-адрес
+										this->_net.parse(value, net_t::type_t::MAC);
+										// Получаем указатель на объект соседа
+										auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
+										// Устанавливаем полученный MAC-адрес в объект события
+										awh_cast <sys_t::address_mac_t *> (peer->mac.get())->address = ::move(this->_net.mac());
+										/**
+										* Определяем семейство сокета
+										*/
+										switch(static_cast <uint8_t> (i->second->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4):
+											// Для семейства UDPv4
+											case static_cast <uint8_t> (event::family_t::UDPV4): {
+												// Параметры сетей интерфейсов
+												sys_t::addresses_t addresses{};
+												// Устанавливаем тип адреса
+												i->second->state.address = event::address_t::IPV4;
+												// Добавляем MAC-адрес для поиска
+												awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
+												// Получаем MAC-адрес из системы по IP-адресу
+												this->_sys.peerAddresses(addresses);
+												// Устанавливаем полученный IP-адрес в объект события
+												awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip = ::move(addresses.ip);
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6):
+											// Для семейства UDPv6
+											case static_cast <uint8_t> (event::family_t::UDPV6): {
+												// Устанавливаем тип адреса
+												i->second->state.address = event::address_t::IPV6;
+												// Параметры сетей интерфейсов
+												sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
+												// Устанавливаем хост сервера для получения MAC-адреса
+												awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
+												// Получаем MAC-адрес из системы по IP-адресу
+												this->_sys.peerAddresses(addresses);
+												// Устанавливаем полученный IP-адрес в объект события
+												awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip = ::move(addresses.ip);
+											} break;
+										}
+										// Возвращаем результат работы функции
+										return true;
 									} break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-									// Для семейства UDPv6
-									case static_cast <uint8_t> (event::family_t::UDPV6): {
-										// Параметры сетей интерфейсов
-										sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-										// Устанавливаем хост сервера для получения MAC-адреса
-										awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
-										// Получаем IP-адрес из системы по MAC-адресу
-										this->_sys.nodeAddresses(addresses);
-										// Устанавливаем полученный IP-адрес
-										awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Устанавливаем полученный MAC-адрес
+										this->_net.parse(value, net_t::type_t::MAC);
+										// Получаем указатель на объект сервера
+										auto server = awh_cast <sys_t::server_t *> (i->second.get());
+										// Устанавливаем полученный MAC-адрес в объект события
+										awh_cast <sys_t::address_mac_t *> (server->mac.get())->address = ::move(this->_net.mac());
+										// Получаем название сетевого интерфейса по MAC-адресу
+										string iface = ::move(this->_sys.interfaceName(server->mac));
+										// Если название сетевого интерфейса не пустое
+										if(!iface.empty())
+											// Устанавливаем название сетевого интерфейса
+											server->iface = ::move(iface);
+										/**
+										* Определяем семейство сокета
+										*/
+										switch(static_cast <uint8_t> (i->second->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4):
+											// Для семейства UDPv4
+											case static_cast <uint8_t> (event::family_t::UDPV4): {
+												// Параметры сетей интерфейсов
+												sys_t::addresses_t addresses{};
+												// Устанавливаем тип адреса
+												i->second->state.address = event::address_t::IPV4;
+												// Устанавливаем хост сервера для получения MAC-адреса
+												awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
+												// Получаем IP-адрес из системы по MAC-адресу
+												this->_sys.nodeAddresses(addresses);
+												// Устанавливаем полученный IP-адрес
+												awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6):
+											// Для семейства UDPv6
+											case static_cast <uint8_t> (event::family_t::UDPV6): {
+												// Устанавливаем тип адреса
+												i->second->state.address = event::address_t::IPV6;
+												// Параметры сетей интерфейсов
+												sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
+												// Устанавливаем хост сервера для получения MAC-адреса
+												awh_cast <sys_t::address_mac_t *> (addresses.mac.get())->address = ::move(this->_net.mac());
+												// Получаем IP-адрес из системы по MAC-адресу
+												this->_sys.nodeAddresses(addresses);
+												// Устанавливаем полученный IP-адрес
+												awh_cast <sys_t::host_ip_t *> (server->host.get())->ip = ::move(addresses.ip);
+											} break;
+										}
+										// Возвращаем результат работы функции
+										return true;
 									} break;
+									// Если нода имеет неподдерживаемый тип
+									default: {
+										/**
+										* Если включён режим отладки
+										*/
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("MAC-address can only be set for PEER or SERVER nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("MAC-address can only be set for PEER or SERVER nodes", log_t::flag_t::WARNING);
+										#endif
+									}
 								}
-								// Возвращаем результат работы функции
-								return true;
 							} break;
-							// Если нода имеет неподдерживаемый тип
+							// Если адрес не принадлежит к MAC-адресу
 							default: {
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("MAC address can only be set for PEER or SERVER nodes", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+									this->_log->debug("Address you are trying to add is not a MAC-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("MAC address can only be set for PEER or SERVER nodes", log_t::flag_t::WARNING);
+									this->_log->print("Address you are trying to add is not a MAC-address", log_t::flag_t::WARNING);
 								#endif
 							}
 						}
@@ -1151,29 +1222,59 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					// Если тип адреса принадлежит к Unix Domain Socket
 					case static_cast <uint8_t> (event::address_t::UDS): {
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем проверку соответствует ли адрес
 						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является соседом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Устанавливаем адрес сокета в UNIX-домене
-								awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address = value;
-								// Возвращаем результат работы функции
-								return true;
-							}
-							// Если нода является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Устанавливаем адрес сокета в UNIX-домене
-								awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::client_t *> (i->second.get())->host.get())->path.get())->address = value;
-								// Возвращаем результат работы функции
-								return true;
-							}
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем адрес сокета в UNIX-домене
-								awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::server_t *> (i->second.get())->host.get())->path.get())->address = value;
-								// Возвращаем результат работы функции
-								return true;
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует адресу файловой системы
+							case static_cast <uint8_t> (net_t::type_t::FS): {
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если нода является соседом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем адрес сокета в UNIX-домене
+										awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::peer_t *> (i->second.get())->host.get())->path.get())->address = value;
+										// Возвращаем результат работы функции
+										return true;
+									}
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем адрес сокета в UNIX-домене
+										awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::client_t *> (i->second.get())->host.get())->path.get())->address = value;
+										// Возвращаем результат работы функции
+										return true;
+									}
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем адрес сокета в UNIX-домене
+										awh_cast <sys_t::address_fs_t *> (awh_cast <sys_t::host_udc_t *> (awh_cast <sys_t::server_t *> (i->second.get())->host.get())->path.get())->address = value;
+										// Возвращаем результат работы функции
+										return true;
+									}
+								}
+							} break;
+							// Если адрес не принадлежит к MAC-адресу
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address you are trying to add is not a filesystem address", log_t::flag_t::WARNING);
+								#endif
 							}
 						}
 					} break;
@@ -1181,158 +1282,244 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					case static_cast <uint8_t> (event::address_t::DIR):
 					// Если тип адреса принадлежит к файлам файловой системы
 					case static_cast <uint8_t> (event::address_t::FILE): {
-						// Устанавливаем адрес файловой системы события
-						awh_cast <sys_t::address_fs_t *> (static_cast <sys_t::filesystem_t *> (i->second.get())->path.get())->address = value;
-						// Возвращаем результат работы функции
-						return true;
+						/**
+						 * Определяем проверку соответствует ли адрес
+						 */
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует адресу файловой системы
+							case static_cast <uint8_t> (net_t::type_t::FS): {
+								// Устанавливаем тип адреса
+								i->second->state.address = address;
+								// Устанавливаем адрес файловой системы события
+								awh_cast <sys_t::address_fs_t *> (static_cast <sys_t::filesystem_t *> (i->second.get())->path.get())->address = value;
+								// Возвращаем результат работы функции
+								return true;
+							} break;
+							// Если адрес не принадлежит к MAC-адресу
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address you are trying to add is not a filesystem address", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
 					} break;
 					// Если тип адреса принадлежит к IPv4-адресам
 					case static_cast <uint8_t> (event::address_t::IPV4): {
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем проверку соответствует ли адрес
 						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является соседом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Устанавливаем полученный IP-адрес
-								this->_net.parse(value, net_t::type_t::IPV4);
-								// Получаем указатель на объект соседа
-								auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
-								// Получаем текущее значение адреса сокета в UNIX-домене
-								sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (peer->host.get());
-								// Копируем полученный IP-адрес в объект события
-								awh_cast <sys_t::address_network_ipv4_t *> (host->ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
-								// Параметры сетей интерфейсов
-								sys_t::addresses_t addresses{};
-								// Устанавливаем хост сервера для получения MAC-адреса
-								awh_cast <sys_t::address_network_ipv4_t *> (addresses.ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
-								// Получаем MAC-адрес из системы по IP-адресу
-								this->_sys.peerAddresses(addresses);
-								// Получаем объект адреса для установки данных
-								peer->mac = ::move(addresses.mac);
-								// Возвращаем результат работы функции
-								return true;
-							}
-							// Если нода является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Устанавливаем полученный IP-адрес
-								this->_net.parse(value, net_t::type_t::IPV4);
-								// Получаем указатель на объект клиента
-								auto client = awh_cast <sys_t::client_t *> (i->second.get());
-								// Получаем текущее значение адреса сокета в UNIX-домене
-								sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (client->host.get());
-								// Копируем полученный IP-адрес в объект события
-								awh_cast <sys_t::address_network_ipv4_t *> (host->ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
-								// Получаем название сетевого интерфейса по IP-адресу
-								string iface = ::move(this->_sys.interfaceName(host->ip));
-								// Если название сетевого интерфейса не пустое
-								if(!iface.empty())
-									// Устанавливаем название сетевого интерфейса
-									client->iface = ::move(iface);
-								// Возвращаем результат работы функции
-								return true;
-							}
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем полученный IP-адрес
-								this->_net.parse(value, net_t::type_t::IPV4);
-								// Получаем указатель на объект сервера
-								auto server = awh_cast <sys_t::server_t *> (i->second.get());
-								// Получаем текущее значение адреса сокета в UNIX-домене
-								sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (server->host.get());
-								// Копируем полученный IP-адрес в объект события
-								awh_cast <sys_t::address_network_ipv4_t *> (host->ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
-								// Получаем название сетевого интерфейса по IP-адресу
-								string iface = ::move(this->_sys.interfaceName(host->ip));
-								// Если название сетевого интерфейса не пустое
-								if(!iface.empty())
-									// Устанавливаем название сетевого интерфейса
-									server->iface = ::move(iface);
-								// Параметры сетей интерфейсов
-								sys_t::addresses_t addresses{};
-								// Устанавливаем хост сервера для получения MAC-адреса
-								awh_cast <sys_t::address_network_ipv4_t *> (addresses.ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
-								// Получаем MAC-адрес из системы по IP-адресу
-								this->_sys.nodeAddresses(addresses);
-								// Получаем объект адреса для установки данных
-								server->mac = ::move(addresses.mac);
-								// Возвращаем результат работы функции
-								return true;
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует адресу IPv4-адресу
+							case static_cast <uint8_t> (net_t::type_t::IPV4): {
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если нода является соседом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный IP-адрес
+										this->_net.parse(value, net_t::type_t::IPV4);
+										// Получаем указатель на объект соседа
+										auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
+										// Получаем текущее значение адреса сокета в UNIX-домене
+										sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (peer->host.get());
+										// Копируем полученный IP-адрес в объект события
+										awh_cast <sys_t::address_network_ipv4_t *> (host->ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
+										// Параметры сетей интерфейсов
+										sys_t::addresses_t addresses{};
+										// Устанавливаем хост сервера для получения MAC-адреса
+										awh_cast <sys_t::address_network_ipv4_t *> (addresses.ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
+										// Получаем MAC-адрес из системы по IP-адресу
+										this->_sys.peerAddresses(addresses);
+										// Получаем объект адреса для установки данных
+										peer->mac = ::move(addresses.mac);
+										// Возвращаем результат работы функции
+										return true;
+									}
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный IP-адрес
+										this->_net.parse(value, net_t::type_t::IPV4);
+										// Получаем указатель на объект клиента
+										auto client = awh_cast <sys_t::client_t *> (i->second.get());
+										// Получаем текущее значение адреса сокета в UNIX-домене
+										sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (client->host.get());
+										// Копируем полученный IP-адрес в объект события
+										awh_cast <sys_t::address_network_ipv4_t *> (host->ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
+										// Получаем название сетевого интерфейса по IP-адресу
+										string iface = ::move(this->_sys.interfaceName(host->ip));
+										// Если название сетевого интерфейса не пустое
+										if(!iface.empty())
+											// Устанавливаем название сетевого интерфейса
+											client->iface = ::move(iface);
+										// Возвращаем результат работы функции
+										return true;
+									}
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный IP-адрес
+										this->_net.parse(value, net_t::type_t::IPV4);
+										// Получаем указатель на объект сервера
+										auto server = awh_cast <sys_t::server_t *> (i->second.get());
+										// Получаем текущее значение адреса сокета в UNIX-домене
+										sys_t::host_ip_t * host = awh_cast <sys_t::host_ip_t *> (server->host.get());
+										// Копируем полученный IP-адрес в объект события
+										awh_cast <sys_t::address_network_ipv4_t *> (host->ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
+										// Получаем название сетевого интерфейса по IP-адресу
+										string iface = ::move(this->_sys.interfaceName(host->ip));
+										// Если название сетевого интерфейса не пустое
+										if(!iface.empty())
+											// Устанавливаем название сетевого интерфейса
+											server->iface = ::move(iface);
+										// Параметры сетей интерфейсов
+										sys_t::addresses_t addresses{};
+										// Устанавливаем хост сервера для получения MAC-адреса
+										awh_cast <sys_t::address_network_ipv4_t *> (addresses.ip.get())->address = this->_net.v4(net_t::endian_t::LITTLE);
+										// Получаем MAC-адрес из системы по IP-адресу
+										this->_sys.nodeAddresses(addresses);
+										// Получаем объект адреса для установки данных
+										server->mac = ::move(addresses.mac);
+										// Возвращаем результат работы функции
+										return true;
+									}
+								}
+							} break;
+							// Если адрес не принадлежит к MAC-адресу
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address you are trying to add is not a IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address you are trying to add is not a IPv4-address", log_t::flag_t::WARNING);
+								#endif
 							}
 						}
 					} break;
 					// Если тип адреса принадлежит к IPv6-адресам
 					case static_cast <uint8_t> (event::address_t::IPV6): {
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем проверку соответствует ли адрес
 						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является соседом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Устанавливаем полученный IP-адрес
-								this->_net.parse(value, net_t::type_t::IPV6);
-								// Получаем указатель на объект соседа
-								auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
-								// Получаем объект адреса для установки данных
-								auto & address = awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip;
-								// Устанавливаем полученный IP-адрес в объект события
-								awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
-								// Параметры сетей интерфейсов
-								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-								// Устанавливаем IP-адрес для получения MAC-адреса
-								awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
-								// Получаем MAC-адрес из системы по IP-адресу
-								this->_sys.peerAddresses(addresses);
-								// Получаем объект адреса для установки данных
-								peer->mac = ::move(addresses.mac);
-								// Возвращаем результат работы функции
-								return true;
-							}
-							// Если нода является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Устанавливаем полученный IP-адрес
-								this->_net.parse(value, net_t::type_t::IPV6);
-								// Получаем указатель на объект клиента
-								auto client = awh_cast <sys_t::client_t *> (i->second.get());
-								// Получаем объект адреса для установки данных
-								auto & address = awh_cast <sys_t::host_ip_t *> (client->host.get())->ip;
-								// Устанавливаем полученный IP-адрес в объект события
-								awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
-								// Получаем название сетевого интерфейса по IP-адресу
-								string iface = ::move(this->_sys.interfaceName(address));
-								// Если название сетевого интерфейса не пустое
-								if(!iface.empty())
-									// Устанавливаем название сетевого интерфейса
-									client->iface = ::move(iface);
-								// Возвращаем результат работы функции
-								return true;
-							}
-							// Если нода является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем полученный IP-адрес
-								this->_net.parse(value, net_t::type_t::IPV6);
-								// Получаем указатель на объект сервера
-								auto server = awh_cast <sys_t::server_t *> (i->second.get());
-								// Получаем объект адреса для установки данных
-								auto & address = awh_cast <sys_t::host_ip_t *> (server->host.get())->ip;
-								// Устанавливаем полученный IP-адрес в объект события
-								awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
-								// Получаем название сетевого интерфейса по IP-адресу
-								string iface = ::move(this->_sys.interfaceName(address));
-								// Если название сетевого интерфейса не пустое
-								if(!iface.empty())
-									// Устанавливаем название сетевого интерфейса
-									server->iface = ::move(iface);
-								// Параметры сетей интерфейсов
-								sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
-								// Устанавливаем IP-адрес для получения MAC-адреса
-								awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
-								// Получаем MAC-адрес из системы по IP-адресу
-								this->_sys.nodeAddresses(addresses);
-								// Получаем объект адреса для установки данных
-								server->mac = ::move(addresses.mac);
-								// Возвращаем результат работы функции
-								return true;
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует адресу IPv6-адресу
+							case static_cast <uint8_t> (net_t::type_t::IPV6): {
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если нода является соседом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный IP-адрес
+										this->_net.parse(value, net_t::type_t::IPV6);
+										// Получаем указатель на объект соседа
+										auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
+										// Получаем объект адреса для установки данных
+										auto & address = awh_cast <sys_t::host_ip_t *> (peer->host.get())->ip;
+										// Устанавливаем полученный IP-адрес в объект события
+										awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
+										// Параметры сетей интерфейсов
+										sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
+										// Устанавливаем IP-адрес для получения MAC-адреса
+										awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
+										// Получаем MAC-адрес из системы по IP-адресу
+										this->_sys.peerAddresses(addresses);
+										// Получаем объект адреса для установки данных
+										peer->mac = ::move(addresses.mac);
+										// Возвращаем результат работы функции
+										return true;
+									}
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный IP-адрес
+										this->_net.parse(value, net_t::type_t::IPV6);
+										// Получаем указатель на объект клиента
+										auto client = awh_cast <sys_t::client_t *> (i->second.get());
+										// Получаем объект адреса для установки данных
+										auto & address = awh_cast <sys_t::host_ip_t *> (client->host.get())->ip;
+										// Устанавливаем полученный IP-адрес в объект события
+										awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
+										// Получаем название сетевого интерфейса по IP-адресу
+										string iface = ::move(this->_sys.interfaceName(address));
+										// Если название сетевого интерфейса не пустое
+										if(!iface.empty())
+											// Устанавливаем название сетевого интерфейса
+											client->iface = ::move(iface);
+										// Возвращаем результат работы функции
+										return true;
+									}
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
+										// Устанавливаем полученный IP-адрес
+										this->_net.parse(value, net_t::type_t::IPV6);
+										// Получаем указатель на объект сервера
+										auto server = awh_cast <sys_t::server_t *> (i->second.get());
+										// Получаем объект адреса для установки данных
+										auto & address = awh_cast <sys_t::host_ip_t *> (server->host.get())->ip;
+										// Устанавливаем полученный IP-адрес в объект события
+										awh_cast <sys_t::address_network_ipv6_t *> (address.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
+										// Получаем название сетевого интерфейса по IP-адресу
+										string iface = ::move(this->_sys.interfaceName(address));
+										// Если название сетевого интерфейса не пустое
+										if(!iface.empty())
+											// Устанавливаем название сетевого интерфейса
+											server->iface = ::move(iface);
+										// Параметры сетей интерфейсов
+										sys_t::addresses_t addresses(make_unique <sys_t::address_network_ipv6_t> ());
+										// Устанавливаем IP-адрес для получения MAC-адреса
+										awh_cast <sys_t::address_network_ipv6_t *> (addresses.ip.get())->address = ::move(this->_net.v6(net_t::endian_t::LITTLE));
+										// Получаем MAC-адрес из системы по IP-адресу
+										this->_sys.nodeAddresses(addresses);
+										// Получаем объект адреса для установки данных
+										server->mac = ::move(addresses.mac);
+										// Возвращаем результат работы функции
+										return true;
+									}
+								}
+							} break;
+							// Если адрес не принадлежит к MAC-адресу
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address you are trying to add is not a IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address you are trying to add is not a IPv6-address", log_t::flag_t::WARNING);
+								#endif
 							}
 						}
 					} break;
@@ -1410,6 +1597,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								switch(static_cast <uint8_t> (i->second->state.node)){
 									// Если нода является соседом
 									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
 										// Получаем объект клиента
 										sys_t::peer_t * peer = awh_cast <sys_t::peer_t *> (i->second.get());
 										// Получаем объект адреса для установки данных
@@ -1421,6 +1610,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									}
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
 										// Получаем объект клиента
 										auto client = awh_cast <sys_t::client_t *> (i->second.get());
 										// Устанавливаем название сетевого интерфейса
@@ -1430,6 +1621,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									}
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
 										// Получаем объект сервера
 										auto server = awh_cast <sys_t::server_t *> (i->second.get());
 										// Получаем объект адреса для установки данных
@@ -1496,6 +1689,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								switch(static_cast <uint8_t> (i->second->state.node)){
 									// Если нода является соседом
 									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
 										// Получаем объект клиента
 										sys_t::peer_t * peer = awh_cast <sys_t::peer_t *> (i->second.get());
 										// Получаем объект адреса для установки данных
@@ -1507,6 +1702,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									}
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
 										// Получаем объект клиента
 										auto client = awh_cast <sys_t::client_t *> (i->second.get());
 										// Добавляем название сетевого интерфейса
@@ -1516,6 +1713,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									}
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Устанавливаем тип адреса
+										i->second->state.address = address;
 										// Получаем объект сервера
 										auto server = awh_cast <sys_t::server_t *> (i->second.get());
 										// Получаем объект адреса для установки данных
@@ -1561,7 +1760,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+							this->_log->debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5432,30 +5631,447 @@ bool awh::IO::multicastLeave(const event::id_t id, const string & multicastAddre
  * @return   результат выполнения очистки
  */
 bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
-
-	return false;
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Получаем объект ноды
+					auto node = awh_cast <sys_t::filesystem_t *> (i->second.get());
+					// Очищаем чёрный список
+					node->blacklist.clear();
+					// Устанавливаем результат
+					result = node->blacklist.empty();
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем объект ноды
+					auto node = awh_cast <sys_t::client_t *> (i->second.get());
+					// Очищаем чёрный список
+					node->blacklist.clear();
+					// Устанавливаем результат
+					result = node->blacklist.empty();
+				} break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем объект ноды
+					auto node = awh_cast <sys_t::server_t *> (i->second.get());
+					// Очищаем чёрный список
+					node->blacklist.clear();
+					// Устанавливаем результат
+					result = node->blacklist.empty();
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат работы функции
+	return result;
 }
 /**
  * @brief Метод добавления адреса в чёрный список события
  *
- * @param id      идентификатор события
- * @param address адрес для добавления в чёрный список
- * @return        результат выполнения добавления
+ * @param id    идентификатор события
+ * @param value значение адреса события
+ * @return      результат выполнения установки
  */
-bool awh::IO::addToBlacklist(const event::id_t id, const string & address) noexcept {
-
+bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcept {
+	// Если адрес для удаления передан
+	if(!value.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден
+			if(i != ::__awh_nodes__.end()){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FSYS): {
+						/**
+						 * Определяем проверку соответствует ли адрес
+						 */
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует файловой системе
+							case static_cast <uint8_t> (net_t::type_t::FS):
+								// Выполняем добавление нового адреса в чёрный список
+								return awh_cast <sys_t::filesystem_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+							// Если мы получили какой-то другой адрес
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address being added to the blacklist does not match the file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address being added to the blacklist does not match the file system address", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						/**
+						 * Определяем тип адреса события
+						 */
+						switch(static_cast <uint8_t> (i->second->state.address)){
+							// Если тип адреса принадлежит к Unix Domain Socket
+							case static_cast <uint8_t> (event::address_t::UDS): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует файловой системе
+									case static_cast <uint8_t> (net_t::type_t::FS):
+										// Выполняем добавление нового адреса в чёрный список
+										return awh_cast <sys_t::client_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the blacklist does not match the file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the blacklist does not match the file system address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+							// Если тип адреса принадлежит к IPv4-адресам
+							case static_cast <uint8_t> (event::address_t::IPV4):
+							// Если тип адреса принадлежит к IPv6-адресам
+							case static_cast <uint8_t> (event::address_t::IPV6): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует IPv4-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV4):
+										// Выполняем добавление нового адреса в чёрный список
+										return awh_cast <sys_t::client_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+									// Если адрес соответствует MAC-адресу
+									case static_cast <uint8_t> (net_t::type_t::MAC):
+									// Если адрес соответствует IPv6-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV6):
+										// Выполняем добавление нового адреса в чёрный список
+										return awh_cast <sys_t::client_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the blacklist does not match the MAC-address or IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the blacklist does not match the MAC-address or IP-address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						/**
+						 * Определяем тип адреса события
+						 */
+						switch(static_cast <uint8_t> (i->second->state.address)){
+							// Если тип адреса принадлежит к Unix Domain Socket
+							case static_cast <uint8_t> (event::address_t::UDS): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует файловой системе
+									case static_cast <uint8_t> (net_t::type_t::FS):
+										// Выполняем добавление нового адреса в чёрный список
+										return awh_cast <sys_t::server_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the blacklist does not match the file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the blacklist does not match the file system address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+							// Если тип адреса принадлежит к IPv4-адресам
+							case static_cast <uint8_t> (event::address_t::IPV4):
+							// Если тип адреса принадлежит к IPv6-адресам
+							case static_cast <uint8_t> (event::address_t::IPV6): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует IPv4-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV4):
+										// Выполняем добавление нового адреса в чёрный список
+										return awh_cast <sys_t::server_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+									// Если адрес соответствует MAC-адресу
+									case static_cast <uint8_t> (net_t::type_t::MAC):
+									// Если адрес соответствует IPv6-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV6):
+										// Выполняем добавление нового адреса в чёрный список
+										return awh_cast <sys_t::server_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the blacklist does not match the MAC-address or IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the blacklist does not match the MAC-address or IP-address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Для других типов нод
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
  * @brief Метод удаления адреса из чёрного списка события
  *
- * @param id      идентификатор события
- * @param address адрес для удаления из чёрного списка
- * @return        результат выполнения удаления
+ * @param id    идентификатор события
+ * @param value адрес для удаления из чёрного списка
+ * @return      результат выполнения удаления
  */
-bool awh::IO::removeFromBlacklist(const event::id_t id, const string & address) noexcept {
-
-	return false;
+bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес для удаления передан
+	if(!value.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден
+			if(i != ::__awh_nodes__.end()){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FSYS): {
+						// Получаем объект ноды
+						auto node = awh_cast <sys_t::filesystem_t *> (i->second.get());
+						// Если чёрный список не пустой
+						if(!node->blacklist.empty()){
+							// Выполняем поиск указанного адреса
+							auto i = node->blacklist.find(value);
+							// Если адрес найден, удаляем его
+							if((result = (i != node->blacklist.end())))
+								// Выполняем удаление указанного адреса
+								node->blacklist.erase(i);
+						}
+					} break;
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем объект ноды
+						auto node = awh_cast <sys_t::client_t *> (i->second.get());
+						// Если чёрный список не пустой
+						if(!node->blacklist.empty()){
+							/**
+							 * Определяем тип адреса события
+							 */
+							switch(static_cast <uint8_t> (i->second->state.address)){
+								// Если тип адреса принадлежит к Unix Domain Socket
+								case static_cast <uint8_t> (event::address_t::UDS): {
+									// Выполняем поиск указанного адреса
+									auto i = node->blacklist.find(value);
+									// Если адрес найден, удаляем его
+									if((result = (i != node->blacklist.end())))
+										// Выполняем удаление указанного адреса
+										node->blacklist.erase(i);
+								} break;
+								// Если тип адреса принадлежит к IPv4-адресам
+								case static_cast <uint8_t> (event::address_t::IPV4):
+								// Если тип адреса принадлежит к IPv6-адресам
+								case static_cast <uint8_t> (event::address_t::IPV6): {
+									// Выполняем поиск указанного адреса
+									auto i = node->blacklist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									// Если адрес найден, удаляем его
+									if((result = (i != node->blacklist.end())))
+										// Выполняем удаление указанного адреса
+										node->blacklist.erase(i);
+								} break;
+							}
+						}
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект ноды
+						auto node = awh_cast <sys_t::server_t *> (i->second.get());
+						// Если чёрный список не пустой
+						if(!node->blacklist.empty()){
+							/**
+							 * Определяем тип адреса события
+							 */
+							switch(static_cast <uint8_t> (i->second->state.address)){
+								// Если тип адреса принадлежит к Unix Domain Socket
+								case static_cast <uint8_t> (event::address_t::UDS): {
+									// Выполняем поиск указанного адреса
+									auto i = node->blacklist.find(value);
+									// Если адрес найден, удаляем его
+									if((result = (i != node->blacklist.end())))
+										// Выполняем удаление указанного адреса
+										node->blacklist.erase(i);
+								} break;
+								// Если тип адреса принадлежит к IPv4-адресам
+								case static_cast <uint8_t> (event::address_t::IPV4):
+								// Если тип адреса принадлежит к IPv6-адресам
+								case static_cast <uint8_t> (event::address_t::IPV6): {
+									// Выполняем поиск указанного адреса
+									auto i = node->blacklist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									// Если адрес найден, удаляем его
+									if((result = (i != node->blacklist.end())))
+										// Выполняем удаление указанного адреса
+										node->blacklist.erase(i);
+								} break;
+							}
+						}
+					} break;
+					// Для других типов нод
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим резульатат работы функции
+	return result;
 }
 /**
  * @brief Метод получения чёрного списка события
@@ -5463,9 +6079,71 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & address) 
  * @param id идентификатор события
  * @return   чёрный список события
  */
-std::unordered_map <awh::event::address_t, string> awh::IO::blacklist(const event::id_t id) const noexcept {
-
-	return {};
+const std::unordered_map <string, awh::event::address_t> & awh::IO::blacklist(const event::id_t id) const noexcept {
+	// Результат работы функции
+	static const std::unordered_map <string, event::address_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Выводим полученный результат
+					return awh_cast <sys_t::filesystem_t *> (i->second.get())->blacklist;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выводим полученный результат
+					return awh_cast <sys_t::client_t *> (i->second.get())->blacklist;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выводим полученный результат
+					return awh_cast <sys_t::server_t *> (i->second.get())->blacklist;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим резульатат работы функции
+	return result;
 }
 /**
  * @brief Метод очистки белого списка события
@@ -5474,29 +6152,447 @@ std::unordered_map <awh::event::address_t, string> awh::IO::blacklist(const even
  * @return   результат выполнения очистки
  */
 bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
-
-	return false;
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Получаем объект ноды
+					auto node = awh_cast <sys_t::filesystem_t *> (i->second.get());
+					// Очищаем белый список
+					node->whitelist.clear();
+					// Устанавливаем результат
+					result = node->whitelist.empty();
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем объект ноды
+					auto node = awh_cast <sys_t::client_t *> (i->second.get());
+					// Очищаем белый список
+					node->whitelist.clear();
+					// Устанавливаем результат
+					result = node->whitelist.empty();
+				} break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем объект ноды
+					auto node = awh_cast <sys_t::server_t *> (i->second.get());
+					// Очищаем белый список
+					node->whitelist.clear();
+					// Устанавливаем результат
+					result = node->whitelist.empty();
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат работы функции
+	return result;
 }
 /**
  * @brief Метод добавления адреса в белый список события
- * @param id      идентификатор события
- * @param address адрес для добавления в белый список
- * @return        результат выполнения добавления
+ *
+ * @param id    идентификатор события
+ * @param value значение адреса события
+ * @return      результат выполнения установки
  */
-bool awh::IO::addToWhitelist(const event::id_t id, const string & address) noexcept {
-
+bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcept {
+	// Если адрес для удаления передан
+	if(!value.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден
+			if(i != ::__awh_nodes__.end()){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FSYS): {
+						/**
+						 * Определяем проверку соответствует ли адрес
+						 */
+						switch(static_cast <uint8_t> (this->_net.host(value))){
+							// Если адрес соответствует файловой системе
+							case static_cast <uint8_t> (net_t::type_t::FS):
+								// Выполняем добавление нового адреса в белый список
+								return awh_cast <sys_t::filesystem_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+							// Если мы получили какой-то другой адрес
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address being added to the whitelist does not match the file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address being added to the whitelist does not match the file system address", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						/**
+						 * Определяем тип адреса события
+						 */
+						switch(static_cast <uint8_t> (i->second->state.address)){
+							// Если тип адреса принадлежит к Unix Domain Socket
+							case static_cast <uint8_t> (event::address_t::UDS): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует файловой системе
+									case static_cast <uint8_t> (net_t::type_t::FS):
+										// Выполняем добавление нового адреса в белый список
+										return awh_cast <sys_t::client_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the whitelist does not match the file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the whitelist does not match the file system address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+							// Если тип адреса принадлежит к IPv4-адресам
+							case static_cast <uint8_t> (event::address_t::IPV4):
+							// Если тип адреса принадлежит к IPv6-адресам
+							case static_cast <uint8_t> (event::address_t::IPV6): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует IPv4-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV4):
+										// Выполняем добавление нового адреса в белый список
+										return awh_cast <sys_t::client_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+									// Если адрес соответствует MAC-адресу
+									case static_cast <uint8_t> (net_t::type_t::MAC):
+									// Если адрес соответствует IPv6-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV6):
+										// Выполняем добавление нового адреса в белый список
+										return awh_cast <sys_t::client_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the whitelist does not match the MAC-address or IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the whitelist does not match the MAC-address or IP-address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						/**
+						 * Определяем тип адреса события
+						 */
+						switch(static_cast <uint8_t> (i->second->state.address)){
+							// Если тип адреса принадлежит к Unix Domain Socket
+							case static_cast <uint8_t> (event::address_t::UDS): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует файловой системе
+									case static_cast <uint8_t> (net_t::type_t::FS):
+										// Выполняем добавление нового адреса в белый список
+										return awh_cast <sys_t::server_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the whitelist does not match the file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the whitelist does not match the file system address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+							// Если тип адреса принадлежит к IPv4-адресам
+							case static_cast <uint8_t> (event::address_t::IPV4):
+							// Если тип адреса принадлежит к IPv6-адресам
+							case static_cast <uint8_t> (event::address_t::IPV6): {
+								/**
+								 * Определяем проверку соответствует ли адрес
+								 */
+								switch(static_cast <uint8_t> (this->_net.host(value))){
+									// Если адрес соответствует IPv4-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV4):
+										// Выполняем добавление нового адреса в белый список
+										return awh_cast <sys_t::server_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+									// Если адрес соответствует MAC-адресу
+									case static_cast <uint8_t> (net_t::type_t::MAC):
+									// Если адрес соответствует IPv6-адресу
+									case static_cast <uint8_t> (net_t::type_t::IPV6):
+										// Выполняем добавление нового адреса в белый список
+										return awh_cast <sys_t::server_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER), i->second->state.address).second;
+									// Если мы получили какой-то другой адрес
+									default: {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address being added to the whitelist does not match the MAC-address or IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address being added to the whitelist does not match the MAC-address or IP-address", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Для других типов нод
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
  * @brief Метод удаления адреса из белого списка события
  *
- * @param id      идентификатор события
- * @param address адрес для удаления из белого списка
- * @return        результат выполнения удаления
+ * @param id    идентификатор события
+ * @param value адрес для удаления из белого списка
+ * @return      результат выполнения удаления
  */
-bool awh::IO::removeFromWhitelist(const event::id_t id, const string & address) noexcept {
-
-	return false;
+bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес для удаления передан
+	if(!value.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден
+			if(i != ::__awh_nodes__.end()){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FSYS): {
+						// Получаем объект ноды
+						auto node = awh_cast <sys_t::filesystem_t *> (i->second.get());
+						// Если белый список не пустой
+						if(!node->whitelist.empty()){
+							// Выполняем поиск указанного адреса
+							auto i = node->whitelist.find(value);
+							// Если адрес найден, удаляем его
+							if((result = (i != node->whitelist.end())))
+								// Выполняем удаление указанного адреса
+								node->whitelist.erase(i);
+						}
+					} break;
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем объект ноды
+						auto node = awh_cast <sys_t::client_t *> (i->second.get());
+						// Если белый список не пустой
+						if(!node->whitelist.empty()){
+							/**
+							 * Определяем тип адреса события
+							 */
+							switch(static_cast <uint8_t> (i->second->state.address)){
+								// Если тип адреса принадлежит к Unix Domain Socket
+								case static_cast <uint8_t> (event::address_t::UDS): {
+									// Выполняем поиск указанного адреса
+									auto i = node->whitelist.find(value);
+									// Если адрес найден, удаляем его
+									if((result = (i != node->whitelist.end())))
+										// Выполняем удаление указанного адреса
+										node->whitelist.erase(i);
+								} break;
+								// Если тип адреса принадлежит к IPv4-адресам
+								case static_cast <uint8_t> (event::address_t::IPV4):
+								// Если тип адреса принадлежит к IPv6-адресам
+								case static_cast <uint8_t> (event::address_t::IPV6): {
+									// Выполняем поиск указанного адреса
+									auto i = node->whitelist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									// Если адрес найден, удаляем его
+									if((result = (i != node->whitelist.end())))
+										// Выполняем удаление указанного адреса
+										node->whitelist.erase(i);
+								} break;
+							}
+						}
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект ноды
+						auto node = awh_cast <sys_t::server_t *> (i->second.get());
+						// Если белый список не пустой
+						if(!node->whitelist.empty()){
+							/**
+							 * Определяем тип адреса события
+							 */
+							switch(static_cast <uint8_t> (i->second->state.address)){
+								// Если тип адреса принадлежит к Unix Domain Socket
+								case static_cast <uint8_t> (event::address_t::UDS): {
+									// Выполняем поиск указанного адреса
+									auto i = node->whitelist.find(value);
+									// Если адрес найден, удаляем его
+									if((result = (i != node->whitelist.end())))
+										// Выполняем удаление указанного адреса
+										node->whitelist.erase(i);
+								} break;
+								// Если тип адреса принадлежит к IPv4-адресам
+								case static_cast <uint8_t> (event::address_t::IPV4):
+								// Если тип адреса принадлежит к IPv6-адресам
+								case static_cast <uint8_t> (event::address_t::IPV6): {
+									// Выполняем поиск указанного адреса
+									auto i = node->whitelist.find(this->_fmk->transform(value, fmk_t::transform_t::UPPER));
+									// Если адрес найден, удаляем его
+									if((result = (i != node->whitelist.end())))
+										// Выполняем удаление указанного адреса
+										node->whitelist.erase(i);
+								} break;
+							}
+						}
+					} break;
+					// Для других типов нод
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим резульатат работы функции
+	return result;
 }
 /**
  * @brief Метод получения белого списка события
@@ -5504,28 +6600,71 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & address) 
  * @param id идентификатор события
  * @return   белый список события
  */
-std::unordered_map <awh::event::address_t, string> awh::IO::whitelist(const event::id_t id) const noexcept {
-
-	return {};
-}
-/**
- * @brief Метод установки таймаута на чтение события
- *
- * @param id      идентификатор события
- * @param timeout значение таймаута в миллисекундах
- */
-void awh::IO::readTimeout(const event::id_t id, const uint16_t timeout) noexcept {
-
-	
-}
-/**
- * @brief Метод установки таймаута на запись события
- *
- * @param id      идентификатор события
- * @param timeout значение таймаута в миллисекундах
- */
-void awh::IO::writeTimeout(const event::id_t id, const uint16_t timeout) noexcept {
-
+const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(const event::id_t id) const noexcept {
+	// Результат работы функции
+	static const std::unordered_map <string, event::address_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Выводим полученный результат
+					return awh_cast <sys_t::filesystem_t *> (i->second.get())->whitelist;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выводим полученный результат
+					return awh_cast <sys_t::client_t *> (i->second.get())->whitelist;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выводим полученный результат
+					return awh_cast <sys_t::server_t *> (i->second.get())->whitelist;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим резульатат работы функции
+	return result;
 }
 /**
  * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -5535,7 +6674,63 @@ void awh::IO::writeTimeout(const event::id_t id, const uint16_t timeout) noexcep
  * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
  */
 void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool adaptive) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Выполняем создание новой ноды
+					auto node = awh_cast <sys_t::server_t *> (i->second.get());
+					// Устанавливаем глубину очереди принятия входящих соединений
+					node->backlog.depth = depth;
+					// Устанавливаем режим адаптивной глубины очереди принятия входящих соединений
+					node->backlog.adaptive = adaptive;
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Event incoming connection accept queue depth cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Event incoming connection accept queue depth cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, depth, adaptive), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод получения размера буфера события
@@ -5559,6 +6754,167 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
 
 	return false;
+}
+/**
+ * @brief Метод получения таймаута события
+ *
+ * @param id     идентификатор события
+ * @param action тип действия события
+ * @return       значение таймаута в миллисекундах
+ */
+uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является таймером
+				case static_cast <uint8_t> (event::node_t::TIMER):
+					// Выводим значение задержки времени таймера
+					return awh_cast <sys_t::timer_t *> (i->second.get())->delay;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем объект события соседа
+					auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
+					// Выполняем поиск таймаута для действия события
+					auto i = peer->timeouts.find(action);
+					// Если таймаут для действия события найден
+					if(i != peer->timeouts.end())
+						// Выводим значение таймаута для действия события
+						return i->second;
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем объект события клиента
+					auto client = awh_cast <sys_t::client_t *> (i->second.get());
+					// Выполняем поиск таймаута для действия события
+					auto i = client->timeouts.find(action);
+					// Если таймаут для действия события найден
+					if(i != client->timeouts.end())
+						// Выводим значение таймаута для действия события
+						return i->second;
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to set timeout for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return 0;
+}
+/**
+ * @brief Метод установки таймаута события
+ *
+ * @param id      идентификатор события
+ * @param action  тип действия события
+ * @param timeout значение таймаута в миллисекундах
+ */
+void awh::IO::timeout(const event::id_t id, const event::action_t action, const uint16_t timeout) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является таймером
+				case static_cast <uint8_t> (event::node_t::TIMER):
+					// Устанавливаем значение задержки времени таймера
+					awh_cast <sys_t::timer_t *> (i->second.get())->delay = timeout;
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем объект события соседа
+					auto peer = awh_cast <sys_t::peer_t *> (i->second.get());
+					// Устанавливаем значение таймаута для действия события
+					peer->timeouts[action] = timeout;
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем объект события клиента
+					auto client = awh_cast <sys_t::client_t *> (i->second.get());
+					// Устанавливаем значение таймаута для действия события
+					client->timeouts[action] = timeout;
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to set timeout for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод установки параметров keep-alive для события
@@ -5702,7 +7058,35 @@ bool awh::IO::isInitialized() const noexcept {
  * @return   режим события
  */
 awh::event::mode_t awh::IO::mode(const event::id_t id) const noexcept {
-	
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Возвращаем режим события
+			return i->second->state.mode;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
 	return event::mode_t::NONE;
 }
 /**
@@ -5712,7 +7096,35 @@ awh::event::mode_t awh::IO::mode(const event::id_t id) const noexcept {
  * @return   тип события
  */
 awh::event::type_t awh::IO::type(const event::id_t id) const noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Возвращаем тип события
+			return i->second->state.type;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
 	return event::type_t::NONE;
 }
 /**
@@ -5722,7 +7134,35 @@ awh::event::type_t awh::IO::type(const event::id_t id) const noexcept {
  * @return   семейство события
  */
 awh::event::family_t awh::IO::family(const event::id_t id) const noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Возвращаем семейство события
+			return i->second->state.family;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
 	return event::family_t::NONE;
 }
 /**
@@ -5732,7 +7172,35 @@ awh::event::family_t awh::IO::family(const event::id_t id) const noexcept {
  * @return   статус события
  */
 awh::event::status_t awh::IO::status(const event::id_t id) const noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Возвращаем статус события
+			return i->second->state.status;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
 	return event::status_t::NONE;
 }
 /**
@@ -5742,7 +7210,69 @@ awh::event::status_t awh::IO::status(const event::id_t id) const noexcept {
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Устанавливаем функцию обратного вызова на чтение события
+					awh_cast <sys_t::filesystem_t *> (i->second.get())->callbacks.read = ::move(cb);
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на чтение события
+					awh_cast <sys_t::peer_t *> (i->second.get())->callbacks.read = ::move(cb);
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на чтение события
+					awh_cast <sys_t::client_t *> (i->second.get())->callbacks.read = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A data read callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A data read callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Методы установки функции обратного вызова на запись события
@@ -5751,7 +7281,69 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::filesystem_t *> (i->second.get())->callbacks.write = ::move(cb);
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::peer_t *> (i->second.get())->callbacks.write = ::move(cb);
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::client_t *> (i->second.get())->callbacks.write = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A data write callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A data write callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Методы установки функции обратного вызова на ошибку события
@@ -5760,7 +7352,74 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::filesystem_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::peer_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::client_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::server_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A error callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A error callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Методы установки функции обратного вызова на изменение статуса события
@@ -5769,7 +7428,74 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::filesystem_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::peer_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::client_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::server_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A status callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A status callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Методы установки функции обратного вызова на принятие события
@@ -5778,7 +7504,59 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::server_t *> (i->second.get())->callbacks.accept = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A accept callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A accept callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Методы установки функции обратного вызова на подключение события
@@ -5787,7 +7565,59 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::client_t *> (i->second.get())->callbacks.connect = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A connect callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A connect callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Методы установки функции обратного вызова на получение пользовательского события
@@ -5796,7 +7626,59 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
  * @param cb объект обратного вызова события
  */
 void awh::IO::on(const event::id_t id, const event::callback::user_t & cb) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <sys_t::user_t *> (i->second.get())->callback = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A user callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A user callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Конструктор

@@ -264,6 +264,22 @@ namespace awh {
 			} host_udc_t;
 		public:
 			/**
+			 * @brief Структура очереди ожидания подключения
+			 *
+			 */
+			typedef struct Backlog {
+				// Адаптивный режим очереди ожидания подключения
+				bool adaptive;
+				// Размер очереди ожидания подключения
+				uint16_t depth;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Backlog() noexcept : adaptive(false), depth(SOMAXCONN) {}
+			} __attribute__((packed)) backlog_t;
+		public:
+			/**
 			 * @brief Структура состояния события
 			 *
 			 */
@@ -333,12 +349,30 @@ namespace awh {
 				event::callback::read_t read;
 				// Обратный вызов при записи события
 				event::callback::write_t write;
+				// Обратный вызов при подключении события
+				event::callback::connect_t connect;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit CallbacksClient() noexcept : read(nullptr), write(nullptr) {}
+				explicit CallbacksClient() noexcept :
+				 read(nullptr), write(nullptr), connect(nullptr) {}
 			} callbacks_client_t;
+			/**
+			 * @brief Структура обратных вызовов подключённого клиента
+			 *
+			 */
+			typedef struct CallbacksPeer : public callbacks_t {
+				// Обратный вызов при чтении события
+				event::callback::read_t read;
+				// Обратный вызов при записи события
+				event::callback::write_t write;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit CallbacksPeer() noexcept : read(nullptr), write(nullptr) {}
+			} callbacks_peer_t;
 		public:
 			/**
 			 * @brief Структура конечного подключения
@@ -399,6 +433,19 @@ namespace awh {
 				explicit Timer() noexcept : delay(0) {}
 			} timer_t;
 			/**
+			 * @brief Структура  пользовательского события
+			 *
+			 */
+			typedef struct User : public node_t {
+				// Обратный вызов при принятии события
+				event::callback::user_t callback;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit User() noexcept : callback(nullptr) {}
+			} user_t;
+			/**
 			 * @brief Структура файловой системы
 			 *
 			 */
@@ -408,11 +455,11 @@ namespace awh {
 				// Путь к файлу, каталогу или сокету
 				unique_ptr <address_t> path;
 				// Обратные вызовы события
-				callbacks_client_t callbacks;
+				callbacks_peer_t callbacks;
 				// Чёрный список адресов которым запрещён доступ
-				unordered_set <unique_ptr <address_t>> blacklist;
+				unordered_map <string, event::address_t> blacklist;
 				// Белый список адресов которым разрешён доступ
-				unordered_set <unique_ptr <address_t>> whitelist;
+				unordered_map <string, event::address_t> whitelist;
 				/**
 				 * @brief Конструктор
 				 *
@@ -427,7 +474,7 @@ namespace awh {
 				// Название сетевого интерфейса
 				string iface;
 				// Размер очереди ожидания подключения
-				uint16_t backlog;
+				backlog_t backlog;
 				// Объект параметров конечной точки
 				endpoint_t endpoint;
 				// Хост подключения события
@@ -437,14 +484,14 @@ namespace awh {
 				// Обратные вызовы события
 				callbacks_server_t callbacks;
 				// Чёрный список пиров которым запрещён доступ
-				unordered_set <unique_ptr <address_t>> blacklist;
+				unordered_map <string, event::address_t> blacklist;
 				// Белый список пиров которым разрешён доступ
-				unordered_set <unique_ptr <address_t>> whitelist;
+				unordered_map <string, event::address_t> whitelist;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Server() noexcept : iface{""}, backlog{SOMAXCONN}, host(nullptr), mac(nullptr) {}
+				explicit Server() noexcept : iface{""}, host(nullptr), mac(nullptr) {}
 			} server_t;
 			/**
 			 * @brief Структура клиента
@@ -460,9 +507,9 @@ namespace awh {
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
 				// Чёрный список серверов к которым запрещёно подключение
-				unordered_set <unique_ptr <address_t>> blacklist;
+				unordered_map <string, event::address_t> blacklist;
 				// Белый список серверов к которым разрешено подключение
-				unordered_set <unique_ptr <address_t>> whitelist;
+				unordered_map <string, event::address_t> whitelist;
 				// Размеры активных буферов события
 				unordered_map <awh::event::action_t, size_t> bufferSize;
 				// Активные таймауты события
@@ -485,7 +532,7 @@ namespace awh {
 				// MAC-адрес сетевого интерфейса
 				unique_ptr <address_t> mac;
 				// Обратные вызовы события
-				callbacks_client_t callbacks;
+				callbacks_peer_t callbacks;
 				// Размеры активных буферов события
 				unordered_map <awh::event::action_t, size_t> bufferSize;
 				// Активные таймауты события
