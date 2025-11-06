@@ -1,6 +1,6 @@
 /**
  * @file: net.hpp
- * @date: 2025-10-31
+ * @date: 2025-11-06
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,25 +12,41 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_NET__
-#define __AWH_NET__
+#ifndef __AWH_NETWORK__
+#define __AWH_NETWORK__
 
 /**
  * Стандартные модули
  */
 #include <array>
 #include <string>
-#include <vector>
-#include <memory>
 #include <cstdint>
-#include <iostream>
 #include <unordered_map>
 
 /**
- * Наши модуля
+ * Для операционной системы MS Windows
  */
-#include "../sys/os.hpp"
-#include "../sys/log.hpp"
+#if _WIN32 || _WIN64
+	/**
+	 * Системные модули
+	 */
+	#include <Ws2def.h>
+	#include <winsock2.h>
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	/**
+	 * Системные модули
+	 */
+	#include <sys/socket.h>
+#endif
+
+/**
+ * Наши модули
+ */
+#include "event.hpp"
+#include "../sys/queue.hpp"
 
 /**
  * @brief основное пространство имён
@@ -42,582 +58,507 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * @brief Класс для работы с сетями
+	 * @brief Пространство имён для работы с сетью
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Net {
-		public:
+	namespace net {
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
 			/**
-			 * Режим дислокации IP-адреса
-			 */
-			enum class mode_t : uint8_t {
-				NONE = 0x00, // Адрес не установлен
-				LAN  = 0x01, // Адрес является локальным
-				WAN  = 0x02, // Адрес является глобальным
-				SYS  = 0x03  // Адрес является зарезервированным
-			};
-			/**
-			 * Составная часть IP-адреса
-			 */
-			enum class addr_t : uint8_t {
-				NONE    = 0x00, // Адрес не установлен
-				HOST    = 0x01, // Адрес хоста
-				NETWORK = 0x02  // Адрес сети
-			};
-			/**
-			 * Порядок следования байт
-			 */
-			enum class endian_t : uint8_t {
-				NONE   = 0x00, // Порядок следования байт не установлен
-				BIG    = 0x01, // Порядок байт от старшего к младшему
-				LITTLE = 0x02  // Порядок байт от младшего к старшему
-			};
-			/**
-			 * Размер формата IP-адреса
-			 */
-			enum class format_size_t : uint8_t {
-				NONE   = 0x00, // Размер формата не установлен
-				LONG   = 0x01, // Полный формат IP-адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
-				SHORT  = 0x02, // Короткий формат IP-адреса [::ae21:ad12 / 192.168.0.1]
-				MIDDLE = 0x03  // Средний формат IP-адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
-			};
-			/**
-			 * Флаги форматирования IP-адреса
-			 */
-			enum class format_flag_t : uint8_t {
-				NONE      = 0x00, // Флаг не установлен
-				HEX       = 0x01, // Шестнадцатеричный формат
-				OCTAL     = 0x02, // Восьмеричный формат
-				DECIMAL   = 0x03, // Десятичный формат
-				HEX_IPV4  = 0x04, // Шестнадцатеричный формат IPv4
-				HEX_IPV6  = 0x05  // Шестнадцатеричный формат IPv6
-			};
-			/**
-			 * Идентификаторы разновидностей адресов
-			 */
-			enum class type_t : uint8_t {
-				NONE  = 0x00, // Не определено
-				FS    = 0x01, // Адрес в файловой системе
-				MAC   = 0x02, // Аппаратный адрес сетевого интерфейса
-				URL   = 0x03, // URL-адрес
-				IPV4  = 0x04, // Адрес подключения IPv4
-				IPV6  = 0x05, // Адрес подключения IPv6
-				FQDN  = 0x06, // Доменная зона
-				NETV4 = 0x07, // Адрес/Маска сети
-				NETV6 = 0x08  // Адрес/Маска сети
-			};
-		private:
-			/**
-			 * @brief Структура локального адреса
+			 * @brief Тип сокета
 			 *
 			 */
-			typedef struct LocalNet {
-				bool reserved;               // Адрес является зарезервированным
-				uint8_t prefix;              // Префикс сети
-				std::unique_ptr <Net> end;   // Конечный диапазон адреса
-				std::unique_ptr <Net> begin; // Начальный IP-адрес
-				/**
-				 * @brief Конструктор
-				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 */
-				LocalNet(const fmk_t * fmk, const log_t * log) noexcept :
-				 reserved(false), prefix(0),
-				 end(std::make_unique <Net> (fmk, log)),
-				 begin(std::make_unique <Net> (fmk, log)) {}
-			} localNet_t;
-		private:
-			// Тип обрабатываемого адреса
-			type_t _type;
-		private:
-			// Зона IPv6 адреса
-			string _zone;
-		private:
-			// Бинарный буфер данных
-			vector <uint8_t> _buffer;
-		private:
-			// Список локальных адресов
-			std::unordered_multimap <type_t, localNet_t> _localsNet;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект для работы с логами
-			const log_t * _log;
-		private:
+			using socket_t = SOCKET;
 			/**
-			 * @brief Метод инициализации списка локальных адресов
+			 * @brief Некорректный сокет
 			 *
 			 */
-			void initLocalNet() noexcept;
-		public:
+			static constexpr socket_t invalid_socket_t = INVALID_SOCKET;
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
 			/**
-			 * @brief Метод очистки данных IP-адреса
+			 * @brief Тип сокета
 			 *
 			 */
-			void clear() noexcept;
-		public:
+			using socket_t = int32_t;
 			/**
-			 * @brief Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+			 * @brief Некорректный сокет
 			 *
-			 * @return результат проверки
 			 */
-			bool broadcastIPv6ToIPv4() const noexcept;
-		public:
+			static constexpr socket_t invalid_socket_t = -1;
+		#endif
+		/**
+		 * Режимы установки типа сокета
+		 */
+		enum class socket_mode_t : uint8_t {
+			ENABLED  = 0x01, // Включено
+			DISABLED = 0x02  // Выключено
+		};
+		/**
+		 * @brief Структура адреса
+		 *
+		 */
+		typedef struct Address {
+			// Размер адреса
+			uint16_t size;
 			/**
-			 * @brief Метод извлечения зоны IPv6 адреса
+			 * @brief Конструктор
 			 *
-			 * @return зона IPv6 адреса
+			 * @param size размер адреса
 			 */
-			const string & zone() const noexcept;
+			explicit Address(const uint16_t size = 0) noexcept : size(size) {}
 			/**
-			 * @brief Метод установки зоны IPv6 адреса
+			 * @brief Деструктор
 			 *
-			 * @param zone зона IPv6 адреса для установки
 			 */
-			void zone(const string & zone) noexcept;
-		public:
+			virtual ~Address() noexcept = default;
+		} addr_t;
+		/**
+		 * @brief Структура MAC-адреса
+		 *
+		 */
+		typedef struct AddressMAC : public addr_t {
+			// Буфер MAC-адреса
+			array <uint8_t, 6> address;
 			/**
-			 * @brief Метод извлечения типа IP-адреса
+			 * @brief Конструктор
 			 *
-			 * @return тип IP-адреса
 			 */
-			type_t type() const noexcept;
+			explicit AddressMAC() noexcept : addr_t(6), address{0} {}
+		} addr_mac_t;
+		/**
+		 * @brief Структура сетевого адреса
+		 *
+		 */
+		typedef struct AddressNetwork : public addr_t {
+			// Префикс сети
+			uint8_t prefix;
 			/**
-			 * @brief Метод установки типа IP-адреса
+			 * @brief Конструктор
 			 *
-			 * @param type тип IP-адреса для установки
+			 * @param prefix префикс сети
+			 * @param size   размер адреса
 			 */
-			void type(const type_t type) noexcept;
-		public:
+			explicit AddressNetwork(const uint8_t prefix, const uint16_t size) noexcept :
+				addr_t(size), prefix(prefix) {}
+		} addr_net_t;
+		/**
+		 * @brief Структура IPv4 сетевого адреса
+		 *
+		 */
+		typedef struct AddressNetworkIPv4 : public addr_net_t {
+			// IP-адрес сети
+			uint32_t address;
 			/**
-			 * @brief Метод определения типа хоста
+			 * @brief Конструктор
 			 *
-			 * @param host хост для определения
-			 * @return     определённый тип хоста
 			 */
-			type_t host(const string & host) const noexcept;
-		public:
+			explicit AddressNetworkIPv4() noexcept : addr_net_t(32, 4), address(0) {}
 			/**
-			 * @brief Метод извлечения аппаратного адреса в чистом виде
+			 * @brief Деструктор
 			 *
-			 * @return аппаратный адрес в чистом виде
 			 */
-			std::array <uint8_t, 6> mac() const noexcept;
+			virtual ~AddressNetworkIPv4() noexcept = default;
+		} addr_net_ipv4_t;
+		/**
+		 * @brief Структура IPv6 сетевого адреса
+		 *
+		 */
+		typedef struct AddressNetworkIPv6 : public addr_net_t {
+			// Буфер IP-адрес сети
+			array <uint8_t, 16> address;
 			/**
-			 * @brief Метод установки аппаратного адреса в чистом виде
+			 * @brief Конструктор
 			 *
-			 * @param addr аппаратный адрес в чистом виде
 			 */
-			void mac(const std::array <uint8_t, 6> & addr) noexcept;
-		public:
+			explicit AddressNetworkIPv6() noexcept : addr_net_t(128, 16), address{0} {}
+		} addr_net_ipv6_t;
+		/**
+		 * @brief Структура адреса файловой системы
+		 *
+		 */
+		typedef struct AddressFilesystem : public addr_t {
+			// Путь к файлу, каталогу или сокету
+			string address;
 			/**
-			 * @brief Метод извлечения адреса IPv4 в чистом виде
+			 * @brief Конструктор
 			 *
-			 * @param endian флаг формирования адреса в установленном порядке следовании байт
-			 * @return       адрес IPv4 в чистом виде
 			 */
-			uint32_t v4(const endian_t endian = endian_t::LITTLE) const noexcept;
+			explicit AddressFilesystem() noexcept : address{""} {}
+		} addr_fs_t;
+		/**
+		 * @brief Структура сетевых адресов текущей машины
+		 *
+		 */
+		typedef struct Source {
+			// Название сетвого интерфейса
+			string iface;
+			// IP-адрес сети
+			unique_ptr <addr_t> ip;
+			// MAC-адрес сети
+			unique_ptr <addr_t> mac;
 			/**
-			 * @brief Метод установки адреса IPv4 в чистом виде
+			 * @brief Конструктор
 			 *
-			 * @param addr   адрес IPv4 в чистом виде
-			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 * @param ip адрес сетевого подключения
 			 */
-			void v4(const uint32_t addr, const endian_t endian = endian_t::LITTLE) noexcept;
-		public:
+			explicit Source(unique_ptr <addr_t> ip) noexcept :
+			 iface{""}, ip(std::move(ip)), mac(make_unique <addr_mac_t> ()) {}
+		} src_t;
+		/**
+		 * @brief Структура атрибутов подключения
+		 *
+		 */
+		typedef struct Attributes {
+			// Файловый дескриптор сервиса
+			socket_t fd;
 			/**
-			 * @brief Метод извлечения адреса IPv6 в чистом виде
+			 * @brief Конструктор
 			 *
-			 * @param endian флаг формирования адреса в установленном порядке следовании байт
-			 * @return       адрес IPv6 в чистом виде
 			 */
-			std::array <uint8_t, 16> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
+			explicit Attributes() noexcept : fd(invalid_socket_t) {}
 			/**
-			 * @brief Метод установки адреса IPv6 в чистом виде
+			 * @brief Деструктор
 			 *
-			 * @param addr   адрес IPv6 в чистом виде
-			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void v6(const std::array <uint8_t, 16> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
-		public:
+			virtual ~Attributes() noexcept = default;
+		} attr_t;
+		/**
+		 * @brief Структура IP-адреса подключения
+		 *
+		 */
+		typedef struct AttributesNet : public attr_t {
+			// Порт хоста
+			uint16_t port;
+			// IP-адрес хоста
+			unique_ptr <addr_t> ip;
 			/**
-			 * @brief Метод проверки валидности IP-адреса
+			 * @brief Конструктор
 			 *
-			 * @param addr адрес аппаратный или интернет подключения для проверки
-			 * @param type тип адреса аппаратного или интернет подключения для проверки
-			 * @return     результат проверки
 			 */
-			bool check(const string_view addr, const type_t type) const noexcept;
-		public:
+			explicit AttributesNet() noexcept :
+			 port(0), ip(make_unique <addr_net_ipv4_t> ()) {}
+		} attr_net_t;
+		/**
+		 * @brief Структура UDS-адреса подключения
+		 *
+		 */
+		typedef struct AttributesUDS : public attr_t {
+			// Путь к сокету
+			unique_ptr <addr_t> path;
 			/**
-			 * @brief Метод наложения маски сети
+			 * @brief Конструктор
 			 *
-			 * @param mask маска сети для наложения
-			 * @param addr тип получаемого адреса
 			 */
-			void impose(const string & mask, const addr_t addr) noexcept;
+			explicit AttributesUDS() noexcept :
+			 path(make_unique <addr_fs_t> ()) {}
+		} attr_uds_t;
+		/**
+		 * @brief Структура очереди ожидания подключения
+		 *
+		 */
+		typedef struct Backlog {
+			// Адаптивный режим очереди ожидания подключения
+			bool adaptive;
+			// Размер очереди ожидания подключения
+			uint16_t depth;
 			/**
-			 * @brief Метод наложения маски сети
+			 * @brief Конструктор
 			 *
-			 * @param mask маска сети для наложения
-			 * @param addr тип получаемого адреса
-			 * @param type тип адреса аппаратного или интернет подключения
 			 */
-			void impose(const string & mask, const addr_t addr, const type_t type) noexcept;
-		public:
+			explicit Backlog() noexcept : adaptive(false), depth(SOMAXCONN) {}
+		} __attribute__((packed)) backlog_t;
+		/**
+		 * @brief Структура состояния события
+		 *
+		 */
+		typedef struct State {
+			uint16_t options;           // Флаги опций события
+			event::mode_t mode;         // Флаг режима события
+			event::node_t node;         // Флаг узла события
+			event::type_t type;         // Флаг типа события
+			event::family_t family;     // Флаг семейства события
+			event::status_t status;     // Флаг статуса события
+			event::address_t address;   // Флаг адреса события
+			event::protocol_t protocol; // Флаг протокола события
 			/**
-			 * @brief Метод наложения префикса
+			 * @brief Конструктор
 			 *
-			 * @param prefix префикс для наложения
-			 * @param addr   тип получаемого адреса
 			 */
-			void impose(const uint8_t prefix, const addr_t addr) noexcept;
+			explicit State() noexcept :
+			 options(event::options::NONE),
+			 mode(event::mode_t::NONE),
+			 node(event::node_t::NONE),
+			 type(event::type_t::NONE),
+			 family(event::family_t::NONE),
+			 status(event::status_t::NONE),
+			 address(event::address_t::NONE),
+			 protocol(event::protocol_t::NONE) {}
+		} __attribute__((packed)) state_t;
+		/**
+		 * @brief Структура обратных вызовов события
+		 *
+		 */
+		typedef struct Callbacks {
+			// Обратный вызов при ошибке события
+			event::callback::error_t error;
+			// Обратный вызов при изменении статуса события
+			event::callback::status_t status;
 			/**
-			 * @brief Метод наложения префикса
+			 * @brief Конструктор
 			 *
-			 * @param prefix префикс для наложения
-			 * @param addr   тип получаемого адреса
-			 * @param type   тип адреса аппаратного или интернет подключения
 			 */
-			void impose(const uint8_t prefix, const addr_t addr, const type_t type) noexcept;
-		public:
+			explicit Callbacks() noexcept : error(nullptr), status(nullptr) {}
 			/**
-			 * @brief Метод перевода маски сети в префикс адреса
+			 * @brief Конструктор
 			 *
-			 * @param mask маска сети для перевода
-			 * @return     полученный префикс адреса
 			 */
-			uint8_t mask2Prefix(const string & mask) const noexcept;
+			virtual ~Callbacks() = default;
+		} callbacks_t;
+		/**
+		 * @brief Структура обратных вызовов сервера
+		 *
+		 */
+		typedef struct ServerCallbacks : public callbacks_t {
+			// Обратный вызов при принятии события
+			event::callback::accept_t accept;
 			/**
-			 * @brief Метод перевода маски сети в префикс адреса
+			 * @brief Конструктор
 			 *
-			 * @param mask маска сети для перевода
-			 * @param type тип адреса аппаратного или интернет подключения
-			 * @return     полученный префикс адреса
 			 */
-			uint8_t mask2Prefix(const string & mask, const type_t type) const noexcept;
-		public:
+			explicit ServerCallbacks() noexcept : accept(nullptr) {}
+		} server_callbacks_t;
+		/**
+		 * @brief Структура обратных вызовов клиента
+		 *
+		 */
+		typedef struct ClientCallbacks : public callbacks_t {
+			// Обратный вызов при чтении события
+			event::callback::read_t read;
+			// Обратный вызов при записи события
+			event::callback::write_t write;
+			// Обратный вызов при подключении события
+			event::callback::connect_t connect;
 			/**
-			 * @brief Метод преобразования префикса адреса в маску сети
+			 * @brief Конструктор
 			 *
-			 * @param prefix префикс адреса для преобразования
-			 * @return       полученная маска сети
 			 */
-			string prefix2Mask(const uint8_t prefix) const noexcept;
+			explicit ClientCallbacks() noexcept :
+			 read(nullptr), write(nullptr), connect(nullptr) {}
+		} client_callbacks_t;
+		/**
+		 * @brief Структура обратных вызовов подключённого клиента
+		 *
+		 */
+		typedef struct PeerCallbacks : public callbacks_t {
+			// Обратный вызов при чтении события
+			event::callback::read_t read;
+			// Обратный вызов при записи события
+			event::callback::write_t write;
 			/**
-			 * @brief Метод преобразования префикса адреса в маску сети
+			 * @brief Конструктор
 			 *
-			 * @param prefix префикс адреса для преобразования
-			 * @param type   тип адреса аппаратного или интернет подключения
-			 * @return       полученная маска сети
 			 */
-			string prefix2Mask(const uint8_t prefix, const type_t type) const noexcept;
-		public:
+			explicit PeerCallbacks() noexcept : read(nullptr), write(nullptr) {}
+		} peer_callbacks_t;
+		/**
+		 * @brief Структура конечного подключения
+		 *
+		 */
+		typedef struct Endpoint {
+			// Размер объекта подключения
+			socklen_t size;
+			// Параметры подключения клиента
+			struct sockaddr_storage client;
+			// Параметры подключения сервера
+			struct sockaddr_storage server;
 			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Конструктор
 			 *
-			 * @param begin начало диапазона адресов
-			 * @param end   конец диапазона адресов
-			 * @param mask  маска сети для перевода
-			 * @return      результат првоерки
 			 */
-			bool range(const Net & begin, const Net & end, const string & mask) const noexcept;
+			explicit Endpoint() noexcept : size(0), client{0}, server{0} {}
+		} endpoint_t;
+		/**
+		 * @brief Структура буфера данных
+		 *
+		 */
+		typedef struct Buffer {
+			// Размер буфера данных
+			size_t size;
+			// Указатель на буфер данных
+			unique_ptr <uint8_t []> data;
 			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Конструктор
 			 *
-			 * @param begin начало диапазона адресов
-			 * @param end   конец диапазона адресов
-			 * @param mask  маска сети для перевода
-			 * @param type  тип адреса аппаратного или интернет подключения
-			 * @return      результат првоерки
 			 */
-			bool range(const Net & begin, const Net & end, const string & mask, const type_t type) const noexcept;
-		public:
+			explicit Buffer() noexcept : size(0), data(nullptr) {}
+		} buffer_t;
+		/**
+		 * @brief Структура передачи данных
+		 *
+		 */
+		typedef struct Transfer {
+			size_t offset;  // Смещение передачи данных
+			buffer_t input; // Буфер получения данных
+			queue_t output; // Очередь отправки данных
 			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
-			 *
-			 * @param begin  начало диапазона адресов
-			 * @param end    конец диапазона адресов
-			 * @param prefix префикс адреса для преобразования
-			 * @return       результат првоерки
-			 */
-			bool range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept;
-			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
-			 *
-			 * @param begin  начало диапазона адресов
-			 * @param end    конец диапазона адресов
-			 * @param prefix префикс адреса для преобразования
-			 * @param type   тип адреса аппаратного или интернет подключения
-			 * @return       результат првоерки
-			 */
-			bool range(const Net & begin, const Net & end, const uint8_t prefix, const type_t type) const noexcept;
-		public:
-			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
-			 *
-			 * @param begin начало диапазона адресов
-			 * @param end   конец диапазона адресов
-			 * @param mask  маска сети для перевода
-			 * @return      результат првоерки
-			 */
-			bool range(const string & begin, const string & end, const string & mask) const noexcept;
-			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
-			 *
-			 * @param begin начало диапазона адресов
-			 * @param end   конец диапазона адресов
-			 * @param mask  маска сети для перевода
-			 * @param type  тип адреса аппаратного или интернет подключения
-			 * @return      результат првоерки
-			 */
-			bool range(const string & begin, const string & end, const string & mask, const type_t type) const noexcept;
-		public:
-			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
-			 *
-			 * @param begin  начало диапазона адресов
-			 * @param end    конец диапазона адресов
-			 * @param prefix префикс адреса для преобразования
-			 * @return       результат првоерки
-			 */
-			bool range(const string & begin, const string & end, const uint8_t prefix) const noexcept;
-			/**
-			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
-			 *
-			 * @param begin  начало диапазона адресов
-			 * @param end    конец диапазона адресов
-			 * @param prefix префикс адреса для преобразования
-			 * @param type   тип адреса аппаратного или интернет подключения
-			 * @return       результат првоерки
-			 */
-			bool range(const string & begin, const string & end, const uint8_t prefix, const type_t type) const noexcept;
-		public:
-			/**
-			 * @brief Метод проверки соотвествия IP-адреса указанной сети
-			 *
-			 * @param network сеть для проверки соответствия
-			 * @return        результат проверки
-			 */
-			bool mapping(const string & network) const noexcept;
-			/**
-			 * @brief Метод проверки соотвествия IP-адреса указанной сети
-			 *
-			 * @param network сеть для проверки соответствия
-			 * @param type    тип адреса аппаратного или интернет подключения
-			 * @return        результат проверки
-			 */
-			bool mapping(const string & network, const type_t type) const noexcept;
-		public:
-			/**
-			 * @brief Метод проверки соотвествия IP-адреса указанной сети
-			 *
-			 * @param network сеть для проверки соответствия
-			 * @param mask    маска сети для наложения
-			 * @param addr    тип получаемого адреса
-			 * @return        результат проверки
-			 */
-			bool mapping(const string & network, const string & mask, const addr_t addr) const noexcept;
-			/**
-			 * @brief Метод проверки соотвествия IP-адреса указанной сети
-			 *
-			 * @param network сеть для проверки соответствия
-			 * @param mask    маска сети для наложения
-			 * @param addr    тип получаемого адреса
-			 * @param type    тип адреса аппаратного или интернет подключения
-			 * @return        результат проверки
-			 */
-			bool mapping(const string & network, const string & mask, const addr_t addr, const type_t type) const noexcept;
-		public:
-			/**
-			 * @brief Метод проверки соотвествия IP-адреса указанной сети
-			 *
-			 * @param network сеть для проверки соответствия
-			 * @param prefix  префикс для наложения
-			 * @param addr    тип получаемого адреса
-			 * @return        результат проверки
-			 */
-			bool mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept;
-			/**
-			 * @brief Метод проверки соотвествия IP-адреса указанной сети
-			 *
-			 * @param network сеть для проверки соответствия
-			 * @param prefix  префикс для наложения
-			 * @param addr    тип получаемого адреса
-			 * @param type    тип адреса аппаратного или интернет подключения
-			 * @return        результат проверки
-			 */
-			bool mapping(const string & network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept;
-		public:
-			/**
-			 * @brief Метод определения режима дислокации IP-адреса
-			 *
-			 * @return режим дислокации
-			 */
-			mode_t mode() const noexcept;
-		public:
-			/**
-			 * @brief Получение записи в формате ARPA
-			 *
-			 * @return запись в формате ARPA
-			 */
-			string arpa() const noexcept;
-			/**
-			 * @brief Метод установки записи в формате ARPA
-			 *
-			 * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
-			 * @return     результат установки записи
-			 */
-			bool arpa(const string & addr) noexcept;
-		public:
-			/**
-			 * @brief Метод парсинга адреса
-			 *
-			 * @param addr адрес аппаратный или интернет подключения для парсинга
-			 * @return     результат работы парсинга
-			 */
-			bool parse(const string & addr) noexcept;
-			/**
-			 * @brief Метод парсинга адреса
-			 *
-			 * @param addr адрес аппаратный или интернет подключения для парсинга
-			 * @param type тип адреса аппаратного или интернет подключения для парсинга
-			 * @return     результат работы парсинга
-			 */
-			bool parse(const string & addr, const type_t type) noexcept;
-		public:
-			/**
-			 * @brief Метод извлечения данных IP-адреса
-			 *
-			 * @param size  размер формата формирования IP-адреса
-			 * @param flag  флаг форматирования IP-адреса
-			 * @param delim разделитель формата формирования IP-адреса
-			 * @return      сформированная строка IP-адреса
-			 */
-			string print(const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const char delim = -1) const noexcept;
-		public:
-			/**
-			 * @brief Оператор вывода IP-адреса в качестве строки
-			 *
-			 * @return IP-адрес в качестве строки
-			 */
-			operator string() const noexcept;
-		public:
-			/**
-			 * @brief Оператор [<] сравнения IP-адреса
-			 *
-			 * @param addr адрес для сравнения
-			 * @return     результат сравнения
-			 */
-			bool operator < (const Net & addr) const noexcept;
-			/**
-			 * @brief Оператор [>] сравнения IP-адреса
-			 *
-			 * @param addr адрес для сравнения
-			 * @return     результат сравнения
-			 */
-			bool operator > (const Net & addr) const noexcept;
-			/**
-			 * @brief Оператор [<=] сравнения IP-адреса
-			 *
-			 * @param addr адрес для сравнения
-			 * @return     результат сравнения
-			 */
-			bool operator <= (const Net & addr) const noexcept;
-			/**
-			 * @brief Оператор [>=] сравнения IP-адреса
-			 *
-			 * @param addr адрес для сравнения
-			 * @return     результат сравнения
-			 */
-			bool operator >= (const Net & addr) const noexcept;
-			/**
-			 * @brief Оператор [!=] сравнения IP-адреса
-			 *
-			 * @param addr адрес для сравнения
-			 * @return     результат сравнения
-			 */
-			bool operator != (const Net & addr) const noexcept;
-			/**
-			 * @brief Оператор [==] сравнения IP-адреса
-			 *
-			 * @param addr адрес для сравнения
-			 * @return     результат сравнения
-			 */
-			bool operator == (const Net & addr) const noexcept;
-		public:
-			/**
-			 * @brief Оператор [=] присвоения IP-адреса
-			 *
-			 * @param addr адрес для присвоения
-			 * @return     текущий объект
-			 */
-			Net & operator = (const Net & addr) noexcept;
-			/**
-			 * @brief Оператор [=] присвоения IP-адреса
-			 *
-			 * @param ip адрес для присвоения
-			 * @return   текущий объект
-			 */
-			Net & operator = (const string & ip) noexcept;
-			/**
-			 * @brief Оператор [=] установки типа IP-адреса
-			 *
-			 * @param type тип IP-адреса для установки
-			 * @return     текущий объект
-			 */
-			Net & operator = (const type_t type) noexcept;
-			/**
-			 * @brief Оператор [=] присвоения IP-адреса
-			 *
-			 * @param addr адрес для присвоения
-			 * @return     текущий объект
-			 */
-			Net & operator = (const uint32_t addr) noexcept;
-			/**
-			 * @brief Оператор [=] присвоения MAC-адреса
-			 *
-			 * @param addr адрес для присвоения
-			 * @return     текущий объект
-			 */
-			Net & operator = (const std::array <uint8_t, 6> & addr) noexcept;
-			/**
-			 * @brief Оператор [=] присвоения IP-адреса
-			 *
-			 * @param addr адрес для присвоения
-			 * @return     текущий объект
-			 */
-			Net & operator = (const std::array <uint8_t, 16> & addr) noexcept;
-		public:
-			/**
-			 * @brief конструктор
+			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
+			 * @param log объект работы с логами
 			 */
-			explicit Net(const fmk_t * fmk, const log_t * log) noexcept;
-		public:
+			explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
+			 offset(0), output(fmk, log) {}
+		} transfer_t;
+		/**
+		 * @brief Структура узла события
+		 *
+		 */
+		typedef struct Node {
+			// Состояние события
+			state_t state;
 			/**
-			 * @brief деструктор
+			 * @brief Конструктор
 			 *
 			 */
-			~Net() noexcept {}
-	} net_t;
-	/**
-	 * @brief Оператор [>>] чтения из потока IP-адреса
-	 *
-	 * @param is   поток для чтения
-	 * @param addr адрес для присвоения
-	 */
-	AWH_SHARED_EXPORT istream & operator >> (istream & is, net_t & addr) noexcept;
-	/**
-	 * @brief Оператор [<<] вывода в поток IP-адреса
-	 *
-	 * @param os   поток куда нужно вывести данные
-	 * @param addr адрес для присвоения
-	 */
-	AWH_SHARED_EXPORT ostream & operator << (ostream & os, const net_t & addr) noexcept;
+			virtual ~Node() = default;
+		} node_t;
+		/**
+		 * @brief Структура таймера
+		 *
+		 */
+		typedef struct Timer : public node_t {
+			// Задержка времени таймера в миллисекундах
+			uint16_t delay;
+			// Обратные вызовы события
+			callbacks_t callbacks;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Timer() noexcept : delay(0) {}
+		} timer_t;
+		/**
+		 * @brief Структура  пользовательского события
+		 *
+		 */
+		typedef struct User : public node_t {
+			// Обратный вызов при принятии события
+			event::callback::user_t callback;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit User() noexcept : callback(nullptr) {}
+		} user_t;
+		/**
+		 * @brief Структура файловой системы
+		 *
+		 */
+		typedef struct Filesystem : public node_t {
+			// Файловый дескриптор
+			socket_t fd;
+			// Объект передачи данных
+			transfer_t transfer;
+			// Путь к файлу, каталогу или сокету
+			unique_ptr <addr_t> path;
+			// Обратные вызовы события
+			peer_callbacks_t callbacks;
+			// Чёрный список адресов которым запрещён доступ
+			unordered_map <string, event::address_t> blacklist;
+			// Белый список адресов которым разрешён доступ
+			unordered_map <string, event::address_t> whitelist;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект работы с логами
+			 */
+			explicit Filesystem(const fmk_t * fmk, const log_t * log) noexcept :
+			 fd(invalid_socket_t), transfer(fmk, log), path(nullptr) {}
+		} fs_t;
+		/**
+		 * @brief Структура подключённого клиента
+		 *
+		 */
+		typedef struct Peer : public node_t {
+			// Объект передачи данных
+			transfer_t transfer;
+			// MAC-адрес сетевого интерфейса
+			unique_ptr <addr_t> mac;
+			// Хост подключения события
+			unique_ptr <attr_t> remote;
+			// Обратные вызовы события
+			peer_callbacks_t callbacks;
+			// Активные таймауты события
+			unordered_map <awh::event::action_t, uint16_t> timeouts;
+			// Активные действия события
+			unordered_map <awh::event::action_t, awh::event::notify_t> actions;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект работы с логами
+			 */
+			explicit Peer(const fmk_t * fmk, const log_t * log) noexcept :
+			 transfer(fmk, log), mac(nullptr), remote(nullptr) {}
+		} peer_t;
+		/**
+		 * @brief Структура сервера
+		 *
+		 */
+		typedef struct Server : public node_t {
+			// Размер очереди ожидания подключения
+			backlog_t backlog;
+			// Объект параметров конечной точки
+			endpoint_t endpoint;
+			// Параметры хоста сервера
+			unique_ptr <attr_t> host;
+			// Обратные вызовы события
+			server_callbacks_t callbacks;
+			// Чёрный список пиров которым запрещён доступ
+			unordered_map <string, event::address_t> blacklist;
+			// Белый список пиров которым разрешён доступ
+			unordered_map <string, event::address_t> whitelist;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Server() noexcept {}
+		} server_t;
+		/**
+		 * @brief Структура клиента
+		 *
+		 */
+		typedef struct Client : public node_t {
+			// Объект параметров конечной точки
+			endpoint_t endpoint;
+			// Объект передачи данных
+			transfer_t transfer;
+			// Источник сетевых адресов
+			unique_ptr <addr_t> source;
+			// Целевые параметры подключения
+			unique_ptr <attr_t> target;
+			// Обратные вызовы события
+			client_callbacks_t callbacks;
+			// Активные таймауты события
+			unordered_map <awh::event::action_t, uint16_t> timeouts;
+			// Активные действия события
+			unordered_map <awh::event::action_t, awh::event::notify_t> actions;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект работы с логами
+			 */
+			explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
+			 transfer(fmk, log), source(nullptr), target(nullptr) {}
+		} client_t;
+	};
 };
 
-#endif // __AWH_NET__
+#endif // __AWH_NETWORK__

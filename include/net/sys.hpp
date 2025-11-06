@@ -465,22 +465,22 @@ namespace awh {
 				 *
 				 */
 				explicit Filesystem() noexcept : fd(-1), path(nullptr) {}
-			} filesystem_t;
+			} fs_t;
 			/**
 			 * @brief Структура сервера
 			 *
 			 */
 			typedef struct Server : public node_t {
 				// Название сетевого интерфейса
-				string iface;
+				string iface; // Высчитывать на лету
 				// Размер очереди ожидания подключения
 				backlog_t backlog;
 				// Объект параметров конечной точки
 				endpoint_t endpoint;
 				// Хост подключения события
-				unique_ptr <host_t> host;
+				unique_ptr <host_t> host; // Заменить на сервер (Target_t)
 				// MAC-адрес сетевого интерфейса
-				unique_ptr <address_t> mac;
+				unique_ptr <address_t> mac; // Убрать (высчитывать на лету)
 				// Обратные вызовы события
 				callbacks_server_t callbacks;
 				// Чёрный список пиров которым запрещён доступ
@@ -499,11 +499,11 @@ namespace awh {
 			 */
 			typedef struct Client : public node_t {
 				// Название сетевого интерфейса
-				string iface;
+				string iface; // Только для вычисления MAC-адреса и IP-адреса для выхода в интернет (Source Address) а модуль NET заменить на netaddr
 				// Объект параметров конечной точки
 				endpoint_t endpoint;
 				// Хост подключения события
-				unique_ptr <host_t> host;
+				unique_ptr <host_t> host; // Заменить на сервер и добавить IP-адрес клиента
 				// Обратные вызовы события
 				callbacks_client_t callbacks;
 				// Чёрный список серверов к которым запрещёно подключение
@@ -511,7 +511,7 @@ namespace awh {
 				// Белый список серверов к которым разрешено подключение
 				unordered_map <string, event::address_t> whitelist;
 				// Размеры активных буферов события
-				unordered_map <awh::event::action_t, size_t> bufferSize;
+				unordered_map <awh::event::action_t, size_t> bufferSize; // Высчитывать на лету
 				// Активные таймауты события
 				unordered_map <awh::event::action_t, uint16_t> timeouts;
 				// Активные действия события
@@ -528,13 +528,13 @@ namespace awh {
 			 */
 			typedef struct Peer : public node_t {
 				// Хост подключения события
-				unique_ptr <host_t> host;
+				unique_ptr <host_t> host; // Заменить на клиента (добавить IP-адрес и порт) также нужно заменить модуль SYS на модуль NET
 				// MAC-адрес сетевого интерфейса
-				unique_ptr <address_t> mac;
+				unique_ptr <address_t> mac; // Оставить он нужен
 				// Обратные вызовы события
 				callbacks_peer_t callbacks;
 				// Размеры активных буферов события
-				unordered_map <awh::event::action_t, size_t> bufferSize;
+				unordered_map <awh::event::action_t, size_t> bufferSize; // Высчитывать на лету
 				// Активные таймауты события
 				unordered_map <awh::event::action_t, uint16_t> timeouts;
 				// Активные действия события

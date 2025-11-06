@@ -1,6 +1,6 @@
 /**
  * @file: engine.hpp
- * @date: 2025-10-26
+ * @date: 2025-11-06
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -26,11 +26,9 @@
 /**
  * Наши модули
  */
-#include "sys.hpp"
+#include "eth.hpp"
+#include "addr.hpp"
 #include "event.hpp"
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
-#include "../net/net.hpp"
 
 /**
  * @brief основное пространство имён
@@ -42,15 +40,15 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * @brief Тип основного движка фреймворка
+	 * @brief Тип сетевого асинхронного движка
 	 *
 	 */
 	typedef class Engine {
 		protected:
-			// Объект работы с системой
-			mutable sys_t _sys;
 			// Объект работы с сетью
-			mutable net_t _net;
+			mutable eth_t _eth;
+			// Объект работы с сетевыми адресами
+			mutable net_addr_t _addr;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -64,14 +62,6 @@ namespace awh {
 			 * @return   результат выполнения настройки
 			 */
 			virtual bool setup(const event::id_t id) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод опроса событий
-			 *
-			 * @param timeout таймаут опроса в миллисекундах
-			 * @return        результат выполнения опроса
-			 */
-			virtual bool poll(const int32_t timeout = -1) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения порта события
@@ -90,20 +80,36 @@ namespace awh {
 			virtual bool port(const event::id_t id, const uint16_t port) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения хоста события
+			 * @brief Метод получения сетевого интерфейса события
 			 *
 			 * @param id идентификатор события
-			 * @return   хост события
+			 * @return   сетевой интерфейс события
 			 */
-			virtual string host(const event::id_t id) const noexcept = 0;
+			virtual string iface(const event::id_t id) const noexcept = 0;
 			/**
-			 * @brief Метод установки хоста события
+			 * @brief Метод установки сетевого интерфейса события
 			 *
 			 * @param id   идентификатор события
-			 * @param host хост события
+			 * @param name имя сетевого интерфейса для установки
 			 * @return     результат выполнения установки
 			 */
-			virtual bool host(const event::id_t id, const string & host) noexcept = 0;
+			virtual bool iface(const event::id_t id, const string & name) noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения хоста целевой машины
+			 *
+			 * @param id идентификатор события
+			 * @return   хост целевой машины
+			 */
+			virtual string target(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки хоста целевой машины
+			 *
+			 * @param id   идентификатор события
+			 * @param host хост целевой машины
+			 * @return     результат выполнения установки
+			 */
+			virtual bool target(const event::id_t id, const string & target) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения типа узла события
@@ -234,15 +240,16 @@ namespace awh {
 			 * @return      результат выполнения подключения
 			 */
 			virtual bool connect(const event::id_t id, const bool async = false) noexcept = 0;
+		public:
 			/**
-			 * @brief Метод принятия входящего соединения события
+			 * @brief Метод перевода события в режим прослушивания входящих соединений
 			 *
 			 * @param id    идентификатор события
 			 * @param max   максимальное количество входящих соединений
-			 * @param async флаг асинхронного принятия соединения
-			 * @return      результат выполнения принятия соединения
+			 * @param async флаг асинхронного прослушивания
+			 * @return      результат выполнения перевода в режим прослушивания
 			 */
-			virtual bool accept(const event::id_t id, const uint16_t max, const bool async = false) noexcept = 0;
+			virtual bool listen(const event::id_t id, const uint16_t max, const bool async = false) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод отправки события
@@ -260,138 +267,6 @@ namespace awh {
 			 * @return     результат выполнения отправки
 			 */
 			virtual bool send(const event::id_t id, const char * data, const size_t size) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод очистки всех адресов сетей для выхода в интернет
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения очистки
-			 */
-			virtual bool clearNetworks(const event::id_t id) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения списка адресов сетей для выхода в интернет
-			 *
-			 * @param id идентификатор события
-			 * @return   список адресов сетей события
-			 */
-			virtual const std::unordered_set <string> & networks(const event::id_t id) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод добавления адреса сети для выхода в интернет
-			 *
-			 * @param id      идентификатор события
-			 * @param network адрес сети для добавления
-			 * @return        результат выполнения добавления
-			 */
-			virtual bool addNetwork(const event::id_t id, const string & network) noexcept = 0;
-			/**
-			 * @brief Метод удаления адреса сети для выхода в интернет
-			 *
-			 * @param id      идентификатор события
-			 * @param network адрес сети для удаления
-			 * @return        результат выполнения удаления
-			 */
-			virtual bool removeNetwork(const event::id_t id, const string & network) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод добавления списка адресов сетей для выхода в интернет
-			 *
-			 * @param id       идентификатор события
-			 * @param networks список адресов сетей для добавления
-			 * @return         результат выполнения добавления
-			 */
-			virtual bool addNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept = 0;
-			/**
-			 * @brief Метод удаления списка адресов сетей для выхода в интернет
-			 *
-			 * @param id       идентификатор события
-			 * @param networks список адресов сетей для удаления
-			 * @return         результат выполнения удаления
-			 */
-			virtual bool removeNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения сетевого интерфейса события
-			 *
-			 * @param id идентификатор события
-			 * @return   сетевой интерфейс события
-			 */
-			virtual string networkInterface(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки сетевого интерфейса события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для установки
-			 * @return     результат выполнения установки
-			 */
-			virtual bool setNetworkInterface(const event::id_t id, const string & name) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод очистки всех сетевых интерфейсов события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения очистки
-			 */
-			virtual bool clearNetworkInterfaces(const event::id_t id) noexcept = 0;
-			/**
-			 * @brief Метод получения списка сетевых интерфейсов события
-			 *
-			 * @param id идентификатор события
-			 * @return   список сетевых интерфейсов события
-			 */
-			virtual const std::unordered_set <string> & networkInterfaces(const event::id_t id) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод добавления сетевого интерфейса для события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для добавления
-			 * @return     результат выполнения добавления
-			 */
-			virtual bool addNetworkInterface(const event::id_t id, const string & name) noexcept = 0;
-			/**
-			 * @brief Метод удаления сетевого интерфейса для события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для удаления
-			 * @return     результат выполнения удаления
-			 */
-			virtual bool removeNetworkInterface(const event::id_t id, const string & name) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод добавления списка сетевых интерфейсов для события
-			 *
-			 * @param id    идентификатор события
-			 * @param names список сетевых интерфейсов для добавления
-			 * @return      результат выполнения добавления
-			 */
-			virtual bool addNetworkInterfaces(const event::id_t id, const std::unordered_set <string> & names) noexcept = 0;
-			/**
-			 * @brief Метод удаления списка сетевых интерфейсов для события
-			 *
-			 * @param id    идентификатор события
-			 * @param names список сетевых интерфейсов для удаления
-			 * @return      результат выполнения удаления
-			 */
-			virtual bool removeNetworkInterfaces(const event::id_t id, const std::unordered_set <string> & names) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод присоединения события к мультикаст группе
-			 *
-			 * @param id               идентификатор события
-			 * @param multicastAddress адрес мультикаст группы для присоединения
-			 * @return                 результат выполнения присоединения
-			 */
-			virtual bool multicastJoin(const event::id_t id, const string & multicastAddress) noexcept = 0;
-			/**
-			 * @brief Метод выхода события из мультикаст группы
-			 *
-			 * @param id               идентификатор события
-			 * @param multicastAddress адрес мультикаст группы для выхода
-			 * @return                 результат выполнения выхода
-			 */
-			virtual bool multicastLeave(const event::id_t id, const string & multicastAddress) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод очистки чёрного списка события
@@ -583,6 +458,14 @@ namespace awh {
 			virtual event::status_t status(const event::id_t id) const noexcept = 0;
 		public:
 			/**
+			 * @brief Метод опроса событий
+			 *
+			 * @param timeout таймаут опроса в миллисекундах
+			 * @return        результат выполнения опроса
+			 */
+			virtual bool poll(const int32_t timeout = -1) noexcept = 0;
+		public:
+			/**
 			 * @brief Методы установки функции обратного вызова на чтение события
 			 *
 			 * @param id идентификатор события
@@ -639,7 +522,7 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept :
-			 _sys(fmk, log), _net(fmk, log), _fmk(fmk), _log(log) {}
+			 _eth(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

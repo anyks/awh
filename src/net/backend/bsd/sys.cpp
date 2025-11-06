@@ -67,8 +67,8 @@
 /**
  * Подключаем заголовочный файл системных ресурсов
  */
-#include <engine/sys.hpp>
-#include <engine/fds.hpp>
+#include <net/sys.hpp>
+#include <net/fds.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
