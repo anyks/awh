@@ -100,6 +100,13 @@ namespace awh {
 			DISABLED = 0x02  // Выключено
 		};
 		/**
+		 * События сокета
+		 */
+		enum class socket_event_t : uint8_t {
+			READ  = 0x01, // Чтение
+			WRITE = 0x02  // Запись
+		};
+		/**
 		 * @brief Структура адреса
 		 *
 		 */
@@ -535,31 +542,6 @@ namespace awh {
 			 transfer(fmk, log), mac(nullptr), remote(nullptr) {}
 		} peer_t;
 		/**
-		 * @brief Структура сервера
-		 *
-		 */
-		typedef struct Server : public node_t {
-			// Размер очереди ожидания подключения
-			backlog_t backlog;
-			// Объект параметров конечной точки
-			endpoint_t endpoint;
-			// Параметры хоста сервера
-			unique_ptr <attr_t> host;
-			// Обратные вызовы события
-			server_callbacks_t callbacks;
-			// Чёрный список пиров которым запрещён доступ
-			unordered_map <string, event::address_t> blacklist;
-			// Белый список пиров которым разрешён доступ
-			unordered_map <string, event::address_t> whitelist;
-			// Активные таймауты события
-			unordered_map <awh::event::action_t, uint16_t> timeouts;
-			/**
-			 * @brief Конструктор
-			 *
-			 */
-			explicit Server() noexcept {}
-		} server_t;
-		/**
 		 * @brief Структура клиента
 		 *
 		 */
@@ -587,6 +569,35 @@ namespace awh {
 			explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
 			 transfer(fmk, log), source(nullptr), target(nullptr) {}
 		} client_t;
+		/**
+		 * @brief Структура сервера
+		 *
+		 */
+		typedef struct Server : public node_t {
+			// Размер очереди ожидания подключения
+			backlog_t backlog;
+			// Объект параметров конечной точки
+			endpoint_t endpoint;
+			// Объект передачи данных
+			transfer_t transfer;
+			// Параметры хоста сервера
+			unique_ptr <attr_t> host;
+			// Обратные вызовы события
+			server_callbacks_t callbacks;
+			// Чёрный список пиров которым запрещён доступ
+			unordered_map <string, event::address_t> blacklist;
+			// Белый список пиров которым разрешён доступ
+			unordered_map <string, event::address_t> whitelist;
+			// Активные таймауты события
+			unordered_map <awh::event::action_t, uint16_t> timeouts;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект работы с логами
+			 */
+			explicit Server(const fmk_t * fmk, const log_t * log) noexcept : transfer(fmk, log) {}
+		} server_t;
 	};
 };
 

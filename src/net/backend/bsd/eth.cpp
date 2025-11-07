@@ -1388,6 +1388,163 @@ bool awh::Ethernet::ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const 
 	return false;
 }
 /**
+ * @brief Метод получения размера буфера
+ *
+ * @param sock  сетевой сокет
+ * @param event событие сокета
+ * @return      размер буфера сокета
+ */
+int32_t awh::Ethernet::bufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+	// Результат работы функции
+	int32_t result = 0;
+	/**
+	 * Определяем флаг блокировки
+	 */
+	switch(static_cast <uint8_t> (event)){
+		// Если необходимо получить размер буфера на чтение
+		case static_cast <uint8_t> (net::socket_event_t::READ): {
+			// Получаем размер установленного размера буфера
+			socklen_t length = sizeof(result);
+			// Считываем установленный размер буфера
+			if(::getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &result, &length) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Если необходимо получить размер буфера на запись
+		case static_cast <uint8_t> (net::socket_event_t::WRITE): {
+			// Получаем размер установленного размера буфера
+			socklen_t length = sizeof(result);
+			// Считываем установленный размер буфера
+			if(::getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &result, &length) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки размеров буфера
+ *
+ * @param sock  сетевой сокет
+ * @param event событие сокета
+ * @param size  размер буфера сокета
+ * @return      установленный размер буфера сокета
+ */
+int32_t awh::Ethernet::bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	/**
+	 * Определяем флаг блокировки
+	 */
+	switch(static_cast <uint8_t> (event)){
+		// Если необходимо установить размер буфера на чтение
+		case static_cast <uint8_t> (net::socket_event_t::READ): {
+			// Устанавливаем размер буфера на чтение
+			if(::setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Получаем размер установленного размера буфера
+			socklen_t length = sizeof(result);
+			// Считываем установленный размер буфера на чтение
+			if(::getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &result, &length) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Если необходимо установить размер буфера на запись
+		case static_cast <uint8_t> (net::socket_event_t::WRITE): {
+			// Устанавливаем размер буфера на запись
+			if(::setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Получаем размер установленного размера буфера
+			socklen_t length = sizeof(result);
+			// Считываем установленный размер буфера
+			if(::getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &result, &length) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод блокировки сигнала SIGILL
  *
  * @return результат работы функции

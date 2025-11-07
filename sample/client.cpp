@@ -65,6 +65,12 @@ int32_t main(int32_t argc, char * argv[]){
 
 		// cout << " !!!!! " << io.address(eid, event::address_t::UDS) << " !!!!! " << io.host(eid) << endl;
 
+		io.bufferSize(eid, event::action_t::READ, 1024 * 64);
+		io.bufferSize(eid, event::action_t::WRITE, 1024 * 64);
+
+		cout << " Размер буфера на чтение: " << io.bufferSize(eid, event::action_t::READ) << " байт. " << endl;
+		cout << " Размер буфера на запись: " << io.bufferSize(eid, event::action_t::WRITE) << " байт. " << endl;
+
 	// Если адрес не установлен
 	} else {
 

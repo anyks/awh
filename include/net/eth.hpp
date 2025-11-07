@@ -94,6 +94,24 @@ namespace awh {
 			bool ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const uint8_t length) const noexcept;
 		public:
 			/**
+			 * @brief Метод получения размера буфера
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @return      размер буфера сокета
+			 */
+			int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept;
+			/**
+			 * @brief Метод установки размеров буфера
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @param size  размер буфера сокета
+			 * @return      установленный размер буфера сокета
+			 */
+			int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
+		public:
+			/**
 			 * @brief Метод блокировки сигнала SIGILL
 			 *
 			 * @return результат работы функции

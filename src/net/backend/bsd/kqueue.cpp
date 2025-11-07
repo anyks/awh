@@ -319,8 +319,8 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 					// Получаем текущее значение объекта сервера
 					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
@@ -472,8 +472,8 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 					// Получаем текущее значение объекта клиента
 					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
@@ -552,8 +552,8 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 					// Получаем текущее значение объекта сервера
 					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
@@ -673,8 +673,8 @@ string awh::IO::target(const event::id_t id) const noexcept {
 					// Получаем текущее значение объекта соседа
 					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
@@ -748,8 +748,8 @@ string awh::IO::target(const event::id_t id) const noexcept {
 					// Получаем текущее значение объекта клиента
 					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
@@ -823,8 +823,8 @@ string awh::IO::target(const event::id_t id) const noexcept {
 					// Получаем текущее значение объекта сервера
 					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
@@ -972,8 +972,8 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Получаем текущее значение объекта соседа
 					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
@@ -1083,8 +1083,8 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Получаем текущее значение объекта клиента
 					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
@@ -1194,8 +1194,8 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Получаем текущее значение объекта сервера
 					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
 					/**
-					* Определяем семейство сокета
-					*/
+					 * Определяем семейство сокета
+					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
@@ -1399,7 +1399,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Выполняем создание новой ноды
-					unique_ptr <net::server_t> node = make_unique <net::server_t> ();
+					unique_ptr <net::server_t> node = make_unique <net::server_t> (this->_fmk, this->_log);
 					// Выполняем перенос состояний ноды
 					node->state = i->second->state;
 					// Выполняем перенос хоста ноды
@@ -7526,11 +7526,304 @@ void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool ada
  * @brief Метод получения размера буфера события
  *
  * @param id     идентификатор события
- * @param action тип действия с буфером
+ * @param action тип действия события
  * @return       размер буфера события
  */
 size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) const noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Получаем текущее значение объекта файловой системы
+					net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Извлекаем размер буфера на чтение
+							return fs->transfer.input.size;
+						// Если действие не определено
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Buffer size can only be get for read action on file system events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Buffer size can only be get for read action on file system events", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта соседа
+					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Получаем объект хоста соседа
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (peer->remote.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(remote->fd, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(remote->fd, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Получаем объект хоста соседа
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(remote->fd, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(remote->fd, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Получаем объект хоста клиента
+							net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(target->fd, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(target->fd, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Получаем объект хоста клиента
+							net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(target->fd, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(target->fd, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+					}
+				} break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Получаем объект хоста сервера
+							net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(host->fd, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(host->fd, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Получаем объект хоста сервера
+							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(host->fd, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(host->fd, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+					}
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Buffer size cannot be get for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Buffer size cannot be get for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -7538,14 +7831,306 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
  * @brief Метод установки размера буфера события
  *
  * @param id     идентификатор события
- * @param action тип действия с буфером
+ * @param action тип действия события
  * @param size   размер буфера события
  * @return       результат выполнения установки
  */
 bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Получаем текущее значение объекта файловой системы
+					net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ): {
+							// Устанавливаем размер буфера на чтение
+							fs->transfer.input.size = size;
+							// Выполняем создание нового буфера на чтение
+							fs->transfer.input.data = make_unique <uint8_t []> (fs->transfer.input.size);
+						} break;
+						// Если действие не определено
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Buffer size can only be set for read action on file system events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Buffer size can only be set for read action on file system events", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта соседа
+					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Получаем объект хоста соседа
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (peer->remote.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(remote->fd, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										peer->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										peer->transfer.input.data = make_unique <uint8_t []> (peer->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(remote->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Получаем объект хоста соседа
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(remote->fd, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										peer->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										peer->transfer.input.data = make_unique <uint8_t []> (peer->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(remote->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Получаем объект хоста клиента
+							net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(target->fd, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										client->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										client->transfer.input.data = make_unique <uint8_t []> (client->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(target->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Получаем объект хоста клиента
+							net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(target->fd, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										client->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										client->transfer.input.data = make_unique <uint8_t []> (client->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(target->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+					}
+				} break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Получаем объект хоста сервера
+							net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(host->fd, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										server->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										server->transfer.input.data = make_unique <uint8_t []> (server->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(host->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Получаем объект хоста сервера
+							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(host->fd, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										server->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										server->transfer.input.data = make_unique <uint8_t []> (server->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(host->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+					}
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Buffer size cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Buffer size cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод получения таймаута события

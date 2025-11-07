@@ -343,7 +343,7 @@ namespace awh {
 			 * @brief Метод получения размера буфера события
 			 *
 			 * @param id     идентификатор события
-			 * @param action тип действия с буфером
+			 * @param action тип действия события
 			 * @return       размер буфера события
 			 */
 			virtual size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept = 0;
@@ -351,7 +351,7 @@ namespace awh {
 			 * @brief Метод установки размера буфера события
 			 *
 			 * @param id     идентификатор события
-			 * @param action тип действия с буфером
+			 * @param action тип действия события
 			 * @param size   размер буфера события
 			 * @return       результат выполнения установки
 			 */
