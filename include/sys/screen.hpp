@@ -117,7 +117,7 @@ namespace awh {
 			 */
 			void process() noexcept {
 				// Если не производится остановка
-				if(!this->_stop){
+				if(!this->_stop.load(std::memory_order_acquire)){
 					/**
 					 * Выполняем отлов ошибок
 					 */
@@ -174,7 +174,7 @@ namespace awh {
 				/**
 				 * Запускаем бесконечный цикл
 				 */
-				while(!this->_stop){
+				while(!this->_stop.load(std::memory_order_acquire)){
 					/**
 					 * Выполняем отлов ошибок
 					 */
@@ -186,7 +186,7 @@ namespace awh {
 						// Выполняем запуск обработки поступившей задачи
 						this->process();
 						// Если произведена остановка
-						if(this->_stop)
+						if(this->_stop.load(std::memory_order_acquire))
 							// Выходим из цикла
 							break;
 					/**
@@ -196,7 +196,7 @@ namespace awh {
 						// Выполняем запуск обработки поступившей задачи
 						this->process();
 						// Если произведена остановка
-						if(this->_stop)
+						if(this->_stop.load(std::memory_order_acquire))
 							// Выходим из цикла
 							break;
 					}
@@ -210,7 +210,7 @@ namespace awh {
 			 */
 			bool check() noexcept {
 				// Если произведена остановка выходим
-				if(this->_stop)
+				if(this->_stop.load(std::memory_order_acquire))
 					// Выходим из функции
 					return true;
 				// Выполняем проверку на наличие полезной нагрузки
@@ -243,7 +243,7 @@ namespace awh {
 			 */
 			bool launched() const noexcept {
 				// Выводим результат проверки
-				return !this->_stop;
+				return !this->_stop.load(std::memory_order_acquire);
 			}
 		public:
 			/**
@@ -473,9 +473,9 @@ namespace awh {
 				 */
 				try {
 					// Если работа модуля запущена
-					if(!this->_stop){
+					if(!this->_stop.load(std::memory_order_acquire)){
 						// Устанавливаем флаг остановки работы модуля
-						this->_stop = !this->_stop;
+						this->_stop.store(true, std::memory_order_release);
 						// Отправляем сообщение, что данные записаны
 						this->_cv.notify_one();
 						// Дожидаемся завершения работы потока
@@ -505,9 +505,9 @@ namespace awh {
 				 */
 				try {
 					// Если работа модуля ещё не запущена
-					if(this->_stop){
+					if(this->_stop.load(std::memory_order_acquire)){
 						// Снимаем флаг остановки работы модуля
-						this->_stop = !this->_stop;
+						this->_stop.store(false, std::memory_order_release);
 						// Создаём объект хэширования
 						std::hash <std::thread::id> hasher;
 						// Создаём дочерний поток для формирования лога

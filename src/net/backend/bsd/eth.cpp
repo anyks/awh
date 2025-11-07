@@ -1130,7 +1130,7 @@ void awh::Ethernet::fillsource(const unique_ptr <net::addr_t> & net, net::src_t 
 				// Проверяем корректность префикса сети
 				if(network->prefix > 32)
 					// Корректируем префикс сети
-					awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->prefix = 32;
+					const_cast <net::addr_net_ipv4_t *> (network)->prefix = 32;
 				// Проверка выравнивания сетевого адреса по маске
 				const uint32_t mask = ((network->prefix == 0) ? 0 : (~((1U << (32 - network->prefix)) - 1)));
 				// Если сетевой адрес не выровнен по маске

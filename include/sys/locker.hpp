@@ -136,9 +136,9 @@ namespace awh {
 			*/
 			explicit Locker(LockState <MutexType> & state) noexcept : _state(state) {
 				// Если идентификатор процесса не совпадает
-				if(this->_state._pid != ::getpid()){
+				if(this->_state._pid.load(std::memory_order_acquire) != ::getpid()){
 					// Устанавливаем идентификатор процесса
-					this->_state._pid = ::getpid();
+					this->_state._pid.store(::getpid(), std::memory_order_release);
 					// Выполняем удаление мютекса
 					this->_state._mtx.reset(nullptr);
 				}

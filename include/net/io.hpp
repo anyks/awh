@@ -1,6 +1,6 @@
 /**
  * @file: io.hpp
- * @date: 2025-10-27
+ * @date: 2025-11-06
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -44,14 +44,6 @@ namespace awh {
 			bool setup(const event::id_t id) noexcept;
 		public:
 			/**
-			 * @brief Метод опроса событий
-			 *
-			 * @param timeout таймаут опроса в миллисекундах
-			 * @return        результат выполнения опроса
-			 */
-			bool poll(const int32_t timeout = -1) noexcept;
-		public:
-			/**
 			 * @brief Метод получения порта события
 			 *
 			 * @param id идентификатор события
@@ -68,20 +60,36 @@ namespace awh {
 			bool port(const event::id_t id, const uint16_t port) noexcept;
 		public:
 			/**
-			 * @brief Метод получения хоста события
+			 * @brief Метод получения сетевого интерфейса события
 			 *
 			 * @param id идентификатор события
-			 * @return   хост события
+			 * @return   сетевой интерфейс события
 			 */
-			string host(const event::id_t id) const noexcept;
+			string iface(const event::id_t id) const noexcept;
 			/**
-			 * @brief Метод установки хоста события
+			 * @brief Метод установки сетевого интерфейса события
 			 *
 			 * @param id   идентификатор события
-			 * @param host хост события
+			 * @param name имя сетевого интерфейса для установки
 			 * @return     результат выполнения установки
 			 */
-			bool host(const event::id_t id, const string & host) noexcept;
+			bool iface(const event::id_t id, const string & name) noexcept;
+		public:
+			/**
+			 * @brief Метод получения хоста целевой машины
+			 *
+			 * @param id идентификатор события
+			 * @return   хост целевой машины
+			 */
+			string target(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки хоста целевой машины
+			 *
+			 * @param id   идентификатор события
+			 * @param host хост целевой машины
+			 * @return     результат выполнения установки
+			 */
+			bool target(const event::id_t id, const string & target) noexcept;
 		public:
 			/**
 			 * @brief Метод получения типа узла события
@@ -212,15 +220,16 @@ namespace awh {
 			 * @return      результат выполнения подключения
 			 */
 			bool connect(const event::id_t id, const bool async = false) noexcept;
+		public:
 			/**
-			 * @brief Метод принятия входящего соединения события
+			 * @brief Метод перевода события в режим прослушивания входящих соединений
 			 *
 			 * @param id    идентификатор события
 			 * @param max   максимальное количество входящих соединений
-			 * @param async флаг асинхронного принятия соединения
-			 * @return      результат выполнения принятия соединения
+			 * @param async флаг асинхронного прослушивания
+			 * @return      результат выполнения перевода в режим прослушивания
 			 */
-			bool accept(const event::id_t id, const uint16_t max, const bool async = false) noexcept;
+			bool listen(const event::id_t id, const uint16_t max, const bool async = false) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки события
@@ -238,138 +247,6 @@ namespace awh {
 			 * @return     результат выполнения отправки
 			 */
 			bool send(const event::id_t id, const char * data, const size_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод очистки всех адресов сетей для выхода в интернет
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения очистки
-			 */
-			bool clearNetworks(const event::id_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод получения списка адресов сетей для выхода в интернет
-			 *
-			 * @param id идентификатор события
-			 * @return   список адресов сетей события
-			 */
-			const std::unordered_set <string> & networks(const event::id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод добавления адреса сети для выхода в интернет
-			 *
-			 * @param id      идентификатор события
-			 * @param network адрес сети для добавления
-			 * @return        результат выполнения добавления
-			 */
-			bool addNetwork(const event::id_t id, const string & network) noexcept;
-			/**
-			 * @brief Метод удаления адреса сети для выхода в интернет
-			 *
-			 * @param id      идентификатор события
-			 * @param network адрес сети для удаления
-			 * @return        результат выполнения удаления
-			 */
-			bool removeNetwork(const event::id_t id, const string & network) noexcept;
-		public:
-			/**
-			 * @brief Метод добавления списка адресов сетей для выхода в интернет
-			 *
-			 * @param id       идентификатор события
-			 * @param networks список адресов сетей для добавления
-			 * @return         результат выполнения добавления
-			 */
-			bool addNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept;
-			/**
-			 * @brief Метод удаления списка адресов сетей для выхода в интернет
-			 *
-			 * @param id       идентификатор события
-			 * @param networks список адресов сетей для удаления
-			 * @return         результат выполнения удаления
-			 */
-			bool removeNetworks(const event::id_t id, const std::unordered_set <string> & networks) noexcept;
-		public:
-			/**
-			 * @brief Метод получения сетевого интерфейса события
-			 *
-			 * @param id идентификатор события
-			 * @return   сетевой интерфейс события
-			 */
-			string networkInterface(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки сетевого интерфейса события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для установки
-			 * @return     результат выполнения установки
-			 */
-			bool setNetworkInterface(const event::id_t id, const string & name) noexcept;
-		public:
-			/**
-			 * @brief Метод очистки всех сетевых интерфейсов события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения очистки
-			 */
-			bool clearNetworkInterfaces(const event::id_t id) noexcept;
-			/**
-			 * @brief Метод получения списка сетевых интерфейсов события
-			 *
-			 * @param id идентификатор события
-			 * @return   список сетевых интерфейсов события
-			 */
-			const std::unordered_set <string> & networkInterfaces(const event::id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод добавления сетевого интерфейса для события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для добавления
-			 * @return     результат выполнения добавления
-			 */
-			bool addNetworkInterface(const event::id_t id, const string & name) noexcept;
-			/**
-			 * @brief Метод удаления сетевого интерфейса для события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для удаления
-			 * @return     результат выполнения удаления
-			 */
-			bool removeNetworkInterface(const event::id_t id, const string & name) noexcept;
-		public:
-			/**
-			 * @brief Метод добавления списка сетевых интерфейсов для события
-			 *
-			 * @param id    идентификатор события
-			 * @param names список сетевых интерфейсов для добавления
-			 * @return      результат выполнения добавления
-			 */
-			bool addNetworkInterfaces(const event::id_t id, const std::unordered_set <string> & names) noexcept;
-			/**
-			 * @brief Метод удаления списка сетевых интерфейсов для события
-			 *
-			 * @param id    идентификатор события
-			 * @param names список сетевых интерфейсов для удаления
-			 * @return      результат выполнения удаления
-			 */
-			bool removeNetworkInterfaces(const event::id_t id, const std::unordered_set <string> & names) noexcept;
-		public:
-			/**
-			 * @brief Метод присоединения события к мультикаст группе
-			 *
-			 * @param id               идентификатор события
-			 * @param multicastAddress адрес мультикаст группы для присоединения
-			 * @return                 результат выполнения присоединения
-			 */
-			bool multicastJoin(const event::id_t id, const string & multicastAddress) noexcept;
-			/**
-			 * @brief Метод выхода события из мультикаст группы
-			 *
-			 * @param id               идентификатор события
-			 * @param multicastAddress адрес мультикаст группы для выхода
-			 * @return                 результат выполнения выхода
-			 */
-			bool multicastLeave(const event::id_t id, const string & multicastAddress) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки чёрного списка события
@@ -559,6 +436,14 @@ namespace awh {
 			 * @return   статус события
 			 */
 			event::status_t status(const event::id_t id) const noexcept;
+		public:
+			/**
+			 * @brief Метод опроса событий
+			 *
+			 * @param timeout таймаут опроса в миллисекундах
+			 * @return        результат выполнения опроса
+			 */
+			bool poll(const int32_t timeout = -1) noexcept;
 		public:
 			/**
 			 * @brief Методы установки функции обратного вызова на чтение события

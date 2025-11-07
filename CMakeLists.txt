@@ -34,6 +34,18 @@ if (CMAKE_MAX_COUNT_FDS)
     message(STATUS "Build with max FDs: ${CMAKE_MAX_COUNT_FDS}\n")
 endif (CMAKE_MAX_COUNT_FDS)
 
+# Сборка с установкой адреса DNS-сервера IPv4 по умолчанию
+if (CMAKE_DEFAULT_DNS_SERVER)
+    add_compile_definitions(AWH_IPV4_RESOLVER=${CMAKE_DEFAULT_DNS_SERVER})
+    message(STATUS "Build with default DNS server: ${CMAKE_DEFAULT_DNS_SERVER}\n")
+endif (CMAKE_DEFAULT_DNS_SERVER)
+
+# Сборка с установкой адреса DNS-сервера IPv6 по умолчанию
+if (CMAKE_DEFAULT_DNS6_SERVER)
+    add_compile_definitions(AWH_IPV6_RESOLVER=${CMAKE_DEFAULT_DNS6_SERVER})
+    message(STATUS "Build with default IPv6 DNS server: ${CMAKE_DEFAULT_DNS6_SERVER}\n")
+endif (CMAKE_DEFAULT_DNS6_SERVER)
+
 # Если активирован флаг оптимизации операционной системы
 if (CMAKE_BOOSTING_NET)
     add_compile_definitions(AWH_BOOSTING_NET)
@@ -316,10 +328,8 @@ include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 # Выполняем подключение бэкендов IO
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
-    "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/sys.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/eth.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/kqueue.cpp"
-    "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/kqueue2.cpp"
 )
 
 # Выполняем подключение исходников

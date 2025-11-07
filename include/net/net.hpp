@@ -19,6 +19,7 @@
  * Стандартные модули
  */
 #include <array>
+#include <atomic>
 #include <string>
 #include <cstdint>
 #include <unordered_map>
@@ -277,14 +278,38 @@ namespace awh {
 		 *
 		 */
 		typedef struct State {
-			uint16_t options;           // Флаги опций события
-			event::mode_t mode;         // Флаг режима события
-			event::node_t node;         // Флаг узла события
-			event::type_t type;         // Флаг типа события
-			event::family_t family;     // Флаг семейства события
-			event::status_t status;     // Флаг статуса события
-			event::address_t address;   // Флаг адреса события
-			event::protocol_t protocol; // Флаг протокола события
+			uint16_t options;                     // Флаги опций события
+			event::mode_t mode;                   // Флаг режима события
+			event::node_t node;                   // Флаг узла события
+			event::type_t type;                   // Флаг типа события
+			event::family_t family;               // Флаг семейства события
+			event::address_t address;             // Флаг адреса события
+			event::protocol_t protocol;           // Флаг протокола события
+			std::atomic <event::status_t> status; // Флаг статуса события
+			/**
+			 * @brief Оператор присваивания
+			 *
+			 * @param state объект состояния события
+			 * @return      ссылка на объект состояния события
+			 */
+			State & operator = (const State & state) noexcept {
+				// Проверяем на самоприсваивание
+				if(this != &state){
+					/**
+					 * Выполняем копирование полей состояния события
+					 */
+					this->options  = state.options;
+					this->mode     = state.mode;
+					this->node     = state.node;
+					this->type     = state.type;
+					this->family   = state.family;
+					this->address  = state.address;
+					this->protocol = state.protocol;
+					this->status.store(state.status.load());
+				}
+				// Возвращаем ссылку на объект состояния события
+				return (* this);
+			}
 			/**
 			 * @brief Конструктор
 			 *
@@ -295,9 +320,9 @@ namespace awh {
 			 node(event::node_t::NONE),
 			 type(event::type_t::NONE),
 			 family(event::family_t::NONE),
-			 status(event::status_t::NONE),
 			 address(event::address_t::NONE),
-			 protocol(event::protocol_t::NONE) {}
+			 protocol(event::protocol_t::NONE),
+			 status(event::status_t::NONE) {}
 		} __attribute__((packed)) state_t;
 		/**
 		 * @brief Структура обратных вызовов события
@@ -472,6 +497,8 @@ namespace awh {
 			unordered_map <string, event::address_t> blacklist;
 			// Белый список адресов которым разрешён доступ
 			unordered_map <string, event::address_t> whitelist;
+			// Активные таймауты события
+			unordered_map <awh::event::action_t, uint16_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
@@ -524,6 +551,8 @@ namespace awh {
 			unordered_map <string, event::address_t> blacklist;
 			// Белый список пиров которым разрешён доступ
 			unordered_map <string, event::address_t> whitelist;
+			// Активные таймауты события
+			unordered_map <awh::event::action_t, uint16_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
