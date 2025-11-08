@@ -157,30 +157,27 @@ namespace awh {
 			 *
 			 * @param id       идентификатор существующего события
 			 * @param protocol протокол сокета
-			 * @param mode     режим сокета
 			 * @return         идентификатор созданного события
 			 */
-			virtual event::id_t event(const event::id_t id, const event::protocol_t protocol, const event::mode_t mode) noexcept = 0;
+			virtual event::id_t event(const event::id_t id, const event::protocol_t protocol) noexcept = 0;
 			/**
 			 * @brief Метод создания нового события
 			 *
 			 * @param family   семейство сокета
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
-			 * @param mode     режим сокета
 			 * @return         идентификатор созданного события
 			 */
-			virtual event::id_t event(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept = 0;
+			virtual event::id_t event(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
 			/**
 			 * @brief Метод получения пары событий для сокета
 			 *
 			 * @param family   семейство сокета
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
-			 * @param mode     режим сокета
 			 * @return         пара идентификаторов созданных событий
 			 */
-			virtual std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol, const event::mode_t mode) noexcept = 0;
+			virtual std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения режима действия события
@@ -262,7 +259,7 @@ namespace awh {
 			 * @brief Метод отправки данных события
 			 *
 			 * @param id   идентификатор события
-			 * @param data указатель на данные для отправки
+			 * @param data буфер данных для отправки
 			 * @param size размер данных для отправки
 			 * @return     результат выполнения отправки
 			 */
@@ -428,13 +425,6 @@ namespace awh {
 			 */
 			virtual bool isInitialized() const noexcept = 0;
 		public:
-			/**
-			 * @brief Метод получения режима события
-			 *
-			 * @param id идентификатор события
-			 * @return   режим события
-			 */
-			virtual event::mode_t mode(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод получения типа события
 			 *

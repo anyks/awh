@@ -222,13 +222,11 @@ namespace awh {
 		 *
 		 */
 		typedef struct Attributes {
-			// Файловый дескриптор сервиса
-			socket_t fd;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Attributes() noexcept : fd(invalid_socket_t) {}
+			explicit Attributes() noexcept = default;
 			/**
 			 * @brief Деструктор
 			 *
@@ -286,7 +284,6 @@ namespace awh {
 		 */
 		typedef struct State {
 			uint16_t options;                     // Флаги опций события
-			event::mode_t mode;                   // Флаг режима события
 			event::node_t node;                   // Флаг узла события
 			event::type_t type;                   // Флаг типа события
 			event::family_t family;               // Флаг семейства события
@@ -306,7 +303,6 @@ namespace awh {
 					 * Выполняем копирование полей состояния события
 					 */
 					this->options  = state.options;
-					this->mode     = state.mode;
 					this->node     = state.node;
 					this->type     = state.type;
 					this->family   = state.family;
@@ -323,7 +319,6 @@ namespace awh {
 			 */
 			explicit State() noexcept :
 			 options(event::options::NONE),
-			 mode(event::mode_t::NONE),
 			 node(event::node_t::NONE),
 			 type(event::type_t::NONE),
 			 family(event::family_t::NONE),
@@ -520,6 +515,8 @@ namespace awh {
 		 *
 		 */
 		typedef struct Peer : public node_t {
+			// Файловый дескриптор сервиса
+			socket_t socket;
 			// Объект передачи данных
 			transfer_t transfer;
 			// MAC-адрес сетевого интерфейса
@@ -539,13 +536,15 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit Peer(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log), mac(nullptr), remote(nullptr) {}
+			 socket(invalid_socket_t), transfer(fmk, log), mac(nullptr), remote(nullptr) {}
 		} peer_t;
 		/**
 		 * @brief Структура клиента
 		 *
 		 */
 		typedef struct Client : public node_t {
+			// Файловый дескриптор сервиса
+			socket_t socket;
 			// Объект параметров конечной точки
 			endpoint_t endpoint;
 			// Объект передачи данных
@@ -567,13 +566,15 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log), source(nullptr), target(nullptr) {}
+			 socket(invalid_socket_t), transfer(fmk, log), source(nullptr), target(nullptr) {}
 		} client_t;
 		/**
 		 * @brief Структура сервера
 		 *
 		 */
 		typedef struct Server : public node_t {
+			// Файловый дескриптор сервиса
+			socket_t socket;
 			// Размер очереди ожидания подключения
 			backlog_t backlog;
 			// Объект параметров конечной точки
@@ -596,7 +597,8 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit Server(const fmk_t * fmk, const log_t * log) noexcept : transfer(fmk, log) {}
+			explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
+			 socket(invalid_socket_t), transfer(fmk, log) {}
 		} server_t;
 	};
 };
