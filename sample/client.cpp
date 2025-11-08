@@ -43,6 +43,8 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Устанавливаем логгер
 	fmk.setLogger(&log);
+	// Устанавливаем уровень логирования
+	log.level(log_t::level_t::NONE);
 	/**
 	 * Клиентская часть асинхронного движка ввода-вывода
 	 */
@@ -70,6 +72,8 @@ int32_t main(int32_t argc, char * argv[]){
 		 * IPv4 событие
 		 */
 		{
+			cout << " ======================================== IFACE " << endl;
+
 			// Добавляем новое событие клиента TCP
 			event::id_t eid1 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
@@ -103,7 +107,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << endl;
 
-			cout << " ======================================== " << endl;
+			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
 			event::id_t eid2 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
@@ -129,7 +133,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << endl;
 
-			cout << " ======================================== " << endl;
+			cout << " ======================================== IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
 			event::id_t eid3 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
@@ -155,7 +159,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << endl;
 
-			cout << " ======================================== " << endl;
+			cout << " ======================================== NETWORK IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
 			event::id_t eid4 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
@@ -181,7 +185,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << endl;
 
-			cout << " ======================================== " << endl;
+			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
 			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
@@ -207,7 +211,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << endl;
 
-			cout << " ======================================== " << endl;
+			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
@@ -233,7 +237,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << endl;
 
-			cout << " ======================================== " << endl;
+			cout << " ======================================== TARGET IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
 			event::id_t eid7 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
