@@ -511,6 +511,28 @@ namespace awh {
 			 fd(invalid_socket_t), transfer(fmk, log), path(nullptr) {}
 		} fs_t;
 		/**
+		 * @brief Структура межпроцессного взаимодействия
+		 *
+		 */
+		typedef struct InterProcessCommunication : public node_t {
+			// Файловый дескриптор сервиса
+			socket_t socket;
+			// Объект передачи данных
+			transfer_t transfer;
+			// Обратные вызовы события
+			peer_callbacks_t callbacks;
+			// Активные действия события
+			unordered_map <awh::event::action_t, awh::event::notify_t> actions;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект работы с логами
+			 */
+			explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept :
+			 socket(invalid_socket_t), transfer(fmk, log) {}
+		} ipc_t;
+		/**
 		 * @brief Структура подключённого клиента
 		 *
 		 */

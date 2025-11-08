@@ -56,12 +56,12 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * @brief Метод настройки события
+			 * @brief Метод фиксации настроек события
 			 *
 			 * @param id идентификатор события
-			 * @return   результат выполнения настройки
+			 * @return   результат выполнения фиксации
 			 */
-			virtual bool setup(const event::id_t id) noexcept = 0;
+			virtual bool commit(const event::id_t id) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения порта события

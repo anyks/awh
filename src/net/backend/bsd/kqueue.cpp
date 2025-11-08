@@ -76,12 +76,12 @@ namespace {
 }
 
 /**
- * @brief Метод настройки события
+ * @brief Метод фиксации настроек события
  *
  * @param id идентификатор события
- * @return   результат выполнения настройки
+ * @return   результат выполнения фиксации
  */
-bool awh::IO::setup(const event::id_t id) noexcept {
+bool awh::IO::commit(const event::id_t id) noexcept {
 
 	// Выводим результат по умолчанию
 	return false;
@@ -1589,12 +1589,107 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					// Выполняем перенос всей ноды
 					i->second = ::move(fs);
 				} break;
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства директорий
+						case static_cast <uint8_t> (event::family_t::DIR):
+						// Для семейства файловой системы
+						case static_cast <uint8_t> (event::family_t::FILE): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Unable to create a inter-process communication node from a file node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (node)), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Unable to create a inter-process communication node from a file node", log_t::flag_t::CRITICAL);
+							#endif
+							// Выводим отрицательный результат
+							return false;
+						}
+						// Для семейства таймеров
+						case static_cast <uint8_t> (event::family_t::TIMER):
+						// Для семейства интервалов
+						case static_cast <uint8_t> (event::family_t::INTERVAL): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Unable to create a inter-process communication node from a timer node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (node)), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Unable to create a inter-process communication node from a timer node", log_t::flag_t::CRITICAL);
+							#endif
+							// Выводим отрицательный результат
+							return false;
+						}
+					}
+					// Выполняем создание нового объекта ноды
+					unique_ptr <net::ipc_t> ipc = make_unique <net::ipc_t> (this->_fmk, this->_log);
+					// Выполняем перенос состояний ноды
+					ipc->state = i->second->state;
+					// Устанавливаем тип узла события
+					ipc->state.node = node;
+					/**
+					 * Определяем чем является текущая нода
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если нода ещё не определена
+						case static_cast <uint8_t> (event::node_t::NONE):
+						// Если нода является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект клиента
+							auto client = awh_cast <net::client_t *> (i->second.get());
+							// Устанавливаем значение сетевого сокета
+							ipc->socket = client->socket;
+						} break;
+						// Если нода является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER): {
+							// Получаем объект сервера
+							auto server = awh_cast <net::server_t *> (i->second.get());
+							// Устанавливаем значение сетевого сокета
+							ipc->socket = server->socket;
+						} break;
+					}
+					// Выполняем перенос всей ноды
+					i->second = ::move(ipc);
+				} break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					/**
 					 * Определяем семейство сокета
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства межпроцессного взаимодействия
+						case static_cast <uint8_t> (event::family_t::IPC): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Unable to create a network node from an inter-process communication node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (node)), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Unable to create a network node from an inter-process communication node", log_t::flag_t::CRITICAL);
+							#endif
+							// Выводим отрицательный результат
+							return false;
+						}
 						// Для семейства директорий
 						case static_cast <uint8_t> (event::family_t::DIR):
 						// Для семейства файловой системы
@@ -1614,7 +1709,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							#endif
 							// Выводим отрицательный результат
 							return false;
-						} break;
+						}
 						// Для семейства таймеров
 						case static_cast <uint8_t> (event::family_t::TIMER):
 						// Для семейства интервалов
@@ -1678,6 +1773,24 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					 * Определяем семейство сокета
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства межпроцессного взаимодействия
+						case static_cast <uint8_t> (event::family_t::IPC): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Unable to create a network node from an inter-process communication node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (node)), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Unable to create a network node from an inter-process communication node", log_t::flag_t::CRITICAL);
+							#endif
+							// Выводим отрицательный результат
+							return false;
+						}
 						// Для семейства директорий
 						case static_cast <uint8_t> (event::family_t::DIR):
 						// Для семейства файловой системы
@@ -1697,7 +1810,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							#endif
 							// Выводим отрицательный результат
 							return false;
-						} break;
+						}
 						// Для семейства таймеров
 						case static_cast <uint8_t> (event::family_t::TIMER):
 						// Для семейства интервалов
@@ -7942,6 +8055,50 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						}
 					}
 				} break;
+				// Если нода является межпроцессным соединением
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного соединения
+					net::ipc_t * ipc = awh_cast <net::ipc_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS):
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(ipc->socket, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на чтение
+										return static_cast <size_t> (length);
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE): {
+									// Устанавливаем размер буфера для записи
+									const int32_t length = this->_eth.bufferSize(ipc->socket, net::socket_event_t::WRITE);
+									// Если установка размера буфера прошла успешно
+									if(length > 0)
+										// Выводим размер буфера на запись
+										return static_cast <size_t> (length);
+								} break;
+							}
+						} break;
+					}
+				} break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта соседа
@@ -7951,31 +8108,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
-						case static_cast <uint8_t> (event::family_t::UDS): {
-							/**
-							 * Определяем тип действия события
-							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(peer->socket, net::socket_event_t::READ);
-									// Если установка размера буфера прошла успешно
-									if(length > 0)
-										// Выводим размер буфера на чтение
-										return static_cast <size_t> (length);
-								} break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE): {
-									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(peer->socket, net::socket_event_t::WRITE);
-									// Если установка размера буфера прошла успешно
-									if(length > 0)
-										// Выводим размер буфера на запись
-										return static_cast <size_t> (length);
-								} break;
-							}
-						} break;
+						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 						// Для семейства IPv6
@@ -8019,31 +8152,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
-						case static_cast <uint8_t> (event::family_t::UDS): {
-							/**
-							 * Определяем тип действия события
-							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(client->socket, net::socket_event_t::READ);
-									// Если установка размера буфера прошла успешно
-									if(length > 0)
-										// Выводим размер буфера на чтение
-										return static_cast <size_t> (length);
-								} break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE): {
-									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(client->socket, net::socket_event_t::WRITE);
-									// Если установка размера буфера прошла успешно
-									if(length > 0)
-										// Выводим размер буфера на запись
-										return static_cast <size_t> (length);
-								} break;
-							}
-						} break;
+						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 						// Для семейства IPv6
@@ -8087,31 +8196,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
-						case static_cast <uint8_t> (event::family_t::UDS): {
-							/**
-							 * Определяем тип действия события
-							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(server->socket, net::socket_event_t::READ);
-									// Если установка размера буфера прошла успешно
-									if(length > 0)
-										// Выводим размер буфера на чтение
-										return static_cast <size_t> (length);
-								} break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE): {
-									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(server->socket, net::socket_event_t::WRITE);
-									// Если установка размера буфера прошла успешно
-									if(length > 0)
-										// Выводим размер буфера на запись
-										return static_cast <size_t> (length);
-								} break;
-							}
-						} break;
+						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 						// Для семейства IPv6
@@ -8241,6 +8326,74 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						}
 					}
 				} break;
+				// Если нода является межпроцессным соединением
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного соединения
+					net::ipc_t * ipc = awh_cast <net::ipc_t *> (i->second.get());
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства межпроцессных соединений
+						case static_cast <uint8_t> (event::family_t::IPC): {
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Извлекаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(ipc->socket, net::socket_event_t::READ);
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										ipc->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										ipc->transfer.input.data = make_unique <uint8_t []> (ipc->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Извлекаем размер буфера для записи
+									result = (this->_eth.bufferSize(ipc->socket, net::socket_event_t::WRITE) > 0);
+								break;
+							}
+						} break;
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS):
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv4
+						case static_cast <uint8_t> (event::family_t::UDPV4):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (action)){
+								// Если действие является чтением
+								case static_cast <uint8_t> (event::action_t::READ): {
+									// Устанавливаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(ipc->socket, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Если установка размера буфера прошла успешно
+									if((result = (length > 0))){
+										// Устанавливаем размер буфера на чтение
+										ipc->transfer.input.size = static_cast <size_t> (length);
+										// Выполняем создание нового буфера на чтение
+										ipc->transfer.input.data = make_unique <uint8_t []> (ipc->transfer.input.size);
+									}
+								} break;
+								// Если действие является записью
+								case static_cast <uint8_t> (event::action_t::WRITE):
+									// Устанавливаем размер буфера для записи
+									result = (this->_eth.bufferSize(ipc->socket, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+								break;
+							}
+						} break;
+					}
+				} break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта соседа
@@ -8250,30 +8403,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
-						case static_cast <uint8_t> (event::family_t::UDS): {
-							/**
-							 * Определяем тип действия события
-							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(peer->socket, net::socket_event_t::READ, static_cast <int32_t> (size));
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										peer->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										peer->transfer.input.data = make_unique <uint8_t []> (peer->transfer.input.size);
-									}
-								} break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE):
-									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(peer->socket, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
-								break;
-							}
-						} break;
+						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 						// Для семейства IPv6
@@ -8315,16 +8445,16 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					 * Определяем семейство сокета
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
-						// Для семейства UNIX-доменных сокетов
-						case static_cast <uint8_t> (event::family_t::UDS): {
+						// Для семейства межпроцессных соединений
+						case static_cast <uint8_t> (event::family_t::IPC): {
 							/**
 							 * Определяем тип действия события
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(client->socket, net::socket_event_t::READ, static_cast <int32_t> (size));
+									// Извлекаем размер буфера для чтения
+									const int32_t length = this->_eth.bufferSize(client->socket, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if((result = (length > 0))){
 										// Устанавливаем размер буфера на чтение
@@ -8335,11 +8465,13 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 								} break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
-									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(client->socket, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									// Извлекаем размер буфера для записи
+									result = (this->_eth.bufferSize(client->socket, net::socket_event_t::WRITE) > 0);
 								break;
 							}
 						} break;
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 						// Для семейства IPv6
@@ -8382,30 +8514,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства UNIX-доменных сокетов
-						case static_cast <uint8_t> (event::family_t::UDS): {
-							/**
-							 * Определяем тип действия события
-							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(server->socket, net::socket_event_t::READ, static_cast <int32_t> (size));
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										server->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										server->transfer.input.data = make_unique <uint8_t []> (server->transfer.input.size);
-									}
-								} break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE):
-									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(server->socket, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
-								break;
-							}
-						} break;
+						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 						// Для семейства IPv6

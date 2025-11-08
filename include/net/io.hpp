@@ -36,12 +36,12 @@ namespace awh {
 	typedef class IO : public engine_t {
 		public:
 			/**
-			 * @brief Метод настройки события
+			 * @brief Метод фиксации настроек события
 			 *
 			 * @param id идентификатор события
-			 * @return   результат выполнения настройки
+			 * @return   результат выполнения фиксации
 			 */
-			bool setup(const event::id_t id) noexcept;
+			bool commit(const event::id_t id) noexcept;
 		public:
 			/**
 			 * @brief Метод получения порта события
