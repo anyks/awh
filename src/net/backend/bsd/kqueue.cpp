@@ -1767,6 +1767,43 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					// Выполняем перенос всей ноды
 					i->second = ::move(peer);
 				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Устанавливаем тип узла события
+					i->second->state.node = node;
+					// Получаем объект клиента
+					auto client = awh_cast <net::client_t *> (i->second.get());
+					// Если источник сетевого адреса не инициализирован
+					if(client->source == nullptr){
+						/**
+						 * Определяем семейство сокета
+						 */
+						switch(static_cast <uint8_t> (i->second->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства UDPv4
+							case static_cast <uint8_t> (event::family_t::UDPV4): {
+								// Временный объект для извлечения сетевого интерфейса
+								net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+								// Выполняем извлечение сетевых параметров по умолчаинию
+								this->_eth.fillsource(event::node_t::NONE, source);
+								// Инициализируем источник сетевого адреса
+								client->source = ::move(source.ip);
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+							// Для семейства UDPv6
+							case static_cast <uint8_t> (event::family_t::UDPV6): {
+								// Временный объект для извлечения сетевого интерфейса
+								net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+								// Выполняем извлечение сетевых параметров по умолчаинию
+								this->_eth.fillsource(event::node_t::NONE, source);
+								// Инициализируем источник сетевого адреса
+								client->source = ::move(source.ip);
+							} break;
+						}
+					}
+				} break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					/**

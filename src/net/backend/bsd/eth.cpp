@@ -618,8 +618,10 @@ void awh::Ethernet::fillsource(const event::node_t node, net::src_t & source) co
 								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = name.sin_addr.s_addr;
 								// Устанавливаем название сетевого интерфейса
 								source.iface = this->iface(source.ip);
-								// Получаем MAC-адрес сетевого интерфейса
-								this->fillsource(source);
+								// Если название сетевого интерфейса получено
+								if(!source.iface.empty())
+									// Получаем MAC-адрес сетевого интерфейса
+									this->fillsource(source);
 							}
 						}
 						// Закрываем сокет
@@ -655,8 +657,10 @@ void awh::Ethernet::fillsource(const event::node_t node, net::src_t & source) co
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], name.sin6_addr.s6_addr, sizeof(name.sin6_addr.s6_addr));
 								// Устанавливаем название сетевого интерфейса
 								source.iface = this->iface(source.ip);
-								// Получаем MAC-адрес сетевого интерфейса
-								this->fillsource(source);
+								// Если название сетевого интерфейса получено
+								if(!source.iface.empty())
+									// Получаем MAC-адрес сетевого интерфейса
+									this->fillsource(source);
 							}
 						}
 						// Закрываем сокет

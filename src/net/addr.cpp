@@ -174,13 +174,13 @@ namespace {
 		/**
 		 * Выполняем обрезку пробелов в начале и конце строки
 		 */
-		while((i < j) && std::isspace(static_cast <uint8_t> (text[i])))
+		while((i < j) && ((text[i] == '\0') || std::isspace(static_cast <uint8_t> (text[i]))))
 			// Увеличиваем позицию начала строки
 			++i;
 		/**
 		 * Обрезаем пробелы в конце строки
 		 */
-		while((j > i) && std::isspace(static_cast <uint8_t> (text[j - 1])))
+		while((j > i) && ((text[j - 1] == '\0') || std::isspace(static_cast <uint8_t> (text[j - 1]))))
 			// Уменьшаем позицию конца строки
 			--j;
 		// Возвращаем обрезанную строку
@@ -1465,7 +1465,8 @@ void awh::NetworkAddress::mac(const std::array <uint8_t, 6> & addr) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Выполняем очистку буфера данных
+	} else this->_buffer.clear();
 }
 /**
  * @brief Извлечения адреса IPv4 в чистом виде
@@ -1577,7 +1578,8 @@ void awh::NetworkAddress::v4(const uint32_t addr, const endian_t endian) noexcep
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Выполняем очистку буфера данных
+	} else this->_buffer.clear();
 }
 /**
  * @brief Извлечения адреса IPv6 в чистом виде
@@ -1689,7 +1691,8 @@ void awh::NetworkAddress::v6(const std::array <uint8_t, 16> & addr, const endian
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Выполняем очистку буфера данных
+	} else this->_buffer.clear();
 }
 /**
  * @brief Метод проверки валидности IP-адреса
@@ -3098,7 +3101,8 @@ bool awh::NetworkAddress::arpa(const string & addr) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Выполняем очистку буфера данных
+	} else this->_buffer.clear();
 	// Выводим результат
 	return false;
 }
@@ -3195,7 +3199,8 @@ bool awh::NetworkAddress::parse(const string & addr) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Выполняем очистку буфера данных
+	} else this->_buffer.clear();
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -3294,7 +3299,8 @@ bool awh::NetworkAddress::parse(const string & addr, const type_t type) noexcept
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Выполняем очистку буфера данных
+	} else this->_buffer.clear();
 	// Выводим результат
 	return false;
 }
@@ -4702,6 +4708,33 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 			if(pos > 0)
 				// Обрезаем результат по фактической длине
 				result.resize(pos);
+			// Если результат не пустой
+			if(!result.empty()){
+				// Определяем размер строки
+				const size_t length = result.length();
+				// Позиции начала и конца обрезанной строки
+				size_t i = 0, j = length;
+				/**
+				 * Выполняем обрезку пробелов в начале и конце строки
+				 */
+				while((i < j) && ((result[i] == '\0') || std::isspace(static_cast <uint8_t> (result[i]))))
+					// Увеличиваем позицию начала строки
+					++i;
+				/**
+				 * Обрезаем пробелы в конце строки
+				 */
+				while((j > i) && ((result[j - 1] == '\0') || std::isspace(static_cast <uint8_t> (result[j - 1]))))
+					// Уменьшаем позицию конца строки
+					--j;
+				// Если необходимо удалить определённое количество символов с конца строки
+				if(j < length)
+					// Удаляем лишние символы с конца строки
+					result.erase(j);
+				// Если нужно удалить определённое количество символов с начала строки
+				if(i > 0)
+					// Удаляем лишние символы с начала строки
+					result.erase(0, i);
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4728,7 +4761,7 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 	// Если результат не пустой и зона адреса определена
 	if(!result.empty() && !this->_zone.empty())
 		// Добавляем зону адреса к результату
-		result += ('%' + this->_zone);
+		result.append('%' + this->_zone);
 	// Выводим результат
 	return result;
 }
