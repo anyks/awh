@@ -1466,6 +1466,30 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Таймерное событие ID: " << eid << endl;
 	}
 
+	/**
+	 При коннекте использовать проверку для локальных интерфейсов 127.0.0.1 и ::1
+
+	 	bool is_loopback(const std::string& ip_str) {
+			struct in_addr addr;
+			if (inet_pton(AF_INET, ip_str.c_str(), &addr) != 1)
+				return false; // некорректный IPv4
+
+			uint32_t ip = ntohl(addr.s_addr);
+			return (ip >> 24) == 127; // первые 8 бит == 127
+		}
+
+		bool is_loopback_v6(const std::string& ip_str) {
+			struct in6_addr addr;
+			if (inet_pton(AF_INET6, ip_str.c_str(), &addr) != 1)
+				return false;
+
+			const uint8_t* bytes = addr.s6_addr;
+			for (int i = 0; i < 15; ++i)
+				if (bytes[i] != 0) return false;
+			return bytes[15] == 1; // только последний байт == 1
+		}
+	 */
+
 	/*
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
