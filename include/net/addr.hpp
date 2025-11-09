@@ -50,7 +50,7 @@ namespace awh {
 			/**
 			 * Режим дислокации IP-адреса
 			 */
-			enum class mode_t : uint8_t {
+			enum class own_t : uint8_t {
 				NONE = 0x00, // Адрес не установлен
 				LAN  = 0x01, // Адрес является локальным
 				WAN  = 0x02, // Адрес является глобальным
@@ -451,11 +451,11 @@ namespace awh {
 			bool mapping(const string & network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept;
 		public:
 			/**
-			 * @brief Метод определения режима дислокации IP-адреса
+			 * @brief Метод определения принадлежности адреса
 			 *
-			 * @return режим дислокации
+			 * @return флаг принадлежности адреса
 			 */
-			mode_t mode() const noexcept;
+			own_t own() const noexcept;
 		public:
 			/**
 			 * @brief Получение записи в формате ARPA

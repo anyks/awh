@@ -2792,13 +2792,13 @@ bool awh::NetworkAddress::mapping(const string & network, const uint8_t prefix, 
 	return result;
 }
 /**
- * @brief Метод определения режима дислокации IP-адреса
+ * @brief Метод определения принадлежности адреса
  *
- * @return режим дислокации
+ * @return флаг принадлежности адреса
  */
-awh::NetworkAddress::mode_t awh::NetworkAddress::mode() const noexcept {
+awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 	// Результат работы функции
-	mode_t result = mode_t::NONE;
+	own_t result = own_t::NONE;
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty()){
 		/**
@@ -2828,9 +2828,9 @@ awh::NetworkAddress::mode_t awh::NetworkAddress::mode() const noexcept {
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
-									return mode_t::SYS;
+									return own_t::SYS;
 								// Иначе устанавливаем, что адрес локальный
-								else return mode_t::LAN;
+								else return own_t::LAN;
 							}
 						// Если диапазон адресов для этой проверки не установлен
 						} else {
@@ -2841,9 +2841,9 @@ awh::NetworkAddress::mode_t awh::NetworkAddress::mode() const noexcept {
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
-									return mode_t::SYS;
+									return own_t::SYS;
 								// Иначе устанавливаем, что адрес локальный
-								else return mode_t::LAN;
+								else return own_t::LAN;
 							}
 						}
 					} break;
@@ -2858,9 +2858,9 @@ awh::NetworkAddress::mode_t awh::NetworkAddress::mode() const noexcept {
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
-									return mode_t::SYS;
+									return own_t::SYS;
 								// Иначе устанавливаем, что адрес локальный
-								else return mode_t::LAN;
+								else return own_t::LAN;
 							}
 						// Если диапазон адресов для этой проверки не установлен
 						} else {
@@ -2871,18 +2871,18 @@ awh::NetworkAddress::mode_t awh::NetworkAddress::mode() const noexcept {
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
-									return mode_t::SYS;
+									return own_t::SYS;
 								// Иначе устанавливаем, что адрес локальный
-								else return mode_t::LAN;
+								else return own_t::LAN;
 							}
 						}
 					} break;
 				}
 			}
 			// Если результат не определён
-			if(result == mode_t::NONE)
+			if(result == own_t::NONE)
 				// Устанавливаем, что файл ялвяется глобальным
-				result = mode_t::WAN;
+				result = own_t::WAN;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4756,6 +4756,28 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
+		}
+	// Если тип адреса не определён
+	} else {
+		/**
+		 * Определяем тип IP-адреса
+		 */
+		switch(static_cast <uint8_t> (this->_type)){
+			// Если - это не IP-адрес, а MAC-адрес
+			case static_cast <uint8_t> (type_t::MAC):
+				// Устанавливаем MAC-адрес по умолчанию
+				result = "00:00:00:00:00:00";
+			break;
+			// Если IP-адрес определён как IPv4
+			case static_cast <uint8_t> (type_t::IPV4):
+				// Устанавливаем IPv4-адрес по умолчанию
+				result = "0.0.0.0";
+			break;
+			// Если IP-адрес определён как IPv6
+			case static_cast <uint8_t> (type_t::IPV6):
+				// Устанавливаем IPv6-адрес по умолчанию
+				result = "::";
+			break;
 		}
 	}
 	// Если результат не пустой и зона адреса определена
