@@ -5672,37 +5672,29 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 					} break;
 					// Для типа сокета DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-						/**
-						 * Определяем протокол
-						 */
-						switch(static_cast <uint8_t> (protocol)){
-							// Если протокол не определён
-							case static_cast <uint8_t> (event::protocol_t::NONE): {
-								// Выполняем инициализацию файловых дескрипторов
-								if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, fds) != 0){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug(
-											"%s", __PRETTY_FUNCTION__,
-											std::make_tuple(
-												static_cast <uint16_t> (family),
-												static_cast <uint16_t> (type),
-												static_cast <uint16_t> (protocol)
-											),
-											log_t::flag_t::CRITICAL, ::strerror(errno)
-										);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-									#endif
-								}
-							} break;
+						// Выполняем инициализацию файловых дескрипторов
+						if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, fds) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (type),
+										static_cast <uint16_t> (protocol)
+									),
+									log_t::flag_t::CRITICAL, ::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
 						}
 					} break;
 					// Для неизвестного типа сокета
@@ -5752,138 +5744,38 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_RAW, 0, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_RAW, 0);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_RAW, 0);
 									} break;
 									// Если протокол определён как RAW
 									case static_cast <uint8_t> (event::protocol_t::RAW): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_RAW, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_UDP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_IGMP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_RAW, IPPROTO_ICMP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 									} break;
 								}
 							} break;
@@ -5895,84 +5787,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_RAW, 0, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_RAW, 0);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_RAW, 0);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_RAW, IPPROTO_UDP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 									} break;
 								}
 							} break;
@@ -5992,111 +5824,31 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_DGRAM, 0, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_DGRAM, 0);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_DGRAM, IPPROTO_UDP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_DGRAM, IPPROTO_IGMP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_DGRAM, IPPROTO_ICMP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
 									} break;
 								}
 							} break;
@@ -6108,84 +5860,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_DGRAM, 0, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, 0);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_DGRAM, IPPROTO_UDP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 									} break;
 								}
 							} break;
@@ -6238,84 +5930,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_STREAM, 0, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_STREAM, 0);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_STREAM, 0);
 									} break;
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_STREAM, IPPROTO_TCP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 									} break;
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_STREAM, IPPROTO_SCTP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 									} break;
 								}
 							} break;
@@ -6327,84 +5959,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_STREAM, 0, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_STREAM, 0);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_STREAM, 0);
 									} break;
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_STREAM, IPPROTO_TCP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 									} break;
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_STREAM, IPPROTO_SCTP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 									} break;
 								}
 							} break;
@@ -6424,30 +5996,10 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
 									} break;
 									// Если установлен другой протокол
 									default: {
@@ -6482,30 +6034,10 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Выполняем инициализацию файловых дескрипторов
-										if(::socketpair(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP, fds) != 0){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug(
-													"%s", __PRETTY_FUNCTION__,
-													std::make_tuple(
-														static_cast <uint16_t> (family),
-														static_cast <uint16_t> (type),
-														static_cast <uint16_t> (protocol)
-													),
-													log_t::flag_t::CRITICAL, ::strerror(errno)
-												);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
+										// Создаём первый сокет для RAW подключения
+										fds[0] = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+										// Создаём второй сокет для RAW подключения
+										fds[1] = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
 									} break;
 									// Если установлен другой протокол
 									default: {
@@ -8100,6 +7632,10 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 					 * Определяем семейство сокета
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства межпроцессных соединений
+						case static_cast <uint8_t> (event::family_t::IPC):
+							// Извлекаем размер буфера на чтение и запись
+							return ipc->transfer.input.size;
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -8332,6 +7868,8 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Устанавливаем результат выполнения операции
+					result = true;
 					// Получаем текущее значение объекта файловой системы
 					net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
 					/**
@@ -8373,27 +7911,35 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства межпроцессных соединений
 						case static_cast <uint8_t> (event::family_t::IPC): {
+							// Устанавливаем результат выполнения операции
+							result = true;
 							/**
 							 * Определяем тип действия события
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
-									// Извлекаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(ipc->socket, net::socket_event_t::READ);
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										ipc->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										ipc->transfer.input.data = make_unique <uint8_t []> (ipc->transfer.input.size);
-									}
+									// Устанавливаем размер буфера на чтение
+									ipc->transfer.input.size = 0x1000;
+									// Выполняем создание нового буфера на чтение
+									ipc->transfer.input.data = make_unique <uint8_t []> (ipc->transfer.input.size);
 								} break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE):
-									// Извлекаем размер буфера для записи
-									result = (this->_eth.bufferSize(ipc->socket, net::socket_event_t::WRITE) > 0);
-								break;
+								// Если действие не определено
+								default: {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Buffer size can only be set for read action on IPC events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Buffer size can only be set for read action on IPC events", log_t::flag_t::WARNING);
+									#endif
+								}
 							}
 						} break;
 						// Для семейства UNIX-доменных сокетов
