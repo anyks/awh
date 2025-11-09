@@ -3161,7 +3161,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Выполняем извлечение сетевых параметров
 									this->_eth.fillsource(i->second->state.node, source);
 									// Если MAC-адрес успешно получен
-									if((result = (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0))){
+									if((result = ((this->_addr.mode() == net_addr_t::mode_t::LAN) || (this->_addr.mode() == net_addr_t::mode_t::SYS) ||
+									              (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 										// Устанавливаем тип адреса
 										i->second->state.address = address;
 										/**
@@ -3285,7 +3286,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Выполняем извлечение сетевых параметров
 									this->_eth.fillsource(i->second->state.node, source);
 									// Если MAC-адрес успешно получен
-									if((result = (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0))){
+									if((result = ((this->_addr.mode() == net_addr_t::mode_t::LAN) || (this->_addr.mode() == net_addr_t::mode_t::SYS) ||
+									              (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 										// Устанавливаем тип адреса
 										i->second->state.address = address;
 										/**
