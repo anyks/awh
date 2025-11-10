@@ -19,6 +19,8 @@
  * Наши модули
  */
 #include "net.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
 
 /**
  * @brief основное пространство имён

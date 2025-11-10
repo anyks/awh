@@ -47,7 +47,6 @@
  * Наши модули
  */
 #include "event.hpp"
-#include "../sys/queue.hpp"
 
 /**
  * @brief основное пространство имён
@@ -393,55 +392,6 @@ namespace awh {
 			explicit PeerCallbacks() noexcept : read(nullptr), write(nullptr) {}
 		} peer_callbacks_t;
 		/**
-		 * @brief Структура конечного подключения
-		 *
-		 */
-		typedef struct Endpoint {
-			// Размер объекта подключения
-			socklen_t size;
-			// Параметры подключения клиента
-			struct sockaddr_storage client;
-			// Параметры подключения сервера
-			struct sockaddr_storage server;
-			/**
-			 * @brief Конструктор
-			 *
-			 */
-			explicit Endpoint() noexcept : size(0), client{0}, server{0} {}
-		} endpoint_t;
-		/**
-		 * @brief Структура буфера данных
-		 *
-		 */
-		typedef struct Buffer {
-			// Размер буфера данных
-			size_t size;
-			// Указатель на буфер данных
-			unique_ptr <uint8_t []> data;
-			/**
-			 * @brief Конструктор
-			 *
-			 */
-			explicit Buffer() noexcept : size(0), data(nullptr) {}
-		} buffer_t;
-		/**
-		 * @brief Структура передачи данных
-		 *
-		 */
-		typedef struct Transfer {
-			size_t offset;  // Смещение передачи данных
-			buffer_t input; // Буфер получения данных
-			queue_t output; // Очередь отправки данных
-			/**
-			 * @brief Конструктор
-			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
-			 */
-			explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
-			 offset(0), output(fmk, log) {}
-		} transfer_t;
-		/**
 		 * @brief Структура узла события
 		 *
 		 */
@@ -504,8 +454,6 @@ namespace awh {
 		 *
 		 */
 		typedef struct FileSystem : public node_t {
-			// Объект передачи данных
-			transfer_t transfer;
 			// Путь к файлу, каталогу или сокету
 			unique_ptr <addr_t> path;
 			// Обратные вызовы события
@@ -519,11 +467,8 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
 			 */
-			explicit FileSystem(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log), path(nullptr) {}
+			explicit FileSystem() noexcept : path(nullptr) {}
 			/**
 			 * @brief Деструктор
 			 *
@@ -535,8 +480,6 @@ namespace awh {
 		 *
 		 */
 		typedef struct InterProcessCommunication : public node_t {
-			// Объект передачи данных
-			transfer_t transfer;
 			// Обратные вызовы события
 			peer_callbacks_t callbacks;
 			// Активные действия события
@@ -544,11 +487,8 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
 			 */
-			explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log) {}
+			explicit InterProcessCommunication() = default;
 			/**
 			 * @brief Деструктор
 			 *
@@ -560,8 +500,6 @@ namespace awh {
 		 *
 		 */
 		typedef struct Peer : public node_t {
-			// Объект передачи данных
-			transfer_t transfer;
 			// MAC-адрес сетевого интерфейса
 			unique_ptr <addr_t> mac;
 			// Хост подключения события
@@ -575,11 +513,8 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
 			 */
-			explicit Peer(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log), mac(nullptr), remote(nullptr) {}
+			explicit Peer() noexcept : mac(nullptr), remote(nullptr) {}
 			/**
 			 * @brief Деструктор
 			 *
@@ -591,10 +526,6 @@ namespace awh {
 		 *
 		 */
 		typedef struct Client : public node_t {
-			// Объект параметров конечной точки
-			endpoint_t endpoint;
-			// Объект передачи данных
-			transfer_t transfer;
 			// Источник сетевых адресов
 			unique_ptr <addr_t> source;
 			// Целевые параметры подключения
@@ -608,11 +539,8 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
 			 */
-			explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log), source(nullptr), target(nullptr) {}
+			explicit Client() noexcept : source(nullptr), target(nullptr) {}
 			/**
 			 * @brief Деструктор
 			 *
@@ -626,10 +554,6 @@ namespace awh {
 		typedef struct Server : public node_t {
 			// Размер очереди ожидания подключения
 			backlog_t backlog;
-			// Объект параметров конечной точки
-			endpoint_t endpoint;
-			// Объект передачи данных
-			transfer_t transfer;
 			// Параметры хоста сервера
 			unique_ptr <attr_t> host;
 			// Обратные вызовы события
@@ -643,11 +567,8 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
 			 */
-			explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
-			 transfer(fmk, log) {}
+			explicit Server() = default;
 			/**
 			 * @brief Деструктор
 			 *
