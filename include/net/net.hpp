@@ -152,7 +152,7 @@ namespace awh {
 			 * @param size   размер адреса
 			 */
 			explicit AddressNetwork(const uint8_t prefix, const uint16_t size) noexcept :
-				addr_t(size), prefix(prefix) {}
+			 addr_t(size), prefix(prefix) {}
 		} addr_net_t;
 		/**
 		 * @brief Структура IPv4 сетевого адреса
@@ -341,7 +341,7 @@ namespace awh {
 			 */
 			explicit Callbacks() noexcept : error(nullptr), status(nullptr) {}
 			/**
-			 * @brief Конструктор
+			 * @brief Деструктор
 			 *
 			 */
 			virtual ~Callbacks() = default;
@@ -449,7 +449,7 @@ namespace awh {
 			// Состояние события
 			state_t state;
 			/**
-			 * @brief Конструктор
+			 * @brief Деструктор
 			 *
 			 */
 			virtual ~Node() = default;
@@ -468,6 +468,11 @@ namespace awh {
 			 *
 			 */
 			explicit Timer() noexcept : delay(0) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Timer() = default;
 		} timer_t;
 		/**
 		 * @brief Структура  пользовательского события
@@ -481,14 +486,17 @@ namespace awh {
 			 *
 			 */
 			explicit User() noexcept : callback(nullptr) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~User() = default;
 		} user_t;
 		/**
 		 * @brief Структура файловой системы
 		 *
 		 */
-		typedef struct Filesystem : public node_t {
-			// Файловый дескриптор
-			socket_t fd;
+		typedef struct FileSystem : public node_t {
 			// Объект передачи данных
 			transfer_t transfer;
 			// Путь к файлу, каталогу или сокету
@@ -507,16 +515,19 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit Filesystem(const fmk_t * fmk, const log_t * log) noexcept :
-			 fd(invalid_socket_t), transfer(fmk, log), path(nullptr) {}
+			explicit FileSystem(const fmk_t * fmk, const log_t * log) noexcept :
+			 transfer(fmk, log), path(nullptr) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~FileSystem() = default;
 		} fs_t;
 		/**
 		 * @brief Структура межпроцессного взаимодействия
 		 *
 		 */
 		typedef struct InterProcessCommunication : public node_t {
-			// Файловый дескриптор сервиса
-			socket_t socket;
 			// Объект передачи данных
 			transfer_t transfer;
 			// Обратные вызовы события
@@ -530,15 +541,18 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept :
-			 socket(invalid_socket_t), transfer(fmk, log) {}
+			 transfer(fmk, log) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~InterProcessCommunication() = default;
 		} ipc_t;
 		/**
 		 * @brief Структура подключённого клиента
 		 *
 		 */
 		typedef struct Peer : public node_t {
-			// Файловый дескриптор сервиса
-			socket_t socket;
 			// Объект передачи данных
 			transfer_t transfer;
 			// MAC-адрес сетевого интерфейса
@@ -558,15 +572,18 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit Peer(const fmk_t * fmk, const log_t * log) noexcept :
-			 socket(invalid_socket_t), transfer(fmk, log), mac(nullptr), remote(nullptr) {}
+			 transfer(fmk, log), mac(nullptr), remote(nullptr) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Peer() = default;
 		} peer_t;
 		/**
 		 * @brief Структура клиента
 		 *
 		 */
 		typedef struct Client : public node_t {
-			// Файловый дескриптор сервиса
-			socket_t socket;
 			// Объект параметров конечной точки
 			endpoint_t endpoint;
 			// Объект передачи данных
@@ -588,15 +605,18 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
-			 socket(invalid_socket_t), transfer(fmk, log), source(nullptr), target(nullptr) {}
+			 transfer(fmk, log), source(nullptr), target(nullptr) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Client() = default;
 		} client_t;
 		/**
 		 * @brief Структура сервера
 		 *
 		 */
 		typedef struct Server : public node_t {
-			// Файловый дескриптор сервиса
-			socket_t socket;
 			// Размер очереди ожидания подключения
 			backlog_t backlog;
 			// Объект параметров конечной точки
@@ -620,7 +640,12 @@ namespace awh {
 			 * @param log объект работы с логами
 			 */
 			explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
-			 socket(invalid_socket_t), transfer(fmk, log) {}
+			 transfer(fmk, log) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Server() = default;
 		} server_t;
 	};
 };

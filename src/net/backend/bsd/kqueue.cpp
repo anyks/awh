@@ -34,6 +34,7 @@
 /**
  * Подключаем системные заголовки
  */
+#include <dirent.h>
 #include <sys/un.h>
 #include <sys/event.h>
 #include <sys/socket.h>
@@ -69,6 +70,115 @@ namespace {
 		// Выводим новое значение идентификатора
 		return id.fetch_add(1, memory_order_relaxed);
 	}
+	/**
+	 * @brief Структура  пользовательского события
+	 *
+	 */
+	typedef struct User : public awh::net::user_t {
+		// Файловый дескриптор события
+		awh::net::socket_t fd;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit User() noexcept : fd(awh::net::invalid_socket_t) {}
+	} user_t;
+	/**
+	 * @brief Структура события файла
+	 *
+	 */
+	typedef struct Filename : public awh::net::fs_t {
+		// Файловый дескриптор
+		awh::net::socket_t fd;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
+		 */
+		explicit Filename(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
+		 awh::net::fs_t(fmk, log), fd(awh::net::invalid_socket_t) {}
+	} file_t;
+	/**
+	 * @brief Структура события каталога
+	 *
+	 */
+	typedef struct Dirname : public awh::net::fs_t {
+		// Объект каталога
+		DIR * ptr;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
+		 */
+		explicit Dirname(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
+		 awh::net::fs_t(fmk, log), ptr(nullptr) {}
+	} dir_t;
+	/**
+	 * @brief Структура межпроцессного взаимодействия
+	 *
+	 */
+	typedef struct InterProcessCommunication : public awh::net::ipc_t {
+		// Файловый дескриптор сервиса
+		awh::net::socket_t socket;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
+		 */
+		explicit InterProcessCommunication(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
+		 awh::net::ipc_t(fmk, log), socket(awh::net::invalid_socket_t) {}
+	} ipc_t;
+	/**
+	 * @brief Структура подключённого клиента
+	 *
+	 */
+	typedef struct Peer : public awh::net::peer_t {
+		// Файловый дескриптор сервиса
+		awh::net::socket_t socket;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
+		 */
+		explicit Peer(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
+		 awh::net::peer_t(fmk, log), socket(awh::net::invalid_socket_t) {}
+	} peer_t;
+	/**
+	 * @brief Структура клиента
+	 *
+	 */
+	typedef struct Client : public awh::net::client_t {
+		// Файловый дескриптор сервиса
+		awh::net::socket_t socket;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
+		 */
+		explicit Client(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
+		 awh::net::client_t(fmk, log), socket(awh::net::invalid_socket_t) {}
+	} client_t;
+	/**
+	 * @brief Структура сервера
+	 *
+	 */
+	typedef struct Server : public awh::net::server_t {
+		// Файловый дескриптор сервиса
+		awh::net::socket_t socket;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
+		 */
+		explicit Server(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
+		 awh::net::server_t(fmk, log), socket(awh::net::invalid_socket_t) {}
+	} server_t;
 	/**
 	 * Глобальная переменная списка узлов событий
 	 */
@@ -120,15 +230,15 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Возвращаем результат работы функции
-							return awh_cast <net::attr_net_t *> (awh_cast <net::peer_t *> (i->second.get())->remote.get())->port;
+							return awh_cast <net::attr_net_t *> (awh_cast <peer_t *> (i->second.get())->remote.get())->port;
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Возвращаем результат работы функции
-							return awh_cast <net::attr_net_t *> (awh_cast <net::client_t *> (i->second.get())->target.get())->port;
+							return awh_cast <net::attr_net_t *> (awh_cast <client_t *> (i->second.get())->target.get())->port;
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER):
 							// Возвращаем результат работы функции
-							return awh_cast <net::attr_net_t *> (awh_cast <net::server_t *> (i->second.get())->host.get())->port;
+							return awh_cast <net::attr_net_t *> (awh_cast <server_t *> (i->second.get())->host.get())->port;
 					}
 				} break;
 				// Для остальных семейств сокетов
@@ -205,7 +315,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект адреса удалённого узла
-							net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+							peer_t * peer = awh_cast <peer_t *> (i->second.get());
 							// Если объект адреса соседа не инициализирован
 							if(peer->remote == nullptr){
 								// Создаём новый объект адреса удалённого узла
@@ -238,7 +348,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект адреса удалённого узла
-							net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+							client_t * client = awh_cast <client_t *> (i->second.get());
 							// Если объект адреса клиента не инициализирован
 							if(client->target == nullptr){
 								// Создаём новый объект адреса удалённого узла
@@ -271,7 +381,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект адреса сервера
-							net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+							server_t * server = awh_cast <server_t *> (i->second.get());
 							// Если объект адреса сервера не инициализирован
 							if(server->host == nullptr){
 								// Создаём новый объект адреса сервера
@@ -364,7 +474,7 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					client_t * client = awh_cast <client_t *> (i->second.get());
 					// Если объект источника сетевого адреса инициализирован
 					if(client->source != nullptr){
 						/**
@@ -395,7 +505,7 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					server_t * server = awh_cast <server_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -548,7 +658,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					client_t * client = awh_cast <client_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -632,7 +742,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					server_t * server = awh_cast <server_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -747,10 +857,21 @@ string awh::IO::target(const event::id_t id) const noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * fs = awh_cast <dir_t *> (i->second.get());
+					// Если объект адреса директории не инициализирован
+					if(fs->path == nullptr)
+						// Прерываем выполнение
+						break;
+					// Возвращаем адрес директории
+					return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+				}
 				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
+				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+					file_t * fs = awh_cast <file_t *> (i->second.get());
 					// Если объект адреса файловой системы не инициализирован
 					if(fs->path == nullptr)
 						// Прерываем выполнение
@@ -761,7 +882,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта соседа
-					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+					peer_t * peer = awh_cast <peer_t *> (i->second.get());
 					// Если объект адреса соседа не инициализирован
 					if(peer->remote == nullptr)
 						// Прерываем выполнение
@@ -840,7 +961,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					client_t * client = awh_cast <client_t *> (i->second.get());
 					// Если объект адреса клиента не инициализирован
 					if(client->target == nullptr)
 						// Прерываем выполнение
@@ -919,7 +1040,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					server_t * server = awh_cast <server_t *> (i->second.get());
 					// Если объект адреса сервера не инициализирован
 					if(server->host == nullptr)
 						// Прерываем выполнение
@@ -1038,8 +1159,8 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
 					/**
 					 * Определяем проверку соответствует ли адрес
 					 */
@@ -1047,7 +1168,48 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 						// Если адрес соответствует адресу файловой системы
 						case static_cast <uint8_t> (net_addr_t::type_t::FS): {
 							// Получаем текущее значение объекта файловой системы
-							net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+							dir_t * fs = awh_cast <dir_t *> (i->second.get());
+							// Если объект адреса файловой системы не инициализирован
+							if(fs->path == nullptr)
+								// Инициализируем объект адреса файловой системы
+								fs->path = make_unique <net::addr_fs_t> ();
+							// Если тип адреса не установлен
+							if(i->second->state.address == event::address_t::NONE)
+								// Устанавливаем тип адреса как файл в файловой системе
+								i->second->state.address = event::address_t::FILE;
+							// Устанавливаем адрес файловой системы
+							awh_cast <net::addr_fs_t *> (fs->path.get())->address = target;
+							// Выводим результат работы функции
+							return true;
+						}
+						// Если адрес не принадлежит к адресу файловой системы
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, target.c_str());
+							#endif
+						}
+					}
+				} break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					/**
+					 * Определяем проверку соответствует ли адрес
+					 */
+					switch(static_cast <uint8_t> (this->_addr.host(target))){
+						// Если адрес соответствует адресу файловой системы
+						case static_cast <uint8_t> (net_addr_t::type_t::FS): {
+							// Получаем текущее значение объекта файловой системы
+							file_t * fs = awh_cast <file_t *> (i->second.get());
 							// Если объект адреса файловой системы не инициализирован
 							if(fs->path == nullptr)
 								// Инициализируем объект адреса файловой системы
@@ -1082,7 +1244,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта соседа
-					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+					peer_t * peer = awh_cast <peer_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -1223,7 +1385,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					client_t * client = awh_cast <client_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -1364,7 +1526,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					server_t * server = awh_cast <server_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -1563,7 +1725,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				// Если нода является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Выполняем создание нового объекта ноды
-					unique_ptr <net::user_t> user = make_unique <net::user_t> ();
+					unique_ptr <user_t> user = make_unique <user_t> ();
 					// Выполняем перенос всей ноды
 					i->second = ::move(user);
 					// Устанавливаем тип узла события
@@ -1578,10 +1740,21 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 				} break;
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Выполняем создание нового объекта ноды
-					unique_ptr <net::fs_t> fs = make_unique <net::fs_t> (this->_fmk, this->_log);
+					unique_ptr <dir_t> fs = make_unique <dir_t> (this->_fmk, this->_log);
+					// Выполняем перенос состояний ноды
+					fs->state = i->second->state;
+					// Устанавливаем тип узла события
+					fs->state.node = node;
+					// Выполняем перенос всей ноды
+					i->second = ::move(fs);
+				} break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Выполняем создание нового объекта ноды
+					unique_ptr <file_t> fs = make_unique <file_t> (this->_fmk, this->_log);
 					// Выполняем перенос состояний ноды
 					fs->state = i->second->state;
 					// Устанавливаем тип узла события
@@ -1637,7 +1810,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						}
 					}
 					// Выполняем создание нового объекта ноды
-					unique_ptr <net::ipc_t> ipc = make_unique <net::ipc_t> (this->_fmk, this->_log);
+					unique_ptr <ipc_t> ipc = make_unique <ipc_t> (this->_fmk, this->_log);
 					// Выполняем перенос состояний ноды
 					ipc->state = i->second->state;
 					// Устанавливаем тип узла события
@@ -1651,14 +1824,14 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <net::client_t *> (i->second.get());
+							auto client = awh_cast <client_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							ipc->socket = client->socket;
 						} break;
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <net::server_t *> (i->second.get());
+							auto server = awh_cast <server_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							ipc->socket = server->socket;
 						} break;
@@ -1732,7 +1905,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						}
 					}
 					// Выполняем создание нового объекта ноды
-					unique_ptr <net::peer_t> peer = make_unique <net::peer_t> (this->_fmk, this->_log);
+					unique_ptr <peer_t> peer = make_unique <peer_t> (this->_fmk, this->_log);
 					// Выполняем перенос состояний ноды
 					peer->state = i->second->state;
 					// Устанавливаем тип узла события
@@ -1748,7 +1921,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <net::client_t *> (i->second.get());
+							auto client = awh_cast <client_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							peer->socket = client->socket;
 							// Выполняем перенос хоста ноды
@@ -1757,7 +1930,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <net::server_t *> (i->second.get());
+							auto server = awh_cast <server_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							peer->socket = server->socket;
 							// Выполняем перенос хоста ноды
@@ -1772,7 +1945,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 					// Получаем объект клиента
-					auto client = awh_cast <net::client_t *> (i->second.get());
+					auto client = awh_cast <client_t *> (i->second.get());
 					// Если источник сетевого адреса не инициализирован
 					if(client->source == nullptr){
 						/**
@@ -1870,7 +2043,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						}
 					}
 					// Выполняем создание нового объекта ноды
-					unique_ptr <net::server_t> server = make_unique <net::server_t> (this->_fmk, this->_log);
+					unique_ptr <server_t> server = make_unique <server_t> (this->_fmk, this->_log);
 					// Выполняем перенос состояний ноды
 					server->state = i->second->state;
 					// Устанавливаем тип узла события
@@ -1882,7 +2055,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект объект соседа
-							auto peer = awh_cast <net::peer_t *> (i->second.get());
+							auto peer = awh_cast <peer_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							server->socket = peer->socket;
 							// Выполняем перенос хоста ноды
@@ -1893,7 +2066,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект объект клиента
-							auto client = awh_cast <net::client_t *> (i->second.get());
+							auto client = awh_cast <client_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							server->socket = client->socket;
 							// Выполняем перенос хоста ноды
@@ -1957,7 +2130,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если нода является соседом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект соседа
-							auto peer = awh_cast <net::peer_t *> (i->second.get());
+							auto peer = awh_cast <peer_t *> (i->second.get());
 							// Если объект адреса соседа не инициализирован
 							if(peer->remote == nullptr)
 								// Прерываем выполнение
@@ -2093,7 +2266,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если нода является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <net::client_t *> (i->second.get());
+							auto client = awh_cast <client_t *> (i->second.get());
 							// Если объект адреса клиента не инициализирован
 							if(client->source == nullptr)
 								// Прерываем выполнение
@@ -2225,7 +2398,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если нода является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <net::server_t *> (i->second.get());
+							auto server = awh_cast <server_t *> (i->second.get());
 							// Если объект адреса сервера не инициализирован
 							if(server->host == nullptr)
 								// Прерываем выполнение
@@ -2371,7 +2544,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является соседом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
-								net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+								peer_t * peer = awh_cast <peer_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
@@ -2382,7 +2555,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
-								net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+								client_t * client = awh_cast <client_t *> (i->second.get());
 								// Если объект адреса клиента не инициализирован
 								if(client->target == nullptr)
 									// Прерываем выполнение
@@ -2393,7 +2566,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
-								net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+								server_t * server = awh_cast <server_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(server->host == nullptr)
 									// Прерываем выполнение
@@ -2420,13 +2593,40 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					}
 				} break;
 				// Если тип адреса принадлежит к дирректориям файловой системы
-				case static_cast <uint8_t> (event::address_t::DIR):
+				case static_cast <uint8_t> (event::address_t::DIR): {
+					// Если типы адресов соответствуют
+					if(address == i->second->state.address){
+						// Получаем объект файловой системы
+						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						// Если объект адреса файловой системы не инициализирован
+						if(fs->path == nullptr)
+							// Прерываем выполнение
+							break;
+						// Выводим результат работы функции
+						return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+					// Если типы адресов не соответствуют
+					}else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Requested filesystem address does not match current address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Requested filesystem does not match current address", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
 				// Если тип адреса принадлежит к файлам файловой системы
 				case static_cast <uint8_t> (event::address_t::FILE): {
 					// Если типы адресов соответствуют
 					if(address == i->second->state.address){
 						// Получаем объект файловой системы
-						net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+						file_t * fs = awh_cast <file_t *> (i->second.get());
 						// Если объект адреса файловой системы не инициализирован
 						if(fs->path == nullptr)
 							// Прерываем выполнение
@@ -2461,7 +2661,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является соседом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
-								net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+								peer_t * peer = awh_cast <peer_t *> (i->second.get());
 								// Если объект адреса соседа не инициализирован
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
@@ -2474,7 +2674,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
-								net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+								client_t * client = awh_cast <client_t *> (i->second.get());
 								// Если объект адреса клиента не инициализирован
 								if(client->source == nullptr)
 									// Прерываем выполнение
@@ -2487,7 +2687,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
-								net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+								server_t * server = awh_cast <server_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(server->host == nullptr)
 									// Прерываем выполнение
@@ -2526,7 +2726,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является соседом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
-								net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+								peer_t * peer = awh_cast <peer_t *> (i->second.get());
 								// Если объект адреса соседа не инициализирован
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
@@ -2539,7 +2739,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
-								net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+								client_t * client = awh_cast <client_t *> (i->second.get());
 								// Если объект адреса клиента не инициализирован
 								if(client->source == nullptr)
 									// Прерываем выполнение
@@ -2552,7 +2752,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если нода является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
-								net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+								server_t * server = awh_cast <server_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(server->host == nullptr)
 									// Прерываем выполнение
@@ -2669,7 +2869,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем полученный MAC-адрес
 											this->_addr.parse(value, net_addr_t::type_t::MAC);
 											// Получаем объект соседа
-											auto peer = awh_cast <net::peer_t *> (i->second.get());
+											auto peer = awh_cast <peer_t *> (i->second.get());
 											// Устанавливаем полученный MAC-адрес в объект события
 											awh_cast <net::addr_mac_t *> (peer->mac.get())->address = ::move(this->_addr.mac());
 											/**
@@ -2757,7 +2957,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем полученный MAC-адрес
 											this->_addr.parse(value, net_addr_t::type_t::MAC);
 											// Получаем объект клиента
-											auto client = awh_cast <net::client_t *> (i->second.get());
+											auto client = awh_cast <client_t *> (i->second.get());
 											/**
 											 * Определяем семейство сокета
 											 */
@@ -2849,7 +3049,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем полученный MAC-адрес
 											this->_addr.parse(value, net_addr_t::type_t::MAC);
 											// Получаем объект сервера
-											auto server = awh_cast <net::server_t *> (i->second.get());
+											auto server = awh_cast <server_t *> (i->second.get());
 											/**
 											 * Определяем семейство сокета
 											 */
@@ -2995,7 +3195,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Если нода является соседом
 										case static_cast <uint8_t> (event::node_t::PEER): {
 											// Получаем объект адреса удалённого узла
-											net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+											peer_t * peer = awh_cast <peer_t *> (i->second.get());
 											// Если объект адреса соседа не инициализирован
 											if(peer->remote == nullptr)
 												// Создаём новый объект адреса удалённого узла
@@ -3008,7 +3208,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Если нода является клиентом
 										case static_cast <uint8_t> (event::node_t::CLIENT): {
 											// Получаем объект адреса удалённого узла
-											net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+											client_t * client = awh_cast <client_t *> (i->second.get());
 											// Если объект адреса клиента не инициализирован
 											if(client->target == nullptr)
 												// Создаём новый объект адреса удалённого узла
@@ -3021,7 +3221,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Если нода является сервером
 										case static_cast <uint8_t> (event::node_t::SERVER): {
 											// Получаем объект адреса сервера
-											net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+											server_t * server = awh_cast <server_t *> (i->second.get());
 											// Если объект адреса сервера не инициализирован
 											if(server->host == nullptr)
 												// Создаём новый объект адреса сервера
@@ -3070,15 +3270,13 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					}
 				} break;
 				// Если тип адреса принадлежит к дирректориям файловой системы
-				case static_cast <uint8_t> (event::address_t::DIR):
-				// Если тип адреса принадлежит к файлам файловой системы
-				case static_cast <uint8_t> (event::address_t::FILE): {
+				case static_cast <uint8_t> (event::address_t::DIR): {
 					/**
 					 * Определяем чем является текущая нода
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является файловой системой
-						case static_cast <uint8_t> (event::node_t::FSYS): {
+						// Если нода является дирректорией
+						case static_cast <uint8_t> (event::node_t::DIR): {
 							/**
 							 * Определяем проверку соответствует ли адрес
 							 */
@@ -3088,7 +3286,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Устанавливаем тип адреса
 									i->second->state.address = address;
 									// Получаем объект файловой системы
-									net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+									dir_t * fs = awh_cast <dir_t *> (i->second.get());
 									// Если объект адреса файловой системы не инициализирован
 									if(fs->path == nullptr)
 										// Создаём новый объект адреса файловой системы
@@ -3123,13 +3321,76 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Address \"%s\" can only be set for FILESYSTEM node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+								this->_log->debug("Address \"%s\" can only be set for DIR node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("Address \"%s\" can only be set for FILESYSTEM node", log_t::flag_t::WARNING, value.c_str());
+								this->_log->print("Address \"%s\" can only be set for DIR node", log_t::flag_t::WARNING, value.c_str());
+							#endif
+						}
+					}
+				} break;
+				// Если тип адреса принадлежит к файлам файловой системы
+				case static_cast <uint8_t> (event::address_t::FILE): {
+					/**
+					 * Определяем чем является текущая нода
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если нода является файловой системой
+						case static_cast <uint8_t> (event::node_t::FILE): {
+							/**
+							 * Определяем проверку соответствует ли адрес
+							 */
+							switch(static_cast <uint8_t> (this->_addr.host(value))){
+								// Если адрес соответствует адресу файловой системы
+								case static_cast <uint8_t> (net_addr_t::type_t::FS): {
+									// Устанавливаем тип адреса
+									i->second->state.address = address;
+									// Получаем объект файловой системы
+									file_t * fs = awh_cast <file_t *> (i->second.get());
+									// Если объект адреса файловой системы не инициализирован
+									if(fs->path == nullptr)
+										// Создаём новый объект адреса файловой системы
+										fs->path = make_unique <net::addr_fs_t> ();
+									// Устанавливаем адрес файловой системы события
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
+									// Возвращаем результат работы функции
+									return true;
+								}
+								// Если адрес не принадлежит к MAC-адресу
+								default: {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, value.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Если нода имеет неподдерживаемый тип
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Address \"%s\" can only be set for FILE node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Address \"%s\" can only be set for FILE node", log_t::flag_t::WARNING, value.c_str());
 							#endif
 						}
 					}
@@ -3161,7 +3422,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Устанавливаем тип адреса
 										i->second->state.address = address;
 										// Получаем объект клиента
-										auto client = awh_cast <net::client_t *> (i->second.get());
+										auto client = awh_cast <client_t *> (i->second.get());
 										// Если объект адреса клиента не инициализирован
 										if(client->target == nullptr){
 											// Создаём новый объект адреса удалённого узла
@@ -3194,7 +3455,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является соседом
 											case static_cast <uint8_t> (event::node_t::PEER): {
 												// Получаем объект соседа
-												auto peer = awh_cast <net::peer_t *> (i->second.get());
+												auto peer = awh_cast <peer_t *> (i->second.get());
 												// Если объект адреса соседа не инициализирован
 												if(peer->remote == nullptr)
 													// Создаём новый объект адреса удалённого узла
@@ -3205,7 +3466,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
 												// Получаем объект клиента
-												auto client = awh_cast <net::client_t *> (i->second.get());
+												auto client = awh_cast <client_t *> (i->second.get());
 												// Если объект адреса клиента не инициализирован
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
@@ -3219,7 +3480,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												// Получаем объект сервера
-												auto server = awh_cast <net::server_t *> (i->second.get());
+												auto server = awh_cast <server_t *> (i->second.get());
 												// Если объект адреса сервера не инициализирован
 												if(server->host == nullptr)
 													// Создаём новый объект адреса сервера
@@ -3308,7 +3569,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										// Устанавливаем тип адреса
 										i->second->state.address = address;
 										// Получаем объект клиента
-										auto client = awh_cast <net::client_t *> (i->second.get());
+										auto client = awh_cast <client_t *> (i->second.get());
 										// Если объект адреса клиента не инициализирован
 										if(client->target == nullptr){
 											// Создаём новый объект адреса удалённого узла
@@ -3341,7 +3602,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является соседом
 											case static_cast <uint8_t> (event::node_t::PEER): {
 												// Получаем объект соседа
-												auto peer = awh_cast <net::peer_t *> (i->second.get());
+												auto peer = awh_cast <peer_t *> (i->second.get());
 												// Если объект адреса соседа не инициализирован
 												if(peer->remote == nullptr)
 													// Создаём новый объект адреса удалённого узла
@@ -3352,7 +3613,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
 												// Получаем объект клиента
-												auto client = awh_cast <net::client_t *> (i->second.get());
+												auto client = awh_cast <client_t *> (i->second.get());
 												// Если объект адреса клиента не инициализирован
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
@@ -3366,7 +3627,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												// Получаем объект сервера
-												auto server = awh_cast <net::server_t *> (i->second.get());
+												auto server = awh_cast <server_t *> (i->second.get());
 												// Если объект адреса сервера не инициализирован
 												if(server->host == nullptr)
 													// Создаём новый объект адреса сервера
@@ -3518,7 +3779,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является соседом
 											case static_cast <uint8_t> (event::node_t::PEER): {
 												// Получаем текущее значение объекта соседа
-												net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+												peer_t * peer = awh_cast <peer_t *> (i->second.get());
 												// Если объект адреса соседа не инициализирован
 												if(peer->remote == nullptr)
 													// Создаём новый объект адреса удалённого узла
@@ -3529,7 +3790,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
 												// Получаем текущее значение объекта клиента
-												net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+												client_t * client = awh_cast <client_t *> (i->second.get());
 												// Если объект адреса клиента не инициализирован
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
@@ -3543,7 +3804,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												// Получаем текущее значение объекта сервера
-												net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+												server_t * server = awh_cast <server_t *> (i->second.get());
 												// Если объект адреса сервера не инициализирован
 												if(server->host == nullptr)
 													// Создаём новый объект адреса сервера
@@ -3604,7 +3865,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является соседом
 											case static_cast <uint8_t> (event::node_t::PEER): {
 												// Получаем текущее значение объекта соседа
-												net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+												peer_t * peer = awh_cast <peer_t *> (i->second.get());
 												// Если объект адреса соседа не инициализирован
 												if(peer->remote == nullptr)
 													// Создаём новый объект адреса удалённого узла
@@ -3615,7 +3876,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
 												// Получаем текущее значение объекта клиента
-												net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+												client_t * client = awh_cast <client_t *> (i->second.get());
 												// Если объект адреса клиента не инициализирован
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
@@ -3629,7 +3890,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Если нода является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												// Получаем текущее значение объекта сервера
-												net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+												server_t * server = awh_cast <server_t *> (i->second.get());
 												// Если объект адреса сервера не инициализирован
 												if(server->host == nullptr)
 													// Создаём новый объект адреса сервера
@@ -3758,7 +4019,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -3772,9 +4033,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_uds_t> ();
 										// Получаем объект хоста UDS-сокета
@@ -3793,9 +4054,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_uds_t> ();
 										// Получаем объект хоста UDS-сокета
@@ -3818,7 +4079,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -3832,9 +4093,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_uds_t> ();
 										// Получаем объект хоста UDS-сокета
@@ -3853,9 +4114,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_uds_t> ();
 										// Получаем объект хоста UDS-сокета
@@ -3878,7 +4139,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -3892,9 +4153,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_uds_t> ();
 										// Получаем объект хоста UDS-сокета
@@ -3913,9 +4174,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_uds_t> ();
 										// Получаем объект хоста UDS-сокета
@@ -3966,7 +4227,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета RAW
 							case static_cast <uint8_t> (event::type_t::RAW): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -3980,9 +4241,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4098,9 +4359,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4226,7 +4487,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -4240,9 +4501,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4351,9 +4612,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4500,7 +4761,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -4514,9 +4775,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4586,9 +4847,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4668,7 +4929,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Устанавливаем флаг типа сокета
@@ -4682,9 +4943,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										net::client_t * first = awh_cast <net::client_t *> (i->second.get());
+										client_t * first = awh_cast <client_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4744,9 +5005,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										net::server_t * first = awh_cast <net::server_t *> (i->second.get());
+										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Получаем текущее значение соседа получающего параметры
-										net::client_t * second = awh_cast <net::client_t *> (ret.first->second.get());
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
 										// Выполняем инициализацию объекта хоста клиента
 										second->target = make_unique <net::attr_net_t> ();
 										/**
@@ -4832,11 +5093,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 						}
 					} break;
 					// Для семейства директорий
-					case static_cast <uint8_t> (event::family_t::DIR):
-					// Для семейства файловой системы
-					case static_cast <uint8_t> (event::family_t::FILE): {
+					case static_cast <uint8_t> (event::family_t::DIR): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::fs_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Устанавливаем флаг типа сокета
@@ -4844,7 +5103,22 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 						// Устанавливаем флаг семейства сокета
 						ret.first->second->state.family = i->second->state.family;
 						// Выполняем инициализацию объекта адреса файловой системы
-						awh_cast <net::fs_t &> (*ret.first->second).path = make_unique <net::addr_fs_t> ();
+						awh_cast <dir_t &> (*ret.first->second).path = make_unique <net::addr_fs_t> ();
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
+					// Для семейства файловой системы
+					case static_cast <uint8_t> (event::family_t::FILE): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <file_t> (this->_fmk, this->_log));
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Выполняем инициализацию объекта адреса файловой системы
+						awh_cast <file_t &> (*ret.first->second).path = make_unique <net::addr_fs_t> ();
 						// Возвращаем идентификатор созданного события
 						result = ret.first->first;
 					} break;
@@ -4961,7 +5235,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -4969,7 +5243,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_uds_t> ();
 						// Получаем объект хоста UDS-сокета
@@ -4984,7 +5258,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -4992,7 +5266,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_uds_t> ();
 						// Получаем объект хоста UDS-сокета
@@ -5007,7 +5281,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -5015,7 +5289,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_uds_t> ();
 						// Получаем объект хоста UDS-сокета
@@ -5065,7 +5339,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета RAW
 					case static_cast <uint8_t> (event::type_t::RAW): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -5073,7 +5347,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_net_t> ();
 						/**
@@ -5178,7 +5452,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -5186,7 +5460,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_net_t> ();
 						/**
@@ -5321,7 +5595,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -5329,7 +5603,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_net_t> ();
 						/**
@@ -5424,7 +5698,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем флаг типа сокета
 						ret.first->second->state.type = type;
 						// Устанавливаем флаг семейства сокета
@@ -5432,7 +5706,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект клиента
-						net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Выполняем инициализацию объекта хоста клиента
 						client->target = make_unique <net::attr_net_t> ();
 						/**
@@ -5530,11 +5804,9 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 				}
 			} break;
 			// Для семейства директорий
-			case static_cast <uint8_t> (event::family_t::DIR):
-			// Для семейства файловой системы
-			case static_cast <uint8_t> (event::family_t::FILE): {
+			case static_cast <uint8_t> (event::family_t::DIR): {
 				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::fs_t> (this->_fmk, this->_log));
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
 				// Устанавливаем флаг типа сокета
 				ret.first->second->state.type = type;
 				// Устанавливаем флаг семейства сокета
@@ -5542,7 +5814,22 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 				// Устанавливаем флаг протокола сокета
 				ret.first->second->state.protocol = protocol;
 				// Выполняем инициализацию объекта адреса файловой системы
-				awh_cast <net::fs_t &> (* ret.first->second).path = make_unique <net::addr_fs_t> ();
+				awh_cast <dir_t &> (* ret.first->second).path = make_unique <net::addr_fs_t> ();
+				// Возвращаем идентификатор созданного события
+				result = ret.first->first;
+			} break;
+			// Для семейства файловой системы
+			case static_cast <uint8_t> (event::family_t::FILE): {
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <file_t> (this->_fmk, this->_log));
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Выполняем инициализацию объекта адреса файловой системы
+				awh_cast <file_t &> (* ret.first->second).path = make_unique <net::addr_fs_t> ();
 				// Возвращаем идентификатор созданного события
 				result = ret.first->first;
 			} break;
@@ -6144,7 +6431,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 			// Переходим по всему списку идентификаторов событий
 			for(uint8_t i = 0; i < 2; i++){
 				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <net::client_t> (this->_fmk, this->_log));
+				auto ret = ::__awh_nodes__.emplace(::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 				// Устанавливаем флаг типа сокета
 				ret.first->second->state.type = type;
 				// Устанавливаем флаг семейства сокета
@@ -6152,7 +6439,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 				// Устанавливаем флаг протокола сокета
 				ret.first->second->state.protocol = protocol;
 				// Получаем объект клиента
-				net::client_t * client = awh_cast <net::client_t *> (ret.first->second.get());
+				client_t * client = awh_cast <client_t *> (ret.first->second.get());
 				/**
 				 * Определяем семейство сокета
 				 */
@@ -6304,24 +6591,24 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				case static_cast <uint8_t> (event::node_t::FILE):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::fs_t *> (i->second.get())->fd;
+					fd = awh_cast <file_t *> (i->second.get())->fd;
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::peer_t *> (i->second.get())->socket;
+					fd = awh_cast <peer_t *> (i->second.get())->socket;
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::client_t *> (i->second.get())->socket;
+					fd = awh_cast <client_t *> (i->second.get())->socket;
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::server_t *> (i->second.get())->socket;
+					fd = awh_cast <server_t *> (i->second.get())->socket;
 				break;
 				// Для других типов нод
 				default: return false;
@@ -6330,40 +6617,43 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 			if((result = (fd != net::invalid_socket_t))){
 				// Флаг установки опции
 				bool isSetup = false;
-				// Если опция передана как TCP_CORK
-				if(event::options::TCPCORK & options){
-					// Активируем алгоритм TCP/CORK
-					if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
-						// Устанавливаем опцию события
-						i->second->state.options |= event::options::TCPCORK;
-				// Если опция не передана как TCP_CORK
-				} else {
-					// Деактивируем алгоритм TCP/CORK
-					if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
-						// Снимаем опцию события
-						i->second->state.options &= ~event::options::TCPCORK;
+				// Если нода не является файловой системой
+				if(i->second->state.node != event::node_t::FILE){
+					// Если опция передана как TCP_CORK
+					if(event::options::TCPCORK & options){
+						// Активируем алгоритм TCP/CORK
+						if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
+							// Устанавливаем опцию события
+							i->second->state.options |= event::options::TCPCORK;
+					// Если опция не передана как TCP_CORK
+					} else {
+						// Деактивируем алгоритм TCP/CORK
+						if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
+							// Снимаем опцию события
+							i->second->state.options &= ~event::options::TCPCORK;
+					}
+					// Если опция не установлена
+					if(!isSetup)
+						// Устанавливаем результат работы функции как ложь
+						result = false;
+					// Если опция передана как IPV6_V6ONLY
+					if(event::options::IPV6ONLY & options){
+						// Устанавливаем режим отображения IPv4 => IPv6
+						if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::ENABLED)))
+							// Устанавливаем опцию события
+							i->second->state.options |= event::options::IPV6ONLY;
+					// Если опция не передана как IPV6_V6ONLY
+					} else {
+						// Снимаем режим отображения IPv4 => IPv6
+						if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::DISABLED)))
+							// Снимаем опцию события
+							i->second->state.options &= ~event::options::IPV6ONLY;
+					}
+					// Если опция не установлена
+					if(result && !isSetup)
+						// Устанавливаем результат работы функции как ложь
+						result = false;
 				}
-				// Если опция не установлена
-				if(!isSetup)
-					// Устанавливаем результат работы функции как ложь
-					result = false;
-				// Если опция передана как IPV6_V6ONLY
-				if(event::options::IPV6ONLY & options){
-					// Устанавливаем режим отображения IPv4 => IPv6
-					if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::ENABLED)))
-						// Устанавливаем опцию события
-						i->second->state.options |= event::options::IPV6ONLY;
-				// Если опция не передана как IPV6_V6ONLY
-				} else {
-					// Снимаем режим отображения IPv4 => IPv6
-					if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::DISABLED)))
-						// Снимаем опцию события
-						i->second->state.options &= ~event::options::IPV6ONLY;
-				}
-				// Если опция не установлена
-				if(result && !isSetup)
-					// Устанавливаем результат работы функции как ложь
-					result = false;
 				// Если опция передана как NO_SIGILL
 				if(event::options::NOSIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
@@ -6376,23 +6666,26 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
 					result = false;
-				// Если опция передана как NO_SIGPIPE
-				if(event::options::NOSIGPIPE & options){
-					// Устанавливаем игнорирование сигнала SIGPIPE
-					if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::ENABLED)))
-						// Устанавливаем опцию события
-						i->second->state.options |= event::options::NOSIGPIPE;
-				// Если опция не передана как NO_SIGPIPE
-				} else {
-					// Снимаем игнорирование сигнала SIGPIPE
-					if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::DISABLED)))
-						// Снимаем опцию события
-						i->second->state.options &= ~event::options::NOSIGPIPE;
+				// Если нода не является файловой системой
+				if(i->second->state.node != event::node_t::FILE){
+					// Если опция передана как NO_SIGPIPE
+					if(event::options::NOSIGPIPE & options){
+						// Устанавливаем игнорирование сигнала SIGPIPE
+						if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::ENABLED)))
+							// Устанавливаем опцию события
+							i->second->state.options |= event::options::NOSIGPIPE;
+					// Если опция не передана как NO_SIGPIPE
+					} else {
+						// Снимаем игнорирование сигнала SIGPIPE
+						if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::DISABLED)))
+							// Снимаем опцию события
+							i->second->state.options &= ~event::options::NOSIGPIPE;
+					}
+					// Если опция не установлена
+					if(result && !isSetup)
+						// Устанавливаем результат работы функции как ложь
+						result = false;
 				}
-				// Если опция не установлена
-				if(result && !isSetup)
-					// Устанавливаем результат работы функции как ложь
-					result = false;
 				// Если опция передана как NOIOBLOCK
 				if(event::options::NOIOBLOCK & options){
 					// Устанавливаем неблокирующий режим ввода/вывода
@@ -6410,57 +6703,60 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
 					result = false;
-				// Если опция передана как REUSEADDR
-				if(event::options::REUSEADDR & options){
-					// Устанавливаем режим повторного использования адреса
-					if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::ENABLED)))
-						// Устанавливаем опцию события
-						i->second->state.options |= event::options::REUSEADDR;
-				// Если опция не передана как REUSEADDR
-				} else {
-					// Снимаем режим повторного использования адреса
-					if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::DISABLED)))
-						// Снимаем опцию события
-						i->second->state.options &= ~event::options::REUSEADDR;
+				// Если нода не является файловой системой
+				if(i->second->state.node != event::node_t::FILE){
+					// Если опция передана как REUSEADDR
+					if(event::options::REUSEADDR & options){
+						// Устанавливаем режим повторного использования адреса
+						if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::ENABLED)))
+							// Устанавливаем опцию события
+							i->second->state.options |= event::options::REUSEADDR;
+					// Если опция не передана как REUSEADDR
+					} else {
+						// Снимаем режим повторного использования адреса
+						if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::DISABLED)))
+							// Снимаем опцию события
+							i->second->state.options &= ~event::options::REUSEADDR;
+					}
+					// Если опция не установлена
+					if(result && !isSetup)
+						// Устанавливаем результат работы функции как ложь
+						result = false;
+					// Если опция передана как REUSEPORT
+					if(event::options::REUSEPORT & options){
+						// Устанавливаем режим повторного использования порта
+						if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::ENABLED)))
+							// Устанавливаем опцию события
+							i->second->state.options |= event::options::REUSEPORT;
+					// Если опция не передана как REUSEPORT
+					} else {
+						// Снимаем режим повторного использования порта
+						if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::DISABLED)))
+							// Снимаем опцию события
+							i->second->state.options &= ~event::options::REUSEPORT;
+					}
+					// Если опция не установлена
+					if(result && !isSetup)
+						// Устанавливаем результат работы функции как ложь
+						result = false;
+					// Если опция передана как TCP_NODELAY
+					if(event::options::TCPNODELAY & options){
+						// Устанавливаем режим отключения алгоритма Нейгла
+						if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
+							// Устанавливаем опцию события
+							i->second->state.options |= event::options::TCPNODELAY;
+					// Если опция не передана как TCP_NODELAY
+					} else {
+						// Снимаем режим отключения алгоритма Нейгла
+						if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
+							// Снимаем опцию события
+							i->second->state.options &= ~event::options::TCPNODELAY;
+					}
+					// Если опция не установлена
+					if(result && !isSetup)
+						// Устанавливаем результат работы функции как ложь
+						result = false;
 				}
-				// Если опция не установлена
-				if(result && !isSetup)
-					// Устанавливаем результат работы функции как ложь
-					result = false;
-				// Если опция передана как REUSEPORT
-				if(event::options::REUSEPORT & options){
-					// Устанавливаем режим повторного использования порта
-					if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::ENABLED)))
-						// Устанавливаем опцию события
-						i->second->state.options |= event::options::REUSEPORT;
-				// Если опция не передана как REUSEPORT
-				} else {
-					// Снимаем режим повторного использования порта
-					if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::DISABLED)))
-						// Снимаем опцию события
-						i->second->state.options &= ~event::options::REUSEPORT;
-				}
-				// Если опция не установлена
-				if(result && !isSetup)
-					// Устанавливаем результат работы функции как ложь
-					result = false;
-				// Если опция передана как TCP_NODELAY
-				if(event::options::TCPNODELAY & options){
-					// Устанавливаем режим отключения алгоритма Нейгла
-					if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
-						// Устанавливаем опцию события
-						i->second->state.options |= event::options::TCPNODELAY;
-				// Если опция не передана как TCP_NODELAY
-				} else {
-					// Снимаем режим отключения алгоритма Нейгла
-					if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
-						// Снимаем опцию события
-						i->second->state.options &= ~event::options::TCPNODELAY;
-				}
-				// Если опция не установлена
-				if(result && !isSetup)
-					// Устанавливаем результат работы функции как ложь
-					result = false;
 				// Если опция передана как CLOSE_ON_EXEC
 				if(event::options::CLOSEONEXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
@@ -6529,24 +6825,24 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				case static_cast <uint8_t> (event::node_t::FILE):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::fs_t *> (i->second.get())->fd;
+					fd = awh_cast <file_t *> (i->second.get())->fd;
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::peer_t *> (i->second.get())->socket;
+					fd = awh_cast <peer_t *> (i->second.get())->socket;
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::client_t *> (i->second.get())->socket;
+					fd = awh_cast <client_t *> (i->second.get())->socket;
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <net::server_t *> (i->second.get())->socket;
+					fd = awh_cast <server_t *> (i->second.get())->socket;
 				break;
 				// Для других типов нод
 				default: return false;
@@ -6559,26 +6855,32 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 				switch(option){
 					// Если опция передана как TCP_CORK
 					case event::options::TCPCORK: {
-						// Устанавливаем или снимаем режим алгоритма TCP/CORK
-						if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо активировать режим алгоритма TCP/CORK
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::TCPCORK;
-							// Если необходимо деактивировать режим алгоритма TCP/CORK
-							else i->second->state.options ^= event::options::TCPCORK;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Устанавливаем или снимаем режим алгоритма TCP/CORK
+							if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо активировать режим алгоритма TCP/CORK
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::TCPCORK;
+								// Если необходимо деактивировать режим алгоритма TCP/CORK
+								else i->second->state.options ^= event::options::TCPCORK;
+							}
 						}
 					} break;
 					// Если опция передана как IPV6_V6ONLY
 					case event::options::IPV6ONLY: {
-						// Устанавливаем или снимаем режим отображения IPv4 => IPv6
-						if((result = this->_eth.ipv6only(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо активировать режим отображения IPv4 => IPv6
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::IPV6ONLY;
-							// Если необходимо деактивировать режим отображения IPv4 => IPv6
-							else i->second->state.options ^= event::options::IPV6ONLY;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Устанавливаем или снимаем режим отображения IPv4 => IPv6
+							if((result = this->_eth.ipv6only(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо активировать режим отображения IPv4 => IPv6
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::IPV6ONLY;
+								// Если необходимо деактивировать режим отображения IPv4 => IPv6
+								else i->second->state.options ^= event::options::IPV6ONLY;
+							}
 						}
 					} break;
 					// Если опция передана как NO_SIGILL
@@ -6595,14 +6897,17 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как NO_SIGPIPE
 					case event::options::NOSIGPIPE: {
-						// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
-						if((result = this->_eth.nosigpipe(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо отключить генерацию сигнала SIGPIPE
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::NOSIGPIPE;
-							// Если необходимо включить генерацию сигнала SIGPIPE
-							else i->second->state.options ^= event::options::NOSIGPIPE;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
+							if((result = this->_eth.nosigpipe(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо отключить генерацию сигнала SIGPIPE
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::NOSIGPIPE;
+								// Если необходимо включить генерацию сигнала SIGPIPE
+								else i->second->state.options ^= event::options::NOSIGPIPE;
+							}
 						}
 					} break;
 					// Если опция передана как NOIOBLOCK
@@ -6619,50 +6924,62 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как REUSEADDR
 					case event::options::REUSEADDR: {
-						// Устанавливаем или снимаем режим повторного использования адреса сокета
-						if((result = this->_eth.reuseaddr(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо активировать режим повторного использования адреса сокета
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::REUSEADDR;
-							// Если необходимо деактивировать режим повторного использования адреса сокета
-							else i->second->state.options ^= event::options::REUSEADDR;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Устанавливаем или снимаем режим повторного использования адреса сокета
+							if((result = this->_eth.reuseaddr(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо активировать режим повторного использования адреса сокета
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::REUSEADDR;
+								// Если необходимо деактивировать режим повторного использования адреса сокета
+								else i->second->state.options ^= event::options::REUSEADDR;
+							}
 						}
 					} break;
 					// Если опция передана как REUSEPORT
 					case event::options::REUSEPORT: {
-						// Устанавливаем или снимаем режим повторного использования порта сокета
-						if((result = this->_eth.reuseport(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо активировать режим повторного использования порта сокета
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::REUSEPORT;
-							// Если необходимо деактивировать режим повторного использования порта сокета
-							else i->second->state.options ^= event::options::REUSEPORT;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Устанавливаем или снимаем режим повторного использования порта сокета
+							if((result = this->_eth.reuseport(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо активировать режим повторного использования порта сокета
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::REUSEPORT;
+								// Если необходимо деактивировать режим повторного использования порта сокета
+								else i->second->state.options ^= event::options::REUSEPORT;
+							}
 						}
 					} break;
 					// Если опция передана как TCP_NODELAY
 					case event::options::TCPNODELAY: {
-						// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-						if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо активировать алгоритм Нейгла для TCP сокета
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::TCPNODELAY;
-							// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-							else i->second->state.options ^= event::options::TCPNODELAY;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+							if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо активировать алгоритм Нейгла для TCP сокета
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::TCPNODELAY;
+								// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+								else i->second->state.options ^= event::options::TCPNODELAY;
+							}
 						}
 					} break;
 					// Если опция передана как CLOSE_ON_EXEC
 					case event::options::CLOSEONEXEC: {
-						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
-						if((result = this->_eth.closeonexec(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-							// Если необходимо активировать режим закрытия сокета при выполнении exec()
-							if(mode)
-								// Устанавливаем опцию события
-								i->second->state.options |= event::options::CLOSEONEXEC;
-							// Если необходимо деактивировать режим закрытия сокета при выполнении exec()
-							else i->second->state.options ^= event::options::CLOSEONEXEC;
+						// Если нода не является файловой системой
+						if(i->second->state.node != event::node_t::FILE){
+							// Активируем или деактивируем режим закрытия сокета при выполнении exec()
+							if((result = this->_eth.closeonexec(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								// Если необходимо активировать режим закрытия сокета при выполнении exec()
+								if(mode)
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::CLOSEONEXEC;
+								// Если необходимо деактивировать режим закрытия сокета при выполнении exec()
+								else i->second->state.options ^= event::options::CLOSEONEXEC;
+							}
 						}
 					} break;
 				}
@@ -6770,10 +7087,19 @@ bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем объект ноды
-					auto node = awh_cast <net::fs_t *> (i->second.get());
+					auto node = awh_cast <dir_t *> (i->second.get());
+					// Очищаем чёрный список
+					node->blacklist.clear();
+					// Устанавливаем результат
+					result = node->blacklist.empty();
+				} break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем объект ноды
+					auto node = awh_cast <file_t *> (i->second.get());
 					// Очищаем чёрный список
 					node->blacklist.clear();
 					// Устанавливаем результат
@@ -6782,7 +7108,7 @@ bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект ноды
-					auto node = awh_cast <net::server_t *> (i->second.get());
+					auto node = awh_cast <server_t *> (i->second.get());
 					// Очищаем чёрный список
 					node->blacklist.clear();
 					// Устанавливаем результат
@@ -6833,8 +7159,8 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Если нода является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
 						/**
 						 * Определяем проверку соответствует ли адрес
 						 */
@@ -6842,7 +7168,35 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 							// Если адрес соответствует файловой системе
 							case static_cast <uint8_t> (net_addr_t::type_t::FS):
 								// Выполняем добавление нового адреса в чёрный список
-								return awh_cast <net::fs_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+								return awh_cast <dir_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+							// Если мы получили какой-то другой адрес
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address being added to blacklist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address being added to blacklist does not match file system address", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						/**
+						 * Определяем проверку соответствует ли адрес
+						 */
+						switch(static_cast <uint8_t> (this->_addr.host(value))){
+							// Если адрес соответствует файловой системе
+							case static_cast <uint8_t> (net_addr_t::type_t::FS):
+								// Выполняем добавление нового адреса в чёрный список
+								return awh_cast <file_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
 							// Если мы получили какой-то другой адрес
 							default: {
 								/**
@@ -6876,7 +7230,7 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует файловой системе
 									case static_cast <uint8_t> (net_addr_t::type_t::FS):
 										// Выполняем добавление нового адреса в чёрный список
-										return awh_cast <net::server_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+										return awh_cast <server_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -6906,13 +7260,13 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует IPv4-адресу
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 										// Выполняем добавление нового адреса в чёрный список
-										return awh_cast <net::server_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
+										return awh_cast <server_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
 									// Если адрес соответствует MAC-адресу
 									case static_cast <uint8_t> (net_addr_t::type_t::MAC):
 									// Если адрес соответствует IPv6-адресу
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 										// Выполняем добавление нового адреса в чёрный список
-										return awh_cast <net::server_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
+										return awh_cast <server_t *> (i->second.get())->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -6997,10 +7351,24 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Если нода является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем объект ноды
-						auto node = awh_cast <net::fs_t *> (i->second.get());
+						auto node = awh_cast <dir_t *> (i->second.get());
+						// Если чёрный список не пустой
+						if(!node->blacklist.empty()){
+							// Выполняем поиск указанного адреса
+							auto i = node->blacklist.find(value);
+							// Если адрес найден, удаляем его
+							if((result = (i != node->blacklist.end())))
+								// Выполняем удаление указанного адреса
+								node->blacklist.erase(i);
+						}
+					} break;
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем объект ноды
+						auto node = awh_cast <file_t *> (i->second.get());
 						// Если чёрный список не пустой
 						if(!node->blacklist.empty()){
 							// Выполняем поиск указанного адреса
@@ -7014,7 +7382,7 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 					// Если нода является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект ноды
-						auto node = awh_cast <net::server_t *> (i->second.get());
+						auto node = awh_cast <server_t *> (i->second.get());
 						// Если чёрный список не пустой
 						if(!node->blacklist.empty()){
 							/**
@@ -7105,14 +7473,18 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::blacklist(co
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
 					// Выводим полученный результат
-					return awh_cast <net::fs_t *> (i->second.get())->blacklist;
+					return awh_cast <dir_t *> (i->second.get())->blacklist;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Выводим полученный результат
+					return awh_cast <file_t *> (i->second.get())->blacklist;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
-					return awh_cast <net::server_t *> (i->second.get())->blacklist;
+					return awh_cast <server_t *> (i->second.get())->blacklist;
 				// Для других типов нод
 				default: {
 					/**
@@ -7171,10 +7543,19 @@ bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем объект ноды
-					auto node = awh_cast <net::fs_t *> (i->second.get());
+					auto node = awh_cast <dir_t *> (i->second.get());
+					// Очищаем белый список
+					node->whitelist.clear();
+					// Устанавливаем результат
+					return node->whitelist.empty();
+				}
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем объект ноды
+					auto node = awh_cast <file_t *> (i->second.get());
 					// Очищаем белый список
 					node->whitelist.clear();
 					// Устанавливаем результат
@@ -7183,7 +7564,7 @@ bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект ноды
-					auto node = awh_cast <net::server_t *> (i->second.get());
+					auto node = awh_cast <server_t *> (i->second.get());
 					// Очищаем белый список
 					node->whitelist.clear();
 					// Устанавливаем результат
@@ -7234,8 +7615,8 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Если нода является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
 						/**
 						 * Определяем проверку соответствует ли адрес
 						 */
@@ -7243,7 +7624,35 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 							// Если адрес соответствует файловой системе
 							case static_cast <uint8_t> (net_addr_t::type_t::FS):
 								// Выполняем добавление нового адреса в белый список
-								return awh_cast <net::fs_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+								return awh_cast <dir_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+							// Если мы получили какой-то другой адрес
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address being added to whitelist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address being added to whitelist does not match file system address", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						/**
+						 * Определяем проверку соответствует ли адрес
+						 */
+						switch(static_cast <uint8_t> (this->_addr.host(value))){
+							// Если адрес соответствует файловой системе
+							case static_cast <uint8_t> (net_addr_t::type_t::FS):
+								// Выполняем добавление нового адреса в белый список
+								return awh_cast <file_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
 							// Если мы получили какой-то другой адрес
 							default: {
 								/**
@@ -7277,7 +7686,7 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует файловой системе
 									case static_cast <uint8_t> (net_addr_t::type_t::FS):
 										// Выполняем добавление нового адреса в белый список
-										return awh_cast <net::server_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+										return awh_cast <server_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -7307,13 +7716,13 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 									// Если адрес соответствует IPv4-адресу
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 										// Выполняем добавление нового адреса в белый список
-										return awh_cast <net::server_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
+										return awh_cast <server_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
 									// Если адрес соответствует MAC-адресу
 									case static_cast <uint8_t> (net_addr_t::type_t::MAC):
 									// Если адрес соответствует IPv6-адресу
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 										// Выполняем добавление нового адреса в белый список
-										return awh_cast <net::server_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
+										return awh_cast <server_t *> (i->second.get())->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), i->second->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
 										/**
@@ -7398,10 +7807,24 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FSYS): {
+					// Если нода является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем объект ноды
-						auto node = awh_cast <net::fs_t *> (i->second.get());
+						auto node = awh_cast <dir_t *> (i->second.get());
+						// Если белый список не пустой
+						if(!node->whitelist.empty()){
+							// Выполняем поиск указанного адреса
+							auto i = node->whitelist.find(value);
+							// Если адрес найден, удаляем его
+							if((result = (i != node->whitelist.end())))
+								// Выполняем удаление указанного адреса
+								node->whitelist.erase(i);
+						}
+					} break;
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем объект ноды
+						auto node = awh_cast <file_t *> (i->second.get());
 						// Если белый список не пустой
 						if(!node->whitelist.empty()){
 							// Выполняем поиск указанного адреса
@@ -7415,7 +7838,7 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 					// Если нода является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект ноды
-						auto node = awh_cast <net::server_t *> (i->second.get());
+						auto node = awh_cast <server_t *> (i->second.get());
 						// Если белый список не пустой
 						if(!node->whitelist.empty()){
 							/**
@@ -7506,14 +7929,18 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(co
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
 					// Выводим полученный результат
-					return awh_cast <net::fs_t *> (i->second.get())->whitelist;
+					return awh_cast <dir_t *> (i->second.get())->whitelist;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Выводим полученный результат
+					return awh_cast <file_t *> (i->second.get())->whitelist;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
-					return awh_cast <net::server_t *> (i->second.get())->whitelist;
+					return awh_cast <server_t *> (i->second.get())->whitelist;
 				// Для других типов нод
 				default: {
 					/**
@@ -7576,7 +8003,7 @@ void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool ada
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Выполняем создание новой ноды
-					auto node = awh_cast <net::server_t *> (i->second.get());
+					auto node = awh_cast <server_t *> (i->second.get());
 					// Устанавливаем глубину очереди принятия входящих соединений
 					node->backlog.depth = depth;
 					// Устанавливаем режим адаптивной глубины очереди принятия входящих соединений
@@ -7639,10 +8066,40 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта файловой системы
-					net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+					dir_t * fs = awh_cast <dir_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Извлекаем размер буфера на чтение
+							return fs->transfer.input.size;
+						// Если действие не определено
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Buffer size can only be get for read action on file system events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Buffer size can only be get for read action on file system events", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -7672,7 +8129,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если нода является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного соединения
-					net::ipc_t * ipc = awh_cast <net::ipc_t *> (i->second.get());
+					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -7720,7 +8177,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта соседа
-					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+					peer_t * peer = awh_cast <peer_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -7764,7 +8221,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					client_t * client = awh_cast <client_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -7808,7 +8265,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					server_t * server = awh_cast <server_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -7911,18 +8368,53 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS): {
-					// Устанавливаем результат выполнения операции
-					result = true;
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта файловой системы
-					net::fs_t * fs = awh_cast <net::fs_t *> (i->second.get());
+					dir_t * fs = awh_cast <dir_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ): {
+							// Устанавливаем результат выполнения операции
+							result = true;
+							// Устанавливаем размер буфера на чтение
+							fs->transfer.input.size = size;
+							// Выполняем создание нового буфера на чтение
+							fs->transfer.input.data = make_unique <uint8_t []> (fs->transfer.input.size);
+						} break;
+						// Если действие не определено
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Buffer size can only be set for read action on file system events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Buffer size can only be set for read action on file system events", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ): {
+							// Устанавливаем результат выполнения операции
+							result = true;
 							// Устанавливаем размер буфера на чтение
 							fs->transfer.input.size = size;
 							// Выполняем создание нового буфера на чтение
@@ -7949,7 +8441,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если нода является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного соединения
-					net::ipc_t * ipc = awh_cast <net::ipc_t *> (i->second.get());
+					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -8025,7 +8517,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта соседа
-					net::peer_t * peer = awh_cast <net::peer_t *> (i->second.get());
+					peer_t * peer = awh_cast <peer_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -8068,7 +8560,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					net::client_t * client = awh_cast <net::client_t *> (i->second.get());
+					client_t * client = awh_cast <client_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -8136,7 +8628,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					net::server_t * server = awh_cast <net::server_t *> (i->second.get());
+					server_t * server = awh_cast <server_t *> (i->second.get());
 					/**
 					 * Определяем семейство сокета
 					 */
@@ -8242,7 +8734,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события соседа
-					auto peer = awh_cast <net::peer_t *> (i->second.get());
+					auto peer = awh_cast <peer_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = peer->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -8253,7 +8745,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект события сервера
-					auto server = awh_cast <net::server_t *> (i->second.get());
+					auto server = awh_cast <server_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = server->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -8264,7 +8756,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект события клиента
-					auto client = awh_cast <net::client_t *> (i->second.get());
+					auto client = awh_cast <client_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = client->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -8339,21 +8831,21 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события соседа
-					auto peer = awh_cast <net::peer_t *> (i->second.get());
+					auto peer = awh_cast <peer_t *> (i->second.get());
 					// Устанавливаем значение таймаута для действия события
 					peer->timeouts[action] = timeout;
 				} break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект события сервера
-					auto server = awh_cast <net::server_t *> (i->second.get());
+					auto server = awh_cast <server_t *> (i->second.get());
 					// Устанавливаем значение таймаута для действия события
 					server->timeouts[action] = timeout;
 				} break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект события клиента
-					auto client = awh_cast <net::client_t *> (i->second.get());
+					auto client = awh_cast <client_t *> (i->second.get());
 					// Устанавливаем значение таймаута для действия события
 					client->timeouts[action] = timeout;
 				} break;
@@ -8425,17 +8917,17 @@ bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t i
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
-					socket = awh_cast <net::peer_t *> (i->second.get())->socket;
+					socket = awh_cast <peer_t *> (i->second.get())->socket;
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
-					socket = awh_cast <net::client_t *> (i->second.get())->socket;
+					socket = awh_cast <client_t *> (i->second.get())->socket;
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
-					socket = awh_cast <net::server_t *> (i->second.get())->socket;
+					socket = awh_cast <server_t *> (i->second.get())->socket;
 				break;
 				// Для других типов нод
 				default: return false;
@@ -8678,20 +9170,25 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <net::fs_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <dir_t *> (i->second.get())->callbacks.read = ::move(cb);
+				break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на чтение события
+					awh_cast <file_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <net::peer_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <peer_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <net::client_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <client_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {
@@ -8749,20 +9246,25 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::fs_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <dir_t *> (i->second.get())->callbacks.write = ::move(cb);
+				break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <file_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::peer_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <peer_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::client_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <client_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {
@@ -8820,25 +9322,30 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::fs_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <dir_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <file_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::peer_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <peer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::client_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <client_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::server_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <server_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {
@@ -8896,25 +9403,30 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FSYS):
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::fs_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <dir_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <file_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::peer_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <peer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::client_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <client_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::server_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <server_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {
@@ -8975,7 +9487,7 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::server_t *> (i->second.get())->callbacks.accept = ::move(cb);
+					awh_cast <server_t *> (i->second.get())->callbacks.accept = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {
@@ -9036,7 +9548,7 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::client_t *> (i->second.get())->callbacks.connect = ::move(cb);
+					awh_cast <client_t *> (i->second.get())->callbacks.connect = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {
@@ -9097,7 +9609,7 @@ void awh::IO::on(const event::id_t id, const event::callback::user_t & cb) noexc
 				// Если нода является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <net::user_t *> (i->second.get())->callback = ::move(cb);
+					awh_cast <user_t *> (i->second.get())->callback = ::move(cb);
 				break;
 				// Для других типов нод
 				default: {

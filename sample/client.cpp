@@ -200,7 +200,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FSYS);
+			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -208,7 +208,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
 				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
+				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -420,7 +420,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FSYS);
+			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -428,7 +428,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
 				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
+				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -647,7 +647,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FSYS);
+			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -655,7 +655,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
 				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
+				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -873,7 +873,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FSYS);
+			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -881,7 +881,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
 				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
+				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -1100,7 +1100,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FSYS);
+			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1108,7 +1108,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
 				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
+				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -1320,7 +1320,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Добавляем новое событие клиента TCP
 			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FSYS);
+			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1328,7 +1328,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
 				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
+				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FILE) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
