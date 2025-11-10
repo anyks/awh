@@ -446,8 +446,15 @@ namespace awh {
 		 *
 		 */
 		typedef struct Node {
+			// Идентификатор события
+			event::id_t id;
 			// Состояние события
 			state_t state;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Node() noexcept : id(0) {}
 			/**
 			 * @brief Деструктор
 			 *
