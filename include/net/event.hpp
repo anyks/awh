@@ -248,29 +248,29 @@ namespace awh {
 			 */
 			using user_t = std::function <void (const uint32_t)>;
 			/**
-			 * Обратный вызов при принятии события
-			 */
-			using accept_t = std::function <void (const id_t, const id_t)>;
-			/**
 			 * Обратный вызов при подключении события
 			 */
-			using connect_t = std::function <void (const id_t, const bool)>;
+			using connect_t = std::function <void (const event::id_t, const bool)>;
 			/**
 			 * Обратный вызов при записи в событие
 			 */
-			using write_t = std::function <void (const id_t, const size_t)>;
+			using write_t = std::function <void (const event::id_t, const size_t)>;
 			/**
-			 * Обратный вызов при изменении статуса события
+			 * Обратный вызов при принятии события
 			 */
-			using status_t = std::function <void (const id_t, const status_t)>;
+			using accept_t = std::function <void (const event::id_t, const event::id_t)>;
 			/**
 			 * Обратный вызов при ошибке события
 			 */
-			using error_t = std::function <void (const id_t, const std::string &)>;
+			using error_t = std::function <void (const event::id_t, const std::string &)>;
+			/**
+			 * Обратный вызов при изменении статуса события
+			 */
+			using status_t = std::function <void (const event::id_t, const event::status_t)>;
 			/**
 			 * Обратный вызов при чтении из события
 			 */
-			using read_t = std::function <void (const id_t, const uint8_t *, const size_t)>;
+			using read_t = std::function <void (const event::id_t, const uint8_t *, const size_t)>;
 		};
 	};
 };

@@ -25,9 +25,11 @@
 /**
  * Стандартные модули
  */
+#include <queue>
 #include <cerrno>
 #include <atomic>
 #include <memory>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 
@@ -131,13 +133,13 @@ namespace {
 	 *
 	 */
 	typedef struct User : public awh::net::user_t {
-		// Файловый дескриптор события
-		awh::net::socket_t fd;
+		// Очередь пользовательских событий
+		std::queue <uint32_t> events;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit User() noexcept : fd(awh::net::invalid_socket_t) {}
+		explicit User() noexcept = default;
 	} user_t;
 	/**
 	 * @brief Структура события файла
@@ -163,7 +165,7 @@ namespace {
 	 */
 	typedef struct Dirname : public awh::net::fs_t {
 		// Объект открытого каталога
-		DIR * ptr;
+		DIR * handle;
 		// Файловый дескриптор сервиса
 		awh::net::socket_t fd;
 		/**
@@ -172,7 +174,8 @@ namespace {
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Dirname() noexcept : ptr(nullptr), fd(awh::net::invalid_socket_t) {}
+		explicit Dirname() noexcept :
+		 handle(nullptr), fd(awh::net::invalid_socket_t) {}
 	} dir_t;
 	/**
 	 * @brief Структура межпроцессного взаимодействия
@@ -375,8 +378,21 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					if((result = (ret.second && (node->delay > 0)))){
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие таймера на указанное количество миллисекунд
-						EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, node->delay * 1000, node);
+						/**
+						 * Определяем семейство сокета
+						 */
+						switch(static_cast <uint8_t> (i->second->state.family)){
+							// Для семейства таймера
+							case static_cast <uint8_t> (event::family_t::TIMER):
+								// Устанавливаем событие таймера на указанное количество миллисекунд
+								EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, node->delay * 1000, node);
+							break;
+							// Для семейства интервального таймера
+							case static_cast <uint8_t> (event::family_t::INTERVAL):
+								// Устанавливаем событие интервального таймера на указанное количество миллисекунд
+								EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, node->delay * 1000, node);
+							break;
+						}
 						// Устанавливаем количество событий
 						ret.first->second.count = 1;
 						// Устанавливаем индекс текущего элемента
@@ -413,9 +429,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Если файловый дескриптор каталога существует
 							if(node->fd != net::invalid_socket_t){
 								// Создаём объект промежуточного звена
-								node->ptr = ::fdopendir(node->fd);
+								node->handle = ::fdopendir(node->fd);
 								// Если объект открытого каталога создан успешно
-								if(node->ptr == nullptr){
+								if(node->handle == nullptr){
 									/**
 									 * Если включён режим отладки
 									 */
@@ -5297,7 +5313,482 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
  * @return   результат выполнения удаления
  */
 bool awh::IO::destroy(const event::id_t id) noexcept {
-	
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			// Устанавливаем статус события в состояние уничтожения
+			i->second->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
+					// Производим удаление ноды
+					::__awh_nodes__.erase(i);
+				break;
+				// Если нода является таймером
+				case static_cast <uint8_t> (event::node_t::TIMER): {
+					// Выполняем создание нового объекта ноды
+					timer_t * node = awh_cast <timer_t *> (i->second.get());
+					// Если дескриптор сокета не инициализирован
+					if(::__awh_kq__ == net::invalid_socket_t){
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					// Если дескриптор сокета активен
+					} else {
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Удаляем событие из списка ожидания
+						EV_SET(&event, node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::__awh_inters__.find(i->first);
+						// Если запись найдена
+						if(j != ::__awh_inters__.end()){
+							// Количество записей в списке изменений
+							uint8_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::__awh_change__.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::__awh_change__.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::__awh_change__.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
+						}
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * node = awh_cast <dir_t *> (i->second.get());
+					// Объект события для удаления из списка ожидания
+					struct kevent event{};
+					// Удаляем событие из списка ожидания
+					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+					// Выполняем удаление события из списка ожидания
+					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+					// Если в списке промежуточного взаимодействия присутствует запись для данного события
+					auto j = ::__awh_inters__.find(i->first);
+					// Если запись найдена
+					if(j != ::__awh_inters__.end()){
+						// Количество записей в списке изменений
+						uint8_t count = 0;
+						// Получаем итератор на начало списка изменений
+						auto k = ::__awh_change__.begin();
+						// Получаем нужный нам итератор
+						std::advance(k, j->second.index);
+						// Проходим по всем изменениям промежуточного взаимодействия
+						for(; k != ::__awh_change__.end();){
+							// Если идентификатор события совпадает с идентификатором в записи списка изменений
+							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+								// Удаляем запись из списка изменений
+								k = ::__awh_change__.erase(k);
+								// Увеличиваем счётчик удалённых записей
+								count++;
+								// Если записи удалены
+								if(count == j->second.count)
+									// Завершаем цикл
+									break;
+							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+							} else ++k;
+						}
+					}
+					// Если каталог открыт
+					if(node->handle != nullptr){
+						// Закрываем каталог
+						::closedir(node->handle);
+						// Сбрасываем значение указателя на каталог
+						node->handle = nullptr;
+					}
+					// Если дескриптор сокета инициализирован
+					if(node->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(node->fd);
+						// Сбрасываем значение дескриптора сокета
+						node->fd = net::invalid_socket_t;
+					}
+					// Если установлена callback-функция
+					if(node->callbacks.status != nullptr)
+						// Вызываем callback-функцию при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Производим удаление ноды
+					::__awh_nodes__.erase(i);
+				} break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * node = awh_cast <file_t *> (i->second.get());
+					// Объект события для удаления из списка ожидания
+					struct kevent event{};
+					// Удаляем событие из списка ожидания
+					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+					// Выполняем удаление события из списка ожидания
+					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+					// Если в списке промежуточного взаимодействия присутствует запись для данного события
+					auto j = ::__awh_inters__.find(i->first);
+					// Если запись найдена
+					if(j != ::__awh_inters__.end()){
+						// Количество записей в списке изменений
+						uint8_t count = 0;
+						// Получаем итератор на начало списка изменений
+						auto k = ::__awh_change__.begin();
+						// Получаем нужный нам итератор
+						std::advance(k, j->second.index);
+						// Проходим по всем изменениям промежуточного взаимодействия
+						for(; k != ::__awh_change__.end();){
+							// Если идентификатор события совпадает с идентификатором в записи списка изменений
+							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+								// Удаляем запись из списка изменений
+								k = ::__awh_change__.erase(k);
+								// Увеличиваем счётчик удалённых записей
+								count++;
+								// Если записи удалены
+								if(count == j->second.count)
+									// Завершаем цикл
+									break;
+							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+							} else ++k;
+						}
+					}
+					// Если дескриптор сокета инициализирован
+					if(node->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(node->fd);
+						// Сбрасываем значение дескриптора сокета
+						node->fd = net::invalid_socket_t;
+					}
+					// Если установлена callback-функция
+					if(node->callbacks.status != nullptr)
+						// Вызываем callback-функцию при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Производим удаление ноды
+					::__awh_nodes__.erase(i);
+				} break;
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпрограммного взаимодействия
+					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+					// Если дескриптор сокета не инициализирован
+					if(::__awh_kq__ == net::invalid_socket_t){
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						}
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					// Если дескриптор сокета активен
+					} else {
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::__awh_inters__.find(i->first);
+						// Если запись найдена
+						if(j != ::__awh_inters__.end()){
+							// Количество записей в списке изменений
+							uint8_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::__awh_change__.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::__awh_change__.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::__awh_change__.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
+						}
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						// Если дескриптор сокета не инициализирован
+						} else {
+							// Если установлена callback-функция
+							if(node->callbacks.status != nullptr)
+								// Вызываем callback-функцию при уничтожении события
+								node->callbacks.status(i->first, event::status_t::DESTROYED);
+							// Производим удаление ноды
+							::__awh_nodes__.erase(i);
+						}
+					}
+				} break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта соседа
+					peer_t * node = awh_cast <peer_t *> (i->second.get());
+					// Если дескриптор сокета не инициализирован
+					if(::__awh_kq__ == net::invalid_socket_t){
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						}
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					// Если дескриптор сокета активен
+					} else {
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::__awh_inters__.find(i->first);
+						// Если запись найдена
+						if(j != ::__awh_inters__.end()){
+							// Количество записей в списке изменений
+							uint8_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::__awh_change__.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::__awh_change__.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::__awh_change__.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
+						}
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						// Если дескриптор сокета не инициализирован
+						} else {
+							// Если установлена callback-функция
+							if(node->callbacks.status != nullptr)
+								// Вызываем callback-функцию при уничтожении события
+								node->callbacks.status(i->first, event::status_t::DESTROYED);
+							// Производим удаление ноды
+							::__awh_nodes__.erase(i);
+						}
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					client_t * node = awh_cast <client_t *> (i->second.get());
+					// Если дескриптор сокета не инициализирован
+					if(::__awh_kq__ == net::invalid_socket_t){
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						}
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					// Если дескриптор сокета активен
+					} else {
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::__awh_inters__.find(i->first);
+						// Если запись найдена
+						if(j != ::__awh_inters__.end()){
+							// Количество записей в списке изменений
+							uint8_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::__awh_change__.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::__awh_change__.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::__awh_change__.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
+						}
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						// Если дескриптор сокета не инициализирован
+						} else {
+							// Если установлена callback-функция
+							if(node->callbacks.status != nullptr)
+								// Вызываем callback-функцию при уничтожении события
+								node->callbacks.status(i->first, event::status_t::DESTROYED);
+							// Производим удаление ноды
+							::__awh_nodes__.erase(i);
+						}
+					}
+				} break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					server_t * node = awh_cast <server_t *> (i->second.get());
+					// Если дескриптор сокета не инициализирован
+					if(::__awh_kq__ == net::invalid_socket_t){
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						}
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					// Если дескриптор сокета активен
+					} else {
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Удаляем событие из списка ожидания
+						EV_SET(&event, node->fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) < 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::__awh_inters__.find(i->first);
+						// Если запись найдена
+						if(j != ::__awh_inters__.end()){
+							// Количество записей в списке изменений
+							uint8_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::__awh_change__.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::__awh_change__.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::__awh_change__.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
+						}
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+							// Сбрасываем значение дескриптора сокета
+							node->fd = net::invalid_socket_t;
+						}
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						::__awh_nodes__.erase(i);
+					}
+				} break;
+			}
+			// Возвращаем результат работы функции
+			return true;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -8380,7 +8871,120 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
  * @return   результат выполнения отключения
  */
 bool awh::IO::disconnect(const event::id_t id) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (
+		   (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED) ||
+		   (i->second->state.status.load(std::memory_order_acquire) != event::status_t::CANCELLED))){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Устанавливаем статус события в состояние отмены
+					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
+					// Если в списке промежуточного взаимодействия присутствует запись для данного события
+					auto j = ::__awh_inters__.find(i->first);
+					// Если запись найдена
+					if(j != ::__awh_inters__.end()){
+						// Количество записей в списке изменений
+						uint8_t count = 0;
+						// Получаем итератор на начало списка изменений
+						auto k = ::__awh_change__.begin();
+						// Получаем нужный нам итератор
+						std::advance(k, j->second.index);
+						// Проходим по всем изменениям промежуточного взаимодействия
+						for(; k != ::__awh_change__.end();){
+							// Если идентификатор события совпадает с идентификатором в записи списка изменений
+							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+								// Удаляем запись из списка изменений
+								k = ::__awh_change__.erase(k);
+								// Увеличиваем счётчик удалённых записей
+								count++;
+								// Если записи удалены
+								if(count == j->second.count)
+									// Завершаем цикл
+									break;
+							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+							} else ++k;
+						}
+					}
+					// Получаем текущее значение объекта соседа
+					peer_t * node = awh_cast <peer_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(node->fd);
+						// Сбрасываем значение дескриптора сокета
+						node->fd = net::invalid_socket_t;
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Устанавливаем статус события в состояние отмены
+					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
+					// Если в списке промежуточного взаимодействия присутствует запись для данного события
+					auto j = ::__awh_inters__.find(i->first);
+					// Если запись найдена
+					if(j != ::__awh_inters__.end()){
+						// Количество записей в списке изменений
+						uint8_t count = 0;
+						// Получаем итератор на начало списка изменений
+						auto k = ::__awh_change__.begin();
+						// Получаем нужный нам итератор
+						std::advance(k, j->second.index);
+						// Проходим по всем изменениям промежуточного взаимодействия
+						for(; k != ::__awh_change__.end();){
+							// Если идентификатор события совпадает с идентификатором в записи списка изменений
+							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+								// Удаляем запись из списка изменений
+								k = ::__awh_change__.erase(k);
+								// Увеличиваем счётчик удалённых записей
+								count++;
+								// Если записи удалены
+								if(count == j->second.count)
+									// Завершаем цикл
+									break;
+							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+							} else ++k;
+						}
+					}
+					// Получаем текущее значение объекта клиента
+					client_t * node = awh_cast <client_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(node->fd);
+						// Сбрасываем значение дескриптора сокета
+						node->fd = net::invalid_socket_t;
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
