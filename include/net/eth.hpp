@@ -96,6 +96,16 @@ namespace awh {
 			bool ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const uint8_t length) const noexcept;
 		public:
 			/**
+			 * @brief Метод установки таймаута сокета
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @param msec  время таймаута в миллисекундах
+			 * @return      результат установки таймаута
+			 */
+			bool timeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept;
+		public:
+			/**
 			 * @brief Метод получения размера буфера
 			 *
 			 * @param sock  сетевой сокет

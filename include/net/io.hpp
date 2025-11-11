@@ -160,24 +160,6 @@ namespace awh {
 			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept;
 		public:
 			/**
-			 * @brief Метод получения режима действия события
-			 *
-			 * @param id     идентификатор события
-			 * @param action действие события
-			 * @return       режим действия события
-			 */
-			event::notify_t action(const event::id_t id, const event::action_t action) const noexcept;
-			/**
-			 * @brief Метод установки режима действия события
-			 *
-			 * @param id     идентификатор события
-			 * @param action действие события
-			 * @param notify уведомления события
-			 * @return       результат выполнения установки
-			 */
-			bool action(const event::id_t id, const event::action_t action, const event::notify_t notify) noexcept;
-		public:
-			/**
 			 * @brief Метод получения опций события
 			 *
 			 * @param id идентификатор события
@@ -391,6 +373,12 @@ namespace awh {
 			 * @return результат выполнения инициализации
 			 */
 			bool initialize() noexcept;
+			/**
+			 * @brief Метод реинициализации основного движка фреймворка
+			 *
+			 * @return результат выполнения реинициализации
+			 */
+			bool reinitialize() noexcept;
 			/**
 			 * @brief Метод деинициализации основного движка фреймворка
 			 *

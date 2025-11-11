@@ -1392,6 +1392,69 @@ bool awh::Ethernet::ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const 
 	return false;
 }
 /**
+ * @brief Метод установки таймаута сокета
+ *
+ * @param sock  сетевой сокет
+ * @param event событие сокета
+ * @param msec  время таймаута в миллисекундах
+ * @return      результат установки таймаута
+ */
+bool awh::Ethernet::timeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Создаём объект таймаута
+	struct timeval timeout;
+	// Устанавливаем время в секундах
+	timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
+	// Устанавливаем время счётчика (микросекунды)
+	timeout.tv_usec = (msec > 0 ? ((msec % 1000) * 1000) : 0);
+	/**
+	 * Определяем флаг блокировки
+	 */
+	switch(static_cast <uint8_t> (event)){
+		// Если необходимо установить таймаут на чтение
+		case static_cast <uint8_t> (net::socket_event_t::READ): {
+			// Выполняем установку таймаута на чтение данных из сокета
+			if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Если необходимо установить таймаут на запись
+		case static_cast <uint8_t> (net::socket_event_t::WRITE): {
+			// Выполняем установку таймаута на запись данных в сокет
+			if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+	}
+	// Все удачно
+	return result;
+}
+/**
  * @brief Метод получения размера буфера
  *
  * @param sock  сетевой сокет

@@ -214,7 +214,7 @@ namespace awh {
 			 */
 			static constexpr uint16_t NOSIGPIPE = 0x08;
 			/**
-			 * Опция блокировки ввода-вывода
+			 * Опция неблокирующего ввода-вывода
 			 */
 			static constexpr uint16_t NOIOBLOCK = 0x10;
 			/**

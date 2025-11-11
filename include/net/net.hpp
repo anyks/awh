@@ -463,7 +463,7 @@ namespace awh {
 			// Белый список адресов которым разрешён доступ
 			unordered_map <string, event::address_t> whitelist;
 			// Активные таймауты события
-			unordered_map <awh::event::action_t, uint16_t> timeouts;
+			unordered_map <event::action_t, uint16_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
@@ -482,8 +482,6 @@ namespace awh {
 		typedef struct InterProcessCommunication : public node_t {
 			// Обратные вызовы события
 			peer_callbacks_t callbacks;
-			// Активные действия события
-			unordered_map <awh::event::action_t, awh::event::notify_t> actions;
 			/**
 			 * @brief Конструктор
 			 *
@@ -507,9 +505,7 @@ namespace awh {
 			// Обратные вызовы события
 			peer_callbacks_t callbacks;
 			// Активные таймауты события
-			unordered_map <awh::event::action_t, uint16_t> timeouts;
-			// Активные действия события
-			unordered_map <awh::event::action_t, awh::event::notify_t> actions;
+			unordered_map <event::action_t, uint16_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
@@ -533,9 +529,7 @@ namespace awh {
 			// Обратные вызовы события
 			client_callbacks_t callbacks;
 			// Активные таймауты события
-			unordered_map <awh::event::action_t, uint16_t> timeouts;
-			// Активные действия события
-			unordered_map <awh::event::action_t, awh::event::notify_t> actions;
+			unordered_map <event::action_t, uint16_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
@@ -563,7 +557,7 @@ namespace awh {
 			// Белый список пиров которым разрешён доступ
 			unordered_map <string, event::address_t> whitelist;
 			// Активные таймауты события
-			unordered_map <awh::event::action_t, uint16_t> timeouts;
+			unordered_map <event::action_t, uint16_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
