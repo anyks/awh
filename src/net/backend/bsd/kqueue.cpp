@@ -10745,7 +10745,31 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
  * @return результат выполнения инициализации
  */
 bool awh::IO::initialize() noexcept {
-
+	// Если Kqueue ещё не инициализирован
+	if(::__awh_kq__ == net::invalid_socket_t){
+		// Выполняем инициализацию Kqueue
+		if((::__awh_kq__ = ::kqueue()) == net::invalid_socket_t){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+		// Устанавливаем флаг автозакрытия файлового дескриптора
+		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
+		// Выводим результат успешной инициализации
+		return true;
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -10755,7 +10779,148 @@ bool awh::IO::initialize() noexcept {
  * @return результат выполнения реинициализации
  */
 bool awh::IO::reinitialize() noexcept {
-
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
+		// Выполняем перебор всех активных нод
+		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
+			// Если нода уже находится в рабочем состоянии
+			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::USER):
+					// Если нода является таймером
+					case static_cast <uint8_t> (event::node_t::TIMER):
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					break;
+					// Если нода является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * node = awh_cast <dir_t *> (i->second.get());
+						// Если каталог открыт
+						if(node->handle != nullptr)
+							// Закрываем каталог
+							::closedir(node->handle);
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * node = awh_cast <file_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является межпрограммным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпрограммного взаимодействия
+						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является соседом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта соседа
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Для других типов нод
+					default: i = ::__awh_nodes__.erase(i);
+				}
+			// Если нода не находится в рабочем состоянии, пропускаем её
+			} else ++i;
+		}
+		// Выполняем закрытие Kqueue
+		::close(::__awh_kq__);
+		// Выполняем инициализацию Kqueue
+		if((::__awh_kq__ = ::kqueue()) == net::invalid_socket_t){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+		// Устанавливаем флаг автозакрытия файлового дескриптора
+		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
+		// Выводим результат успешной деинициализации
+		return true;
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -10765,7 +10930,130 @@ bool awh::IO::reinitialize() noexcept {
  * @return результат выполнения деинициализации
  */
 bool awh::IO::deinitialize() noexcept {
-
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
+		// Выполняем перебор всех активных нод
+		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
+			// Если нода уже находится в рабочем состоянии
+			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+				/**
+				 * Определяем чем является текущая нода
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если нода является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::USER):
+					// Если нода является таймером
+					case static_cast <uint8_t> (event::node_t::TIMER):
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					break;
+					// Если нода является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * node = awh_cast <dir_t *> (i->second.get());
+						// Если каталог открыт
+						if(node->handle != nullptr)
+							// Закрываем каталог
+							::closedir(node->handle);
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * node = awh_cast <file_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является межпрограммным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпрограммного взаимодействия
+						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является соседом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта соседа
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если нода является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена callback-функция
+						if(node->callbacks.status != nullptr)
+							// Вызываем callback-функцию при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Для других типов нод
+					default: i = ::__awh_nodes__.erase(i);
+				}
+			// Если нода не находится в рабочем состоянии уничтожаем её сразу
+			} else i = ::__awh_nodes__.erase(i);
+		}
+		// Выполняем закрытие Kqueue
+		::close(::__awh_kq__);
+		// Сбрасываем значение Kqueue
+		::__awh_kq__ = net::invalid_socket_t;
+		// Выводим результат успешной деинициализации
+		return true;
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -10775,9 +11063,8 @@ bool awh::IO::deinitialize() noexcept {
  * @return состояние инициализации
  */
 bool awh::IO::isInitialized() const noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
+	// Выводим результат проверки состояния инициализации
+	return (::__awh_kq__ != net::invalid_socket_t);
 }
 /**
  * @brief Метод получения типа события
