@@ -11694,13 +11694,12 @@ void awh::IO::on(const event::id_t id, const event::callback::user_t & cb) noexc
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  */
-awh::IO::IO(const fmk_t * fmk, const log_t * log) noexcept : engine_t(fmk, log) {
-
-}
+awh::IO::IO(const fmk_t * fmk, const log_t * log) noexcept : engine_t(fmk, log) {}
 /**
  * @brief Деструктор
  *
  */
 awh::IO::~IO() noexcept {
-
+	// Выполняем деинициализацию основного движка фреймворка
+	this->deinitialize();
 }
