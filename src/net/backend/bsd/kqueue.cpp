@@ -1274,7 +1274,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::__awh_change__.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, node);
+									EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, nullptr);
 									// Устанавливаем количество событий
 									ret.first->second.count = 1;
 									// Устанавливаем индекс текущего элемента
@@ -1353,7 +1353,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::__awh_change__.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, node);
+										EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, nullptr);
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
@@ -1448,7 +1448,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::__awh_change__.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, node);
+										EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, nullptr);
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
