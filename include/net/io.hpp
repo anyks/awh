@@ -208,15 +208,8 @@ namespace awh {
 			 * @param async флаг асинхронного прослушивания
 			 * @return      результат выполнения перевода в режим прослушивания
 			 */
-			bool listen(const event::id_t id, const uint16_t max, const bool async = false) noexcept;
+			bool listen(const event::id_t id, const uint16_t max, const bool async = true) noexcept;
 		public:
-			/**
-			 * @brief Метод отправки события
-			 *
-			 * @param value значение события для отправки
-			 * @return      результат выполнения отправки
-			 */
-			bool post(const uint32_t value) noexcept;
 			/**
 			 * @brief Метод отправки данных события
 			 *

@@ -1647,6 +1647,46 @@ bool awh::Ethernet::nosigill() const noexcept {
 	return result;
 }
 /**
+* @brief Метод активации получения SCTP-событий для сокета
+*
+* @param sock сетевой сокет
+* @return     результат работы функции
+*/
+bool awh::Ethernet::sctp([[maybe_unused]] const net::socket_t sock) const noexcept {
+	// Выводим результат
+	return false;
+}
+/**
+* @brief Метод получения кода ошибки
+*
+* @param sock сетевой сокет
+* @return     код ошибки на сокете если присутствует
+*/
+int32_t awh::Ethernet::error(const net::socket_t sock) const noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Размер кода ошибки
+	socklen_t size = sizeof(result);
+	// Если мы получили ошибку, выходим сообщение
+	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &result, &size) != 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод активации TCP/CORK
  *
  * @param sock сетевой сокет

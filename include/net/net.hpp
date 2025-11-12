@@ -269,13 +269,16 @@ namespace awh {
 		typedef struct Backlog {
 			// Адаптивный режим очереди ожидания подключения
 			bool adaptive;
+			// Максимальное количество подключений
+			uint16_t max;
 			// Размер очереди ожидания подключения
 			uint16_t depth;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Backlog() noexcept : adaptive(false), depth(SOMAXCONN) {}
+			explicit Backlog() noexcept :
+			 adaptive(false), max(100), depth(SOMAXCONN) {}
 		} __attribute__((packed)) backlog_t;
 		/**
 		 * @brief Структура состояния события

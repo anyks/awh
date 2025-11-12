@@ -231,13 +231,6 @@ namespace awh {
 			virtual bool listen(const event::id_t id, const uint16_t max, const bool async = false) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод отправки события
-			 *
-			 * @param value значение события для отправки
-			 * @return      результат выполнения отправки
-			 */
-			virtual bool post(const uint32_t value) noexcept = 0;
-			/**
 			 * @brief Метод отправки данных события
 			 *
 			 * @param id   идентификатор события

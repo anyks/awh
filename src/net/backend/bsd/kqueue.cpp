@@ -25,7 +25,6 @@
 /**
  * Стандартные модули
  */
-#include <queue>
 #include <cerrno>
 #include <atomic>
 #include <memory>
@@ -134,12 +133,14 @@ namespace {
 	 */
 	typedef struct User : public awh::net::user_t {
 		// Очередь пользовательских событий
-		std::queue <uint32_t> events;
+		awh::queue_t events;
 		/**
 		 * @brief Конструктор
 		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект работы с логами
 		 */
-		explicit User() noexcept = default;
+		explicit User(const awh::fmk_t * fmk, const awh::log_t * log) noexcept : events(fmk, log) {}
 	} user_t;
 	/**
 	 * @brief Структура события файла
@@ -330,13 +331,15 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE)){
 			/**
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
+					// Устанавливаем статус события в состояние ожидания
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 					// Выполняем создание нового объекта ноды
 					user_t * node = awh_cast <user_t *> (i->second.get());
 					// Создаём объект промежуточного звена
@@ -370,6 +373,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 				} break;
 				// Если нода является таймером
 				case static_cast <uint8_t> (event::node_t::TIMER): {
+					// Устанавливаем статус события в состояние ожидания
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 					// Выполняем создание нового объекта ноды
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Создаём объект промежуточного звена
@@ -416,6 +421,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 				} break;
 				// Если нода является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Устанавливаем статус события в состояние ожидания
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 					// Получаем текущее значение объекта директории
 					dir_t * node = awh_cast <dir_t *> (i->second.get());
 					// Если путь к директории существует
@@ -471,13 +478,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a directory socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+										this->_log->debug("An event for a directory event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("An event for a directory socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+										this->_log->print("An event for a directory event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 									#endif
 								}
 							// Если файловый дескриптор каталога не существует
@@ -495,6 +502,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Выводим сообщение об ошибке
 									this->_log->print("File descriptor for directory is corrupted or not created", log_t::flag_t::WARNING);
 								#endif
+								// Снимаем флаг ожидания подключения
+								i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+								// Выходим из функции с ошибкой
+								return result;
 							}
 						// Если путь к директории не существует
 						} else {
@@ -511,6 +522,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("Path for directory is corrupted or not created", log_t::flag_t::WARNING);
 							#endif
+							// Снимаем флаг ожидания подключения
+							i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+							// Выходим из функции с ошибкой
+							return result;
 						}
 					// Если путь к директории не существует
 					} else {
@@ -527,10 +542,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("Path for directory is corrupted or not created", log_t::flag_t::WARNING);
 						#endif
+						// Снимаем флаг ожидания подключения
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выходим из функции с ошибкой
+						return result;
 					}
 				} break;
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Устанавливаем статус события в состояние ожидания
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 					// Получаем текущее значение объекта файловой системы
 					file_t * node = awh_cast <file_t *> (i->second.get());
 					// Если путь к файлу существует
@@ -562,13 +583,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a file socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+										this->_log->debug("An event for a file event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("An event for a file socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+										this->_log->print("An event for a file event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 									#endif
 								}
 							// Если файловый дескриптор файла не существует
@@ -586,6 +607,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Выводим сообщение об ошибке
 									this->_log->print("File descriptor for file is corrupted or not created", log_t::flag_t::WARNING);
 								#endif
+								// Снимаем флаг ожидания подключения
+								i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+								// Выходим из функции с ошибкой
+								return result;
 							}
 						// Если путь к файлу не существует
 						} else {
@@ -602,6 +627,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("Path for file is corrupted or not created", log_t::flag_t::WARNING);
 							#endif
+							// Снимаем флаг ожидания подключения
+							i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+							// Выходим из функции с ошибкой
+							return result;
 						}
 					// Если путь к файлу не существует
 					} else {
@@ -618,10 +647,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("Path for file is corrupted or not created", log_t::flag_t::WARNING);
 						#endif
+						// Снимаем флаг ожидания подключения
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выходим из функции с ошибкой
+						return result;
 					}
 				} break;
 				// Если нода является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Устанавливаем статус события в состояние ожидания
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
 					// Если файловый дескриптор межпроцессного взаимодействия существует
@@ -649,13 +684,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("An event for a inter-process communication socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("An event for a inter-process communication event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("An event for a inter-process communication socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+								this->_log->print("An event for a inter-process communication event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 							#endif
 						}
 					// Если файловый дескриптор межпроцессного взаимодействия не существует
@@ -673,10 +708,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("File descriptor for inter-process communication is corrupted or not created", log_t::flag_t::WARNING);
 						#endif
+						// Снимаем флаг ожидания подключения
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выходим из функции с ошибкой
+						return result;
 					}
 				} break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Устанавливаем статус события в состояние ожидания
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 					// Получаем текущее значение объекта соседа
 					peer_t * node = awh_cast <peer_t *> (i->second.get());
 					// Если файловый дескриптор соседа существует
@@ -719,13 +760,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("An event for a peer socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("An event for a peer event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("An event for a peer socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+								this->_log->print("An event for a peer event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 							#endif
 						}
 					// Если файловый дескриптор соседа не существует
@@ -743,10 +784,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("File descriptor for peer is corrupted or not created", log_t::flag_t::WARNING);
 						#endif
+						// Снимаем флаг ожидания подключения
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выходим из функции с ошибкой
+						return result;
 					}
 				} break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Устанавливаем статус события в состояние инициализировано
+					i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 					// Получаем текущее значение объекта клиента
 					client_t * node = awh_cast <client_t *> (i->second.get());
 					// Если файловый дескриптор клиента существует
@@ -837,6 +884,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Выводим сообщение об ошибке
 														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
+													// Снимаем флаг ожидания подключения
+													i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 													// Выходим из функции с ошибкой
 													return result;
 												}
@@ -849,14 +898,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("An event for a Unix socket cannot be commit because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+												this->_log->debug("An event for a Unix event cannot be commit because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("An event for a Unix socket cannot be commit because it has an invalid initialization type", log_t::flag_t::WARNING);
+												this->_log->print("An event for a Unix event cannot be commit because it has an invalid initialization type", log_t::flag_t::WARNING);
 											#endif
+											// Снимаем флаг ожидания подключения
+											i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 											// Выходим из функции с ошибкой
 											return result;
 										}
@@ -876,6 +927,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Unix-socket address is not set", log_t::flag_t::WARNING);
 									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
 									return result;
 								}
@@ -902,13 +955,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a Unix socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+										this->_log->debug("An event for a Unix event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("An event for a Unix socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+										this->_log->print("An event for a Unix event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 									#endif
 								}
 							} break;
@@ -969,6 +1022,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											// Выводим сообщение об ошибке
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
+										// Снимаем флаг ожидания подключения
+										i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 										// Выходим из функции с ошибкой
 										return result;
 									}
@@ -995,13 +1050,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv4-socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("An event for a IPv4-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv4-socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("An event for a IPv4-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 										#endif
 									}
 								// Если адрес целевой машины не указан
@@ -1019,6 +1074,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Target address is not set for IPv4-socket", log_t::flag_t::WARNING);
 									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+									// Выходим из функции с ошибкой
+									return result;
 								}
 							} break;
 							// Для семейства IPv6
@@ -1076,6 +1135,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											// Выводим сообщение об ошибке
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
+										// Снимаем флаг ожидания подключения
+										i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 										// Выходим из функции с ошибкой
 										return result;
 									}
@@ -1102,13 +1163,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv6-socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("An event for a IPv6-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv6-socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("An event for a IPv6-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 										#endif
 									}
 								// Если адрес целевой машины не указан
@@ -1126,6 +1187,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Target address is not set for IPv6-socket", log_t::flag_t::WARNING);
 									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+									// Выходим из функции с ошибкой
+									return result;
 								}
 							} break;
 						}
@@ -1144,10 +1209,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("File descriptor for client is corrupted or not created", log_t::flag_t::WARNING);
 						#endif
+						// Снимаем флаг ожидания подключения
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выходим из функции с ошибкой
+						return result;
 					}
 				} break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Устанавливаем статус события в состояние инициализировано
+					i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 					// Получаем текущее значение объекта сервера
 					server_t * node = awh_cast <server_t *> (i->second.get());
 					// Если файловый дескриптор сервера существует
@@ -1252,14 +1323,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("An event for a Unix socket cannot be commit because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+												this->_log->debug("An event for a Unix event cannot be commit because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("An event for a Unix socket cannot be commit because it has an invalid initialization type", log_t::flag_t::WARNING);
+												this->_log->print("An event for a Unix event cannot be commit because it has an invalid initialization type", log_t::flag_t::WARNING);
 											#endif
+											// Снимаем флаг ожидания подключения
+											i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 											// Выходим из функции с ошибкой
 											return result;
 										}
@@ -1279,6 +1352,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Unix-socket address is not set", log_t::flag_t::WARNING);
 									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
 									return result;
 								}
@@ -1301,13 +1376,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a Unix socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+										this->_log->debug("An event for a Unix event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("An event for a Unix socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+										this->_log->print("An event for a Unix event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 									#endif
 								}
 							} break;
@@ -1380,13 +1455,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv4-socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("An event for a IPv4-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv4-socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("An event for a IPv4-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 										#endif
 									}
 								// Если адрес целевой машины не указан
@@ -1404,6 +1479,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Host address is not set for IPv4-socket", log_t::flag_t::WARNING);
 									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+									// Выходим из функции с ошибкой
+									return result;
 								}
 							} break;
 							// Для семейства IPv6
@@ -1475,13 +1554,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv6-socket cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("An event for a IPv6-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv6-socket cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("An event for a IPv6-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
 										#endif
 									}
 								// Если адрес целевой машины не указан
@@ -1499,6 +1578,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Host address is not set for IPv6-socket", log_t::flag_t::WARNING);
 									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+									// Выходим из функции с ошибкой
+									return result;
 								}
 							} break;
 						}
@@ -1517,6 +1600,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("File descriptor for server is corrupted or not created", log_t::flag_t::WARNING);
 						#endif
+						// Снимаем флаг ожидания подключения
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выходим из функции с ошибкой
+						return result;
 					}
 				} break;
 			}
@@ -2993,7 +3080,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				// Если нода является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Выполняем создание нового объекта ноды
-					unique_ptr <user_t> user = make_unique <user_t> ();
+					unique_ptr <user_t> user = make_unique <user_t> (this->_fmk, this->_log);
 					// Выполняем перенос всей ноды
 					i->second = ::move(user);
 					// Устанавливаем тип узла события
@@ -5240,7 +5327,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					} else {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
-						// Удаляем событие из списка ожидания
+						// Снимаем событие из списка ожидания
 						EV_SET(&event, node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
@@ -5284,7 +5371,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					dir_t * node = awh_cast <dir_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
 					struct kevent event{};
-					// Удаляем событие из списка ожидания
+					// Снимаем событие из списка ожидания
 					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
@@ -5341,7 +5428,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					file_t * node = awh_cast <file_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
 					struct kevent event{};
-					// Удаляем событие из списка ожидания
+					// Снимаем событие из списка ожидания
 					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
@@ -5600,7 +5687,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					} else {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
-						// Удаляем событие из списка ожидания
+						// Снимаем событие из списка ожидания
 						EV_SET(&event, node->fd, EVFILT_READ, EV_DELETE, 0, 0, node);
 						// Выполняем удаление события из списка ожидания
 						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) < 0){
@@ -5703,7 +5790,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			// Если событие уже инициализированно
-			if(i->second->state.status == event::status_t::INITIAL){
+			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 				/**
 				 * Определяем семейство сокета
 				 */
@@ -5907,13 +5994,13 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("An event for a Unix socket cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
+									this->_log->debug("An event for a Unix event cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+									this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
 						}
@@ -6287,6 +6374,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												break;
 												// Если протокол определён как UDP
 												case static_cast <uint8_t> (event::protocol_t::UDP):
+												// Если протокол определён как DTLS
+												case static_cast <uint8_t> (event::protocol_t::DTLS):
 													// Создаём сокет подключения
 													second->fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, IPPROTO_UDP);
 												break;
@@ -6306,13 +6395,13 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
+													this->_log->debug("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+													this->_log->print("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 												#endif
 											}
 										}
@@ -6398,6 +6487,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												break;
 												// Если протокол определён как UDP
 												case static_cast <uint8_t> (event::protocol_t::UDP):
+												// Если протокол определён как DTLS
+												case static_cast <uint8_t> (event::protocol_t::DTLS):
 													// Создаём сокет подключения
 													second->fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, IPPROTO_UDP);
 												break;
@@ -6417,13 +6508,13 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
+													this->_log->debug("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+													this->_log->print("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 												#endif
 											}
 										}
@@ -6445,13 +6536,13 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("An event for a UDP socket cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
+									this->_log->debug("An event for a UDP event cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+									this->_log->print("An event for a UDP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
 						}
@@ -6793,13 +6884,13 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("An event for a IP socket cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
+									this->_log->debug("An event for a IP event cannot be created because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+									this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
 						}
@@ -7033,7 +7124,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug(
-								"An event for a Unix socket cannot be created because it has an invalid initialization type",
+								"An event for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__, std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -7045,7 +7136,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -7208,6 +7299,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 									break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Если протокол определён как DTLS
+									case static_cast <uint8_t> (event::protocol_t::DTLS):
 										// Создаём сокет подключения
 										client->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 									break;
@@ -7240,6 +7333,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 									break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Если протокол определён как DTLS
+									case static_cast <uint8_t> (event::protocol_t::DTLS):
 										// Создаём сокет подключения
 										client->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 									break;
@@ -7267,7 +7362,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
 								this->_log->debug(
-									"DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol",
+									"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__, std::make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
@@ -7279,7 +7374,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("DGRAM socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								this->_log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
 							// Удаляем созданное событие
 							::__awh_nodes__.erase(ret.first);
@@ -7293,7 +7388,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug(
-								"An event for a UDP socket cannot be created because it has an invalid initialization type",
+								"An event for a UDP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__, std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -7305,7 +7400,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							this->_log->print("An event for a UDP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -7518,7 +7613,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug(
-								"An event for a IP socket cannot be created because it has an invalid initialization type",
+								"An event for a IP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__, std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -7530,7 +7625,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -7777,7 +7872,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug(
-								"An event for a Unix socket cannot be created because it has an invalid initialization type",
+								"An event for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__, std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -7789,7 +7884,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("An event for a Unix socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -7902,7 +7997,9 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 										fds[1] = ::socket(AF_INET, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
-									case static_cast <uint8_t> (event::protocol_t::UDP): {
+									case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Если протокол определён как DTLS
+									case static_cast <uint8_t> (event::protocol_t::DTLS): {
 										// Создаём первый сокет для дейтграмного подключения
 										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 										// Создаём второй сокет для дейтграмного подключения
@@ -7938,7 +8035,9 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
-									case static_cast <uint8_t> (event::protocol_t::UDP): {
+									case static_cast <uint8_t> (event::protocol_t::UDP):
+									// Если протокол определён как DTLS
+									case static_cast <uint8_t> (event::protocol_t::DTLS): {
 										// Создаём первый сокет для дейтграмного подключения
 										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 										// Создаём второй сокет для дейтграмного подключения
@@ -7963,7 +8062,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug(
-								"An event for a UDP socket cannot be created because it has an invalid initialization type",
+								"An event for a UDP, DTLS or ICMP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__, std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -7975,7 +8074,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("An event for a UDP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							this->_log->print("An event for a UDP, DTLS or ICMP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -8146,7 +8245,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug(
-								"An event for a IP socket cannot be created because it has an invalid initialization type",
+								"An event for a IP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__, std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -8158,7 +8257,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("An event for a IP socket cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -8863,9 +8962,277 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
  * @return      результат выполнения подключения
  */
 bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
+	// Результат работы функции
+	bool result = true;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Устанавливаем статус события в состояние подключения
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+					// Получаем текущее значение объекта клиента
+					client_t * node = awh_cast <client_t *> (i->second.get());
+					// Если нам необходимо выполнить асинхронное подключение
+					if(async){
+						// Если сокет является блокирующим
+						if(!(i->second->state.options & event::options::NOIOBLOCK)){
+							// Устанавливаем неблокирующий режим ввода/вывода
+							if(this->_eth.noblocking(node->fd, net::socket_mode_t::ENABLED))
+								// Устанавливаем опция неблокирующего режима события
+								i->second->state.options |= event::options::NOIOBLOCK;
+						}
+					// Если сокет является блокирующим
+					} else {
+						// Если сокет является неблокирующим
+						if(i->second->state.options & event::options::NOIOBLOCK){
+							// Устанавливаем блокирующий режим ввода/вывода
+							if(this->_eth.noblocking(node->fd, net::socket_mode_t::DISABLED))
+								// Снимаем опция неблокирующего режима события
+								i->second->state.options ^= event::options::NOIOBLOCK;
+						}
+					}
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM):
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							/**
+							 * Определяем семейство сокета
+							 */
+							switch(static_cast <uint8_t> (i->second->state.family)){
+								// Для семейства UNIX-доменных сокетов
+								case static_cast <uint8_t> (event::family_t::UDS):
+									// Получаем размер объекта сокета
+									node->endpoint.size = (
+										offsetof(struct sockaddr_un, sun_path) +
+										::strlen(reinterpret_cast <struct sockaddr_un *> (&node->endpoint.server)->sun_path)
+									);
+								break;
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4):
+								// Для семейства UDPv4
+								case static_cast <uint8_t> (event::family_t::UDPV4):
+									// Запоминаем размер структуры
+									node->endpoint.size = sizeof(struct sockaddr_in);
+								break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6):
+								// Для семейства UDPv6
+								case static_cast <uint8_t> (event::family_t::UDPV6):
+									// Запоминаем размер структуры
+									node->endpoint.size = sizeof(struct sockaddr_in6);
+								break;
+							}
+							// Если протокол интернета установлен как SCTP
+							if(i->second->state.protocol == event::protocol_t::SCTP)
+								// Выполняем активацию событий SCTP
+								this->_eth.sctp(node->fd);
+							// Если размер структуры сервера установлен
+							if(node->endpoint.size > 0){
+								// Если подключение к удаленному серверу не выполнено
+								if((::connect(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									// Завершаем выполнение функции с ошибкой
+									return result;
+								}
+							// Если размер структуры сервера не установлен
+							} else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Server address structure size is not set", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Server address structure size is not set", awh::log_t::flag_t::WARNING);
+								#endif
+								// Снимаем флаг ожидания подключения
+								i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+								// Завершаем выполнение функции с ошибкой
+								return result;
+							}
+						} break;
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							// Если протокол интернета установлен как DTLS
+							if(i->second->state.protocol == event::protocol_t::DTLS){
+								/**
+								 * Определяем семейство сокета
+								 */
+								switch(static_cast <uint8_t> (i->second->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+									// Для семейства UDPv4
+									case static_cast <uint8_t> (event::family_t::UDPV4):
+										// Запоминаем размер структуры
+										node->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+									// Для семейства UDPv6
+									case static_cast <uint8_t> (event::family_t::UDPV6):
+										// Запоминаем размер структуры
+										node->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Если размер структуры сервера установлен
+								if(node->endpoint.size > 0){
+									// Если подключение к удаленному серверу не выполнено
+									if((::connect(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING, ::strerror(errno));
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+										#endif
+										// Снимаем флаг ожидания подключения
+										i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+										// Завершаем выполнение функции с ошибкой
+										return result;
+									}
+								// Если размер структуры сервера не установлен
+								} else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Server address structure size is not set", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING);
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Server address structure size is not set", awh::log_t::flag_t::WARNING);
+									#endif
+									// Снимаем флаг ожидания подключения
+									i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									// Завершаем выполнение функции с ошибкой
+									return result;
+								}
+							}
+						} break;
+					}
+					// Создаём объект промежуточного звена
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+					// Если событие успешно добавлено
+					if((result = ret.second)){
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем количество событий
+						ret.first->second.count = 1;
+						// Устанавливаем индекс текущего элемента
+						ret.first->second.index = (::__awh_change__.size() - 1);
+						// Активируем событие на запись для клиентского сокета
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
+						// Если необходимо установить таймер на запись данных
+						auto j = node->timeouts.find(event::action_t::WRITE);
+						// Если таймаут на запись данных найден
+						if(j != node->timeouts.end()){
+							// Если сокет является неблокирующим
+							if(i->second->state.options & event::options::NOIOBLOCK){
+								// Добавляем новое событие в список изменений
+								::__awh_change__.push_back((struct kevent){});
+								// Устанавливаем таймер на получение данных
+								EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+							// Если сокет является блокирующим
+							} else this->_eth.timeout(node->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
+						}
+					// Событие не может быть зафиксированно повторно
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("An event for a client event cannot be connect because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a client event cannot be connect because it is already registered", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Connection is only allowed from the client node", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Connection is only allowed from the client node", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод перевода события в режим прослушивания входящих соединений
@@ -8876,20 +9243,162 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
  * @return      результат выполнения перевода в режим прослушивания
  */
 bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async) noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
-}
-/**
- * @brief Метод отправки события
- *
- * @param value значение события для отправки
- * @return      результат выполнения отправки
- */
-bool awh::IO::post(const uint32_t value) noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
+	// Результат работы функции
+	bool result = true;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Устанавливаем статус события в состояние подключения
+					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+					// Получаем текущее значение объекта сервера
+					server_t * node = awh_cast <server_t *> (i->second.get());
+					// Устанавливаем максимальное количество входящих соединений
+					node->backlog.max = max;
+					// Если нам необходимо выполнить асинхронное подключение
+					if(async){
+						// Если сокет является блокирующим
+						if(!(i->second->state.options & event::options::NOIOBLOCK)){
+							// Устанавливаем неблокирующий режим ввода/вывода
+							if(this->_eth.noblocking(node->fd, net::socket_mode_t::ENABLED))
+								// Устанавливаем опция неблокирующего режима события
+								i->second->state.options |= event::options::NOIOBLOCK;
+						}
+					// Если сокет является блокирующим
+					} else {
+						// Если сокет является неблокирующим
+						if(i->second->state.options & event::options::NOIOBLOCK){
+							// Устанавливаем блокирующий режим ввода/вывода
+							if(this->_eth.noblocking(node->fd, net::socket_mode_t::DISABLED))
+								// Снимаем опция неблокирующего режима события
+								i->second->state.options ^= event::options::NOIOBLOCK;
+						}
+					}
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Выполняем слушать порт сервера
+							if(!(result = (::listen(node->fd, node->backlog.depth) == 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), awh::log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+								// Снимаем флаг ожидания подключения
+								i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+								// Завершаем выполнение функции с ошибкой
+								return result;
+							}
+						} break;
+						// Для других типов сокетов
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Listening is only supported for STREAM event type", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Listening is only supported for STREAM event type", log_t::flag_t::WARNING);
+							#endif
+							// Снимаем флаг ожидания подключения
+							i->second->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+							// Завершаем выполнение функции с ошибкой
+							return result;
+						}
+					}
+					// Создаём объект промежуточного звена
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+					// Если событие успешно добавлено
+					if((result = ret.second)){
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем количество событий
+						ret.first->second.count = 1;
+						// Устанавливаем индекс текущего элемента
+						ret.first->second.index = (::__awh_change__.size() - 1);
+						// Активируем событие на чтение для серверного сокета
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+					// Событие не может быть зафиксированно повторно
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("An event for a client event cannot be connect because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a client event cannot be connect because it is already registered", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Listen is only allowed from the server node", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Listen is only allowed from the server node", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод отправки данных события
@@ -10713,9 +11222,186 @@ bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t i
  * @return   результат выполнения приостановки
  */
 bool awh::IO::pause(const event::id_t id) noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Если статус события является успешным
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
+						// Устанавливаем статус события в состояние паузы
+						i->second->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						// Получаем текущее значение объекта соседа
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						// Если событие успешно добавлено
+						if((result = ret.second)){
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие на чтение но отключаем его
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие на запись но отключаем его
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							// Устанавливаем количество событий
+							ret.first->second.count = 2;
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 2);
+							// Событие для получения таймаутов
+							event::action_t action = event::action_t::NONE;
+							// Выполняем проверку на доступные таймауты
+							for(uint8_t j = 0; j < 2; j++){
+								/**
+								 * Определяем тип действия события
+								 */
+								switch(j){
+									// Если действие является чтением
+									case 0: action = event::action_t::READ; break;
+									// Если действие является записью
+									case 1: action = event::action_t::WRITE; break;
+								}
+								// Выполняем проверку на наличие таймаута для действия
+								auto k = node->timeouts.find(action);
+								// Если нужный нам таймаут найден
+								if(k != node->timeouts.end()){
+									// Если сокет является неблокирующим
+									if(i->second->state.options & event::options::NOIOBLOCK){
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Снимаем таймер на получение данных
+										EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+										// Увеличиваем количество событий
+										ret.first->second.count++;
+										// Выходим из цикла
+										break;
+									}
+								}
+							}
+						// Событие не может быть зафиксированно повторно
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("An event for a peer event cannot be pause because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a peer event cannot be pause because it is already registered", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Если подключение клиента установлено
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+						// Устанавливаем статус события в состояние паузы
+						i->second->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						// Если событие успешно добавлено
+						if((result = ret.second)){
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие на чтение но отключаем его
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие на запись но отключаем его
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							// Устанавливаем количество событий
+							ret.first->second.count = 2;
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 2);
+							// Событие для получения таймаутов
+							event::action_t action = event::action_t::NONE;
+							// Выполняем проверку на доступные таймауты
+							for(uint8_t j = 0; j < 2; j++){
+								/**
+								 * Определяем тип действия события
+								 */
+								switch(j){
+									// Если действие является чтением
+									case 0: action = event::action_t::READ; break;
+									// Если действие является записью
+									case 1: action = event::action_t::WRITE; break;
+								}
+								// Выполняем проверку на наличие таймаута для действия
+								auto k = node->timeouts.find(action);
+								// Если нужный нам таймаут найден
+								if(k != node->timeouts.end()){
+									// Если сокет является неблокирующим
+									if(i->second->state.options & event::options::NOIOBLOCK){
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Снимаем таймер на получение данных
+										EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+										// Увеличиваем количество событий
+										ret.first->second.count++;
+										// Выходим из цикла
+										break;
+									}
+								}
+							}
+						// Событие не может быть зафиксированно повторно
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("An event for a client event cannot be pause because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a client event cannot be pause because it is already registered", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод возобновления события
@@ -10724,9 +11410,148 @@ bool awh::IO::pause(const event::id_t id) noexcept {
  * @return   результат выполнения возобновления
  */
 bool awh::IO::resume(const event::id_t id) noexcept {
-
-	// Выводим результат по умолчанию
-	return false;
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Если статус события является паузой
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+						// Устанавливаем статус события в состояние возобновлено
+						i->second->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Получаем текущее значение объекта соседа
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						// Если событие успешно добавлено
+						if((result = ret.second)){
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие на чтение но отключаем его
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+							// Устанавливаем количество событий
+							ret.first->second.count = 1;
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+							// Выполняем проверку на наличие таймаута для действия
+							auto j = node->timeouts.find(event::action_t::READ);
+							// Если нужный нам таймаут найден
+							if(j != node->timeouts.end()){
+								// Если сокет является неблокирующим
+								if(i->second->state.options & event::options::NOIOBLOCK){
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Устанавливаем таймер на получение данных
+									EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+									// Увеличиваем количество событий
+									ret.first->second.count++;
+								// Если сокет является блокирующим
+								} else this->_eth.timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+							}
+						// Событие не может быть зафиксированно повторно
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("An event for a peer event cannot be resume because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a peer event cannot be resume because it is already registered", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Если статус события является паузой
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+						// Устанавливаем статус события в состояние возобновлено
+						i->second->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						// Если событие успешно добавлено
+						if((result = ret.second)){
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие на чтение но отключаем его
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+							// Устанавливаем количество событий
+							ret.first->second.count = 1;
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+							// Выполняем проверку на наличие таймаута для действия
+							auto j = node->timeouts.find(event::action_t::READ);
+							// Если нужный нам таймаут найден
+							if(j != node->timeouts.end()){
+								// Если сокет является неблокирующим
+								if(i->second->state.options & event::options::NOIOBLOCK){
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Устанавливаем таймер на получение данных
+									EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+									// Увеличиваем количество событий
+									ret.first->second.count++;
+								// Если сокет является блокирующим
+								} else this->_eth.timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+							}
+						// Событие не может быть зафиксированно повторно
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("An event for a client event cannot be resume because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("An event for a client event cannot be resume because it is already registered", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод проверки состояния события
@@ -10735,7 +11560,62 @@ bool awh::IO::resume(const event::id_t id) noexcept {
  * @return   состояние события
  */
 bool awh::IO::isAlive(const event::id_t id) const noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Если статус события является успешным
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
+						// Получаем текущее значение объекта соседа
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Выполняем поиск таймаута для действия чтения
+						auto j = node->timeouts.find(event::action_t::READ);
+						// Выводим результат проверки
+						return ((j != node->timeouts.end()) ? (this->_eth.error(node->fd) == 0) : true);
+					}
+				} break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Если подключение клиента установлено
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Выполняем поиск таймаута для действия чтения
+						auto j = node->timeouts.find(event::action_t::READ);
+						// Выводим результат проверки
+						return ((j != node->timeouts.end()) ? (this->_eth.error(node->fd) == 0) : true);
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
