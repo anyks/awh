@@ -259,16 +259,15 @@ namespace {
 	 *
 	 */
 	typedef struct Intermediate {
-		size_t index;                         // Индекс текущего элемента
-		uint8_t count;                        // Общее количество элементов
-		unique_ptr <awh::net::node_t> & node; // Объект текущего узла события
+		// Индекс текущего элемента
+		size_t index;
+		// Общее количество элементов
+		uint8_t count;
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param node объект текущего узла события
 		 */
-		explicit Intermediate(unique_ptr <awh::net::node_t> & node) noexcept :
-		 index(0), count(0), node(node) {}
+		explicit Intermediate() noexcept : index(0), count(0) {}
 	} intmd_t;
 };
 
@@ -343,7 +342,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Выполняем извлечение текущего значения объекта пользовательского события
 					user_t * node = awh_cast <user_t *> (i->second.get());
 					// Создаём объект промежуточного звена
-					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 					// Если событие успешно добавлено
 					if((result = ret.second)){
 						// Добавляем новое событие в список изменений
@@ -378,7 +377,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Выполняем извлечение текущего значения объекта таймера
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Создаём объект промежуточного звена
-					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 					// Если событие успешно добавлено
 					if((result = (ret.second && (node->delay > 0)))){
 						// Добавляем новое событие в список изменений
@@ -460,7 +459,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									return result;
 								}
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
 								if((result = ret.second)){
 									// Добавляем новое событие в список изменений
@@ -565,7 +564,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Если файловый дескриптор файла существует
 							if(node->fd != net::invalid_socket_t){
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
 								if((result = ret.second)){
 									// Добавляем новое событие в список изменений
@@ -662,7 +661,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если файловый дескриптор межпроцессного взаимодействия существует
 					if(node->fd != net::invalid_socket_t){
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Если событие успешно добавлено
 						if((result = ret.second)){
 							// Добавляем новое событие в список изменений
@@ -723,7 +722,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если файловый дескриптор соседа существует
 					if(node->fd != net::invalid_socket_t){
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Если событие успешно добавлено
 						if((result = ret.second)){
 							// Добавляем новое событие в список изменений
@@ -741,7 +740,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Если необходимо установить таймер на получение данных
 							auto j = node->timeouts.find(event::action_t::READ);
 							// Если таймаут на получение данных найден
-							if(j != node->timeouts.end()){
+							if((j != node->timeouts.end()) && (j->second > 0)){
 								// Если сокет является неблокирующим
 								if(i->second->state.options & event::options::NOIOBLOCK){
 									// Добавляем новое событие в список изменений
@@ -933,7 +932,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									return result;
 								}
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
 								if((result = ret.second)){
 									// Добавляем новое событие в список изменений
@@ -1028,7 +1027,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										return result;
 									}
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
@@ -1141,7 +1140,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										return result;
 									}
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
@@ -1358,7 +1357,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									return result;
 								}
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
 								if((result = ret.second)){
 									// Добавляем новое событие в список изменений
@@ -1437,7 +1436,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										::exit(EXIT_FAILURE);
 									}
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
@@ -1536,7 +1535,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										::exit(EXIT_FAILURE);
 									}
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
@@ -5307,10 +5306,12 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::USER): {
+					// Производим удаление списка подготовленных событий
+					::__awh_inters__.erase(i->first);
 					// Производим удаление ноды
 					::__awh_nodes__.erase(i);
-				break;
+				} break;
 				// Если нода является таймером
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Выполняем извлечение текущего значения объекта таймера
@@ -5321,6 +5322,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					// Если дескриптор сокета активен
@@ -5361,6 +5364,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					}
@@ -5419,6 +5424,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					if(node->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
 						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Производим удаление списка подготовленных событий
+					::__awh_inters__.erase(i->first);
 					// Производим удаление ноды
 					::__awh_nodes__.erase(i);
 				} break;
@@ -5469,6 +5476,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					if(node->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
 						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Производим удаление списка подготовленных событий
+					::__awh_inters__.erase(i->first);
 					// Производим удаление ноды
 					::__awh_nodes__.erase(i);
 				} break;
@@ -5489,6 +5498,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					// Если дескриптор сокета активен
@@ -5531,6 +5542,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							if(node->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
 								node->callbacks.status(i->first, event::status_t::DESTROYED);
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(i->first);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(i);
 						}
@@ -5553,6 +5566,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					// Если дескриптор сокета активен
@@ -5569,6 +5584,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							if(node->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
 								node->callbacks.status(i->first, event::status_t::DESTROYED);
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(i->first);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(i);
 						}
@@ -5591,6 +5608,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					// Если дескриптор сокета активен
@@ -5607,6 +5626,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							if(node->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
 								node->callbacks.status(i->first, event::status_t::DESTROYED);
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(i->first);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(i);
 						}
@@ -5629,6 +5650,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					// Если дескриптор сокета активен
@@ -5690,6 +5713,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
 					}
@@ -6221,9 +6246,12 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Возвращаем идентификатор созданного события
 									result = ret.first->first;
 								// Если всё прошло не успешно
-								else
+								else {
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
+								}
 							} break;
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
@@ -6473,9 +6501,12 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Возвращаем идентификатор созданного события
 									result = ret.first->first;
 								// Если всё прошло не успешно
-								else
+								else {
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
+								}
 							} break;
 							// Для неизвестного типа сокета
 							default: {
@@ -6671,9 +6702,12 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Возвращаем идентификатор созданного события
 									result = ret.first->first;
 								// Если всё прошло не успешно
-								else
+								else {
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
+								}
 							} break;
 							// Для типа сокета SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
@@ -6821,9 +6855,12 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 									// Возвращаем идентификатор созданного события
 									result = ret.first->first;
 								// Если всё прошло не успешно
-								else
+								else {
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
+								}
 							} break;
 							// Для неизвестного типа сокета
 							default: {
@@ -7210,6 +7247,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 								// Выводим сообщение об ошибке
 								this->_log->print("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(ret.first->first);
 							// Удаляем созданное событие
 							::__awh_nodes__.erase(ret.first);
 						}
@@ -7324,6 +7363,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 								// Выводим сообщение об ошибке
 								this->_log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(ret.first->first);
 							// Удаляем созданное событие
 							::__awh_nodes__.erase(ret.first);
 						}
@@ -7464,6 +7505,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 								// Выводим сообщение об ошибке
 								this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(ret.first->first);
 							// Удаляем созданное событие
 							::__awh_nodes__.erase(ret.first);
 						}
@@ -7549,6 +7592,8 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 								// Выводим сообщение об ошибке
 								this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(ret.first->first);
 							// Удаляем созданное событие
 							::__awh_nodes__.erase(ret.first);
 						}
@@ -9100,7 +9145,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 						} break;
 					}
 					// Создаём объект промежуточного звена
-					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 					// Если событие успешно добавлено
 					if((result = ret.second)){
 						// Добавляем новое событие в список изменений
@@ -9111,10 +9156,10 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 						ret.first->second.index = (::__awh_change__.size() - 1);
 						// Активируем событие на запись для клиентского сокета
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
-						// Если необходимо установить таймер на запись данных
-						auto j = node->timeouts.find(event::action_t::WRITE);
-						// Если таймаут на запись данных найден
-						if(j != node->timeouts.end()){
+						// Если необходимо установить таймер на подключение к серверу
+						auto j = node->timeouts.find(event::action_t::CONNECT);
+						// Если таймаут на подключение найден
+						if((j != node->timeouts.end()) && (j->second > 0)){
 							// Если сокет является неблокирующим
 							if(i->second->state.options & event::options::NOIOBLOCK){
 								// Добавляем новое событие в список изменений
@@ -9281,7 +9326,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 						}
 					}
 					// Создаём объект промежуточного звена
-					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 					// Если событие успешно добавлено
 					if((result = ret.second)){
 						// Добавляем новое событие в список изменений
@@ -10993,7 +11038,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта соседа
 						peer_t * node = awh_cast <peer_t *> (i->second.get());
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Если событие успешно добавлено
 						if((result = ret.second)){
 							// Добавляем новое событие в список изменений
@@ -11024,7 +11069,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 								// Выполняем проверку на наличие таймаута для действия
 								auto k = node->timeouts.find(action);
 								// Если нужный нам таймаут найден
-								if(k != node->timeouts.end()){
+								if((k != node->timeouts.end()) && (k->second > 0)){
 									// Если сокет является неблокирующим
 									if(i->second->state.options & event::options::NOIOBLOCK){
 										// Добавляем новое событие в список изменений
@@ -11065,7 +11110,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта клиента
 						client_t * node = awh_cast <client_t *> (i->second.get());
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Если событие успешно добавлено
 						if((result = ret.second)){
 							// Добавляем новое событие в список изменений
@@ -11096,7 +11141,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 								// Выполняем проверку на наличие таймаута для действия
 								auto k = node->timeouts.find(action);
 								// Если нужный нам таймаут найден
-								if(k != node->timeouts.end()){
+								if((k != node->timeouts.end()) && (k->second > 0)){
 									// Если сокет является неблокирующим
 									if(i->second->state.options & event::options::NOIOBLOCK){
 										// Добавляем новое событие в список изменений
@@ -11181,7 +11226,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта соседа
 						peer_t * node = awh_cast <peer_t *> (i->second.get());
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Если событие успешно добавлено
 						if((result = ret.second)){
 							// Добавляем новое событие в список изменений
@@ -11195,7 +11240,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Выполняем проверку на наличие таймаута для действия
 							auto j = node->timeouts.find(event::action_t::READ);
 							// Если нужный нам таймаут найден
-							if(j != node->timeouts.end()){
+							if((j != node->timeouts.end()) && (j->second > 0)){
 								// Если сокет является неблокирующим
 								if(i->second->state.options & event::options::NOIOBLOCK){
 									// Добавляем новое событие в список изменений
@@ -11234,7 +11279,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта клиента
 						client_t * node = awh_cast <client_t *> (i->second.get());
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Если событие успешно добавлено
 						if((result = ret.second)){
 							// Добавляем новое событие в список изменений
@@ -11248,7 +11293,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Выполняем проверку на наличие таймаута для действия
 							auto j = node->timeouts.find(event::action_t::READ);
 							// Если нужный нам таймаут найден
-							if(j != node->timeouts.end()){
+							if((j != node->timeouts.end()) && (j->second > 0)){
 								// Если сокет является неблокирующим
 								if(i->second->state.options & event::options::NOIOBLOCK){
 									// Добавляем новое событие в список изменений
@@ -11420,10 +11465,12 @@ bool awh::IO::reinitialize() noexcept {
 					// Если нода является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::USER):
 					// Если нода является таймером
-					case static_cast <uint8_t> (event::node_t::TIMER):
+					case static_cast <uint8_t> (event::node_t::TIMER): {
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
-					break;
+					} break;
 					// Если нода является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
@@ -11440,6 +11487,8 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11455,6 +11504,8 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11470,6 +11521,8 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11485,6 +11538,8 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11500,6 +11555,8 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11515,11 +11572,18 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
 					// Для других типов нод
-					default: i = ::__awh_nodes__.erase(i);
+					default: {
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					}
 				}
 			// Если нода не находится в рабочем состоянии, пропускаем её
 			} else ++i;
@@ -11571,10 +11635,12 @@ bool awh::IO::deinitialize() noexcept {
 					// Если нода является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::USER):
 					// Если нода является таймером
-					case static_cast <uint8_t> (event::node_t::TIMER):
+					case static_cast <uint8_t> (event::node_t::TIMER): {
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
-					break;
+					} break;
 					// Если нода является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
@@ -11591,6 +11657,8 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11606,6 +11674,8 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11621,6 +11691,8 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11636,6 +11708,8 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11651,6 +11725,8 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -11666,14 +11742,26 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
 					} break;
 					// Для других типов нод
-					default: i = ::__awh_nodes__.erase(i);
+					default: {
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление ноды
+						i = ::__awh_nodes__.erase(i);
+					}
 				}
 			// Если нода не находится в рабочем состоянии уничтожаем её сразу
-			} else i = ::__awh_nodes__.erase(i);
+			} else {
+				// Производим удаление списка подготовленных событий
+				::__awh_inters__.erase(i->first);
+				// Производим удаление ноды
+				i = ::__awh_nodes__.erase(i);
+			}
 		}
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
@@ -11928,6 +12016,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 					// Удаляем текущий элемент из списка изменений
 					i = ::__awh_change__.erase(i);
 				}
+				// Очищаем список промежуточных звеньев
+				::__awh_inters__.clear();
 			}
 			/**
 			 * Подготавливаем параметры таймаута для опроса событий
@@ -12017,6 +12107,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
 										#endif
 									}
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(dir->id);
 									// Производим удаление ноды
 									::__awh_nodes__.erase(dir->id);
 								// Если установлена функция обратного вызова
@@ -12031,12 +12123,12 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										dir->callbacks.event(dir->id, event::action_t::RENAME);
 									// Если мы детектировали событие удаления директории
 									else if(ev.fflags & NOTE_DELETE) {
-										// Получаем идентификатор события директории
-										const event::id_t id = dir->id;
 										// Вызываем функцию обратного вызова флаг события
-										dir->callbacks.event(id, event::action_t::DELETE);
+										dir->callbacks.event(dir->id, event::action_t::DELETE);
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(dir->id);
 										// Производим удаление ноды
-										::__awh_nodes__.erase(id);
+										::__awh_nodes__.erase(dir->id);
 									// Если мы детектировали событие изменения атрибутов директории
 									} else if(ev.fflags & NOTE_ATTRIB)
 										// Вызываем функцию обратного вызова флаг события
@@ -12079,6 +12171,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
 										#endif
 									}
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(file->id);
 									// Производим удаление ноды
 									::__awh_nodes__.erase(file->id);
 								// Если установлена функция обратного вызова
@@ -12097,6 +12191,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										const event::id_t id = file->id;
 										// Вызываем функцию обратного вызова флаг события
 										file->callbacks.event(file->id, event::action_t::DELETE);
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(file->id);
 										// Производим удаление ноды
 										::__awh_nodes__.erase(file->id);
 									// Если мы детектировали событие изменения атрибутов файла
@@ -12116,48 +12212,137 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						}
 					// Если мы получили событие таймера
 					} else if(ev.filter == EVFILT_TIMER) {
-						// Выполняем извлечение текущего значения объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (node);
-						// Если мы детектировали наличие ошибки
-						if(ev.flags & EV_ERROR){
-							// Устанавливаем статус события в состояние уничтожения
-							timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-							// Если установлена функция обратного вызова
-							if(timer->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								timer->callbacks.error(timer->id, ::strerror(ev.data));
-							// Если функция обратного вызова вывода ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
-								#endif
-							}
-							// Производим удаление ноды
-							::__awh_nodes__.erase(timer->id);
-						// Если таймер сработал корректно
-						} else {
-							// Если таймер является одноразовым
-							if(timer->state.family == event::family_t::TIMER)
-								// Устанавливаем статус события в состояние уничтожения
-								timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-							// Если установлена функция обратного вызова
-							if(timer->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								timer->callbacks.status(timer->id, event::status_t::PENDING);
-							// Если таймер является одноразовым
-							if(timer->state.family == event::family_t::TIMER)
+						/**
+						 * Определяем чем является текущая нода
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если нода является таймером
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Выполняем извлечение текущего значения объекта таймера
+								timer_t * timer = awh_cast <timer_t *> (node);
+								// Если мы детектировали наличие ошибки
+								if(ev.flags & EV_ERROR){
+									// Устанавливаем статус события в состояние уничтожения
+									timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									// Если установлена функция обратного вызова
+									if(timer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										timer->callbacks.error(timer->id, ::strerror(ev.data));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										#endif
+									}
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(timer->id);
+									// Производим удаление ноды
+									::__awh_nodes__.erase(timer->id);
+								// Если таймер сработал корректно
+								} else {
+									// Если таймер является одноразовым
+									if(timer->state.family == event::family_t::TIMER)
+										// Устанавливаем статус события в состояние уничтожения
+										timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									// Если установлена функция обратного вызова
+									if(timer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова статуса события
+										timer->callbacks.status(timer->id, event::status_t::PENDING);
+									// Если таймер является одноразовым
+									if(timer->state.family == event::family_t::TIMER){
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(timer->id);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(timer->id);
+									}
+								}
+							} break;
+							// Если нода является соседом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Получаем текущее значение объекта соседа
+								peer_t * peer = awh_cast <peer_t *> (node);
+								// Если мы детектировали наличие ошибки
+								if(ev.flags & EV_ERROR){
+									// Устанавливаем статус события в состояние уничтожения
+									peer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, ::strerror(ev.data));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										#endif
+									}
+								}
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
+								// Производим удаление списка подготовленных событий
+								::__awh_inters__.erase(peer->id);
 								// Производим удаление ноды
-								::__awh_nodes__.erase(timer->id);
+								::__awh_nodes__.erase(peer->id);
+							} break;
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								client_t * client = awh_cast <client_t *> (node);
+								// Если мы детектировали наличие ошибки
+								if(ev.flags & EV_ERROR){
+									// Устанавливаем статус события в состояние уничтожения
+									client->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, ::strerror(ev.data));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										#endif
+									}
+								}
+								// Если установлена функция обратного вызова
+								if(client->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									client->callbacks.event(client->id, event::action_t::DISCONNECT);
+								// Производим удаление списка подготовленных событий
+								::__awh_inters__.erase(client->id);
+								// Производим удаление ноды
+								::__awh_nodes__.erase(client->id);
+							} break;
 						}
 					// Если мы получили событие пользовательского события
 					} else if(ev.filter == EVFILT_USER) {
@@ -12187,6 +12372,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
 								#endif
 							}
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(user->id);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(user->id);
 						// Если событие пользовательского события сработало корректно
@@ -12212,18 +12399,26 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							switch(static_cast <uint8_t> (node->state.node)){
 								// Если нода является межпрограммным взаимодействием
 								case static_cast <uint8_t> (event::node_t::IPC): {
+									// Получаем текущее значение объекта межпрограммного взаимодействия
+									ipc_t * ipc = awh_cast <ipc_t *> (node);
 
 								} break;
 								// Если нода является соседом
 								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Получаем текущее значение объекта соседа
+									peer_t * peer = awh_cast <peer_t *> (node);
 
 								} break;
 								// Если нода является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * client = awh_cast <client_t *> (node);
 
 								} break;
 								// Если нода является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Получаем текущее значение объекта сервера
+									server_t * server = awh_cast <server_t *> (node);
 
 								} break;
 							}
@@ -12236,15 +12431,160 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							switch(static_cast <uint8_t> (node->state.node)){
 								// Если нода является межпрограммным взаимодействием
 								case static_cast <uint8_t> (event::node_t::IPC): {
+									// Получаем текущее значение объекта межпрограммного взаимодействия
+									ipc_t * ipc = awh_cast <ipc_t *> (node);
+									// Если есть данные для отправки в сокет
+									if(!ipc->transfer.output.empty()){
 
+										/** +++++++++++++++++++++++++++++++++ */
+
+										// Удаляем запись из очереди отправленных данных
+										ipc->transfer.output.pop();
+									}
+									// Если в очереди данных больше не осталось данных для отправки
+									if(ipc->transfer.output.empty()){
+										// Создаём объект промежуточного звена
+										auto ret = ::__awh_inters__.emplace(ipc->id, intmd_t{});
+										// Если событие успешно добавлено
+										if(ret.second){
+											// Добавляем новое событие в список изменений
+											::__awh_change__.push_back((struct kevent){});
+											// Устанавливаем событие на запись но отключаем его
+											EV_SET(&::__awh_change__.back(), ipc->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
+											// Устанавливаем количество событий
+											ret.first->second.count = 1;
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::__awh_change__.size() - 1);
+										}
+									}
 								} break;
 								// Если нода является соседом
 								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Получаем текущее значение объекта соседа
+									peer_t * peer = awh_cast <peer_t *> (node);
+									// Если есть данные для отправки в сокет
+									if(!peer->transfer.output.empty()){
 
+										/** +++++++++++++++++++++++++++++++++ */
+
+										// Удаляем запись из очереди отправленных данных
+										peer->transfer.output.pop();
+									}
+									// Если в очереди данных больше не осталось данных для отправки
+									if(peer->transfer.output.empty()){
+										// Создаём объект промежуточного звена
+										auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+										// Если событие успешно добавлено
+										if(ret.second){
+											// Добавляем новое событие в список изменений
+											::__awh_change__.push_back((struct kevent){});
+											// Устанавливаем событие на запись но отключаем его
+											EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
+											// Устанавливаем количество событий
+											ret.first->second.count = 1;
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::__awh_change__.size() - 1);
+											// Выполняем проверку на наличие таймаута для записи данных в сокет
+											auto i = peer->timeouts.find(event::action_t::WRITE);
+											// Если нужный нам таймаут найден
+											if((i != peer->timeouts.end()) && (i->second > 0)){
+												// Если сокет является неблокирующим
+												if(peer->state.options & event::options::NOIOBLOCK){
+													// Добавляем новое событие в список изменений
+													::__awh_change__.push_back((struct kevent){});
+													// Снимаем таймер на получение данных
+													EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
+													// Увеличиваем количество событий
+													ret.first->second.count++;
+												}
+											}
+										}
+									}
 								} break;
 								// Если нода является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Получаем текущее значение объекта клиента
+									client_t * client = awh_cast <client_t *> (node);
+									// Если статус события находится в состоянии ожидания подключения
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+										// Устанавливаем статус события в состояние подключено
+										client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
+										// Если установлена функция обратного вызова
+										if(client->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											client->callbacks.event(client->id, event::action_t::CONNECT);
+										// Создаём объект промежуточного звена
+										auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+										// Если событие успешно добавлено
+										if(ret.second){
+											// Добавляем новое событие в список изменений
+											::__awh_change__.push_back((struct kevent){});
+											// Устанавливаем событие на чтение и активируем его
+											EV_SET(&::__awh_change__.back(), client->fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+											// Добавляем новое событие в список изменений
+											::__awh_change__.push_back((struct kevent){});
+											// Устанавливаем событие на запись но отключаем его
+											EV_SET(&::__awh_change__.back(), client->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+											// Устанавливаем количество событий
+											ret.first->second.count = 2;
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::__awh_change__.size() - 2);
+											// Выполняем проверку на наличие таймаута для подключения к серверу
+											auto i = client->timeouts.find(event::action_t::CONNECT);
+											// Если нужный нам таймаут найден
+											if((i != client->timeouts.end()) && (i->second > 0)){
+												// Если сокет является неблокирующим
+												if(client->state.options & event::options::NOIOBLOCK){
+													// Добавляем новое событие в список изменений
+													::__awh_change__.push_back((struct kevent){});
+													// Снимаем таймер на получение данных
+													EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+													// Увеличиваем количество событий
+													ret.first->second.count++;
+												}
+											}
+										}
+									// Если татус события просто запись данных в сокет
+									} else {
+										// Если есть данные для отправки в сокет
+										if(!client->transfer.output.empty()){
 
+											/** +++++++++++++++++++++++++++++++++ */
+
+											// Удаляем запись из очереди отправленных данных
+											client->transfer.output.pop();
+										}
+										// Если в очереди данных больше не осталось данных для отправки
+										if(client->transfer.output.empty()){
+											// Создаём объект промежуточного звена
+											auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+											// Если событие успешно добавлено
+											if(ret.second){
+												// Добавляем новое событие в список изменений
+												::__awh_change__.push_back((struct kevent){});
+												// Устанавливаем событие на запись но отключаем его
+												EV_SET(&::__awh_change__.back(), client->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+												// Устанавливаем количество событий
+												ret.first->second.count = 1;
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::__awh_change__.size() - 1);
+												// Выполняем проверку на наличие таймаута для записи данных в сокет
+												auto i = client->timeouts.find(event::action_t::WRITE);
+												// Если нужный нам таймаут найден
+												if((i != client->timeouts.end()) && (i->second > 0)){
+													// Если сокет является неблокирующим
+													if(client->state.options & event::options::NOIOBLOCK){
+														// Добавляем новое событие в список изменений
+														::__awh_change__.push_back((struct kevent){});
+														// Снимаем таймер на получение данных
+														EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+														// Увеличиваем количество событий
+														ret.first->second.count++;
+													}
+												}
+											}
+										}
+									}
 								} break;
 							}
 						}
@@ -12500,7 +12840,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											peer->callbacks.event(peer->id, event::action_t::CLOSE);
+											peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
 									} break;
 									// Если нода является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -12509,7 +12849,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(client->id, event::action_t::CLOSE);
+											client->callbacks.event(client->id, event::action_t::DISCONNECT);
 									} break;
 									// Если нода является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -12522,6 +12862,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									} break;
 								}
 							}
+							// Производим удаление списка подготовленных событий
+							::__awh_inters__.erase(node->id);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(node->id);
 						}
