@@ -340,7 +340,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Устанавливаем статус события в состояние ожидания
 					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
-					// Выполняем создание нового объекта ноды
+					// Выполняем извлечение текущего значения объекта пользовательского события
 					user_t * node = awh_cast <user_t *> (i->second.get());
 					// Создаём объект промежуточного звена
 					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
@@ -375,7 +375,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Устанавливаем статус события в состояние ожидания
 					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
-					// Выполняем создание нового объекта ноды
+					// Выполняем извлечение текущего значения объекта таймера
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Создаём объект промежуточного звена
 					auto ret = ::__awh_inters__.emplace(i->first, intmd_t(i->second));
@@ -5313,13 +5313,13 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				break;
 				// Если нода является таймером
 				case static_cast <uint8_t> (event::node_t::TIMER): {
-					// Выполняем создание нового объекта ноды
+					// Выполняем извлечение текущего значения объекта таймера
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t){
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -5357,9 +5357,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 								} else ++k;
 							}
 						}
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -5415,9 +5415,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Сбрасываем значение дескриптора сокета
 						node->fd = net::invalid_socket_t;
 					}
-					// Если установлена callback-функция
+					// Если установлена функция обратного вызова
 					if(node->callbacks.status != nullptr)
-						// Вызываем callback-функцию при уничтожении события
+						// Вызываем функцию обратного вызова при уничтожении события
 						node->callbacks.status(i->first, event::status_t::DESTROYED);
 					// Производим удаление ноды
 					::__awh_nodes__.erase(i);
@@ -5465,9 +5465,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Сбрасываем значение дескриптора сокета
 						node->fd = net::invalid_socket_t;
 					}
-					// Если установлена callback-функция
+					// Если установлена функция обратного вызова
 					if(node->callbacks.status != nullptr)
-						// Вызываем callback-функцию при уничтожении события
+						// Вызываем функцию обратного вызова при уничтожении события
 						node->callbacks.status(i->first, event::status_t::DESTROYED);
 					// Производим удаление ноды
 					::__awh_nodes__.erase(i);
@@ -5485,9 +5485,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -5527,9 +5527,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->fd = net::invalid_socket_t;
 						// Если дескриптор сокета не инициализирован
 						} else {
-							// Если установлена callback-функция
+							// Если установлена функция обратного вызова
 							if(node->callbacks.status != nullptr)
-								// Вызываем callback-функцию при уничтожении события
+								// Вызываем функцию обратного вызова при уничтожении события
 								node->callbacks.status(i->first, event::status_t::DESTROYED);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(i);
@@ -5549,9 +5549,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -5565,9 +5565,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->fd = net::invalid_socket_t;
 						// Если дескриптор сокета не инициализирован
 						} else {
-							// Если установлена callback-функция
+							// Если установлена функция обратного вызова
 							if(node->callbacks.status != nullptr)
-								// Вызываем callback-функцию при уничтожении события
+								// Вызываем функцию обратного вызова при уничтожении события
 								node->callbacks.status(i->first, event::status_t::DESTROYED);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(i);
@@ -5587,9 +5587,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -5603,9 +5603,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->fd = net::invalid_socket_t;
 						// Если дескриптор сокета не инициализирован
 						} else {
-							// Если установлена callback-функция
+							// Если установлена функция обратного вызова
 							if(node->callbacks.status != nullptr)
-								// Вызываем callback-функцию при уничтожении события
+								// Вызываем функцию обратного вызова при уничтожении события
 								node->callbacks.status(i->first, event::status_t::DESTROYED);
 							// Производим удаление ноды
 							::__awh_nodes__.erase(i);
@@ -5625,9 +5625,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -5686,9 +5686,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						::__awh_nodes__.erase(i);
@@ -9208,7 +9208,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Устанавливаем статус события в состояние подключения
-					i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+					i->second->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 					// Получаем текущее значение объекта сервера
 					server_t * node = awh_cast <server_t *> (i->second.get());
 					// Устанавливаем максимальное количество входящих соединений
@@ -9382,24 +9382,6 @@ bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
-				case static_cast <uint8_t> (event::node_t::DIR): {
-					// Получаем объект ноды
-					auto node = awh_cast <dir_t *> (i->second.get());
-					// Очищаем чёрный список
-					node->blacklist.clear();
-					// Устанавливаем результат
-					result = node->blacklist.empty();
-				} break;
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Получаем объект ноды
-					auto node = awh_cast <file_t *> (i->second.get());
-					// Очищаем чёрный список
-					node->blacklist.clear();
-					// Устанавливаем результат
-					result = node->blacklist.empty();
-				} break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект ноды
@@ -9454,52 +9436,6 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Если адрес соответствует адресу файловой системы
-						if(this->_addr.check(value, net_addr_t::type_t::FS))
-							// Выполняем добавление нового адреса в чёрный список
-							return awh_cast <dir_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
-						// Если адрес не принадлежит к адресу файловой системы
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Address being added to blacklist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Address being added to blacklist does not match file system address", log_t::flag_t::WARNING);
-							#endif
-						}
-					} break;
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Если адрес соответствует адресу файловой системы
-						if(this->_addr.check(value, net_addr_t::type_t::FS))
-							// Выполняем добавление нового адреса в чёрный список
-							return awh_cast <file_t *> (i->second.get())->blacklist.emplace(value, i->second->state.address).second;
-						// Если адрес не принадлежит к адресу файловой системы
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Address being added to blacklist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Address being added to blacklist does not match file system address", log_t::flag_t::WARNING);
-							#endif
-						}
-					} break;
 					// Если нода является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						/**
@@ -9631,34 +9567,6 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Получаем объект ноды
-						auto node = awh_cast <dir_t *> (i->second.get());
-						// Если чёрный список не пустой
-						if(!node->blacklist.empty()){
-							// Выполняем поиск указанного адреса
-							auto i = node->blacklist.find(value);
-							// Если адрес найден, удаляем его
-							if((result = (i != node->blacklist.end())))
-								// Выполняем удаление указанного адреса
-								node->blacklist.erase(i);
-						}
-					} break;
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Получаем объект ноды
-						auto node = awh_cast <file_t *> (i->second.get());
-						// Если чёрный список не пустой
-						if(!node->blacklist.empty()){
-							// Выполняем поиск указанного адреса
-							auto i = node->blacklist.find(value);
-							// Если адрес найден, удаляем его
-							if((result = (i != node->blacklist.end())))
-								// Выполняем удаление указанного адреса
-								node->blacklist.erase(i);
-						}
-					} break;
 					// Если нода является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект ноды
@@ -9753,14 +9661,6 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::blacklist(co
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
-				case static_cast <uint8_t> (event::node_t::DIR):
-					// Выводим полученный результат
-					return awh_cast <dir_t *> (i->second.get())->blacklist;
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE):
-					// Выводим полученный результат
-					return awh_cast <file_t *> (i->second.get())->blacklist;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
@@ -9823,24 +9723,6 @@ bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
-				case static_cast <uint8_t> (event::node_t::DIR): {
-					// Получаем объект ноды
-					auto node = awh_cast <dir_t *> (i->second.get());
-					// Очищаем белый список
-					node->whitelist.clear();
-					// Устанавливаем результат
-					return node->whitelist.empty();
-				}
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Получаем объект ноды
-					auto node = awh_cast <file_t *> (i->second.get());
-					// Очищаем белый список
-					node->whitelist.clear();
-					// Устанавливаем результат
-					return node->whitelist.empty();
-				}
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект ноды
@@ -9895,52 +9777,6 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Если адрес соответствует адресу файловой системы
-						if(this->_addr.check(value, net_addr_t::type_t::FS))
-							// Выполняем добавление нового адреса в белый список
-							return awh_cast <dir_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
-						// Если адрес не принадлежит к адресу файловой системы
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Address being added to whitelist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Address being added to whitelist does not match file system address", log_t::flag_t::WARNING);
-							#endif
-						}
-					} break;
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Если адрес соответствует адресу файловой системы
-						if(this->_addr.check(value, net_addr_t::type_t::FS))
-							// Выполняем добавление нового адреса в белый список
-							return awh_cast <file_t *> (i->second.get())->whitelist.emplace(value, i->second->state.address).second;
-						// Если адрес не принадлежит к адресу файловой системы
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Address being added to whitelist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Address being added to whitelist does not match file system address", log_t::flag_t::WARNING);
-							#endif
-						}
-					} break;
 					// Если нода является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						/**
@@ -10072,34 +9908,6 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 				 * Определяем чем является текущая нода
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Получаем объект ноды
-						auto node = awh_cast <dir_t *> (i->second.get());
-						// Если белый список не пустой
-						if(!node->whitelist.empty()){
-							// Выполняем поиск указанного адреса
-							auto i = node->whitelist.find(value);
-							// Если адрес найден, удаляем его
-							if((result = (i != node->whitelist.end())))
-								// Выполняем удаление указанного адреса
-								node->whitelist.erase(i);
-						}
-					} break;
-					// Если нода является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Получаем объект ноды
-						auto node = awh_cast <file_t *> (i->second.get());
-						// Если белый список не пустой
-						if(!node->whitelist.empty()){
-							// Выполняем поиск указанного адреса
-							auto i = node->whitelist.find(value);
-							// Если адрес найден, удаляем его
-							if((result = (i != node->whitelist.end())))
-								// Выполняем удаление указанного адреса
-								node->whitelist.erase(i);
-						}
-					} break;
 					// Если нода является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект ноды
@@ -10194,14 +10002,6 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(co
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
-				case static_cast <uint8_t> (event::node_t::DIR):
-					// Выводим полученный результат
-					return awh_cast <dir_t *> (i->second.get())->whitelist;
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE):
-					// Выводим полученный результат
-					return awh_cast <file_t *> (i->second.get())->whitelist;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
@@ -11636,9 +11436,9 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11651,9 +11451,9 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11666,9 +11466,9 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11681,9 +11481,9 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11696,9 +11496,9 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11711,9 +11511,9 @@ bool awh::IO::reinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11787,9 +11587,9 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11802,9 +11602,9 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11817,9 +11617,9 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11832,9 +11632,9 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11847,9 +11647,9 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -11862,9 +11662,9 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
 							::close(node->fd);
-						// Если установлена callback-функция
+						// Если установлена функция обратного вызова
 						if(node->callbacks.status != nullptr)
-							// Вызываем callback-функцию при уничтожении события
+							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление ноды
 						i = ::__awh_nodes__.erase(i);
@@ -12015,9 +11815,755 @@ awh::event::status_t awh::IO::status(const event::id_t id) const noexcept {
  * @return        результат выполнения опроса
  */
 bool awh::IO::poll(const int32_t timeout) noexcept {
+	// Результат выполнения опроса
+	bool result = true;
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если есть события для добавления в Kqueue
+			if(!::__awh_change__.empty()){
+				// Выполняем изменение параметров события
+				if(::kevent(::__awh_kq__, &::__awh_change__[0], ::__awh_change__.size(), nullptr, 0, nullptr) == net::invalid_socket_t){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+				// Значение ноды для обработки изменений
+				net::node_t * node = nullptr;
+				// Выполняем переход по всему объекту изменений
+				for(auto i = ::__awh_change__.begin(); i != ::__awh_change__.end();){
+					// Получаем текущее значение ноды
+					node = reinterpret_cast <net::node_t *> (i->udata);
+					/**
+					 * Определяем чем является текущая нода
+					 */
+					switch(static_cast <uint8_t> (node->state.node)){
+						// Если нода является пользовательским событием
+						case static_cast <uint8_t> (event::node_t::USER): break;
+						// Если нода является таймером
+						case static_cast <uint8_t> (event::node_t::TIMER): {
+							// Получаем текущее значение объекта директории
+							timer_t * timer = awh_cast <timer_t *> (node);
+							// Если установлена функция обратного вызова
+							if(timer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
+						} break;
+						// Если нода является директорией
+						case static_cast <uint8_t> (event::node_t::DIR): {
+							// Получаем текущее значение объекта директории
+							dir_t * dir = awh_cast <dir_t *> (node);
+							// Если установлена функция обратного вызова
+							if(dir->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
+						} break;
+						// Если нода является файловой системой
+						case static_cast <uint8_t> (event::node_t::FILE): {
+							// Получаем текущее значение объекта файловой системы
+							file_t * file = awh_cast <file_t *> (node);
+							// Если установлена функция обратного вызова
+							if(file->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								file->callbacks.status(file->id, file->state.status.load(std::memory_order_acquire));
+						} break;
+						// Если нода является межпрограммным взаимодействием
+						case static_cast <uint8_t> (event::node_t::IPC): {
+							// Получаем текущее значение объекта межпрограммного взаимодействия
+							ipc_t * ipc = awh_cast <ipc_t *> (node);
+							// Если установлена функция обратного вызова
+							if(ipc->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
+						} break;
+						// Если нода является соседом
+						case static_cast <uint8_t> (event::node_t::PEER): {
+							// Получаем текущее значение объекта соседа
+							peer_t * peer = awh_cast <peer_t *> (node);
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
+							// Если статус события восстановление из паузы
+							if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+								// Устанавливаем статус события в состояние подтверждено
+								peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+						} break;
+						// Если нода является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем текущее значение объекта клиента
+							client_t * client = awh_cast <client_t *> (node);
+							// Если установлена функция обратного вызова
+							if(client->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
+							// Если статус события восстановление из паузы
+							if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+								// Устанавливаем статус события в состояние подключено
+								client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
+						} break;
+						// Если нода является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER): {
+							// Получаем текущее значение объекта сервера
+							server_t * server = awh_cast <server_t *> (node);
+							// Если установлена функция обратного вызова
+							if(server->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
+						} break;
+					}
+					// Удаляем текущий элемент из списка изменений
+					i = ::__awh_change__.erase(i);
+				}
+			}
+			/**
+			 * Подготавливаем параметры таймаута для опроса событий
+			 */
+			struct timespec ts{}, * pts = nullptr;
+			// Если таймаут не требуется
+			if(timeout == 0){
+				// Устанавливаем количество секунд
+				ts.tv_sec = 0;
+				// Устанавливаем количество наносекунд
+				ts.tv_nsec = 0;
+				// Активируем параметры таймера
+				pts = &ts;
+			// Если установлено время ожидания
+			} else if(timeout > 0) {
+				// Устанавливаем количество секунд
+				ts.tv_sec = (timeout / 1000);
+				// Устанавливаем количество наносекунд
+				ts.tv_nsec = ((timeout % 1000) * 1000000L);
+				// Активируем параметры таймера
+				pts = &ts;
+			}
+			/**
+			 * Выполняем опрос ядра на наличие событий сокетов
+			 */
+			int32_t count = ::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts);
+			// Если мы получили ошибку при опросе событий
+			if(count < 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			// Если есть события для обработки
+			} else if((result = (count > 0))) {
+				// Значение ноды для обработки изменений
+				net::node_t * node = nullptr;
+				// Выполняем перебор всех полученных событий
+				for(int32_t i = 0; i < count; i++){
+					// Получаем текущее значение события
+					struct kevent & ev = ::__awh_events__[i];
+					// Выполняем получение ноды к которой относится событие
+					node = reinterpret_cast <net::node_t *> (ev.udata);
+					// Если нода события не получена, значит нода уже удалёна
+					if(node == nullptr)
+						// Пропускаем событие
+						continue;
+					// Если мы получили событие файловой системы
+					if(ev.filter == EVFILT_VNODE){
+						/**
+						 * Определяем чем является текущая нода
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если нода является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (node);
+								// Если мы детектировали наличие ошибки
+								if(ev.flags & EV_ERROR){
+									// Устанавливаем статус события в состояние уничтожения
+									dir->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									// Если установлена функция обратного вызова
+									if(dir->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										dir->callbacks.error(dir->id, ::strerror(ev.data));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										#endif
+									}
+									// Производим удаление ноды
+									::__awh_nodes__.erase(dir->id);
+								// Если установлена функция обратного вызова
+								} else if(dir->callbacks.event != nullptr) {
+									// Если мы детектировали событие изменения директории
+									if(ev.fflags & NOTE_WRITE)
+										// Вызываем функцию обратного вызова флаг события
+										dir->callbacks.event(dir->id, event::action_t::CHANGE);
+									// Если мы детектировали событие переименования директории
+									else if(ev.fflags & NOTE_RENAME)
+										// Вызываем функцию обратного вызова флаг события
+										dir->callbacks.event(dir->id, event::action_t::RENAME);
+									// Если мы детектировали событие удаления директории
+									else if(ev.fflags & NOTE_DELETE) {
+										// Получаем идентификатор события директории
+										const event::id_t id = dir->id;
+										// Вызываем функцию обратного вызова флаг события
+										dir->callbacks.event(id, event::action_t::DELETE);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(id);
+									// Если мы детектировали событие изменения атрибутов директории
+									} else if(ev.fflags & NOTE_ATTRIB)
+										// Вызываем функцию обратного вызова флаг события
+										dir->callbacks.event(dir->id, event::action_t::ATTRIB);
+									// Если мы детектировали событие отзыва директории
+									else if(ev.fflags & NOTE_REVOKE)
+										// Вызываем функцию обратного вызова флаг события
+										dir->callbacks.event(dir->id, event::action_t::REVOKE);
+									// Если мы детектировали событие изменение жёсткой ссылки директории
+									else if(ev.fflags & NOTE_LINK)
+										// Вызываем функцию обратного вызова флаг события
+										dir->callbacks.event(dir->id, event::action_t::HDLINK);
+								}
+							} break;
+							// Если нода является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Получаем текущее значение объекта файловой системы
+								file_t * file = awh_cast <file_t *> (node);
+								// Если мы детектировали наличие ошибки
+								if(ev.flags & EV_ERROR){
+									// Устанавливаем статус события в состояние уничтожения
+									file->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									// Если установлена функция обратного вызова
+									if(file->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										file->callbacks.error(file->id, ::strerror(ev.data));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+										#endif
+									}
+									// Производим удаление ноды
+									::__awh_nodes__.erase(file->id);
+								// Если установлена функция обратного вызова
+								} else if(file->callbacks.event != nullptr) {
+									// Если мы детектировали событие изменения файла
+									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND))
+										// Вызываем функцию обратного вызова флаг события
+										file->callbacks.event(file->id, event::action_t::CHANGE);
+									// Если мы детектировали событие переименования файла
+									else if(ev.fflags & NOTE_RENAME)
+										// Вызываем функцию обратного вызова флаг события
+										file->callbacks.event(file->id, event::action_t::RENAME);
+									// Если мы детектировали событие удаления файла
+									else if(ev.fflags & NOTE_DELETE) {
+										// Получаем идентификатор события файла
+										const event::id_t id = file->id;
+										// Вызываем функцию обратного вызова флаг события
+										file->callbacks.event(file->id, event::action_t::DELETE);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(file->id);
+									// Если мы детектировали событие изменения атрибутов файла
+									} else if(ev.fflags & NOTE_ATTRIB)
+										// Вызываем функцию обратного вызова флаг события
+										file->callbacks.event(file->id, event::action_t::ATTRIB);
+									// Если мы детектировали событие отзыва файла
+									else if(ev.fflags & NOTE_REVOKE)
+										// Вызываем функцию обратного вызова флаг события
+										file->callbacks.event(file->id, event::action_t::REVOKE);
+									// Если мы детектировали событие изменение жёсткой ссылки файла
+									else if(ev.fflags & NOTE_LINK)
+										// Вызываем функцию обратного вызова флаг события
+										file->callbacks.event(file->id, event::action_t::HDLINK);
+								}
+							} break;
+						}
+					// Если мы получили событие таймера
+					} else if(ev.filter == EVFILT_TIMER) {
+						// Выполняем извлечение текущего значения объекта таймера
+						timer_t * timer = awh_cast <timer_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR){
+							// Устанавливаем статус события в состояние уничтожения
+							timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+							// Если установлена функция обратного вызова
+							if(timer->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								timer->callbacks.error(timer->id, ::strerror(ev.data));
+							// Если функция обратного вызова вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+								#endif
+							}
+							// Производим удаление ноды
+							::__awh_nodes__.erase(timer->id);
+						// Если таймер сработал корректно
+						} else {
+							// Если таймер является одноразовым
+							if(timer->state.family == event::family_t::TIMER)
+								// Устанавливаем статус события в состояние уничтожения
+								timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+							// Если установлена функция обратного вызова
+							if(timer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								timer->callbacks.status(timer->id, event::status_t::PENDING);
+							// Если таймер является одноразовым
+							if(timer->state.family == event::family_t::TIMER)
+								// Производим удаление ноды
+								::__awh_nodes__.erase(timer->id);
+						}
+					// Если мы получили событие пользовательского события
+					} else if(ev.filter == EVFILT_USER) {
+						// Выполняем извлечение текущего значения объекта пользовательского события
+						user_t * user = awh_cast <user_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR){
+							// Устанавливаем статус события в состояние уничтожения
+							user->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+							// Если установлена функция обратного вызова
+							if(user->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								user->callbacks.error(user->id, ::strerror(ev.data));
+							// Если функция обратного вызова вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+								#endif
+							}
+							// Производим удаление ноды
+							::__awh_nodes__.erase(user->id);
+						// Если событие пользовательского события сработало корректно
+						} else {
+							// Если установлена функция обратного вызова
+							if(user->callbacks.read != nullptr){
+								// Есши в очереди есть данные для чтения
+								if(!user->events.empty()){
+									// Выполняем извлечение данных из очереди
+									user->callbacks.read(user->id, static_cast <const uint8_t *> (user->events.data()), user->events.size());
+									// Очищаем очередь от прочитанных данных
+									user->events.pop();
+								}
+							}
+						}
+					// Если мы получили событие сокета
+					} else {
+						// Если мы детектировали событие готовности сокета на чтение данных
+						if(ev.filter == EVFILT_READ){
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если нода является межпрограммным взаимодействием
+								case static_cast <uint8_t> (event::node_t::IPC): {
 
-	// Выводим результат по умолчанию
-	return false;
+								} break;
+								// Если нода является соседом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+
+								} break;
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+
+								} break;
+								// Если нода является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+
+								} break;
+							}
+						}
+						// Если мы детектировали событие готовности сокета на запись данных
+						if(ev.filter == EVFILT_WRITE){
+							/**
+							 * Определяем чем является текущая нода
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если нода является межпрограммным взаимодействием
+								case static_cast <uint8_t> (event::node_t::IPC): {
+
+								} break;
+								// Если нода является соседом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+
+								} break;
+								// Если нода является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+
+								} break;
+							}
+						}
+						// Если мы детектировали событие закрытия подключения или ошибку
+						if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
+							// Устанавливаем статус события в состояние уничтожения
+							node->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+							// Если мы детектировали наличие ошибки
+							if(ev.flags & EV_ERROR){
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (node->state.node)){
+									// Если нода является пользовательским событием
+									case static_cast <uint8_t> (event::node_t::USER): {
+										// Получаем текущее значение объекта пользовательского события
+										user_t * user = awh_cast <user_t *> (node);
+										// Если установлена функция обратного вызова
+										if(user->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											user->callbacks.error(user->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является таймером
+									case static_cast <uint8_t> (event::node_t::TIMER): {
+										// Получаем текущее значение объекта директории
+										timer_t * timer = awh_cast <timer_t *> (node);
+										// Если установлена функция обратного вызова
+										if(timer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											timer->callbacks.error(timer->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является директорией
+									case static_cast <uint8_t> (event::node_t::DIR): {
+										// Получаем текущее значение объекта директории
+										dir_t * dir = awh_cast <dir_t *> (node);
+										// Если установлена функция обратного вызова
+										if(dir->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											dir->callbacks.error(dir->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является файловой системой
+									case static_cast <uint8_t> (event::node_t::FILE): {
+										// Получаем текущее значение объекта файловой системы
+										file_t * file = awh_cast <file_t *> (node);
+										// Если установлена функция обратного вызова
+										if(file->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											file->callbacks.error(file->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является межпрограммным взаимодействием
+									case static_cast <uint8_t> (event::node_t::IPC): {
+										// Получаем текущее значение объекта межпрограммного взаимодействия
+										ipc_t * ipc = awh_cast <ipc_t *> (node);
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											ipc->callbacks.error(ipc->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является соседом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Получаем текущее значение объекта соседа
+										peer_t * peer = awh_cast <peer_t *> (node);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * client = awh_cast <client_t *> (node);
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * server = awh_cast <server_t *> (node);
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, ::strerror(ev.data));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(ev.data));
+											#endif
+										}
+									} break;
+								}
+							}
+							// Если мы детектировали закрытие подключения
+							if(ev.flags & EV_EOF){
+								/**
+								 * Определяем чем является текущая нода
+								 */
+								switch(static_cast <uint8_t> (node->state.node)){
+									// Если нода является директорией
+									case static_cast <uint8_t> (event::node_t::DIR): {
+										// Получаем текущее значение объекта директории
+										dir_t * dir = awh_cast <dir_t *> (node);
+										// Если установлена функция обратного вызова
+										if(dir->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											dir->callbacks.event(dir->id, event::action_t::CLOSE);
+									} break;
+									// Если нода является файловой системой
+									case static_cast <uint8_t> (event::node_t::FILE): {
+										// Получаем текущее значение объекта файловой системы
+										file_t * file = awh_cast <file_t *> (node);
+										// Если установлена функция обратного вызова
+										if(file->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											file->callbacks.event(file->id, event::action_t::CLOSE);
+									} break;
+									// Если нода является межпрограммным взаимодействием
+									case static_cast <uint8_t> (event::node_t::IPC): {
+										// Получаем текущее значение объекта межпрограммного взаимодействия
+										ipc_t * ipc = awh_cast <ipc_t *> (node);
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											ipc->callbacks.event(ipc->id, event::action_t::CLOSE);
+									} break;
+									// Если нода является соседом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Получаем текущее значение объекта соседа
+										peer_t * peer = awh_cast <peer_t *> (node);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											peer->callbacks.event(peer->id, event::action_t::CLOSE);
+									} break;
+									// Если нода является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * client = awh_cast <client_t *> (node);
+										// Если установлена функция обратного вызова
+										if(client->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											client->callbacks.event(client->id, event::action_t::CLOSE);
+									} break;
+									// Если нода является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * server = awh_cast <server_t *> (node);
+										// Если установлена функция обратного вызова
+										if(server->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											server->callbacks.event(server->id, event::action_t::CLOSE);
+									} break;
+								}
+							}
+							// Производим удаление ноды
+							::__awh_nodes__.erase(node->id);
+						}
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	// Если Kqueue не инициализирован
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("You cannot poll for network and filesystem events until engine AWH is initialized", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING);
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("You cannot poll for network and filesystem events until engine AWH is initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Методы установки функции обратного вызова на чтение события
@@ -12038,15 +12584,15 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
-				case static_cast <uint8_t> (event::node_t::DIR):
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <dir_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <user_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE):
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <file_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <ipc_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
@@ -12114,15 +12660,15 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
-				case static_cast <uint8_t> (event::node_t::DIR):
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <dir_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <user_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Если нода является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE):
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <file_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <ipc_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
@@ -12172,6 +12718,97 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 	}
 }
 /**
+ * @brief Методы установки функции обратного вызова на получение общего события
+ *
+ * @param id идентификатор события
+ * @param cb объект обратного вызова события
+ */
+void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущая нода
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <user_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если нода является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <dir_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <file_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <ipc_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если нода является соседом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <peer_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если нода является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <client_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <server_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Для других типов нод
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A event callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A event callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Методы установки функции обратного вызова на ошибку события
  *
  * @param id идентификатор события
@@ -12190,29 +12827,44 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
+					// Устанавливаем функцию обратного вызова на получение события ошибки
+					awh_cast <user_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если нода является таймером
+				case static_cast <uint8_t> (event::node_t::TIMER):
+					// Устанавливаем функцию обратного вызова на получение события ошибки
+					awh_cast <timer_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
 				// Если нода является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <dir_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <file_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Устанавливаем функцию обратного вызова на получение события ошибки
+					awh_cast <ipc_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <peer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <client_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <server_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Для других типов нод
@@ -12271,29 +12923,44 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
+					// Устанавливаем функцию обратного вызова на получение статуса события
+					awh_cast <user_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если нода является таймером
+				case static_cast <uint8_t> (event::node_t::TIMER):
+					// Устанавливаем функцию обратного вызова на получение статуса события
+					awh_cast <timer_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
 				// Если нода является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <dir_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <file_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если нода является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Устанавливаем функцию обратного вызова на получение статуса события
+					awh_cast <ipc_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <peer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <client_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <server_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Для других типов нод
@@ -12354,7 +13021,7 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на событие принятия нового подключения
 					awh_cast <server_t *> (i->second.get())->callbacks.accept = ::move(cb);
 				break;
 				// Для других типов нод
@@ -12415,7 +13082,7 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова на событие подключения к серверу
 					awh_cast <client_t *> (i->second.get())->callbacks.connect = ::move(cb);
 				break;
 				// Для других типов нод
@@ -12432,67 +13099,6 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A connect callback cannot be set for this event type", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
- * @brief Методы установки функции обратного вызова на получение пользовательского события
- *
- * @param id идентификатор события
- * @param cb объект обратного вызова события
- */
-void awh::IO::on(const event::id_t id, const event::callback::user_t & cb) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-			/**
-			 * Определяем чем является текущая нода
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
-					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <user_t *> (i->second.get())->callback = ::move(cb);
-				break;
-				// Для других типов нод
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("A user callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("A user callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

@@ -431,6 +431,13 @@ namespace awh {
 			 */
 			void on(const event::id_t id, const event::callback::write_t & cb) noexcept;
 			/**
+			 * @brief Методы установки функции обратного вызова на получение общего события
+			 *
+			 * @param id идентификатор события
+			 * @param cb объект обратного вызова события
+			 */
+			void on(const event::id_t id, const event::callback::event_t & cb) noexcept;
+			/**
 			 * @brief Методы установки функции обратного вызова на ошибку события
 			 *
 			 * @param id идентификатор события
@@ -458,13 +465,6 @@ namespace awh {
 			 * @param cb объект обратного вызова события
 			 */
 			void on(const event::id_t id, const event::callback::connect_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на получение пользовательского события
-			 *
-			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
-			 */
-			void on(const event::id_t id, const event::callback::user_t & cb) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

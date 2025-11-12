@@ -349,10 +349,25 @@ namespace awh {
 			virtual ~Callbacks() = default;
 		} callbacks_t;
 		/**
+		 * @brief Структура обратных вызовов файловой системы
+		 *
+		 */
+		typedef struct FileSystemCallbacks : public callbacks_t {
+			// Обратный вызов при получении общего события
+			event::callback::event_t event;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit FileSystemCallbacks() noexcept : event(nullptr) {}
+		} fs_callbacks_t;
+		/**
 		 * @brief Структура обратных вызовов сервера
 		 *
 		 */
 		typedef struct ServerCallbacks : public callbacks_t {
+			// Обратный вызов при получении общего события
+			event::callback::event_t event;
 			// Обратный вызов при принятии события
 			event::callback::accept_t accept;
 			/**
@@ -370,6 +385,8 @@ namespace awh {
 			event::callback::read_t read;
 			// Обратный вызов при записи события
 			event::callback::write_t write;
+			// Обратный вызов при получении общего события
+			event::callback::event_t event;
 			// Обратный вызов при подключении события
 			event::callback::connect_t connect;
 			/**
@@ -388,6 +405,8 @@ namespace awh {
 			event::callback::read_t read;
 			// Обратный вызов при записи события
 			event::callback::write_t write;
+			// Обратный вызов при получении общего события
+			event::callback::event_t event;
 			/**
 			 * @brief Конструктор
 			 *
@@ -439,13 +458,13 @@ namespace awh {
 		 *
 		 */
 		typedef struct User : public node_t {
-			// Обратный вызов при принятии события
-			event::callback::user_t callback;
+			// Обратные вызовы события
+			peer_callbacks_t callbacks;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit User() noexcept : callback(nullptr) {}
+			explicit User() noexcept = default;
 			/**
 			 * @brief Деструктор
 			 *
@@ -460,13 +479,7 @@ namespace awh {
 			// Путь к файлу, каталогу или сокету
 			unique_ptr <addr_t> path;
 			// Обратные вызовы события
-			peer_callbacks_t callbacks;
-			// Чёрный список адресов которым запрещён доступ
-			unordered_map <string, event::address_t> blacklist;
-			// Белый список адресов которым разрешён доступ
-			unordered_map <string, event::address_t> whitelist;
-			// Активные таймауты события
-			unordered_map <event::action_t, uint16_t> timeouts;
+			fs_callbacks_t callbacks;
 			/**
 			 * @brief Конструктор
 			 *

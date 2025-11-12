@@ -42,12 +42,15 @@ namespace awh {
 		 */
 		enum class action_t : uint8_t {
 			NONE   = 0x00, // Экшен события отсутствует
-			CREATE = 0x01, // Создание объекта
-			UPDATE = 0x02, // Обновление объекта
-			DELETE = 0x03, // Удаление объекта
-			READ   = 0x04, // Чтение объекта
-			WRITE  = 0x05, // Запись объекта
-			CLOSE  = 0x06  // Закрытие объекта
+			READ   = 0x01, // Чтение объекта
+			WRITE  = 0x02, // Запись объекта
+			CLOSE  = 0x03, // Закрытие объекта
+			CHANGE = 0x04, // Изменение файла или каталога
+			DELETE = 0x05, // Удаление файла или каталога
+			RENAME = 0x06, // Переименование файла или каталога
+			ATTRIB = 0x07, // Атрибуты файла изменены (chmod, chown, utime)
+			REVOKE = 0x08, // Доступ к файлу отозван (например, файл был удалён или размонтирована ФС)
+			HDLINK = 0x09  // Счётчик жёстких ссылок на файл изменился
 		};
 		/**
 		 * @brief Типы узлов
@@ -95,27 +98,6 @@ namespace awh {
 			PENDING   = 0x09, // Операция в ожидании
 			CONNECTED = 0x0A, // Статус подключено
 			CANCELLED = 0x0B  // Операция отменена
-			
-		};
-		/**
-		 * @brief Уведомления событий
-		 *
-		 */
-		enum class notify_t : uint8_t {
-			DISABLED = 0x00, // Уведомления отключены
-			ENABLED  = 0x01  // Уведомления включены
-		};
-		/**
-		 * @brief Разрешения событий
-		 *
-		 */
-		enum class permission_t : uint8_t {
-			READ    = 0x01, // Разрешение на чтение
-			WRITE   = 0x02, // Разрешение на запись
-			EXECUTE = 0x03, // Разрешение на выполнение
-			DELETE  = 0x04, // Разрешение на удаление
-			MODIFY  = 0x05, // Разрешение на изменение
-			FULL    = 0x06  // Полные разрешения
 		};
 		/**
 		 * @brief Происхождение событий
@@ -124,16 +106,6 @@ namespace awh {
 		enum class origin_t : uint8_t {
 			LOCAL  = 0x00, // Локальное событие
 			REMOTE = 0x01  // Удалённое событие
-		};
-		/**
-		 * @brief Степени важности событий
-		 *
-		 */
-		enum class severity_t : uint8_t {
-			LOW      = 0x00, // Низкая степень важности события
-			MEDIUM   = 0x01, // Средняя степень важности события
-			HIGH     = 0x02, // Высокая степень важности события
-			CRITICAL = 0x03  // Критическая степень важности события
 		};
 		/**
 		 * @brief Типы протоколов сокетов
@@ -247,10 +219,6 @@ namespace awh {
 		 */
 		namespace callback {
 			/**
-			 * Обратный вызов события пользователя
-			 */
-			using user_t = std::function <void (const uint32_t)>;
-			/**
 			 * Обратный вызов при подключении события
 			 */
 			using connect_t = std::function <void (const event::id_t, const bool)>;
@@ -266,6 +234,10 @@ namespace awh {
 			 * Обратный вызов при ошибке события
 			 */
 			using error_t = std::function <void (const event::id_t, const std::string &)>;
+			/**
+			 * Обратный вызов общего события
+			 */
+			using event_t = std::function <void (const event::id_t, const event::action_t)>;
 			/**
 			 * Обратный вызов при изменении статуса события
 			 */
