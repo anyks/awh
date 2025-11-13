@@ -668,7 +668,7 @@ void awh::Ethernet::fillsource(const event::node_t node, net::src_t & source) co
 					} break;
 				}
 			} break;
-			// Если тип узла является соседом
+			// Если тип узла является одноранговым узлом
 			case static_cast <uint8_t> (event::node_t::PEER): {
 				/**
 				 * Определяем тип адреса
