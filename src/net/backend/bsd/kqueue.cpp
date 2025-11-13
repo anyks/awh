@@ -11443,23 +11443,97 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если нода является таймером
-				case static_cast <uint8_t> (event::node_t::TIMER):
+				case static_cast <uint8_t> (event::node_t::TIMER): {
+					// Получаем объект события таймера
+					auto timer = awh_cast <timer_t *> (i->second.get());
 					// Устанавливаем значение задержки времени таймера
-					awh_cast <timer_t *> (i->second.get())->delay = timeout;
-				break;
+					timer->delay = timeout;
+					// Если таймер находится в состоянии ожидания
+					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Останавливаем активный таймер
+						EV_SET(&::__awh_change__.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Увеличиваем количество событий
+						ret.first->second.count++;
+						// Если таймер необходимо запустить
+						if(timeout > 0){
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							/**
+							 * Определяем семейство сокета
+							 */
+							switch(static_cast <uint8_t> (timer->state.family)){
+								// Для семейства таймера
+								case static_cast <uint8_t> (event::family_t::TIMER):
+									// Устанавливаем событие таймера на указанное количество миллисекунд
+									EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								break;
+								// Для семейства интервального таймера
+								case static_cast <uint8_t> (event::family_t::INTERVAL):
+									// Устанавливаем событие интервального таймера на указанное количество миллисекунд
+									EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								break;
+							}
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+						}
+					}
+				} break;
 				// Если нода является соседом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события соседа
 					auto peer = awh_cast <peer_t *> (i->second.get());
 					// Устанавливаем значение таймаута для действия события
 					peer->timeouts[action] = timeout;
-				} break;
-				// Если нода является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем объект события сервера
-					auto server = awh_cast <server_t *> (i->second.get());
-					// Устанавливаем значение таймаута для действия события
-					server->timeouts[action] = timeout;
+					// Если событие уже создано и не подлежит уничтожению
+					if((peer->state.status.load(std::memory_order_acquire) != event::status_t::NONE) &&
+					   (peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)){
+						// Если таймер уже запущен
+						if(peer->timer == event::mode_t::ENABLED){
+							// Деактивируем таймер события
+							peer->timer = event::mode_t::DISABLED;
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Останавливаем активный таймер
+							EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, peer);
+							// Создаём объект промежуточного звена
+							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::__awh_change__.size() - 1);
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+						}
+						// Если таймер необходимо запустить
+						if(timeout > 0){
+							// Если событие установлено неблокирующее
+							if(peer->state.options & event::options::NOIOBLOCK){
+								// Активируем таймер события
+								peer->timer = event::mode_t::ENABLED;
+								// Добавляем новое событие в список изменений
+								::__awh_change__.push_back((struct kevent){});
+								// Устанавливаем таймер на получение данных
+								EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timeout) * 1000, peer);
+								// Создаём объект промежуточного звена
+								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::__awh_change__.size() - 1);
+							// Устанавливаем таймер на получение данных
+							} else this->_eth.timeout(peer->fd, net::socket_event_t::READ, static_cast <uint32_t> (timeout));
+						}
+					}
 				} break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -11467,6 +11541,55 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					auto client = awh_cast <client_t *> (i->second.get());
 					// Устанавливаем значение таймаута для действия события
 					client->timeouts[action] = timeout;
+					// Если событие уже создано и не подлежит уничтожению
+					if((client->state.status.load(std::memory_order_acquire) != event::status_t::NONE) &&
+					   (client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)){
+						// Если таймер уже запущен
+						if(client->timer == event::mode_t::ENABLED){
+							// Деактивируем таймер события
+							client->timer = event::mode_t::DISABLED;
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Останавливаем активный таймер
+							EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, client);
+							// Создаём объект промежуточного звена
+							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::__awh_change__.size() - 1);
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+						}
+						// Если таймер необходимо запустить
+						if(timeout > 0){
+							// Если событие установлено неблокирующее
+							if(client->state.options & event::options::NOIOBLOCK){
+								// Активируем таймер события
+								client->timer = event::mode_t::ENABLED;
+								// Добавляем новое событие в список изменений
+								::__awh_change__.push_back((struct kevent){});
+								// Устанавливаем таймер на получение данных
+								EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timeout) * 1000, client);
+								// Создаём объект промежуточного звена
+								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::__awh_change__.size() - 1);
+							// Устанавливаем таймер на получение данных
+							} else this->_eth.timeout(client->fd, net::socket_event_t::READ, static_cast <uint32_t> (timeout));
+						}
+					}
+				} break;
+				// Если нода является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем объект события сервера
+					auto server = awh_cast <server_t *> (i->second.get());
+					// Устанавливаем значение таймаута для действия события
+					server->timeouts[action] = timeout;
 				} break;
 				// Для других типов нод
 				default: {
