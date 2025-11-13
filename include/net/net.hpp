@@ -271,6 +271,8 @@ namespace awh {
 			bool adaptive;
 			// Максимальное количество подключений
 			uint16_t max;
+			// Количество уже подключённых клиентов
+			uint16_t count;
 			// Размер очереди ожидания подключения
 			uint16_t depth;
 			/**
@@ -278,7 +280,7 @@ namespace awh {
 			 *
 			 */
 			explicit Backlog() noexcept :
-			 adaptive(false), max(100), depth(SOMAXCONN) {}
+			 adaptive(false), max(100), count(0), depth(SOMAXCONN) {}
 		} __attribute__((packed)) backlog_t;
 		/**
 		 * @brief Структура состояния события
