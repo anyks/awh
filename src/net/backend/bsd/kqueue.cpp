@@ -826,57 +826,64 @@ namespace io {
 					peer->state.family = node->state.family;
 					// Устанавливаем протокол сокета
 					peer->state.protocol = node->state.protocol;
+					// Выполняем инициализацию объекта MAC-адреса
+					peer->mac = make_unique <net::addr_mac_t> ();
 					/**
 					 * Определяем семейство сокета
 					 */
 					switch(static_cast <uint8_t> (peer->state.family)){
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS): {
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (peer->state.type)){
-								// Для типа сокета STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-								
-								} break;
-								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-
-								} break;
-							}
+							// Выполняем инициализацию объекта хоста UDS-сокета
+							peer->remote = make_unique <net::attr_uds_t> ();
+							// Получаем объект хоста UDS-сокета
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (peer->remote.get());
+							// Выполняем инициализацию объекта адреса файловой системы
+							remote->path = make_unique <net::addr_fs_t> ();
+							// Устанавливаем адрес файловой системы
+							awh_cast <net::addr_fs_t *> (remote->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (node->host.get())->path.get())->address;
 						} break;
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (peer->state.type)){
-								// Для типа сокета STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-								
-								} break;
-								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-
-								} break;
-							}
+							// Выполняем инициализацию объекта хоста IPv4-адреса
+							peer->remote = make_unique <net::attr_net_t> ();
+							// Получаем объект хоста IPv4-адреса
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+							// Выполняем инициализацию объекта IP-адреса
+							remote->ip = make_unique <net::addr_net_ipv4_t> ();
+							// Устанавливаем порт
+							remote->port = ntohs(reinterpret_cast <struct sockaddr_in *> (&node->endpoint.client)->sin_port);
+							// Устанавливаем IP-адрес
+							awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = reinterpret_cast <struct sockaddr_in *> (&node->endpoint.client)->sin_addr.s_addr;
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							// Устанавливаем полученный IP-адрес во временный объект
+							awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (&node->endpoint.client)->sin_addr.s_addr;
+							// Выполняем извлечение сетевых параметров
+							// this->_eth.fillsource(event::node_t::PEER, source);
+							// Копируем MAC-адрес из временного объекта
+							peer->mac = ::move(source.mac);
 						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (peer->state.type)){
-								// Для типа сокета STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-								
-								} break;
-								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-
-								} break;
-							}
+							// Выполняем инициализацию объекта хоста IPv6-адреса
+							peer->remote = make_unique <net::attr_net_t> ();
+							// Получаем объект хоста IPv6-адреса
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+							// Выполняем инициализацию объекта IP-адреса
+							remote->ip = make_unique <net::addr_net_ipv6_t> ();
+							// Устанавливаем порт
+							remote->port = ntohs(reinterpret_cast <struct sockaddr_in6 *> (&node->endpoint.client)->sin6_port);
+							// Устанавливаем IP-адрес
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &reinterpret_cast <struct sockaddr_in6 *> (&node->endpoint.client)->sin6_addr, 16);
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+							// Устанавливаем полученный IP-адрес во временный объект
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &reinterpret_cast <struct sockaddr_in6 *> (&node->endpoint.client)->sin6_addr, 16);
+							// Выполняем извлечение сетевых параметров
+							// this->_eth.fillsource(event::node_t::PEER, source);
+							// Копируем MAC-адрес из временного объекта
+							peer->mac = ::move(source.mac);
 						} break;
 					}
 
