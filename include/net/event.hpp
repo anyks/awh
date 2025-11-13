@@ -110,6 +110,14 @@ namespace awh {
 			REMOTE = 0x01  // Удалённое событие
 		};
 		/**
+		 * @brief Режимы событий
+		 *
+		 */
+		enum class mode_t : uint8_t {
+			ENABLED  = 0x00, // Режим включён
+			DISABLED = 0x01  // Режим отключён
+		};
+		/**
 		 * @brief Типы протоколов сокетов
 		 *
 		 */
