@@ -1175,19 +1175,495 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
-
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (ipc->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Если событие является неблокирующим
+							if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
+								// Количество прочитанных байт
+								int32_t bytes = 0;
+								/**
+								 * Выполняем получение данных пока их не получим
+								 */
+								for(;;){
+									// Выполняем чтение данных из TCP/IP сокета
+									bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+									// Если мы получили ошибку
+									if(bytes < 0){
+										// Если нам нужно повторить попытку позже
+										if(errno == EAGAIN)
+											// Выходим из цикла
+											break;
+									// Если мы получили данные из сокета
+									} else if(bytes > 0) {
+										// Если функция обратного вызова для вывода события установлена
+										if(ipc->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											ipc->callbacks.event(ipc->id, event::action_t::READ);
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(ipc->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если произошёл дисконнект
+									} else {
+										// Выполняем обработку закрытия подключения
+										io::close(node, log);
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(ipc->id);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(ipc->id);
+										// Выходим из функции
+										return;
+									}
+								}
+							// Если событие является блокирующим
+							} else {
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("Failed to receive data from inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("Failed to receive data from inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+									// Выходим из функции
+									return;
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(ipc->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										ipc->callbacks.event(ipc->id, event::action_t::READ);
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(ipc->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									io::close(node, log);
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ipc->id);
+									// Производим удаление ноды
+									::__awh_nodes__.erase(ipc->id);
+									// Выходим из функции
+									return;
+								}
+							}
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET):
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							// Выполняем чтение данных из TCP/IP сокета
+							const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+							// Если мы получили ошибку
+							if(bytes < 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Failed to receive data from inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Failed to receive data from inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+								// Выходим из функции
+								return;
+							// Если мы получили данные из сокета
+							} else if(bytes > 0) {
+								// Если функция обратного вызова для вывода события установлена
+								if(ipc->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									ipc->callbacks.event(ipc->id, event::action_t::READ);
+								// Если функция обратного вызова для вывода прочитанных данных установлена
+								if(ipc->callbacks.read != nullptr)
+									// Вывзываем функцию обратного вызова для вывода полученных данных
+									ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+							// Если произошёл дисконнект
+							} else {
+								// Выполняем обработку закрытия подключения
+								io::close(node, log);
+								// Производим удаление списка подготовленных событий
+								::__awh_inters__.erase(ipc->id);
+								// Производим удаление ноды
+								::__awh_nodes__.erase(ipc->id);
+								// Выходим из функции
+								return;
+							}
+						} break;
+					}
 				} break;
 				// Если нода является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
-
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (peer->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Если событие является неблокирующим
+							if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+								// Количество прочитанных байт
+								int32_t bytes = 0;
+								/**
+								 * Выполняем получение данных пока их не получим
+								 */
+								for(;;){
+									// Выполняем чтение данных из TCP/IP сокета
+									bytes = ::recv(peer->fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									// Если мы получили ошибку
+									if(bytes < 0){
+										// Если нам нужно повторить попытку позже
+										if(errno == EAGAIN)
+											// Выходим из цикла
+											break;
+									// Если мы получили данные из сокета
+									} else if(bytes > 0) {
+										// Если функция обратного вызова для вывода события установлена
+										if(peer->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											peer->callbacks.event(peer->id, event::action_t::READ);
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(peer->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если произошёл дисконнект
+									} else {
+										// Выполняем обработку закрытия подключения
+										io::close(node, log);
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(peer->id);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(peer->id);
+										// Выходим из функции
+										return;
+									}
+								}
+							// Если событие является блокирующим
+							} else {
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recv(peer->fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("Failed to receive data from peer: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("Failed to receive data from peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+									// Выходим из функции
+									return;
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(peer->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										peer->callbacks.event(peer->id, event::action_t::READ);
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(peer->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									io::close(node, log);
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(peer->id);
+									// Производим удаление ноды
+									::__awh_nodes__.erase(peer->id);
+									// Выходим из функции
+									return;
+								}
+							}
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							// Выполняем чтение данных из TCP/IP сокета
+							const int32_t bytes = ::recv(peer->fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+							// Если мы получили ошибку
+							if(bytes < 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Failed to receive data from peer: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Failed to receive data from peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+								// Выходим из функции
+								return;
+							// Если мы получили данные из сокета
+							} else if(bytes > 0) {
+								// Если функция обратного вызова для вывода события установлена
+								if(peer->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									peer->callbacks.event(peer->id, event::action_t::READ);
+								// Если функция обратного вызова для вывода прочитанных данных установлена
+								if(peer->callbacks.read != nullptr)
+									// Вывзываем функцию обратного вызова для вывода полученных данных
+									peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+							// Если произошёл дисконнект
+							} else {
+								// Выполняем обработку закрытия подключения
+								io::close(node, log);
+								// Производим удаление списка подготовленных событий
+								::__awh_inters__.erase(peer->id);
+								// Производим удаление ноды
+								::__awh_nodes__.erase(peer->id);
+								// Выходим из функции
+								return;
+							}
+						} break;
+					}
+					// Если необходимо установить таймер на чтение данных
+					auto i = peer->timeouts.find(event::action_t::READ);
+					// Если таймаут на подключение найден
+					if((i != peer->timeouts.end()) && (i->second > 0)){
+						// Активируем таймер события
+						peer->timer = event::mode_t::ENABLED;
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем таймер на получение данных
+						EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Увеличиваем количество событий
+						ret.first->second.count++;
+					}
 				} break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
-
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (client->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Если событие является неблокирующим
+							if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+								// Количество прочитанных байт
+								int32_t bytes = 0;
+								/**
+								 * Выполняем получение данных пока их не получим
+								 */
+								for(;;){
+									// Выполняем чтение данных из TCP/IP сокета
+									bytes = ::recv(client->fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									// Если мы получили ошибку
+									if(bytes < 0){
+										// Если нам нужно повторить попытку позже
+										if(errno == EAGAIN)
+											// Выходим из цикла
+											break;
+									// Если мы получили данные из сокета
+									} else if(bytes > 0) {
+										// Если функция обратного вызова для вывода события установлена
+										if(client->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											client->callbacks.event(client->id, event::action_t::READ);
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(client->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если произошёл дисконнект
+									} else {
+										// Выполняем обработку закрытия подключения
+										io::close(node, log);
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(client->id);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(client->id);
+										// Выходим из функции
+										return;
+									}
+								}
+							// Если событие является блокирующим
+							} else {
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recv(client->fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("Failed to receive data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("Failed to receive data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+									// Выходим из функции
+									return;
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(client->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										client->callbacks.event(client->id, event::action_t::READ);
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(client->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									io::close(node, log);
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(client->id);
+									// Производим удаление ноды
+									::__awh_nodes__.erase(client->id);
+									// Выходим из функции
+									return;
+								}
+							}
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							// Выполняем чтение данных из TCP/IP сокета
+							const int32_t bytes = ::recv(client->fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+							// Если мы получили ошибку
+							if(bytes < 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Failed to receive data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Failed to receive data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+								// Выходим из функции
+								return;
+							// Если мы получили данные из сокета
+							} else if(bytes > 0) {
+								// Если функция обратного вызова для вывода события установлена
+								if(client->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									client->callbacks.event(client->id, event::action_t::READ);
+								// Если функция обратного вызова для вывода прочитанных данных установлена
+								if(client->callbacks.read != nullptr)
+									// Вывзываем функцию обратного вызова для вывода полученных данных
+									client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+							// Если произошёл дисконнект
+							} else {
+								// Выполняем обработку закрытия подключения
+								io::close(node, log);
+								// Производим удаление списка подготовленных событий
+								::__awh_inters__.erase(client->id);
+								// Производим удаление ноды
+								::__awh_nodes__.erase(client->id);
+								// Выходим из функции
+								return;
+							}
+						} break;
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							/**
+							 * Извлекаем данные из сокета сервера
+							 */
+							const int32_t bytes = ::recvfrom(
+								client->fd,
+								client->transfer.input.data.get(),
+								client->transfer.input.size, 0,
+								reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
+								&client->endpoint.size
+							);
+							// Если мы получили ошибку
+							if(bytes < 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Failed to receive data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Failed to receive data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+								// Выходим из функции
+								return;
+							// Если мы получили данные из сокета
+							} else if(bytes > 0) {
+								// Если функция обратного вызова для вывода события установлена
+								if(client->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									client->callbacks.event(client->id, event::action_t::READ);
+								// Если функция обратного вызова для вывода прочитанных данных установлена
+								if(client->callbacks.read != nullptr)
+									// Вывзываем функцию обратного вызова для вывода полученных данных
+									client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Заполняем структуру клиента нулями после того как извлекли данные
+								::memset(&client->endpoint.server, 0, sizeof(client->endpoint.server));
+							}
+						} break;
+					}
+					// Если необходимо установить таймер на чтение данных
+					auto i = client->timeouts.find(event::action_t::READ);
+					// Если таймаут на подключение найден
+					if((i != client->timeouts.end()) && (i->second > 0)){
+						// Активируем таймер события
+						client->timer = event::mode_t::ENABLED;
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем таймер на получение данных
+						EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Увеличиваем количество событий
+						ret.first->second.count++;
+					}
 				} break;
 				// Если нода является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -2523,6 +2999,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Выполняем создание нового буфера на чтение
 									node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
 								}
+
+
+
+
+
+
+								
 								// Создаём объект промежуточного звена
 								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
