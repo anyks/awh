@@ -27,7 +27,6 @@
  * Наши модули
  */
 #include "eth.hpp"
-#include "addr.hpp"
 #include "event.hpp"
 
 /**
@@ -47,8 +46,6 @@ namespace awh {
 		protected:
 			// Объект работы с сетью
 			mutable eth_t _eth;
-			// Объект работы с сетевыми адресами
-			mutable net_addr_t _addr;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -492,8 +489,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept :
-			 _eth(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {}
+			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept : _eth(fmk, log), _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

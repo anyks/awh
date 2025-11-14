@@ -368,6 +368,10 @@ namespace awh {
 		 *
 		 */
 		typedef struct ServerCallbacks : public callbacks_t {
+			// Обратный вызов при чтении события
+			event::callback::read_t read;
+			// Обратный вызов при записи события
+			event::callback::write_t write;
 			// Обратный вызов при получении общего события
 			event::callback::event_t event;
 			// Обратный вызов при принятии события

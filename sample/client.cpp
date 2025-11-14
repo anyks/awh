@@ -12,6 +12,7 @@
  * @copyright: Copyright © 2025
  */
 
+#include <iostream>
 #include <cinttypes>
 
 /**
@@ -567,7 +568,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid3 = io.event(event::family_t::UDPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 			// Устанавливаем тип ноды
 			io.node(eid3, event::node_t::SERVER);
 			// Устанавливаем порт события

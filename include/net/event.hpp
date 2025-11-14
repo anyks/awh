@@ -92,16 +92,17 @@ namespace awh {
 			NONE        = 0x00, // Статус не определён
 			INITIAL     = 0x01, // Статус инициализации
 			DESTROYED   = 0x02, // Статус удаления
-			RUNNING     = 0x03, // Статус выполнения
-			STOPPED     = 0x04, // Статус остановки
-			PAUSED      = 0x05, // Статус паузы
-			RESUMED     = 0x06, // Статус возобновления
-			SUCCESS     = 0x07, // Операция выполнена успешно
-			FAILURE     = 0x08, // Операция завершилась неудачей
-			PENDING     = 0x09, // Операция в ожидании
-			CONNECTED   = 0x0A, // Статус подключено
-			CANCELLED   = 0x0B, // Операция отменена
-			RECONNECTED = 0x0C  // Статус переподключения
+			ACCEPTED    = 0x03, // Статус принятия
+			RUNNING     = 0x04, // Статус выполнения
+			STOPPED     = 0x05, // Статус остановки
+			PAUSED      = 0x06, // Статус паузы
+			RESUMED     = 0x07, // Статус возобновления
+			SUCCESS     = 0x08, // Операция выполнена успешно
+			FAILURE     = 0x09, // Операция завершилась неудачей
+			PENDING     = 0x0A, // Операция в ожидании
+			CONNECTED   = 0x0B, // Статус подключено
+			CANCELLED   = 0x0C, // Операция отменена
+			RECONNECTED = 0x0D  // Статус переподключения
 		};
 		/**
 		 * @brief Происхождение событий
@@ -205,25 +206,29 @@ namespace awh {
 			 */
 			static constexpr uint16_t NOIOBLOCK = 0x10;
 			/**
+			 * Опция умного неблокирующего ввода-вывода
+			 */
+			static constexpr uint16_t SMIOBLOCK = 0x20;
+			/**
 			 * Опция повторного использования адреса
 			 */
-			static constexpr uint16_t REUSEADDR = 0x20;
+			static constexpr uint16_t REUSEADDR = 0x40;
 			/**
 			 * Опция повторного использования порта
 			 */
-			static constexpr uint16_t REUSEPORT = 0x40;
+			static constexpr uint16_t REUSEPORT = 0x80;
 			/**
 			 * Опция отключения алгоритма Нейгла
 			 */
-			static constexpr uint16_t TCPNODELAY = 0x80;
+			static constexpr uint16_t TCPNODELAY = 0x100;
 			/**
 			 * Опция включения TCP keepalive
 			 */
-			static constexpr uint16_t KEEPALIVE = 0x100;
+			static constexpr uint16_t KEEPALIVE = 0x200;
 			/**
 			 * Опция закрытия сокета при выполнении exec
 			 */
-			static constexpr uint16_t CLOSEONEXEC = 0x200;
+			static constexpr uint16_t CLOSEONEXEC = 0x400;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами
