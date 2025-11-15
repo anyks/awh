@@ -38,6 +38,8 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/un.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -1171,6 +1173,92 @@ namespace io {
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * file = awh_cast <file_t *> (node);
+					// Структура статистики файла
+					struct stat info;
+					// Если файл открыт удачно
+					if(::fstat(file->fd, &info) < 0){
+						// Если установлена функция обратного вызова
+						if(file->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							file->callbacks.error(file->id, ::strerror(errno));
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					// Если файл содержит данные
+					} else if(info.st_size > 0) {
+						// Смещение в файле и размер исходящего буфера данных
+						size_t offset = 0, chunk = file->transfer.input.size;
+						// Получаем общую длину файла в байтах
+						const size_t size = static_cast <size_t> (info.st_size);
+						/**
+						 * Считываем все данные из файла пока не прочитаем всё
+						 */
+						while(offset < size){
+							// Если размер считываемого куска данных больше общего размера файла
+							if((offset + chunk) > size)
+								// Выполняем корректировку считывающего чанка
+								chunk = (size - offset);
+							/**
+							 * Считываем данные из файла
+							 */
+							char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_PRIVATE, file->fd, offset));
+							// Если мы получили ошибку
+							if(buffer == MAP_FAILED){
+								// Если установлена функция обратного вызова
+								if(file->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									file->callbacks.error(file->id, ::strerror(errno));
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									#endif
+								}
+								// Выходим из цикла
+								break;
+							}
+							// Если функция обратного вызова для вывода события установлена
+							if(file->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								file->callbacks.event(file->id, event::action_t::READ);
+							// Если функция обратного вызова для вывода прочитанных данных установлена
+							if(file->callbacks.read != nullptr)
+								// Вывзываем функцию обратного вызова для вывода полученных данных
+								file->callbacks.read(file->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
+							// Отвязываем текущий маппинг
+							::munmap(buffer, chunk);
+							// Выполняем смещение в буфере данных
+							offset += chunk;
+						}
+					}
+				} break;
 				// Если нода является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
@@ -2999,13 +3087,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Выполняем создание нового буфера на чтение
 									node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
 								}
-
-
-
-
-
-
-								
+								// Выполняем чтение данных из файла
+								io::read(node, this->_fmk, this->_log);
 								// Создаём объект промежуточного звена
 								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
@@ -15220,11 +15303,13 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								// Если установлена функция обратного вызова
 								} else if(file->callbacks.event != nullptr) {
 									// Если мы детектировали событие изменения файла
-									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND))
+									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
 										// Вызываем функцию обратного вызова флаг события
 										file->callbacks.event(file->id, event::action_t::CHANGE);
+										// Выполняем чтение данных из файла
+										io::read(node, this->_fmk, this->_log);
 									// Если мы детектировали событие переименования файла
-									else if(ev.fflags & NOTE_RENAME)
+									} else if(ev.fflags & NOTE_RENAME)
 										// Вызываем функцию обратного вызова флаг события
 										file->callbacks.event(file->id, event::action_t::RENAME);
 									// Если мы детектировали событие удаления файла
@@ -15423,6 +15508,11 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 			 * Определяем чем является текущая нода
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если нода является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на чтение события
+					awh_cast <file_t *> (i->second.get())->callbacks.read = ::move(cb);
+				break;
 				// Если нода является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на чтение события

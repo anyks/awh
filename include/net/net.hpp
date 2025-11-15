@@ -355,13 +355,15 @@ namespace awh {
 		 *
 		 */
 		typedef struct FileSystemCallbacks : public callbacks_t {
+			// Обратный вызов при чтении события
+			event::callback::read_t read;
 			// Обратный вызов при получении общего события
 			event::callback::event_t event;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit FileSystemCallbacks() noexcept : event(nullptr) {}
+			explicit FileSystemCallbacks() noexcept : read(nullptr), event(nullptr) {}
 		} fs_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов сервера
