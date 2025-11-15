@@ -1177,85 +1177,86 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * file = awh_cast <file_t *> (node);
-					// Структура статистики файла
-					struct stat info;
-					// Если файл открыт удачно
-					if(::fstat(file->fd, &info) < 0){
-						// Если установлена функция обратного вызова
-						if(file->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							file->callbacks.error(file->id, ::strerror(errno));
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-							#endif
-						}
-					// Если файл содержит данные
-					} else if(info.st_size > 0) {
-						// Смещение в файле и размер исходящего буфера данных
-						size_t offset = 0, chunk = file->transfer.input.size;
-						// Получаем общую длину файла в байтах
-						const size_t size = static_cast <size_t> (info.st_size);
-						/**
-						 * Считываем все данные из файла пока не прочитаем всё
-						 */
-						while(offset < size){
-							// Если размер считываемого куска данных больше общего размера файла
-							if((offset + chunk) > size)
-								// Выполняем корректировку считывающего чанка
-								chunk = (size - offset);
-							/**
-							 * Считываем данные из файла
-							 */
-							char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_PRIVATE, file->fd, offset));
-							// Если мы получили ошибку
-							if(buffer == MAP_FAILED){
-								// Если установлена функция обратного вызова
-								if(file->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									file->callbacks.error(file->id, ::strerror(errno));
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-									#endif
-								}
-								// Выходим из цикла
-								break;
+					// Если функция обратного вызова для вывода прочитанных данных установлена
+					if(file->callbacks.read != nullptr){
+						// Структура статистики файла
+						struct stat info;
+						// Если файл открыт удачно
+						if(::fstat(file->fd, &info) < 0){
+							// Если установлена функция обратного вызова
+							if(file->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								file->callbacks.error(file->id, ::strerror(errno));
+							// Если функция обратного вызова вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
 							}
-							// Если функция обратного вызова для вывода события установлена
-							if(file->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
-								file->callbacks.event(file->id, event::action_t::READ);
-							// Если функция обратного вызова для вывода прочитанных данных установлена
-							if(file->callbacks.read != nullptr)
+						// Если файл содержит данные
+						} else if(info.st_size > 0) {
+							// Смещение в файле и размер исходящего буфера данных
+							size_t offset = 0, chunk = file->transfer.input.size;
+							// Получаем общую длину файла в байтах
+							const size_t size = static_cast <size_t> (info.st_size);
+							/**
+							 * Считываем все данные из файла пока не прочитаем всё
+							 */
+							while(offset < size){
+								// Если размер считываемого куска данных больше общего размера файла
+								if((offset + chunk) > size)
+									// Выполняем корректировку считывающего чанка
+									chunk = (size - offset);
+								/**
+								 * Считываем данные из файла
+								 */
+								char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_PRIVATE, file->fd, offset));
+								// Если мы получили ошибку
+								if(buffer == MAP_FAILED){
+									// Если установлена функция обратного вызова
+									if(file->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										file->callbacks.error(file->id, ::strerror(errno));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										#endif
+									}
+									// Выходим из цикла
+									break;
+								}
+								// Если функция обратного вызова для вывода события установлена
+								if(file->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									file->callbacks.event(file->id, event::action_t::READ);
 								// Вывзываем функцию обратного вызова для вывода полученных данных
 								file->callbacks.read(file->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
-							// Отвязываем текущий маппинг
-							::munmap(buffer, chunk);
-							// Выполняем смещение в буфере данных
-							offset += chunk;
+								// Отвязываем текущий маппинг
+								::munmap(buffer, chunk);
+								// Выполняем смещение в буфере данных
+								offset += chunk;
+							}
 						}
 					}
 				} break;
