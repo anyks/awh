@@ -155,8 +155,14 @@ namespace {
 	 *
 	 */
 	typedef struct Filename : public net::fs_t {
+		// Размер файла
+		int64_t size;
+		// Время последней модификации файла
+		int64_t mtime;
 		// Файловый дескриптор
 		net::socket_t fd;
+		// Структура статистики файла
+		struct stat info;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Объект работы с сетевыми адресами
@@ -168,7 +174,9 @@ namespace {
 		 * @param log объект работы с логами
 		 */
 		explicit Filename(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), transfer(fmk, log), addr(fmk, log) {}
+		 size(0), mtime(0),
+		 fd(net::invalid_socket_t),
+		 transfer(fmk, log), addr(fmk, log) {}
 	} file_t;
 	/**
 	 * @brief Структура события каталога
@@ -1179,83 +1187,93 @@ namespace io {
 					file_t * file = awh_cast <file_t *> (node);
 					// Если функция обратного вызова для вывода прочитанных данных установлена
 					if(file->callbacks.read != nullptr){
-						// Структура статистики файла
-						struct stat info;
-						// Если файл открыт удачно
-						if(::fstat(file->fd, &info) < 0){
-							// Если установлена функция обратного вызова
-							if(file->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								file->callbacks.error(file->id, ::strerror(errno));
-							// Если функция обратного вызова вывода ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-								#endif
-							}
-						// Если файл содержит данные
-						} else if(info.st_size > 0) {
-							// Смещение в файле и размер исходящего буфера данных
-							size_t offset = 0, chunk = file->transfer.input.size;
-							// Получаем общую длину файла в байтах
-							const size_t size = static_cast <size_t> (info.st_size);
-							/**
-							 * Считываем все данные из файла пока не прочитаем всё
-							 */
-							while(offset < size){
-								// Если размер считываемого куска данных больше общего размера файла
-								if((offset + chunk) > size)
-									// Выполняем корректировку считывающего чанка
-									chunk = (size - offset);
-								/**
-								 * Считываем данные из файла
-								 */
-								char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_PRIVATE, file->fd, offset));
-								// Если мы получили ошибку
-								if(buffer == MAP_FAILED){
-									// Если установлена функция обратного вызова
-									if(file->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										file->callbacks.error(file->id, ::strerror(errno));
-									// Если функция обратного вызова вывода ошибки не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-										#endif
+						// Смещение в файле и размер исходящего буфера данных
+						size_t chunk = file->transfer.input.size;
+						/**
+						 * Считываем все данные из файла пока не прочитаем всё
+						 */
+						for(;;){
+							// Если файл открыт удачно
+							if(::fstat(file->fd, &file->info) == 0){
+								// Если размер файла изменился
+								if(file->info.st_size > file->size){
+									// Если размер считываемого куска данных больше общего размера файла
+									if((file->size + static_cast <int64_t> (chunk)) > file->info.st_size)
+										// Выполняем корректировку считывающего чанка
+										chunk = static_cast <size_t> (file->info.st_size - file->size);
+									// Считываем данные из файла
+									char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_SHARED, file->fd, file->size));
+									// Если мы прочитали нормально файл
+									if(buffer != MAP_FAILED){
+										// Если функция обратного вызова для вывода события установлена
+										if(file->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											file->callbacks.event(file->id, event::action_t::READ);
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										file->callbacks.read(file->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
+										// Отвязываем текущий маппинг
+										::munmap(buffer, chunk);
+									// Если мы получили ошибку
+									} else {
+										// Если установлена функция обратного вызова
+										if(file->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											file->callbacks.error(file->id, ::strerror(errno));
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
+										// Выходим из цикла
+										break;
 									}
-									// Выходим из цикла
-									break;
+									// Устанавливаем время последней модификации файла
+									file->mtime = file->info.st_mtime;
+									// Устанавливаем новый размер файла
+									file->size += static_cast <int64_t> (chunk);
+								// Если время последней модификации файла изменилось
+								} else if(file->info.st_mtime != file->mtime) {
+									// Сбрасываем размер файла
+									file->size = 0;
+									// Устанавливаем время последней модификации файла
+									file->mtime = file->info.st_mtime;
+								// Если все данные файла прочитаны, выходим из цикла
+								} else break;
+							// Если файл открыт неудачно
+							} else {
+								// Если установлена функция обратного вызова
+								if(file->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									file->callbacks.error(file->id, ::strerror(errno));
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									#endif
 								}
-								// Если функция обратного вызова для вывода события установлена
-								if(file->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
-									file->callbacks.event(file->id, event::action_t::READ);
-								// Вывзываем функцию обратного вызова для вывода полученных данных
-								file->callbacks.read(file->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
-								// Отвязываем текущий маппинг
-								::munmap(buffer, chunk);
-								// Выполняем смещение в буфере данных
-								offset += chunk;
+								// Выходим из функции
+								return;
 							}
 						}
 					}
@@ -2873,19 +2891,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						ret.first->second.index = (::__awh_change__.size() - 1);
 					// Событие не может быть зафиксированно повторно
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("An event for a user event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("An event for a user event cannot be commit because it is already registered", log_t::flag_t::WARNING);
-						#endif
+						// Устанавливаем текст ошибки
+						const string error = "An event for a user event cannot be commit because it is already registered";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если нода является таймером
@@ -2921,19 +2948,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						ret.first->second.index = (::__awh_change__.size() - 1);
 					// Событие не может быть зафиксированно повторно
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("An event for a timer cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("An event for a timer cannot be commit because it is already registered", log_t::flag_t::WARNING);
-						#endif
+						// Устанавливаем текст ошибки
+						const string error = "An event for a timer cannot be commit because it is already registered";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если нода является директорией
@@ -2956,19 +2992,26 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								node->handle = ::fdopendir(node->fd);
 								// Если объект открытого каталога создан успешно
 								if(node->handle == nullptr){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, node->fd, path), log_t::flag_t::CRITICAL, ::strerror(errno));
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-									#endif
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, ::strerror(errno));
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, node->fd, path), log_t::flag_t::WARNING, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										#endif
+									}
 									// Закрываем файловый дескриптор каталога
 									::close(node->fd);
 									// Сбрасываем файловый дескриптор каталога
@@ -2983,42 +3026,60 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::__awh_change__.push_back((struct kevent){});
 									// Устанавливаем событие на отслеживание изменения каталога
-									EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE, 0, node);
+									EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
 									// Устанавливаем количество событий
 									ret.first->second.count = 1;
 									// Устанавливаем индекс текущего элемента
 									ret.first->second.index = (::__awh_change__.size() - 1);
 								// Событие не может быть зафиксированно повторно
 								} else {
+									// Устанавливаем текст ошибки
+									const string error = "An event for a directory event cannot be commit because it is already registered";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							// Если файловый дескриптор каталога не существует
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = "File descriptor for directory is corrupted or not created";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a directory event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("An event for a directory event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если файловый дескриптор каталога не существует
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("File descriptor for directory is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("File descriptor for directory is corrupted or not created", log_t::flag_t::WARNING);
-								#endif
 								// Снимаем флаг ожидания подключения
 								node->state.status.store(event::status_t::NONE, std::memory_order_release);
 								// Выходим из функции с ошибкой
@@ -3026,19 +3087,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							}
 						// Если путь к директории не существует
 						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Path for directory is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Path for directory is corrupted or not created", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Path for directory is corrupted or not created";
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, error);
+							// Если функция обратного вызова вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 							// Снимаем флаг ожидания подключения
 							node->state.status.store(event::status_t::NONE, std::memory_order_release);
 							// Выходим из функции с ошибкой
@@ -3046,19 +3116,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						}
 					// Если путь к директории не существует
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Path for directory is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Path for directory is corrupted or not created", log_t::flag_t::WARNING);
-						#endif
+						// Устанавливаем текст ошибки
+						const string error = "Path for directory is corrupted or not created";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 						// Снимаем флаг ожидания подключения
 						node->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выходим из функции с ошибкой
@@ -3097,42 +3176,60 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::__awh_change__.push_back((struct kevent){});
 									// Устанавливаем событие на отслеживание изменения файла
-									EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND, 0, node);
+									EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
 									// Устанавливаем количество событий
 									ret.first->second.count = 1;
 									// Устанавливаем индекс текущего элемента
 									ret.first->second.index = (::__awh_change__.size() - 1);
 								// Событие не может быть зафиксированно повторно
 								} else {
+									// Устанавливаем текст ошибки
+									const string error = "An event for a file event cannot be commit because it is already registered";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							// Если файловый дескриптор файла не существует
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = "File descriptor for file is corrupted or not created";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a file event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("An event for a file event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если файловый дескриптор файла не существует
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("File descriptor for file is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("File descriptor for file is corrupted or not created", log_t::flag_t::WARNING);
-								#endif
 								// Снимаем флаг ожидания подключения
 								node->state.status.store(event::status_t::NONE, std::memory_order_release);
 								// Выходим из функции с ошибкой
@@ -3140,19 +3237,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							}
 						// Если путь к файлу не существует
 						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Path for file is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Path for file is corrupted or not created", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Path for file is corrupted or not created";
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, error);
+							// Если функция обратного вызова вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 							// Снимаем флаг ожидания подключения
 							node->state.status.store(event::status_t::NONE, std::memory_order_release);
 							// Выходим из функции с ошибкой
@@ -3160,19 +3266,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						}
 					// Если путь к файлу не существует
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Path for file is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Path for file is corrupted or not created", log_t::flag_t::WARNING);
-						#endif
+						// Устанавливаем текст ошибки
+						const string error = "Path for file is corrupted or not created";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 						// Снимаем флаг ожидания подключения
 						node->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выходим из функции с ошибкой
@@ -3225,35 +3340,53 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							ret.first->second.index = (::__awh_change__.size() - 2);
 						// Событие не может быть зафиксированно повторно
 						} else {
+							// Устанавливаем текст ошибки
+							const string error = "An event for a inter-process communication event cannot be commit because it is already registered";
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, error);
+							// Если функция обратного вызова вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					// Если файловый дескриптор межпроцессного взаимодействия не существует
+					} else {
+						// Устанавливаем текст ошибки
+						const string error = "File descriptor for inter-process communication is corrupted or not created";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("An event for a inter-process communication event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("An event for a inter-process communication event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-					// Если файловый дескриптор межпроцессного взаимодействия не существует
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("File descriptor for inter-process communication is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("File descriptor for inter-process communication is corrupted or not created", log_t::flag_t::WARNING);
-						#endif
 						// Снимаем флаг ожидания подключения
 						node->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выходим из функции с ошибкой
@@ -3348,19 +3481,26 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(client.sun_path));
 												// Выполняем бинд на сокет
 												if(::bind(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.client), size) < 0){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, unixsocket, clientName, serverName), log_t::flag_t::CRITICAL, ::strerror(errno));
-													/**
-													* Если режим отладки не включён
-													*/
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-													#endif
+													// Если установлена функция обратного вызова
+													if(node->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														node->callbacks.error(node->id, ::strerror(errno));
+													// Если функция обратного вызова вывода ошибки не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, unixsocket, clientName, serverName), log_t::flag_t::WARNING, ::strerror(errno));
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														#endif
+													}
 													// Снимаем флаг ожидания подключения
 													node->state.status.store(event::status_t::NONE, std::memory_order_release);
 													// Выходим из функции с ошибкой
@@ -3370,19 +3510,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										} break;
 										// Для неизвестного типа сокета
 										default: {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("An event for a Unix event cannot be commit because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("An event for a Unix event cannot be commit because it has an invalid initialization type", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "An event for a Unix event cannot be commit because it has an invalid initialization type";
+											// Если установлена функция обратного вызова
+											if(node->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												node->callbacks.error(node->id, error);
+											// Если функция обратного вызова вывода ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 											// Снимаем флаг ожидания подключения
 											node->state.status.store(event::status_t::NONE, std::memory_order_release);
 											// Выходим из функции с ошибкой
@@ -3391,19 +3540,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									}
 								// Если адрес сокета клиента пустой
 								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Unix-socket address is not set", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Unix-socket address is not set", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "Unix-socket address is not set";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
@@ -3440,19 +3598,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									ret.first->second.index = (::__awh_change__.size() - 2);
 								// Событие не может быть зафиксированно повторно
 								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a Unix event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("An event for a Unix event cannot be commit because it is already registered", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "An event for a Unix event cannot be commit because it is already registered";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							} break;
 							// Для семейства IPv4
@@ -3548,35 +3715,53 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										ret.first->second.index = (::__awh_change__.size() - 2);
 									// Событие не может быть зафиксированно повторно
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = "An event for a IPv4-event cannot be commit because it is already registered";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес целевой машины не указан
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "Target address is not set for IPv4-socket";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv4-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv4-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес целевой машины не указан
-								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Target address is not set for IPv4-socket", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Target address is not set for IPv4-socket", log_t::flag_t::WARNING);
-									#endif
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
@@ -3674,35 +3859,53 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										ret.first->second.index = (::__awh_change__.size() - 2);
 									// Событие не может быть зафиксированно повторно
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = "An event for a IPv6-event cannot be commit because it is already registered";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес целевой машины не указан
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "Target address is not set for IPv6-socket";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv6-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv6-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес целевой машины не указан
-								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Target address is not set for IPv6-socket", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Target address is not set for IPv6-socket", log_t::flag_t::WARNING);
-									#endif
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
@@ -3712,19 +3915,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						}
 					// Если файловый дескриптор клиента не существует
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("File descriptor for client is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("File descriptor for client is corrupted or not created", log_t::flag_t::WARNING);
-						#endif
+						// Устанавливаем текст ошибки
+						const string error = "File descriptor for client is corrupted or not created";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 						// Снимаем флаг ожидания подключения
 						node->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выходим из функции с ошибкой
@@ -3841,19 +4053,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										} break;
 										// Для неизвестного типа сокета
 										default: {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("An event for a Unix event cannot be commit because it has an invalid initialization type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("An event for a Unix event cannot be commit because it has an invalid initialization type", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "An event for a Unix event cannot be commit because it has an invalid initialization type";
+											// Если установлена функция обратного вызова
+											if(node->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												node->callbacks.error(node->id, error);
+											// Если функция обратного вызова вывода ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 											// Снимаем флаг ожидания подключения
 											node->state.status.store(event::status_t::NONE, std::memory_order_release);
 											// Выходим из функции с ошибкой
@@ -3862,19 +4083,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									}
 								// Если адрес сокета клиента пустой
 								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Unix-socket address is not set", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Unix-socket address is not set", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "Unix-socket address is not set";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
@@ -3903,19 +4133,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									ret.first->second.index = (::__awh_change__.size() - 1);
 								// Событие не может быть зафиксированно повторно
 								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("An event for a Unix event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("An event for a Unix event cannot be commit because it is already registered", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "An event for a Unix event cannot be commit because it is already registered";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							} break;
 							// Для семейства IPv4
@@ -4001,35 +4240,53 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										ret.first->second.index = (::__awh_change__.size() - 1);
 									// Событие не может быть зафиксированно повторно
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = "An event for a IPv4-event cannot be commit because it is already registered";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес целевой машины не указан
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "Host address is not set for IPv4-socket";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv4-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv4-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес целевой машины не указан
-								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Host address is not set for IPv4-socket", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Host address is not set for IPv4-socket", log_t::flag_t::WARNING);
-									#endif
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
@@ -4119,35 +4376,53 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										ret.first->second.index = (::__awh_change__.size() - 1);
 									// Событие не может быть зафиксированно повторно
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = "An event for a IPv6-event cannot be commit because it is already registered";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес целевой машины не указан
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "Host address is not set for IPv6-socket";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова вывода ошибки не установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("An event for a IPv6-event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IPv6-event cannot be commit because it is already registered", log_t::flag_t::WARNING);
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес целевой машины не указан
-								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Host address is not set for IPv6-socket", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Host address is not set for IPv6-socket", log_t::flag_t::WARNING);
-									#endif
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Выходим из функции с ошибкой
@@ -4157,19 +4432,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						}
 					// Если файловый дескриптор сервера не существует
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("File descriptor for server is corrupted or not created", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("File descriptor for server is corrupted or not created", log_t::flag_t::WARNING);
-						#endif
+						// Устанавливаем текст ошибки
+						const string error = "File descriptor for server is corrupted or not created";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 						// Снимаем флаг ожидания подключения
 						node->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выходим из функции с ошибкой
