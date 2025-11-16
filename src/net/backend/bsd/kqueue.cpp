@@ -1187,6 +1187,13 @@ namespace io {
 					file_t * file = awh_cast <file_t *> (node);
 					// Если функция обратного вызова для вывода прочитанных данных установлена
 					if(file->callbacks.read != nullptr){
+						// Если не установлен флаг постоянного отслеживания файла
+						if(!(file->state.options & event::options::KEEPALIVE)){
+							// Сбрасываем размер файла
+							file->size = 0;
+							// Сбрасываем время последней модификации файла
+							file->mtime = 0;
+						}
 						// Смещение в файле и размер исходящего буфера данных
 						size_t chunk = file->transfer.input.size;
 						/**
