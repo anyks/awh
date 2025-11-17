@@ -448,19 +448,26 @@ namespace io {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если установлена функция обратного вызова
+			if(node->callbacks.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки события
+				node->callbacks.error(node->id, error.what());
+			// Если функция обратного вызова для вывода события установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
 		}
 	}
 	/**
@@ -518,19 +525,26 @@ namespace io {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если установлена функция обратного вызова
+			if(node->callbacks.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки события
+				node->callbacks.error(node->id, error.what());
+			// Если функция обратного вызова для вывода события установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
 		}
 	}
 	/**
@@ -640,11 +654,11 @@ namespace io {
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * file = awh_cast <file_t *> (node);
+					file_t * fs = awh_cast <file_t *> (node);
 					// Если установлена функция обратного вызова
-					if(file->callbacks.event != nullptr)
+					if(fs->callbacks.event != nullptr)
 						// Вызываем функцию обратного вызова флаг события
-						file->callbacks.event(file->id, event::action_t::CLOSE);
+						fs->callbacks.event(fs->id, event::action_t::CLOSE);
 				} break;
 				// Если нода является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -877,19 +891,28 @@ namespace io {
 								awh_cast <net::addr_fs_t *> (remote->path.get())->address = address;
 							// Если адрес UDS-сокета пустой
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("Server's Unix socket address is corrupted", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("Server's Unix socket address is corrupted", log_t::flag_t::CRITICAL);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "Server's Unix socket address is corrupted";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
 								// Закрываем сокет подключения
 								::close(peer->fd);
 								// Выходим из функции
@@ -924,10 +947,28 @@ namespace io {
 									string mac = ::move(static_cast <string> (peer->addr));
 									// Если адрес находится в чёрном списке
 									if(!node->blacklist.empty() && (node->blacklist.find(mac) != node->blacklist.end())){
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
 										// Если установлена функция обратного вызова
 										if(node->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str()));
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
@@ -935,10 +976,28 @@ namespace io {
 									}
 									// Если в белом списке нет адреса
 									if(!node->whitelist.empty() && (node->whitelist.find(mac) == node->whitelist.end())){
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
 										// Если установлена функция обратного вызова
 										if(node->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str()));
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
@@ -951,10 +1010,28 @@ namespace io {
 								string ip = ::move(static_cast <string> (peer->addr));
 								// Если адрес находится в чёрном списке
 								if(!node->blacklist.empty() && (node->blacklist.find(ip) != node->blacklist.end())){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
 									// Если установлена функция обратного вызова
 									if(node->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										node->callbacks.error(node->id, fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str()));
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
@@ -962,10 +1039,28 @@ namespace io {
 								}
 								// Если в белом списке нет адреса
 								if(!node->whitelist.empty() && (node->whitelist.find(ip) == node->whitelist.end())){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
 									// Если установлена функция обратного вызова
 									if(node->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										node->callbacks.error(node->id, fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str()));
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
@@ -1003,10 +1098,28 @@ namespace io {
 									string mac = ::move(static_cast <string> (peer->addr));
 									// Если адрес находится в чёрном списке
 									if(!node->blacklist.empty() && (node->blacklist.find(mac) != node->blacklist.end())){
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
 										// Если установлена функция обратного вызова
 										if(node->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str()));
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
@@ -1014,10 +1127,28 @@ namespace io {
 									}
 									// Если в белом списке нет адреса
 									if(!node->whitelist.empty() && (node->whitelist.find(mac) == node->whitelist.end())){
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
 										// Если установлена функция обратного вызова
 										if(node->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str()));
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
@@ -1030,10 +1161,28 @@ namespace io {
 								string ip = ::move(static_cast <string> (peer->addr));
 								// Если адрес находится в чёрном списке
 								if(!node->blacklist.empty() && (node->blacklist.find(ip) != node->blacklist.end())){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
 									// Если установлена функция обратного вызова
 									if(node->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										node->callbacks.error(node->id, fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str()));
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
@@ -1041,10 +1190,28 @@ namespace io {
 								}
 								// Если в белом списке нет адреса
 								if(!node->whitelist.empty() && (node->whitelist.find(ip) == node->whitelist.end())){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
 									// Если установлена функция обратного вызова
 									if(node->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										node->callbacks.error(node->id, fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str()));
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
@@ -1130,19 +1297,28 @@ namespace io {
 							}
 						// Событие не может быть зафиксированно повторно
 						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								log->debug("An event for a peer event cannot be commit because it is already registered", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								log->print("An event for a peer event cannot be commit because it is already registered", log_t::flag_t::CRITICAL);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "An event for a peer event cannot be commit because it is already registered";
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+								#endif
+							}
 						}
 					}
 				} break;
@@ -1151,19 +1327,26 @@ namespace io {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если установлена функция обратного вызова
+			if(node->callbacks.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки события
+				node->callbacks.error(node->id, error.what());
+			// Если функция обратного вызова для вывода события установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
 		}
 	}
 	/**
@@ -1185,48 +1368,48 @@ namespace io {
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * file = awh_cast <file_t *> (node);
+					file_t * fs = awh_cast <file_t *> (node);
 					// Если функция обратного вызова для вывода прочитанных данных установлена
-					if(file->callbacks.read != nullptr){
+					if(fs->callbacks.read != nullptr){
 						// Если не установлен флаг постоянного отслеживания файла
-						if(!(file->state.options & event::options::KEEPALIVE)){
+						if(!(fs->state.options & event::options::KEEPALIVE)){
 							// Сбрасываем размер файла
-							file->size = 0;
+							fs->size = 0;
 							// Сбрасываем время последней модификации файла
-							file->mtime = 0;
+							fs->mtime = 0;
 						}
 						// Смещение в файле и размер исходящего буфера данных
-						size_t chunk = file->transfer.input.size;
+						size_t chunk = fs->transfer.input.size;
 						/**
 						 * Считываем все данные из файла пока не прочитаем всё
 						 */
 						for(;;){
 							// Если файл открыт удачно
-							if(::fstat(file->fd, &file->info) == 0){
+							if(::fstat(fs->fd, &fs->info) == 0){
 								// Если размер файла изменился
-								if(file->info.st_size > file->size){
+								if(fs->info.st_size > fs->size){
 									// Если размер считываемого куска данных больше общего размера файла
-									if((file->size + static_cast <int64_t> (chunk)) > file->info.st_size)
+									if((fs->size + static_cast <int64_t> (chunk)) > fs->info.st_size)
 										// Выполняем корректировку считывающего чанка
-										chunk = static_cast <size_t> (file->info.st_size - file->size);
+										chunk = static_cast <size_t> (fs->info.st_size - fs->size);
 									// Считываем данные из файла
-									char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_SHARED, file->fd, file->size));
+									char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_SHARED, fs->fd, fs->size));
 									// Если мы прочитали нормально файл
 									if(buffer != MAP_FAILED){
 										// Если функция обратного вызова для вывода события установлена
-										if(file->callbacks.event != nullptr)
+										if(fs->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											file->callbacks.event(file->id, event::action_t::READ);
+											fs->callbacks.event(fs->id, event::action_t::READ);
 										// Вывзываем функцию обратного вызова для вывода полученных данных
-										file->callbacks.read(file->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
+										fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
 										// Отвязываем текущий маппинг
 										::munmap(buffer, chunk);
 									// Если мы получили ошибку
 									} else {
 										// Если установлена функция обратного вызова
-										if(file->callbacks.error != nullptr)
+										if(fs->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											file->callbacks.error(file->id, ::strerror(errno));
+											fs->callbacks.error(fs->id, ::strerror(errno));
 										// Если функция обратного вызова вывода ошибки не установлена
 										else {
 											/**
@@ -1247,23 +1430,23 @@ namespace io {
 										break;
 									}
 									// Устанавливаем время последней модификации файла
-									file->mtime = file->info.st_mtime;
+									fs->mtime = fs->info.st_mtime;
 									// Устанавливаем новый размер файла
-									file->size += static_cast <int64_t> (chunk);
+									fs->size += static_cast <int64_t> (chunk);
 								// Если время последней модификации файла изменилось
-								} else if(file->info.st_mtime != file->mtime) {
+								} else if(fs->info.st_mtime != fs->mtime) {
 									// Сбрасываем размер файла
-									file->size = 0;
+									fs->size = 0;
 									// Устанавливаем время последней модификации файла
-									file->mtime = file->info.st_mtime;
+									fs->mtime = fs->info.st_mtime;
 								// Если все данные файла прочитаны, выходим из цикла
 								} else break;
 							// Если файл открыт неудачно
 							} else {
 								// Если установлена функция обратного вызова
-								if(file->callbacks.error != nullptr)
+								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									file->callbacks.error(file->id, ::strerror(errno));
+									fs->callbacks.error(fs->id, ::strerror(errno));
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -1340,19 +1523,28 @@ namespace io {
 								const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
 								// Если мы получили ошибку
 								if(bytes < 0){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("Failed to receive data for inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("Failed to receive data for inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to receive data for inter-process communication: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(ipc->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										ipc->callbacks.error(ipc->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 									// Выходим из функции
 									return;
 								// Если мы получили данные из сокета
@@ -1386,19 +1578,28 @@ namespace io {
 							const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
 							// Если мы получили ошибку
 							if(bytes < 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("Failed to receive data for inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("Failed to receive data for inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Failed to receive data for inter-process communication: %s", ::strerror(errno));
+								// Если установлена функция обратного вызова
+								if(ipc->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									ipc->callbacks.error(ipc->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 								// Выходим из функции
 								return;
 							// Если мы получили данные из сокета
@@ -1479,19 +1680,28 @@ namespace io {
 								const int32_t bytes = ::recv(peer->fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
 								// Если мы получили ошибку
 								if(bytes < 0){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("Failed to receive data for peer: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("Failed to receive data for peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 									// Выходим из функции
 									return;
 								// Если мы получили данные из сокета
@@ -1523,19 +1733,28 @@ namespace io {
 							const int32_t bytes = ::recv(peer->fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
 							// Если мы получили ошибку
 							if(bytes < 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("Failed to receive data for peer: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("Failed to receive data for peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 								// Выходим из функции
 								return;
 							// Если мы получили данные из сокета
@@ -1635,19 +1854,28 @@ namespace io {
 								const int32_t bytes = ::recv(client->fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
 								// Если мы получили ошибку
 								if(bytes < 0){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("Failed to receive data for client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("Failed to receive data for client: %s", log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 									// Выходим из функции
 									return;
 								// Если мы получили данные из сокета
@@ -1679,19 +1907,28 @@ namespace io {
 							const int32_t bytes = ::recv(client->fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
 							// Если мы получили ошибку
 							if(bytes < 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("Failed to receive data for client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("Failed to receive data for client: %s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 								// Выходим из функции
 								return;
 							// Если мы получили данные из сокета
@@ -1730,19 +1967,28 @@ namespace io {
 							);
 							// Если мы получили ошибку
 							if(bytes < 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("Failed to receive data for client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("Failed to receive data for client: %s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 								// Выходим из функции
 								return;
 							// Если мы получили данные из сокета
@@ -1819,19 +2065,55 @@ namespace io {
 											string mac = ::move(static_cast <string> (server->addr));
 											// Если адрес находится в чёрном списке
 											if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str()));
+													server->callbacks.error(server->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
 												// Выходим из функции
 												return;
 											}
 											// Если в белом списке нет адреса
 											if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str()));
+													server->callbacks.error(server->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
 												// Выходим из функции
 												return;
 											}
@@ -1842,19 +2124,55 @@ namespace io {
 										string ip = ::move(static_cast <string> (server->addr));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str()));
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
 											// Выходим из функции
 											return;
 										}
 										// Если в белом списке нет адреса
 										if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str()));
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
 											// Выходим из функции
 											return;
 										}
@@ -1878,19 +2196,55 @@ namespace io {
 											string mac = ::move(static_cast <string> (server->addr));
 											// Если адрес находится в чёрном списке
 											if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str()));
+													server->callbacks.error(server->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
 												// Выходим из функции
 												return;
 											}
 											// Если в белом списке нет адреса
 											if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str()));
+													server->callbacks.error(server->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
 												// Выходим из функции
 												return;
 											}
@@ -1901,19 +2255,55 @@ namespace io {
 										string ip = ::move(static_cast <string> (server->addr));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str()));
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
 											// Выходим из функции
 											return;
 										}
 										// Если в белом списке нет адреса
 										if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str()));
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
 											// Выходим из функции
 											return;
 										}
@@ -1932,19 +2322,28 @@ namespace io {
 							);
 							// Если мы получили ошибку
 							if(bytes < 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("Failed to receive data for peer: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("Failed to receive data for peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 								// Выходим из функции
 								return;
 							// Если мы получили данные из сокета
@@ -2038,10 +2437,12 @@ namespace io {
 										return;
 									// Если произошла ошибка при отправке данных
 									else {
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, ::strerror(errno));
+											ipc->callbacks.error(ipc->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -2049,13 +2450,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("Failed to send data from inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												log->print("Failed to send data from inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 										// Выходим из функции
@@ -2132,10 +2533,12 @@ namespace io {
 										return;
 									// Если произошла ошибка при отправке данных
 									else {
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, ::strerror(errno));
+											peer->callbacks.error(peer->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -2143,13 +2546,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("Failed to send data from peer: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												log->print("Failed to send data from peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 										// Выходим из функции
@@ -2245,10 +2648,12 @@ namespace io {
 											return;
 										// Если произошла ошибка при отправке данных
 										else {
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, ::strerror(errno));
+												client->callbacks.error(client->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -2256,13 +2661,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -2311,10 +2716,12 @@ namespace io {
 											return;
 										// Если произошла ошибка при отправке данных
 										else {
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, ::strerror(errno));
+												client->callbacks.error(client->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -2322,13 +2729,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -2421,10 +2828,12 @@ namespace io {
 										return;
 									// Если произошла ошибка при отправке данных
 									else {
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to send data from server: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, ::strerror(errno));
+											server->callbacks.error(server->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -2432,13 +2841,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("Failed to send data from server: %s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												log->print("Failed to send data from server: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 										// Выходим из функции
@@ -2468,7 +2877,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								server->callbacks.error(server->id, error.c_str());
+								server->callbacks.error(server->id, error);
 							// Если функция обратного вызова для вывода события установлена
 							else {
 								/**
@@ -2602,11 +3011,11 @@ namespace io {
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * file = awh_cast <file_t *> (node);
+					file_t * fs = awh_cast <file_t *> (node);
 					// Если установлена функция обратного вызова
-					if(file->callbacks.error != nullptr)
+					if(fs->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						file->callbacks.error(file->id, ::strerror(code));
+						fs->callbacks.error(fs->id, ::strerror(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -4030,21 +4439,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									::memset(&(reinterpret_cast <struct sockaddr_in *> (&node->endpoint.server)->sin_zero), 0, sizeof(server.sin_zero));
 									// Выполняем бинд на сокет
 									if(::bind(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.client), node->endpoint.size) < 0){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Устанавливаем полученный IP-адрес
-											node->addr.v4(server.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-										#endif
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Устанавливаем полученный IP-адрес
+												node->addr.v4(server.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
 										// Снимаем флаг ожидания подключения
 										node->state.status.store(event::status_t::NONE, std::memory_order_release);
 										// Выходим из функции с ошибкой
@@ -4174,21 +4590,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									::memcpy(&node->endpoint.server, &server, node->endpoint.size);
 									// Выполняем бинд на сокет
 									if(::bind(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.client), node->endpoint.size) < 0){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Устанавливаем полученный IP-адрес
-											node->addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-										#endif
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Устанавливаем полученный IP-адрес
+												node->addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
 										// Снимаем флаг ожидания подключения
 										node->state.status.store(event::status_t::NONE, std::memory_order_release);
 										// Выходим из функции с ошибкой
@@ -4392,19 +4815,26 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(server.sun_path));
 												// Выполняем бинд на сокет
 												if(::bind(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), size) < 0){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, unixsocket, clientName, serverName), log_t::flag_t::CRITICAL, ::strerror(errno));
-													/**
-													* Если режим отладки не включён
-													*/
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-													#endif
+													// Если установлена функция обратного вызова
+													if(node->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														node->callbacks.error(node->id, ::strerror(errno));
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, unixsocket, clientName, serverName), log_t::flag_t::CRITICAL, ::strerror(errno));
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+														#endif
+													}
 													// Выходим из приложения
 													::exit(EXIT_FAILURE);
 												}
@@ -4555,21 +4985,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									::memset(&(reinterpret_cast <struct sockaddr_in *> (&node->endpoint.server)->sin_zero), 0, sizeof(server.sin_zero));
 									// Выполняем бинд на сокет
 									if(::bind(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) < 0){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Устанавливаем полученный IP-адрес
-											node->addr.v4(server.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-										#endif
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Устанавливаем полученный IP-адрес
+												node->addr.v4(server.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
 										// Выходим из приложения
 										::exit(EXIT_FAILURE);
 									}
@@ -4691,21 +5128,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									::memcpy(&node->endpoint.server, &server, node->endpoint.size);
 									// Выполняем бинд на сокет
 									if(::bind(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) < 0){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Устанавливаем полученный IP-адрес
-											node->addr.v6(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-										#endif
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Устанавливаем полученный IP-адрес
+												node->addr.v6(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->fd, static_cast <string> (node->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
+										}
 										// Выходим из приложения
 										::exit(EXIT_FAILURE);
 									}
@@ -5207,19 +5651,28 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 								return source.iface;
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve network interface name, desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve network interface name, desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve network interface name, desired IPv4-address does not match set IPv6";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 						// Для семейства IPv6
@@ -5256,19 +5709,28 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 								return source.iface;
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve network interface name, desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve network interface name, desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve network interface name, desired IPv6-address does not match set IPv4";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					}
@@ -5348,19 +5810,28 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 								client->source = ::move(source.ip);
 							// Если IP-адрес не получен
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Network interface \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, source.iface.c_str());
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Network interface \"%s\" is not found", log_t::flag_t::WARNING, source.iface.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 						// Для семейства IPv6
@@ -5385,19 +5856,28 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 								client->source = ::move(source.ip);
 							// Если IP-адрес не получен
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Network interface \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, source.iface.c_str());
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Network interface \"%s\" is not found", log_t::flag_t::WARNING, source.iface.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 					}
@@ -5428,19 +5908,28 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 							// Если IP-адрес не получен
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Network interface \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, source.iface.c_str());
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Network interface \"%s\" is not found", log_t::flag_t::WARNING, source.iface.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 						// Для семейства IPv6
@@ -5461,19 +5950,28 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 							// Если IP-адрес не получен
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Network interface \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, source.iface.c_str());
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Network interface \"%s\" is not found", log_t::flag_t::WARNING, source.iface.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 					}
@@ -5575,19 +6073,28 @@ string awh::IO::target(const event::id_t id) const noexcept {
 								return static_cast <string> (peer->addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve target address, desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve target address, desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 						// Для семейства IPv6
@@ -5604,19 +6111,28 @@ string awh::IO::target(const event::id_t id) const noexcept {
 								return static_cast <string> (peer->addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve target address, desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve target address, desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					}
@@ -5654,19 +6170,28 @@ string awh::IO::target(const event::id_t id) const noexcept {
 								return static_cast <string> (client->addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve target address, desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve target address, desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 						// Для семейства IPv6
@@ -5683,19 +6208,28 @@ string awh::IO::target(const event::id_t id) const noexcept {
 								return static_cast <string> (client->addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve target address, desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve target address, desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					}
@@ -5733,19 +6267,28 @@ string awh::IO::target(const event::id_t id) const noexcept {
 								return static_cast <string> (server->addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve target address, desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve target address, desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 						// Для семейства IPv6
@@ -5762,19 +6305,28 @@ string awh::IO::target(const event::id_t id) const noexcept {
 								return static_cast <string> (server->addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("To retrieve target address, desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("To retrieve target address, desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					}
@@ -5844,35 +6396,55 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 							return true;
 						// Если адрес не принадлежит к адресу файловой системы
 						} else {
+							// Устанавливаем текст ошибки
+							const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								fs->callbacks.error(fs->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						// Получаем текущее значение объекта файловой системы
+						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						// Устанавливаем текст ошибки
+						const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", target.c_str());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, target.c_str());
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("You cannot set address \"%s\" because event family does not belong to filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("You cannot set address \"%s\" because event family does not belong to filesystem address", log_t::flag_t::WARNING, target.c_str());
-						#endif
 					}
 				} break;
 				// Если нода является файловой системой
@@ -5897,35 +6469,55 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 							return true;
 						// Если адрес не принадлежит к адресу файловой системы
 						} else {
+							// Устанавливаем текст ошибки
+							const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								fs->callbacks.error(fs->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						// Получаем текущее значение объекта файловой системы
+						file_t * fs = awh_cast <file_t *> (i->second.get());
+						// Устанавливаем текст ошибки
+						const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", target.c_str());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, target.c_str());
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("You cannot set address \"%s\" because event family does not belong to filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("You cannot set address \"%s\" because event family does not belong to filesystem address", log_t::flag_t::WARNING, target.c_str());
-						#endif
 					}
 				} break;
 				// Если нода является клиентом
@@ -5954,19 +6546,28 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, target.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 						// Для семейства IPv4
@@ -5992,19 +6593,28 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 								return true;
 							// Если адрес не соответствует IPv4-адресу
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" you are trying to add is not a IPv4 address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" you are trying to add is not a IPv4 address", log_t::flag_t::WARNING, target.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 						// Для семейства IPv6
@@ -6030,19 +6640,28 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 								return true;
 							// Если адрес не соответствует IPv6-адресу
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" you are trying to add is not a IPv6 address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" you are trying to add is not a IPv6 address", log_t::flag_t::WARNING, target.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 					}
@@ -6073,19 +6692,28 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, target.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 						// Для семейства IPv4
@@ -6111,19 +6739,28 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 								return true;
 							// Если адрес не соответствует IPv4-адресу
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" you are trying to add is not a IPv4 address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" you are trying to add is not a IPv4 address", log_t::flag_t::WARNING, target.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 						// Для семейства IPv6
@@ -6149,19 +6786,28 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 								return true;
 							// Если адрес не соответствует IPv6-адресу
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" you are trying to add is not a IPv6 address", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, target.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" you are trying to add is not a IPv6 address", log_t::flag_t::WARNING, target.c_str());
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						} break;
 					}
@@ -6562,35 +7208,53 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (peer->addr);
 										// Если MAC-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												peer->callbacks.error(peer->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set IPv6";
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если размер IP-адреса не соответствует IPv4
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-										#endif
 									}
 								} break;
 								// Для семейства IPv6
@@ -6615,52 +7279,79 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (peer->addr);
 										// Если MAC-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												peer->callbacks.error(peer->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set IPv4";
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если размер IP-адреса не соответствует IPv4
-									} else {
+									}
+								} break;
+								// Если семейство сокета не определено
+								default: {
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("Desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("Desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								} break;
-								// Если семейство сокета не определено
-								default: {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
-									#endif
 								}
 							}
 						} break;
@@ -6696,35 +7387,53 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (client->addr);
 										// Если MAC-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set IPv6";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если размер IP-адреса не соответствует IPv4
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-										#endif
 									}
 								} break;
 								// Для семейства IPv6
@@ -6747,52 +7456,79 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (client->addr);
 										// Если MAC-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set IPv4";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если размер IP-адреса не соответствует IPv4
-									} else {
+									}
+								} break;
+								// Если семейство сокета не определено
+								default: {
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("Desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("Desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								} break;
-								// Если семейство сокета не определено
-								default: {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
-									#endif
 								}
 							}
 						} break;
@@ -6828,35 +7564,53 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (server->addr);
 										// Если MAC-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set IPv6";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если размер IP-адреса не соответствует IPv4
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-										#endif
 									}
 								} break;
 								// Для семейства UDPv4
@@ -6877,19 +7631,28 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (server->addr);
 										// Если MAC-адрес не получен
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									// Если объект адреса сервера не инициализирован
 									} else {
@@ -6911,35 +7674,53 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 												return static_cast <string> (server->addr);
 											// Если MAC-адрес не получен
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = "MAC-address for specified event could not be retrieved";
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										// Если размер IP-адреса не соответствует IPv4
+										} else {
+											// Устанавливаем текст ошибки
+											const string error = "Desired IPv4-address does not match set IPv6";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
 												/**
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
-										// Если размер IP-адреса не соответствует IPv4
-										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("Desired IPv4 address does not match set IPv6", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-											/**
-											* Если режим отладки не включён
-											*/
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("Desired IPv4 address does not match set IPv6", log_t::flag_t::WARNING);
-											#endif
 										}
 									}
 								} break;
@@ -6963,35 +7744,53 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (server->addr);
 										// Если MAC-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set IPv4";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если размер IP-адреса не соответствует IPv4
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
-										#endif
 									}
 								} break;
 								// Для семейства UDPv6
@@ -7012,19 +7811,28 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 											return static_cast <string> (server->addr);
 										// Если MAC-адрес не получен
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									// Если объект адреса сервера не инициализирован
 									} else {
@@ -7046,53 +7854,80 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 												return static_cast <string> (server->addr);
 											// Если MAC-адрес не получен
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = "MAC-address for specified event could not be retrieved";
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										// Если размер IP-адреса не соответствует IPv4
+										} else {
+											// Устанавливаем текст ошибки
+											const string error = "Desired IPv6-address does not match set IPv4";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
 												/**
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
-										// Если размер IP-адреса не соответствует IPv4
-										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("Desired IPv6 address does not match set IPv4", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-											/**
-											* Если режим отладки не включён
-											*/
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("Desired IPv6 address does not match set IPv4", log_t::flag_t::WARNING);
-											#endif
 										}
 									}
 								} break;
 								// Если семейство сокета не определено
 								default: {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("MAC-address for specified event could not be retrieved", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("MAC-address for specified event could not be retrieved", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							}
 						} break;
@@ -7143,18 +7978,51 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов не соответствуют
 					} else {
 						/**
-						 * Если включён режим отладки
+						 * Функция обратного вызова ошибки события
 						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Requested UDS-address does not match current address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+						event::callback::error_t callback = nullptr;
 						/**
-						 * Если режим отладки не включён
+						 * Определяем чем является текущая нода
 						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Requested UDS-address does not match current address", log_t::flag_t::WARNING);
-						#endif
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если нода является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Requested UDS-address does not match current address";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если тип адреса принадлежит к дирректориям файловой системы
@@ -7170,20 +8038,31 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Выводим результат работы функции
 						return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 					// Если типы адресов не соответствуют
-					}else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Requested filesystem address does not match current address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Requested filesystem does not match current address", log_t::flag_t::WARNING);
-						#endif
+					} else {
+						// Устанавливаем текст ошибки
+						const string error = "Requested filesystem address does not match current address";
+						// Получаем объект файловой системы
+						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если тип адреса принадлежит к файлам файловой системы
@@ -7199,20 +8078,31 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Выводим результат работы функции
 						return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 					// Если типы адресов не соответствуют
-					}else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Requested filesystem address does not match current address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Requested filesystem does not match current address", log_t::flag_t::WARNING);
-						#endif
+					} else {
+						// Устанавливаем текст ошибки
+						const string error = "Requested filesystem address does not match current address";
+						// Получаем объект файловой системы
+						file_t * fs = awh_cast <file_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если тип адреса принадлежит к IPv4-адресам
@@ -7294,18 +8184,51 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов не соответствуют
 					} else {
 						/**
-						 * Если включён режим отладки
+						 * Функция обратного вызова ошибки события
 						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Requested IP-address does not match current IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+						event::callback::error_t callback = nullptr;
 						/**
-						 * Если режим отладки не включён
+						 * Определяем чем является текущая нода
 						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Requested IP-address does not match current IPv4-address", log_t::flag_t::WARNING);
-						#endif
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если нода является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Requested IP-address does not match current IPv4-address";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если тип адреса принадлежит к IPv6-адресам
@@ -7391,18 +8314,51 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов не соответствуют
 					} else {
 						/**
-						 * Если включён режим отладки
+						 * Функция обратного вызова ошибки события
 						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Requested IP-address does not match current IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+						event::callback::error_t callback = nullptr;
 						/**
-						 * Если режим отладки не включён
+						 * Определяем чем является текущая нода
 						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Requested IP-address does not match current IPv6-address", log_t::flag_t::WARNING);
-						#endif
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если нода является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Requested IP-address does not match current IPv6-address";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
 					}
 				} break;
 			}
@@ -7454,18 +8410,56 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 				// Если тип адреса не определён
 				case static_cast <uint8_t> (event::address_t::NONE): {
 					/**
-					 * Если включён режим отладки
+					 * Функция обратного вызова ошибки события
 					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Address \"%s\" type NONE cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+					event::callback::error_t callback = nullptr;
 					/**
-					 * Если режим отладки не включён
+					 * Определяем чем является текущая нода
 					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Address \"%s\" type NONE cannot be set", log_t::flag_t::WARNING, value.c_str());
-					#endif
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если нода является дирректорией
+						case static_cast <uint8_t> (event::node_t::DIR):
+							// Получаем функцию обратного вызова ошибки события
+							callback = awh_cast <dir_t *> (i->second.get())->callbacks.error;
+						break;
+						// Если нода является файловой системой
+						case static_cast <uint8_t> (event::node_t::FILE):
+							// Получаем функцию обратного вызова ошибки события
+							callback = awh_cast <file_t *> (i->second.get())->callbacks.error;
+						break;
+						// Если нода является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Получаем функцию обратного вызова ошибки события
+							callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+						break;
+						// Если нода является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER):
+							// Получаем функцию обратного вызова ошибки события
+							callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+						break;
+					}
+					// Устанавливаем текст ошибки
+					const string error = this->_fmk->format("Address \"%s\" type NONE cannot be set", value.c_str());
+					// Если установлена функция обратного вызова
+					if(callback != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						callback(i->second->id, error);
+					// Если функция обратного вызова для вывода события установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
+					}
 				} break;
 				// Если тип адреса принадлежит к MAC-адресам
 				case static_cast <uint8_t> (event::address_t::MAC): {
@@ -7516,19 +8510,28 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 													client->source = ::move(source.ip);
 												// Если IP-адрес не получен
 												} else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("MAC-address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-													/**
-													* Если режим отладки не включён
-													*/
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("MAC-address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
-													#endif
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
 											} break;
 											// Для семейства IPv6
@@ -7556,37 +8559,55 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 													client->source = ::move(source.ip);
 												// Если IP-адрес не получен
 												} else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("MAC-address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-													/**
-													* Если режим отладки не включён
-													*/
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("MAC-address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
-													#endif
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
 											} break;
 										}
 									// Если адрес не соответствует MAC-адресу
 									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Address \"%s\" you are trying to add is not a MAC-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Address \"%s\" you are trying to add is not a MAC-address", log_t::flag_t::WARNING, value.c_str());
-										#endif
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a MAC-address", value.c_str());
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
 									}
 								} break;
 								// Если нода является сервером
@@ -7621,19 +8642,28 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 												// Если IP-адрес не получен
 												} else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("MAC-address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-													/**
-													* Если режим отладки не включён
-													*/
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("MAC-address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
-													#endif
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
 											} break;
 											// Для семейства IPv6
@@ -7658,37 +8688,55 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 												// Если IP-адрес не получен
 												} else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("MAC-address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-													/**
-													* Если режим отладки не включён
-													*/
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("MAC-address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
-													#endif
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
 											} break;
 										}
 									// Если адрес не соответствует MAC-адресу
 									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Address \"%s\" you are trying to add is not a MAC-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Address \"%s\" you are trying to add is not a MAC-address", log_t::flag_t::WARNING, value.c_str());
-										#endif
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a MAC-address", value.c_str());
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
 									}
 								} break;
 							}
@@ -7748,19 +8796,28 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											return true;
 										// Если адрес не принадлежит к адресу файловой системы
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, value.c_str());
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									} break;
 									// Если нода является сервером
@@ -7784,19 +8841,28 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											return true;
 										// Если адрес не принадлежит к адресу файловой системы
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, value.c_str());
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									} break;
 								}
@@ -7861,35 +8927,53 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
 								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									fs->callbacks.error(fs->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если типы адресов не соответствуют
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("You cannot set address \"%s\" because event family does not belong to file system address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("You cannot set address \"%s\" because event family does not belong to file system address", log_t::flag_t::WARNING, value.c_str());
-								#endif
 							}
 						} break;
 						// Если нода имеет неподдерживаемый тип
@@ -7936,35 +9020,53 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
 								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									fs->callbacks.error(fs->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"%s\" you are trying to add is not a filesystem address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Address \"%s\" you are trying to add is not a filesystem address", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если типы адресов не соответствуют
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("You cannot set address \"%s\" because event family does not belong to file system address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("You cannot set address \"%s\" because event family does not belong to file system address", log_t::flag_t::WARNING, value.c_str());
-								#endif
 							}
 						} break;
 						// Если нода имеет неподдерживаемый тип
@@ -8041,51 +9143,78 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										client->source = ::move(source.ip);
 									// Если MAC-адрес не получен
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.c_str());
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не соответствует IPv4-адресу
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("IPv4-address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("IPv4-address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес не соответствует IPv4-адресу
-								} else {
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"%s\" you are trying to add is not a IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Address \"%s\" you are trying to add is not a IPv4-address", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если типы адресов не соответствуют
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("You cannot set address \"%s\" because event family does not belong to IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("You cannot set address \"%s\" because event family does not belong to IPv4-address", log_t::flag_t::WARNING, value.c_str());
-								#endif
 							}
 						} break;
 						// Если нода является сервером
@@ -8119,51 +9248,78 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 									// Если MAC-адрес не получен
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.c_str());
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не соответствует IPv4-адресу
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("IPv4-address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("IPv4-address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес не соответствует IPv4-адресу
-								} else {
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"%s\" you are trying to add is not a IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Address \"%s\" you are trying to add is not a IPv4-address", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если типы адресов не соответствуют
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("You cannot set address \"%s\" because event family does not belong to IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("You cannot set address \"%s\" because event family does not belong to IPv4-address", log_t::flag_t::WARNING, value.c_str());
-								#endif
 							}
 						} break;
 						// Если нода имеет неподдерживаемый тип
@@ -8240,51 +9396,78 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										client->source = ::move(source.ip);
 									// Если MAC-адрес не получен
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.c_str());
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не соответствует IPv6-адресу
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"[%s]\" you are trying to add is not a IPv6-address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("IPv6-address \"[%s]\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("IPv6-address \"[%s]\" is not found", log_t::flag_t::WARNING, value.c_str());
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес не соответствует IPv6-адресу
-								} else {
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"[%s]\" you are trying to add is not a IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Address \"[%s]\" you are trying to add is not a IPv6-address", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если типы адресов не соответствуют
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", log_t::flag_t::WARNING, value.c_str());
-								#endif
 							}
 						} break;
 						// Если нода является сервером
@@ -8318,51 +9501,78 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 									// Если MAC-адрес не получен
 									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.c_str());
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не соответствует IPv6-адресу
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"[%s]\" you are trying to add is not a IPv6-address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("IPv6-address \"[%s]\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("IPv6-address \"[%s]\" is not found", log_t::flag_t::WARNING, value.c_str());
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-								// Если адрес не соответствует IPv6-адресу
-								} else {
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"[%s]\" you are trying to add is not a IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Address \"[%s]\" you are trying to add is not a IPv6-address", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-							// Если типы адресов не соответствуют
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", log_t::flag_t::WARNING, value.c_str());
-								#endif
 							}
 						} break;
 						// Если нода имеет неподдерживаемый тип
@@ -8477,35 +9687,53 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											client->source = ::move(source.ip);
 										// Если IP-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Network address \"%s\" is not found", value.c_str());
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если типы адресов не соответствуют
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Network address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Network address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если типы адресов не соответствуют
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("You cannot set address \"%s\" because event family does not belong to IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("You cannot set address \"%s\" because event family does not belong to IPv4-address", log_t::flag_t::WARNING, value.c_str());
-										#endif
 									}
 								} break;
 								// Для типа IPv6
@@ -8549,35 +9777,53 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											client->source = ::move(source.ip);
 										// Если IP-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Network address \"[%s]\" is not found", value.c_str());
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если типы адресов не соответствуют
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Network address \"[%s]\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Network address \"[%s]\" is not found", log_t::flag_t::WARNING, value.c_str());
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если типы адресов не соответствуют
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", log_t::flag_t::WARNING, value.c_str());
-										#endif
 									}
 								} break;
 							}
@@ -8651,35 +9897,53 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 										// Если IP-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Network address \"%s\" is not found", value.c_str());
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если типы адресов не соответствуют
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Network address \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Network address \"%s\" is not found", log_t::flag_t::WARNING, value.c_str());
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если типы адресов не соответствуют
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("You cannot set address \"%s\" because event family does not belong to IPv4-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("You cannot set address \"%s\" because event family does not belong to IPv4-address", log_t::flag_t::WARNING, value.c_str());
-										#endif
 									}
 								} break;
 								// Для типа IPv6
@@ -8720,35 +9984,53 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 										// Если IP-адрес не получен
 										} else {
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Network address \"[%s]\" is not found", value.c_str());
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если типы адресов не соответствуют
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Network address \"[%s]\" is not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Network address \"[%s]\" is not found", log_t::flag_t::WARNING, value.c_str());
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-									// Если типы адресов не соответствуют
-									} else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", log_t::flag_t::WARNING, value.c_str());
-										#endif
 									}
 								} break;
 							}
@@ -9188,19 +10470,26 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						EV_SET(&event, node->fd, EVFILT_READ, EV_DELETE, 0, 0, node);
 						// Выполняем удаление события из списка ожидания
 						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) < 0){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-							#endif
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, ::strerror(errno));
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+							}
 						}
 						// Если в списке промежуточного взаимодействия присутствует запись для данного события
 						auto j = ::__awh_inters__.find(i->first);
@@ -9632,19 +10921,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 											// Если протокол не определён
 											} else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-												#endif
+												// Устанавливаем текст ошибки
+												const string error = "RAW socket type only supports UDP protocol or Unix family socket with empty protocol";
+												// Если установлена функция обратного вызова
+												if(first->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													first->callbacks.error(first->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
 											}
 										}
 									} break;
@@ -9750,19 +11048,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 											// Если протокол не определён
 											} else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("RAW socket type only supports UDP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-												#endif
+												// Устанавливаем текст ошибки
+												const string error = "RAW socket type only supports UDP protocol or Unix family socket with empty protocol";
+												// Если установлена функция обратного вызова
+												if(first->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													first->callbacks.error(first->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
 											}
 										}
 									} break;
@@ -9892,19 +11199,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 											// Если протокол не определён
 											} else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-												#endif
+												// Устанавливаем текст ошибки
+												const string error = "DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol";
+												// Если установлена функция обратного вызова
+												if(first->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													first->callbacks.error(first->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
 											}
 										}
 									} break;
@@ -10005,19 +11321,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 											// Если протокол не определён
 											} else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-												#endif
+												// Устанавливаем текст ошибки
+												const string error = "DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol";
+												// Если установлена функция обратного вызова
+												if(first->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													first->callbacks.error(first->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
 											}
 										}
 									} break;
@@ -10135,19 +11460,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 										// Если протокол не определён
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol";
+											// Если установлена функция обратного вызова
+											if(first->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												first->callbacks.error(first->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									} break;
 									// Если нода является сервером
@@ -10207,19 +11541,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 										// Если протокол не определён
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol";
+											// Если установлена функция обратного вызова
+											if(first->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												first->callbacks.error(first->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									} break;
 								}
@@ -10298,19 +11641,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 										// Если протокол не определён
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol";
+											// Если установлена функция обратного вызова
+											if(first->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												first->callbacks.error(first->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									} break;
 									// Если нода является сервером
@@ -10360,19 +11712,28 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 										// Если протокол не определён
 										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = "SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol";
+											// Если установлена функция обратного вызова
+											if(first->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												first->callbacks.error(first->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									} break;
 								}
@@ -12775,19 +14136,26 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							if(node->endpoint.size > 0){
 								// Если подключение к удаленному серверу не выполнено
 								if((::connect(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING, ::strerror(errno));
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, ::strerror(errno));
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										#endif
+									}
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 									// Если функция обратного вызова для вывода подключения установлена
@@ -12799,19 +14167,28 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 								}
 							// Если размер структуры сервера не установлен
 							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Server address structure size is not set", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Server address structure size is not set", awh::log_t::flag_t::WARNING);
-								#endif
+								// Устанавливаем текст ошибки
+								const string error = "Server address structure size is not set";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 								// Снимаем флаг ожидания подключения
 								node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 								// Завершаем выполнение функции с ошибкой
@@ -12845,19 +14222,26 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 								if(node->endpoint.size > 0){
 									// Если подключение к удаленному серверу не выполнено
 									if((::connect(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING, ::strerror(errno));
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-										#endif
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											#endif
+										}
 										// Снимаем флаг ожидания подключения
 										node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 										// Если функция обратного вызова для вывода подключения установлена
@@ -12869,19 +14253,28 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 									}
 								// Если размер структуры сервера не установлен
 								} else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Server address structure size is not set", __PRETTY_FUNCTION__, std::make_tuple(id, async), awh::log_t::flag_t::WARNING);
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Server address structure size is not set", awh::log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "Server address structure size is not set";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 									// Снимаем флаг ожидания подключения
 									node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 									// Завершаем выполнение функции с ошибкой
@@ -13059,19 +14452,26 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 						case static_cast <uint8_t> (event::type_t::STREAM): {
 							// Выполняем слушать порт сервера
 							if(!(result = (::listen(node->fd, node->backlog.depth) == 0))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), awh::log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, ::strerror(errno));
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
 								// Снимаем флаг ожидания подключения
 								node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 								// Завершаем выполнение функции с ошибкой
@@ -13080,19 +14480,28 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 						} break;
 						// Для других типов сокетов
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Listening is only supported for STREAM event type", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Listening is only supported for STREAM event type", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Listening is only supported for STREAM event type";
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 							// Снимаем флаг ожидания подключения
 							node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 							// Завершаем выполнение функции с ошибкой
@@ -13317,10 +14726,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											// Если произошла ошибка при отправке данных
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, ::strerror(errno));
+													ipc->callbacks.error(ipc->id, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -13328,13 +14739,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("Failed to send data from inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("Failed to send data from inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
 												// Выходим из функции
@@ -13403,10 +14814,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, size);
 											}
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, ::strerror(errno));
+												ipc->callbacks.error(ipc->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -13414,13 +14827,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("Failed to send data from inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("Failed to send data from inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -13449,10 +14862,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
 									} else if(bytes == -1) {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, ::strerror(errno));
+											ipc->callbacks.error(ipc->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -13460,13 +14875,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Failed to send data from inter-process communication: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Failed to send data from inter-process communication: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 									}
@@ -13589,10 +15004,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											// Если произошла ошибка при отправке данных
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, ::strerror(errno));
+													peer->callbacks.error(peer->id, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -13600,13 +15017,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("Failed to send data from peer: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("Failed to send data from peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
 												// Выходим из функции
@@ -13697,10 +15114,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, size);
 											}
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, ::strerror(errno));
+												peer->callbacks.error(peer->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -13708,13 +15127,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("Failed to send data from peer: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("Failed to send data from peer: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -13749,10 +15168,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
 									} else if(bytes == -1) {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, ::strerror(errno));
+											peer->callbacks.error(peer->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -13760,13 +15181,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 									}
@@ -13889,10 +15310,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											// Если произошла ошибка при отправке данных
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, ::strerror(errno));
+													client->callbacks.error(client->id, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -13900,13 +15323,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
 												// Выходим из функции
@@ -13997,10 +15420,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, size);
 											}
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, ::strerror(errno));
+												client->callbacks.error(client->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -14008,13 +15433,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -14049,10 +15474,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
 									} else if(bytes == -1) {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, ::strerror(errno));
+											client->callbacks.error(client->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -14060,13 +15487,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 									}
@@ -14177,10 +15604,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											// Если произошла ошибка при отправке данных
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, ::strerror(errno));
+													client->callbacks.error(client->id, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -14188,13 +15617,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
 												// Выходим из функции
@@ -14285,10 +15714,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, size);
 											}
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, ::strerror(errno));
+												client->callbacks.error(client->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -14296,13 +15727,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -14337,10 +15768,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
 									} else if(bytes == -1) {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, ::strerror(errno));
+											client->callbacks.error(client->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -14348,13 +15781,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Failed to send data from client: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Failed to send data from client: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 									}
@@ -14443,10 +15876,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											// Если произошла ошибка при отправке данных
 											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, ::strerror(errno));
+													server->callbacks.error(server->id, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -14454,13 +15889,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("Failed to send data from server: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("Failed to send data from server: %s", log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
 												// Выходим из функции
@@ -14535,10 +15970,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, size);
 											}
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, ::strerror(errno));
+												server->callbacks.error(server->id, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -14546,13 +15983,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("Failed to send data from server: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("Failed to send data from server: %s", log_t::flag_t::WARNING, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
 											// Выходим из функции
@@ -14581,10 +16018,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
 									} else if(bytes == -1) {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, ::strerror(errno));
+											server->callbacks.error(server->id, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -14592,13 +16031,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("Failed to send data from server: %s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("Failed to send data from server: %s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
 									}
@@ -14617,7 +16056,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, error.c_str());
+									server->callbacks.error(server->id, error);
 								// Если функция обратного вызова для вывода события установлена
 								else {
 									/**
@@ -14752,19 +16191,28 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 									return node->blacklist.emplace(value, node->state.address).second;
 								// Если адрес не принадлежит к адресу файловой системы
 								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Address being added to blacklist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Address being added to blacklist does not match file system address", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "Address being added to blacklist does not match file system address";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							} break;
 							// Если тип адреса принадлежит к IPv4-адресам
@@ -14787,19 +16235,28 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 										return node->blacklist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), node->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Address being added to blacklist does not match MAC-address or IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Address being added to blacklist does not match MAC-address or IP-address", log_t::flag_t::WARNING);
-										#endif
+										// Устанавливаем текст ошибки
+										const string error = "Address being added to blacklist does not match MAC-address or IP-address";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
 									}
 								}
 							} break;
@@ -15095,19 +16552,28 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 									return node->whitelist.emplace(value, node->state.address).second;
 								// Если адрес не принадлежит к адресу файловой системы
 								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Address being added to whitelist does not match file system address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Address being added to whitelist does not match file system address", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "Address being added to whitelist does not match file system address";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							} break;
 							// Если тип адреса принадлежит к IPv4-адресам
@@ -15130,19 +16596,28 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 										return node->whitelist.emplace(this->_fmk->transform(value, fmk_t::transform_t::UPPER_CASE), node->state.address).second;
 									// Если мы получили какой-то другой адрес
 									default: {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Address being added to whitelist does not match MAC-address or IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
-										/**
-										* Если режим отладки не включён
-										*/
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Address being added to whitelist does not match MAC-address or IP-address", log_t::flag_t::WARNING);
-										#endif
+										// Устанавливаем текст ошибки
+										const string error = "Address being added to whitelist does not match MAC-address or IP-address";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
 									}
 								}
 							} break;
@@ -15449,19 +16924,28 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 							return fs->transfer.input.size;
 						// Если действие не определено
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Buffer size can only be get for read action on file system events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Buffer size can only be get for read action on file system events", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Buffer size can only be get for read action on file system events";
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								fs->callbacks.error(fs->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 						}
 					}
 				} break;
@@ -15726,19 +17210,28 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						} break;
 						// Если действие не определено
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Buffer size can only be set for read action on file system events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Buffer size can only be set for read action on file system events", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Buffer size can only be set for read action on file system events";
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								fs->callbacks.error(fs->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 						}
 					}
 				} break;
@@ -15767,19 +17260,28 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 								} break;
 								// Если действие не определено
 								default: {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Buffer size can only be set for read action on inter-process communication events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Buffer size can only be set for read action on inter-process communication events", log_t::flag_t::WARNING);
-									#endif
+									// Устанавливаем текст ошибки
+									const string error = "Buffer size can only be set for read action on inter-process communication events";
+									// Если установлена функция обратного вызова
+									if(ipc->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										ipc->callbacks.error(ipc->id, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							}
 						} break;
@@ -16130,7 +17632,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 				// Если нода является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Получаем объект события таймера
-					auto timer = awh_cast <timer_t *> (i->second.get());
+					timer_t * timer = awh_cast <timer_t *> (i->second.get());
 					// Устанавливаем значение задержки времени таймаута
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
@@ -16186,19 +17688,30 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						break;
 						// Для остальных типов действий
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Set a timeout is allowed for actions (reading and writing) for peer node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Set a timeout is allowed for actions (reading and writing) for peer node", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Set a timeout is allowed for actions (reading and writing) for peer node";
+							// Получаем объект события таймера
+							peer_t * peer = awh_cast <peer_t *> (i->second.get());
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								peer->callbacks.error(peer->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 						}
 					}
 				} break;
@@ -16221,19 +17734,30 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						break;
 						// Для остальных типов действий
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Set a timeout is allowed for actions (reading, writing, connect and disconnect) for client node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Set a timeout is allowed for actions (reading, writing, connect and disconnect) for client node", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Set a timeout is allowed for actions (reading, writing, connect and disconnect) for client node";
+							// Получаем объект события таймера
+							client_t * client = awh_cast <client_t *> (i->second.get());
+							// Если установлена функция обратного вызова
+							if(client->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								client->callbacks.error(client->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 						}
 					}
 				} break;
@@ -16252,19 +17776,30 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						break;
 						// Для остальных типов действий
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Set a timeout is allowed for actions (reading and writing) for server node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Set a timeout is allowed for actions (reading and writing) for server node", log_t::flag_t::WARNING);
-							#endif
+							// Устанавливаем текст ошибки
+							const string error = "Set a timeout is allowed for actions (reading and writing) for server node";
+							// Получаем объект события таймера
+							server_t * server = awh_cast <server_t *> (i->second.get());
+							// Если установлена функция обратного вызова
+							if(server->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								server->callbacks.error(server->id, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
 						}
 					}
 				} break;
@@ -17293,11 +18828,11 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						// Если нода является файловой системой
 						case static_cast <uint8_t> (event::node_t::FILE): {
 							// Получаем текущее значение объекта файловой системы
-							file_t * file = awh_cast <file_t *> (node);
+							file_t * fs = awh_cast <file_t *> (node);
 							// Если установлена функция обратного вызова
-							if(file->callbacks.status != nullptr)
+							if(fs->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								file->callbacks.status(file->id, file->state.status.load(std::memory_order_acquire));
+								fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
 						} break;
 						// Если нода является межпрограммным взаимодействием
 						case static_cast <uint8_t> (event::node_t::IPC): {
@@ -17459,51 +18994,51 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если нода является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
-								file_t * file = awh_cast <file_t *> (node);
+								file_t * fs = awh_cast <file_t *> (node);
 								// Если мы детектировали наличие ошибки
 								if(ev.flags & EV_ERROR){
 									// Устанавливаем статус события в состояние уничтожения
-									file->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+									fs->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 									// Выполняем обработку ошибки
 									io::error(node, ev.data, this->_log);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(file->id);
+									::__awh_inters__.erase(fs->id);
 									// Производим удаление ноды
-									::__awh_nodes__.erase(file->id);
+									::__awh_nodes__.erase(fs->id);
 								// Если установлена функция обратного вызова
-								} else if(file->callbacks.event != nullptr) {
+								} else if(fs->callbacks.event != nullptr) {
 									// Если мы детектировали событие изменения файла
 									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
 										// Вызываем функцию обратного вызова флаг события
-										file->callbacks.event(file->id, event::action_t::CHANGE);
+										fs->callbacks.event(fs->id, event::action_t::CHANGE);
 										// Выполняем чтение данных из файла
 										io::read(node, this->_fmk, this->_log);
 									// Если мы детектировали событие переименования файла
 									} else if(ev.fflags & NOTE_RENAME)
 										// Вызываем функцию обратного вызова флаг события
-										file->callbacks.event(file->id, event::action_t::RENAME);
+										fs->callbacks.event(fs->id, event::action_t::RENAME);
 									// Если мы детектировали событие удаления файла
 									else if(ev.fflags & NOTE_DELETE) {
 										// Получаем идентификатор события файла
-										const event::id_t id = file->id;
+										const event::id_t id = fs->id;
 										// Вызываем функцию обратного вызова флаг события
-										file->callbacks.event(file->id, event::action_t::DELETE);
+										fs->callbacks.event(fs->id, event::action_t::DELETE);
 										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(file->id);
+										::__awh_inters__.erase(fs->id);
 										// Производим удаление ноды
-										::__awh_nodes__.erase(file->id);
+										::__awh_nodes__.erase(fs->id);
 									// Если мы детектировали событие изменения атрибутов файла
 									} else if(ev.fflags & NOTE_ATTRIB)
 										// Вызываем функцию обратного вызова флаг события
-										file->callbacks.event(file->id, event::action_t::ATTRIB);
+										fs->callbacks.event(fs->id, event::action_t::ATTRIB);
 									// Если мы детектировали событие отзыва файла
 									else if(ev.fflags & NOTE_REVOKE)
 										// Вызываем функцию обратного вызова флаг события
-										file->callbacks.event(file->id, event::action_t::REVOKE);
+										fs->callbacks.event(fs->id, event::action_t::REVOKE);
 									// Если мы детектировали событие изменение жёсткой ссылки файла
 									else if(ev.fflags & NOTE_LINK)
 										// Вызываем функцию обратного вызова флаг события
-										file->callbacks.event(file->id, event::action_t::HDLINK);
+										fs->callbacks.event(fs->id, event::action_t::HDLINK);
 								}
 							} break;
 						}
