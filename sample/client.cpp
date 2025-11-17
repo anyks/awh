@@ -45,7 +45,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем логгер
 	fmk.setLogger(&log);
 	// Устанавливаем уровень логирования
-	log.level(log_t::level_t::NONE);
+	// log.level(log_t::level_t::NONE);
 	/**
 	 * Клиентская часть асинхронного движка ввода-вывода
 	 */
@@ -1459,12 +1459,25 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << endl << " ******************** TIMER ******************** " << endl;
 		cout << " ======================================== TIMER " << endl;
 
-		// Добавляем новое событие клиента TCP
+		// Добавляем новое событие клиента интервала
 		event::id_t eid = io.event(event::family_t::INTERVAL, event::type_t::NONE, event::protocol_t::NONE);
 		// Устанавливаем тип ноды
 		io.node(eid, event::node_t::TIMER);
 
 		cout << " Таймерное событие ID: " << eid << endl;
+
+		io.timeout(eid, event::action_t::NONE, 12000);
+
+		if(io.initialize()){
+			io.commit(eid);
+
+			io.on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				if(status == event::status_t::SUCCESS)
+					cout << " Таймер сработал! " << eid << endl;
+			});
+
+			while(io.poll());
+		}
 	}
 
 	/**

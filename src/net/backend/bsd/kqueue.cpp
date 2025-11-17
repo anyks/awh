@@ -573,7 +573,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова статуса события
-						timer->callbacks.status(timer->id, event::status_t::PENDING);
+						timer->callbacks.status(timer->id, event::status_t::SUCCESS);
 					// Если таймер является одноразовым
 					if(timer->state.family == event::family_t::TIMER){
 						// Производим удаление списка подготовленных событий
@@ -3700,22 +3700,49 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 					// Если событие успешно добавлено
 					if((result = (ret.second && (node->delay > 0)))){
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
 						/**
 						 * Определяем семейство сокета
 						 */
 						switch(static_cast <uint8_t> (node->state.family)){
 							// Для семейства таймаута
-							case static_cast <uint8_t> (event::family_t::TIMER):
+							case static_cast <uint8_t> (event::family_t::TIMER): {
+								// Добавляем новое событие в список изменений
+								::__awh_change__.push_back((struct kevent){});
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
 								EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
-							break;
+							} break;
 							// Для семейства интервального таймаута
-							case static_cast <uint8_t> (event::family_t::INTERVAL):
+							case static_cast <uint8_t> (event::family_t::INTERVAL): {
+								// Добавляем новое событие в список изменений
+								::__awh_change__.push_back((struct kevent){});
 								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
 								EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
-							break;
+							}break;
+							// Для неизвестного семейства
+							default: {
+								// Устанавливаем текст ошибки
+								const string error = "Timer cannot be activated because it is not defined";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
 						}
 						// Устанавливаем количество событий
 						ret.first->second.count = 1;
@@ -6874,6 +6901,10 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Выполняем создание нового объекта ноды
 					unique_ptr <user_t> user = make_unique <user_t> (this->_fmk, this->_log);
+					// Устанавливаем идентификатор события
+					user->id = i->second->id;
+					// Выполняем перенос состояний ноды
+					user->state = i->second->state;
 					// Выполняем перенос всей ноды
 					i->second = ::move(user);
 					// Устанавливаем тип узла события
@@ -6883,6 +6914,10 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Выполняем создание нового объекта ноды
 					unique_ptr <timer_t> timer = make_unique <timer_t> ();
+					// Устанавливаем идентификатор события
+					timer->id = i->second->id;
+					// Выполняем перенос состояний ноды
+					timer->state = i->second->state;
 					// Выполняем перенос всей ноды
 					i->second = ::move(timer);
 					// Устанавливаем тип узла события
@@ -6892,23 +6927,27 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Выполняем создание нового объекта ноды
 					unique_ptr <dir_t> fs = make_unique <dir_t> (this->_fmk, this->_log);
+					// Устанавливаем идентификатор события
+					fs->id = i->second->id;
 					// Выполняем перенос состояний ноды
 					fs->state = i->second->state;
-					// Устанавливаем тип узла события
-					fs->state.node = node;
 					// Выполняем перенос всей ноды
 					i->second = ::move(fs);
+					// Устанавливаем тип узла события
+					i->second->state.node = node;
 				} break;
 				// Если нода является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Выполняем создание нового объекта ноды
 					unique_ptr <file_t> fs = make_unique <file_t> (this->_fmk, this->_log);
+					// Устанавливаем идентификатор события
+					fs->id = i->second->id;
 					// Выполняем перенос состояний ноды
 					fs->state = i->second->state;
-					// Устанавливаем тип узла события
-					fs->state.node = node;
 					// Выполняем перенос всей ноды
 					i->second = ::move(fs);
+					// Устанавливаем тип узла события
+					i->second->state.node = node;
 				} break;
 				// Если нода является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -6959,10 +6998,10 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					}
 					// Выполняем создание нового объекта ноды
 					unique_ptr <ipc_t> ipc = make_unique <ipc_t> (this->_fmk, this->_log);
+					// Устанавливаем идентификатор события
+					ipc->id = i->second->id;
 					// Выполняем перенос состояний ноды
 					ipc->state = i->second->state;
-					// Устанавливаем тип узла события
-					ipc->state.node = node;
 					/**
 					 * Определяем чем является текущая нода
 					 */
@@ -6986,13 +7025,15 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					}
 					// Выполняем перенос всей ноды
 					i->second = ::move(ipc);
+					// Устанавливаем тип узла события
+					i->second->state.node = node;
 				} break;
 				// Если нода является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Устанавливаем тип узла события
-					i->second->state.node = node;
 					// Получаем объект клиента
 					auto client = awh_cast <client_t *> (i->second.get());
+					// Устанавливаем тип узла события
+					client->state.node = node;
 					// Если источник сетевого адреса не инициализирован
 					if(client->source == nullptr){
 						/**
@@ -7091,10 +7132,10 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					}
 					// Выполняем создание нового объекта ноды
 					unique_ptr <server_t> server = make_unique <server_t> (&this->_eth, this->_fmk, this->_log);
+					// Устанавливаем идентификатор события
+					server->id = i->second->id;
 					// Выполняем перенос состояний ноды
 					server->state = i->second->state;
-					// Устанавливаем тип узла события
-					server->state.node = node;
 					/**
 					 * Определяем чем является текущая нода
 					 */
@@ -7122,6 +7163,8 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					}
 					// Выполняем перенос всей ноды
 					i->second = ::move(server);
+					// Устанавливаем тип узла события
+					i->second->state.node = node;
 				} break;
 			}
 			// Возвращаем результат работы функции
@@ -18801,83 +18844,86 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				for(auto i = ::__awh_change__.begin(); i != ::__awh_change__.end();){
 					// Получаем текущее значение ноды
 					node = reinterpret_cast <net::node_t *> (i->udata);
-					/**
-					 * Определяем чем является текущая нода
-					 */
-					switch(static_cast <uint8_t> (node->state.node)){
-						// Если нода является пользовательским событием
-						case static_cast <uint8_t> (event::node_t::USER): break;
-						// Если нода является таймером
-						case static_cast <uint8_t> (event::node_t::TIMER): {
-							// Получаем текущее значение объекта директории
-							timer_t * timer = awh_cast <timer_t *> (node);
-							// Если установлена функция обратного вызова
-							if(timer->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
-						} break;
-						// Если нода является директорией
-						case static_cast <uint8_t> (event::node_t::DIR): {
-							// Получаем текущее значение объекта директории
-							dir_t * dir = awh_cast <dir_t *> (node);
-							// Если установлена функция обратного вызова
-							if(dir->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
-						} break;
-						// Если нода является файловой системой
-						case static_cast <uint8_t> (event::node_t::FILE): {
-							// Получаем текущее значение объекта файловой системы
-							file_t * fs = awh_cast <file_t *> (node);
-							// Если установлена функция обратного вызова
-							if(fs->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
-						} break;
-						// Если нода является межпрограммным взаимодействием
-						case static_cast <uint8_t> (event::node_t::IPC): {
-							// Получаем текущее значение объекта межпрограммного взаимодействия
-							ipc_t * ipc = awh_cast <ipc_t *> (node);
-							// Если установлена функция обратного вызова
-							if(ipc->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
-						} break;
-						// Если нода является одноранговым узлом
-						case static_cast <uint8_t> (event::node_t::PEER): {
-							// Получаем текущее значение объекта однорангового узла
-							peer_t * peer = awh_cast <peer_t *> (node);
-							// Если установлена функция обратного вызова
-							if(peer->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
-							// Если статус события восстановление из паузы
-							if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-								// Устанавливаем статус события в состояние подтверждено
-								peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
-						} break;
-						// Если нода является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT): {
-							// Получаем текущее значение объекта клиента
-							client_t * client = awh_cast <client_t *> (node);
-							// Если установлена функция обратного вызова
-							if(client->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
-							// Если статус события восстановление из паузы
-							if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-								// Устанавливаем статус события в состояние подключено
-								client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
-						} break;
-						// Если нода является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER): {
-							// Получаем текущее значение объекта сервера
-							server_t * server = awh_cast <server_t *> (node);
-							// Если установлена функция обратного вызова
-							if(server->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова статуса события
-								server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
-						} break;
+					// Если нода определена и существует
+					if(node != nullptr){
+						/**
+						 * Определяем чем является текущая нода
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если нода является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER): break;
+							// Если нода является таймером
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (node);
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
+							} break;
+							// Если нода является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (node);
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
+							} break;
+							// Если нода является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Получаем текущее значение объекта файловой системы
+								file_t * fs = awh_cast <file_t *> (node);
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
+							} break;
+							// Если нода является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC): {
+								// Получаем текущее значение объекта межпрограммного взаимодействия
+								ipc_t * ipc = awh_cast <ipc_t *> (node);
+								// Если установлена функция обратного вызова
+								if(ipc->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
+							} break;
+							// Если нода является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Получаем текущее значение объекта однорангового узла
+								peer_t * peer = awh_cast <peer_t *> (node);
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
+								// Если статус события восстановление из паузы
+								if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+									// Устанавливаем статус события в состояние подтверждено
+									peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+							} break;
+							// Если нода является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								client_t * client = awh_cast <client_t *> (node);
+								// Если установлена функция обратного вызова
+								if(client->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
+								// Если статус события восстановление из паузы
+								if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+									// Устанавливаем статус события в состояние подключено
+									client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
+							} break;
+							// Если нода является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем текущее значение объекта сервера
+								server_t * server = awh_cast <server_t *> (node);
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
+							} break;
+						}
 					}
 					// Удаляем текущий элемент из списка изменений
 					i = ::__awh_change__.erase(i);
