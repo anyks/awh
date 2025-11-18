@@ -16416,40 +16416,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Определяем переменную для хранения количества отправленных байт
 										int32_t bytes = -1;
 										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT){
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
+										if(client->state.options & event::options::ONSHOT)
 											// Выполняем отправку данных в UDP сокет
 											bytes = ::sendto(client->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-										} else bytes = ::send(client->fd, data, size, 0);
+										else bytes = ::send(client->fd, data, size, 0);
 										// Если данные отправлены успешно
 										if((result = (bytes > 0))){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -16560,40 +16531,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Определяем переменную для хранения количества отправленных байт
 										int32_t bytes = -1;
 										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT){
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
+										if(client->state.options & event::options::ONSHOT)
 											// Выполняем отправку данных в UDP сокет
 											bytes = ::sendto(client->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-										} else bytes = ::send(client->fd, data, size, 0);
+										else bytes = ::send(client->fd, data, size, 0);
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
@@ -16651,40 +16593,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Определяем переменную для хранения количества отправленных байт
 									int32_t bytes = -1;
 									// Если установлен флаг однократного использования сокета
-									if(client->state.options & event::options::ONSHOT){
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(client->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
+									if(client->state.options & event::options::ONSHOT)
 										// Выполняем отправку данных в UDP сокет
 										bytes = ::sendto(client->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 									// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-									} else bytes = ::send(client->fd, data, size, 0);
+									else bytes = ::send(client->fd, data, size, 0);
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
