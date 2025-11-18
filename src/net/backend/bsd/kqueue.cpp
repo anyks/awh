@@ -31,6 +31,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <unordered_map>
+#include <unordered_set>
 
 /**
  * Подключаем системные заголовки
@@ -332,6 +334,10 @@ namespace {
 	 * Глобальный массив активных событий kqueue
 	 */
 	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
+	/**
+	 * Глобальная переменная списка обработанных событий
+	 */
+	unordered_set <event::id_t> __awh_processed__;
 	/**
 	 * Глобальная переменная списка промежуточных звеньев
 	 */
@@ -5257,6 +5263,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									server.sin_port = htons(host->port);
 									// Устанавливаем адрес для удаленного подключения
 									server.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+									// Запоминаем размер структуры
+									node->endpoint.size = sizeof(server);
 									// Выполняем копирование объекта подключения сервера
 									::memcpy(&node->endpoint.server, &server, node->endpoint.size);
 									// Обнуляем серверную структуру
@@ -13368,23 +13376,33 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					if(!isSetup)
 						// Устанавливаем результат работы функции как ложь
 						result = false;
-					// Если опция передана как IPV6_V6ONLY
-					if(event::options::IPV6ONLY & options){
-						// Устанавливаем режим отображения IPv4 => IPv6
-						if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::ENABLED)))
-							// Устанавливаем опцию события
-							i->second->state.options |= event::options::IPV6ONLY;
-					// Если опция не передана как IPV6_V6ONLY
-					} else {
-						// Снимаем режим отображения IPv4 => IPv6
-						if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::DISABLED)))
-							// Снимаем опцию события
-							i->second->state.options &= ~event::options::IPV6ONLY;
+					/**
+					 * Определяем семейство сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.family)){
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для семейства UDPv6
+						case static_cast <uint8_t> (event::family_t::UDPV6): {
+							// Если опция передана как IPV6_V6ONLY
+							if(event::options::IPV6ONLY & options){
+								// Устанавливаем режим отображения IPv4 => IPv6
+								if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::ENABLED)))
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::IPV6ONLY;
+							// Если опция не передана как IPV6_V6ONLY
+							} else {
+								// Снимаем режим отображения IPv4 => IPv6
+								if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::DISABLED)))
+									// Снимаем опцию события
+									i->second->state.options &= ~event::options::IPV6ONLY;
+							}
+							// Если опция не установлена
+							if(result && !isSetup)
+								// Устанавливаем результат работы функции как ложь
+								result = false;
+						} break;
 					}
-					// Если опция не установлена
-					if(result && !isSetup)
-						// Устанавливаем результат работы функции как ложь
-						result = false;
 				}
 				// Если опция передана как NO_SIGILL
 				if(event::options::NOSIGILL & options){
@@ -13830,14 +13848,24 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						// Если нода не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
-							// Устанавливаем или снимаем режим отображения IPv4 => IPv6
-							if((result = this->_eth.ipv6only(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-								// Если необходимо активировать режим отображения IPv4 => IPv6
-								if(mode)
-									// Устанавливаем опцию события
-									i->second->state.options |= event::options::IPV6ONLY;
-								// Если необходимо деактивировать режим отображения IPv4 => IPv6
-								else i->second->state.options ^= event::options::IPV6ONLY;
+							/**
+							 * Определяем семейство сокета
+							 */
+							switch(static_cast <uint8_t> (i->second->state.family)){
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6):
+								// Для семейства UDPv6
+								case static_cast <uint8_t> (event::family_t::UDPV6): {
+									// Устанавливаем или снимаем режим отображения IPv4 => IPv6
+									if((result = this->_eth.ipv6only(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+										// Если необходимо активировать режим отображения IPv4 => IPv6
+										if(mode)
+											// Устанавливаем опцию события
+											i->second->state.options |= event::options::IPV6ONLY;
+										// Если необходимо деактивировать режим отображения IPv4 => IPv6
+										else i->second->state.options ^= event::options::IPV6ONLY;
+									}
+								} break;
 							}
 						}
 					} break;
@@ -14473,34 +14501,37 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 								if(node->endpoint.size > 0){
 									// Если подключение к удаленному серверу не выполнено
 									if((::connect(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
-										// Если установлена функция обратного вызова
-										if(node->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-											#endif
+										// Если ошибка не является ошибкой в процессе подключения
+										if(errno != EINPROGRESS){
+											// Если установлена функция обратного вызова
+											if(node->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											// Если функция обратного вызова для вывода подключения установлена
+											if(node->callbacks.connect != nullptr)
+												// Вывзываем функцию обратного вызова для подключения
+												node->callbacks.connect(node->id, false);
+											// Завершаем выполнение функции с ошибкой
+											return result;
 										}
-										// Снимаем флаг ожидания подключения
-										node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-										// Если функция обратного вызова для вывода подключения установлена
-										if(node->callbacks.connect != nullptr)
-											// Вывзываем функцию обратного вызова для подключения
-											node->callbacks.connect(node->id, false);
-										// Завершаем выполнение функции с ошибкой
-										return result;
 									}
 								// Если размер структуры сервера не установлен
 								} else {
@@ -14559,34 +14590,37 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 									if(node->endpoint.size > 0){
 										// Если подключение к удаленному серверу не выполнено
 										if((::connect(node->fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
-											// Если установлена функция обратного вызова
-											if(node->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-												#endif
+											// Если ошибка не является ошибкой в процессе подключения
+											if(errno != EINPROGRESS){
+												// Если установлена функция обратного вызова
+												if(node->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													#endif
+												}
+												// Снимаем флаг ожидания подключения
+												node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+												// Если функция обратного вызова для вывода подключения установлена
+												if(node->callbacks.connect != nullptr)
+													// Вывзываем функцию обратного вызова для подключения
+													node->callbacks.connect(node->id, false);
+												// Завершаем выполнение функции с ошибкой
+												return result;
 											}
-											// Снимаем флаг ожидания подключения
-											node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-											// Если функция обратного вызова для вывода подключения установлена
-											if(node->callbacks.connect != nullptr)
-												// Вывзываем функцию обратного вызова для подключения
-												node->callbacks.connect(node->id, false);
-											// Завершаем выполнение функции с ошибкой
-											return result;
 										}
 									// Если размер структуры сервера не установлен
 									} else {
@@ -19884,45 +19918,60 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (node);
 								// Если установлена функция обратного вызова
-								if(timer->callbacks.status != nullptr)
+								if((timer->callbacks.status != nullptr) && ::__awh_processed__.find(timer->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(timer->id);
 									// Вызываем функцию обратного вызова статуса события
 									timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
+								}
 							} break;
 							// Если нода является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
 								dir_t * dir = awh_cast <dir_t *> (node);
 								// Если установлена функция обратного вызова
-								if(dir->callbacks.status != nullptr)
+								if((dir->callbacks.status != nullptr) && ::__awh_processed__.find(dir->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(dir->id);
 									// Вызываем функцию обратного вызова статуса события
 									dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
+								}
 							} break;
 							// Если нода является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
 								file_t * fs = awh_cast <file_t *> (node);
 								// Если установлена функция обратного вызова
-								if(fs->callbacks.status != nullptr)
+								if((fs->callbacks.status != nullptr) && ::__awh_processed__.find(fs->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(fs->id);
 									// Вызываем функцию обратного вызова статуса события
 									fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
+								}
 							} break;
 							// Если нода является межпрограммным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
 								// Получаем текущее значение объекта межпрограммного взаимодействия
 								ipc_t * ipc = awh_cast <ipc_t *> (node);
 								// Если установлена функция обратного вызова
-								if(ipc->callbacks.status != nullptr)
+								if((ipc->callbacks.status != nullptr) && ::__awh_processed__.find(ipc->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(ipc->id);
 									// Вызываем функцию обратного вызова статуса события
 									ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
+								}
 							} break;
 							// Если нода является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
 								peer_t * peer = awh_cast <peer_t *> (node);
 								// Если установлена функция обратного вызова
-								if(peer->callbacks.status != nullptr)
+								if((peer->callbacks.status != nullptr) && ::__awh_processed__.find(peer->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(peer->id);
 									// Вызываем функцию обратного вызова статуса события
 									peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
+								}
 								// Если статус события восстановление из паузы
 								if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
 									// Устанавливаем статус события в состояние подтверждено
@@ -19933,9 +19982,12 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								// Получаем текущее значение объекта клиента
 								client_t * client = awh_cast <client_t *> (node);
 								// Если установлена функция обратного вызова
-								if(client->callbacks.status != nullptr)
+								if((client->callbacks.status != nullptr) && ::__awh_processed__.find(client->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(client->id);
 									// Вызываем функцию обратного вызова статуса события
 									client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
+								}
 								// Если статус события восстановление из паузы
 								if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
 									// Устанавливаем статус события в состояние подключено
@@ -19946,9 +19998,12 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								// Получаем текущее значение объекта сервера
 								server_t * server = awh_cast <server_t *> (node);
 								// Если установлена функция обратного вызова
-								if(server->callbacks.status != nullptr)
+								if((server->callbacks.status != nullptr) && ::__awh_processed__.find(server->id) == ::__awh_processed__.end()){
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(server->id);
 									// Вызываем функцию обратного вызова статуса события
 									server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
+								}
 							} break;
 						}
 					}
@@ -19957,6 +20012,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				}
 				// Очищаем список промежуточных звеньев
 				::__awh_inters__.clear();
+				// Очищаем список обработанных событий
+				::__awh_processed__.clear();
 			}
 			/**
 			 * Подготавливаем параметры таймаута для опроса событий

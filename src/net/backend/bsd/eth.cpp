@@ -1714,7 +1714,7 @@ bool awh::Ethernet::tcpcork(const net::socket_t sock, const net::socket_mode_t m
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1754,7 +1754,7 @@ bool awh::Ethernet::ipv6only(const net::socket_t sock, const net::socket_mode_t 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1794,7 +1794,7 @@ bool awh::Ethernet::reuseaddr(const net::socket_t sock, const net::socket_mode_t
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1834,7 +1834,7 @@ bool awh::Ethernet::reuseport(const net::socket_t sock, const net::socket_mode_t
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1914,7 +1914,7 @@ bool awh::Ethernet::tcpnodelay(const net::socket_t sock, const net::socket_mode_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1945,7 +1945,7 @@ bool awh::Ethernet::noblocking(const net::socket_t sock, const net::socket_mode_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1971,7 +1971,7 @@ bool awh::Ethernet::noblocking(const net::socket_t sock, const net::socket_mode_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -1993,7 +1993,7 @@ bool awh::Ethernet::noblocking(const net::socket_t sock, const net::socket_mode_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -2027,7 +2027,7 @@ bool awh::Ethernet::closeonexec(const net::socket_t sock, const net::socket_mode
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2053,7 +2053,7 @@ bool awh::Ethernet::closeonexec(const net::socket_t sock, const net::socket_mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -2075,7 +2075,7 @@ bool awh::Ethernet::closeonexec(const net::socket_t sock, const net::socket_mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint8_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
