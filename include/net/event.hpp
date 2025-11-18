@@ -105,6 +105,22 @@ namespace awh {
 			RECONNECTED = 0x0D  // Статус переподключения
 		};
 		/**
+		 * @brief Типы ошибок событий
+		 *
+		 */
+		enum class error_t : uint8_t {
+			NONE             = 0x00, // Ошибка не определена
+			UNKNOWN          = 0x01, // Неизвестная ошибка
+			INVALID          = 0x02, // Недопустимая операция
+			NOT_FOUND        = 0x03, // Объект не найден
+			EVENT_FAIL       = 0x04, // Ошибка события
+			ACCESS_DENIED    = 0x05, // Доступ запрещён
+			ALREADY_EXISTS   = 0x06, // Объект уже существует
+			INVALID_ADDRESS  = 0x07, // Некорректный адрес
+			CONNECTION_FAIL  = 0x08, // Ошибка подключения
+			INSUFFICIENT_RES = 0x09  // Недостаточно ресурсов
+		};
+		/**
 		 * @brief Происхождение событий
 		 *
 		 */
@@ -186,49 +202,53 @@ namespace awh {
 			 */
 			static constexpr uint16_t NONE = 0x00;
 			/**
+			 * Опция одиночного использования сокета
+			 */
+			static constexpr uint16_t ONSHOT = 0x01;
+			/**
 			 * Опция отложенной отправки TCP пакетов
 			 */
-			static constexpr uint16_t TCPCORK = 0x01;
+			static constexpr uint16_t TCPCORK = 0x02;
 			/**
 			 * Опция только IPv6 для сокета
 			 */
-			static constexpr uint16_t IPV6ONLY = 0x02;
+			static constexpr uint16_t IPV6ONLY = 0x04;
 			/**
 			 * Опция отключения сигнала SIGILL
 			 */
-			static constexpr uint16_t NOSIGILL = 0x04;
+			static constexpr uint16_t NOSIGILL = 0x08;
 			/**
 			 * Опция отключения сигнала SIGPIPE
 			 */
-			static constexpr uint16_t NOSIGPIPE = 0x08;
+			static constexpr uint16_t NOSIGPIPE = 0x10;
 			/**
 			 * Опция неблокирующего ввода-вывода
 			 */
-			static constexpr uint16_t NOIOBLOCK = 0x10;
+			static constexpr uint16_t NOIOBLOCK = 0x20;
 			/**
 			 * Опция умного неблокирующего ввода-вывода
 			 */
-			static constexpr uint16_t SMIOBLOCK = 0x20;
+			static constexpr uint16_t SMIOBLOCK = 0x40;
 			/**
 			 * Опция повторного использования адреса
 			 */
-			static constexpr uint16_t REUSEADDR = 0x40;
+			static constexpr uint16_t REUSEADDR = 0x80;
 			/**
 			 * Опция повторного использования порта
 			 */
-			static constexpr uint16_t REUSEPORT = 0x80;
+			static constexpr uint16_t REUSEPORT = 0x100;
 			/**
 			 * Опция отключения алгоритма Нейгла
 			 */
-			static constexpr uint16_t TCPNODELAY = 0x100;
+			static constexpr uint16_t TCPNODELAY = 0x200;
 			/**
 			 * Опция включения TCP keepalive
 			 */
-			static constexpr uint16_t KEEPALIVE = 0x200;
+			static constexpr uint16_t KEEPALIVE = 0x400;
 			/**
 			 * Опция закрытия сокета при выполнении exec
 			 */
-			static constexpr uint16_t CLOSEONEXEC = 0x400;
+			static constexpr uint16_t CLOSEONEXEC = 0x800;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами
@@ -248,10 +268,6 @@ namespace awh {
 			 */
 			using accept_t = std::function <void (const event::id_t, const event::id_t)>;
 			/**
-			 * Обратный вызов при ошибке события
-			 */
-			using error_t = std::function <void (const event::id_t, const std::string &)>;
-			/**
 			 * Обратный вызов общего события
 			 */
 			using event_t = std::function <void (const event::id_t, const event::action_t)>;
@@ -263,6 +279,10 @@ namespace awh {
 			 * Обратный вызов при чтении из события
 			 */
 			using read_t = std::function <void (const event::id_t, const uint8_t *, const size_t)>;
+			/**
+			 * Обратный вызов при ошибке события
+			 */
+			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
 		};
 	};
 };
