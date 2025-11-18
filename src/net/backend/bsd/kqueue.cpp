@@ -2411,9 +2411,7 @@ namespace io {
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							// Для типа сокета DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем отправку данных в TCP/IP сокет
 								const int32_t bytes = ::send(ipc->fd, reinterpret_cast <const uint8_t *> (ipc->transfer.output.data()) + ipc->transfer.offset, ipc->transfer.output.size() - ipc->transfer.offset, 0);
 								// Если данные отправлены успешно
@@ -2429,6 +2427,61 @@ namespace io {
 										// Выходим из функции
 										return;
 									}
+								// Если мы отправили не все данные
+								} else if(bytes == -1) {
+									// Если нам нужно повторить попытку позже
+									if(errno == EAGAIN)
+										// Выходим из функции
+										return;
+									// Если произошла ошибка при отправке данных
+									else {
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											ipc->callbacks.error(ipc->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Выходим из функции
+										return;
+									}
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									io::close(node, log);
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ipc->id);
+									// Производим удаление ноды
+									::__awh_nodes__.erase(ipc->id);
+									// Выходим из функции
+									return;
+								}
+							} break;
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Выполняем отправку данных в TCP/IP сокет
+								const int32_t bytes = ::send(ipc->fd, reinterpret_cast <const uint8_t *> (ipc->transfer.output.data()) + ipc->transfer.offset, ipc->transfer.output.size() - ipc->transfer.offset, 0);
+								// Если данные отправлены успешно
+								if(bytes > 0){
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(ipc->callbacks.write != nullptr)
+										// Вывзываем функцию обратного вызова для вывода записанных данных
+										ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 								// Если мы отправили не все данные
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
@@ -2701,13 +2754,6 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, static_cast <size_t> (bytes));
-										// Если данные отправлены не полностью
-										if(static_cast <size_t> (bytes) < client->transfer.output.size()){
-											// Увеличиваем смещение передачи данных
-											client->transfer.offset += static_cast <size_t> (bytes);
-											// Выходим из функции
-											return;
-										}
 									// Если мы отправили не все данные
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
@@ -2813,13 +2859,6 @@ namespace io {
 									if(server->callbacks.write != nullptr)
 										// Вывзываем функцию обратного вызова для вывода записанных данных
 										server->callbacks.write(server->id, static_cast <size_t> (bytes));
-									// Если данные отправлены не полностью
-									if(static_cast <size_t> (bytes) < server->transfer.output.size()){
-										// Увеличиваем смещение передачи данных
-										server->transfer.offset += static_cast <size_t> (bytes);
-										// Выходим из функции
-										return;
-									}
 								// Если мы отправили не все данные
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
@@ -14701,9 +14740,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							// Для типа сокета DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Если сокет является неблокирующим
 								if(ipc->state.options & event::options::NOIOBLOCK){
 									// Если очередь передачи данных пустая
@@ -14711,9 +14748,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Выполняем отправку данных в TCP/IP сокет
 										const int32_t bytes = ::send(ipc->fd, data, size, 0);
 										// Если данные отправлены успешно
-										if(bytes > 0){
+										if((result = (bytes > 0))){
 											// Если данные отправлены не полностью
-											if(!(result = (static_cast <size_t> (bytes) == size))){
+											if(static_cast <size_t> (bytes) != size){
 												// Сохраняем оставшиеся данные для последующей отправки
 												ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 												// Увеличиваем смещение передачи данных
@@ -14730,17 +14767,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(ret.second)
 													// Устанавливаем индекс текущего элемента
 													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(ipc->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													ipc->callbacks.write(ipc->id, size - static_cast <size_t> (bytes));
-												// Выходим из функции
-												return true;
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
-												ipc->callbacks.write(ipc->id, size);
+												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -14764,7 +14795,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
-													ipc->callbacks.write(ipc->id, size);
+													ipc->callbacks.write(ipc->id, 0);
 												// Выходим из функции
 												return result;
 											// Если произошла ошибка при отправке данных
@@ -14812,7 +14843,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(ipc->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											ipc->callbacks.write(ipc->id, size);
+											ipc->callbacks.write(ipc->id, 0);
 										// Выходим из функции
 										return true;
 									}
@@ -14835,28 +14866,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошла какая-то ошибка при отправке данных
 										} else if(bytes == -1) {
 											// Переводим сокет обратно в неблокирующий режим
-											if((result = this->_eth.noblocking(ipc->fd, net::socket_mode_t::ENABLED))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												ipc->transfer.output.push(data, size);
-												// Увеличиваем смещение передачи данных
-												ipc->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), ipc->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(ipc->id, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(ipc->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													ipc->callbacks.write(ipc->id, size);
-											}
+											this->_eth.noblocking(ipc->fd, net::socket_mode_t::ENABLED);
 											// Устанавливаем текст ошибки
 											const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
@@ -14885,7 +14895,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(ipc->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											ipc->callbacks.write(ipc->id, size);
+											ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 										// Переводим сокет обратно в неблокирующий режим
 										result = this->_eth.noblocking(ipc->fd, net::socket_mode_t::ENABLED);
 									}
@@ -14931,7 +14941,195 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(ipc->callbacks.write != nullptr)
 										// Вывзываем функцию обратного вызова для вывода записанных данных
-										ipc->callbacks.write(ipc->id, size);
+										ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+									// Устанавливаем результат выполнения функции
+									result = (static_cast <size_t> (bytes) == size);
+								}
+							} break;
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Если сокет является неблокирующим
+								if(ipc->state.options & event::options::NOIOBLOCK){
+									// Если очередь передачи данных пустая
+									if(ipc->transfer.output.empty()){
+										// Выполняем отправку данных в TCP/IP сокет
+										const int32_t bytes = ::send(ipc->fd, data, size, 0);
+										// Если данные отправлены успешно
+										if((result = (bytes > 0))){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(ipc->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+										// Если мы отправили не все данные
+										} else if(bytes == -1) {
+											// Если нам нужно повторить попытку позже
+											if((result = (errno == EAGAIN))){
+												// Сохраняем оставшиеся данные для последующей отправки
+												ipc->transfer.output.push(data, size);
+												// Увеличиваем смещение передачи данных
+												ipc->transfer.offset = 0;
+												// Добавляем новое событие в список изменений
+												::__awh_change__.push_back((struct kevent){});
+												// Активируем событие на запись для клиентского сокета
+												EV_SET(&::__awh_change__.back(), ipc->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+												// Создаём объект промежуточного звена
+												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+												// Устанавливаем количество событий
+												ret.first->second.count++;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::__awh_change__.size() - 1);
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(ipc->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													ipc->callbacks.write(ipc->id, 0);
+												// Выходим из функции
+												return result;
+											// Если произошла ошибка при отправке данных
+											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(ipc->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													ipc->callbacks.error(ipc->id, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+												// Выходим из функции
+												return result;
+											}
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											io::close(ipc, this->_log);
+											// Производим удаление списка подготовленных событий
+											::__awh_inters__.erase(ipc->id);
+											// Производим удаление ноды
+											::__awh_nodes__.erase(ipc->id);
+											// Выходим из функции
+											return result;
+										}
+									// Если очередь передачи данных не пуста
+									} else {
+										// Копим данные для дальнейшей отправки
+										ipc->transfer.output.push(data, size);
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(ipc->callbacks.write != nullptr)
+											// Вывзываем функцию обратного вызова для вывода записанных данных
+											ipc->callbacks.write(ipc->id, 0);
+										// Выходим из функции
+										return true;
+									}
+								// Если сокет является полублокирующим
+								} else if(ipc->state.options & event::options::SMIOBLOCK) {
+									// Переводим сокет в блокирующий режим
+									if(this->_eth.noblocking(ipc->fd, net::socket_mode_t::DISABLED)){
+										// Выполняем отправку данных в TCP/IP сокет
+										const int32_t bytes = ::send(ipc->fd, data, size, 0);
+										// Если данные отправлены успешно
+										if(bytes == 0){
+											// Выполняем обработку закрытия подключения
+											io::close(ipc, this->_log);
+											// Производим удаление списка подготовленных событий
+											::__awh_inters__.erase(ipc->id);
+											// Производим удаление ноды
+											::__awh_nodes__.erase(ipc->id);
+											// Выходим из функции
+											return result;
+										// Если произошла какая-то ошибка при отправке данных
+										} else if(bytes == -1) {
+											// Переводим сокет обратно в неблокирующий режим
+											this->_eth.noblocking(ipc->fd, net::socket_mode_t::ENABLED);
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(ipc->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												ipc->callbacks.error(ipc->id, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выходим из функции
+											return result;
+										}
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(ipc->callbacks.write != nullptr)
+											// Вывзываем функцию обратного вызова для вывода записанных данных
+											ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+										// Переводим сокет обратно в неблокирующий режим
+										result = this->_eth.noblocking(ipc->fd, net::socket_mode_t::ENABLED);
+									}
+								// Если сокет является блокирующим
+								} else {
+									// Выполняем отправку данных в TCP/IP сокет
+									const int32_t bytes = ::send(ipc->fd, data, size, 0);
+									// Если данные отправлены успешно
+									if(bytes == 0){
+										// Выполняем обработку закрытия подключения
+										io::close(ipc, this->_log);
+										// Производим удаление списка подготовленных событий
+										::__awh_inters__.erase(ipc->id);
+										// Производим удаление ноды
+										::__awh_nodes__.erase(ipc->id);
+										// Выходим из функции
+										return result;
+									// Если произошла какая-то ошибка при отправке данных
+									} else if(bytes == -1) {
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											ipc->callbacks.error(ipc->id, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(ipc->callbacks.write != nullptr)
+										// Вывзываем функцию обратного вызова для вывода записанных данных
+										ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Устанавливаем результат выполнения функции
 									result = (static_cast <size_t> (bytes) == size);
 								}
@@ -14957,9 +15155,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Выполняем отправку данных в TCP/IP сокет
 										const int32_t bytes = ::send(peer->fd, data, size, 0);
 										// Если данные отправлены успешно
-										if(bytes > 0){
+										if((result = (bytes > 0))){
 											// Если данные отправлены не полностью
-											if(!(result = (static_cast <size_t> (bytes) == size))){
+											if(static_cast <size_t> (bytes) != size){
 												// Сохраняем оставшиеся данные для последующей отправки
 												peer->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 												// Увеличиваем смещение передачи данных
@@ -14992,17 +15190,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, size - static_cast <size_t> (bytes));
-												// Выходим из функции
-												return true;
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
-												peer->callbacks.write(peer->id, size);
+												peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -15042,7 +15234,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, size);
+													peer->callbacks.write(peer->id, 0);
 												// Выходим из функции
 												return result;
 											// Если произошла ошибка при отправке данных
@@ -15090,7 +15282,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											peer->callbacks.write(peer->id, size);
+											peer->callbacks.write(peer->id, 0);
 										// Выходим из функции
 										return true;
 									}
@@ -15119,44 +15311,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошла какая-то ошибка при отправке данных
 										} else if(bytes == -1) {
 											// Переводим сокет обратно в неблокирующий режим
-											if((result = this->_eth.noblocking(peer->fd, net::socket_mode_t::ENABLED))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												peer->transfer.output.push(data, size);
-												// Увеличиваем смещение передачи данных
-												peer->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если таймаут не установлен
-												if(peer->timeout == event::action_t::NONE){
-													// Выполняем проверку на наличие таймаута для события записи
-													auto i = peer->timeouts.find(event::action_t::WRITE);
-													// Если нужный нам таймаут найден
-													if((i != peer->timeouts.end()) && (i->second > 0)){
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Активируем таймаут события
-														peer->timeout = i->first;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
-													}
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, size);
-											}
+											this->_eth.noblocking(peer->fd, net::socket_mode_t::ENABLED);
 											// Устанавливаем текст ошибки
 											const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
@@ -15185,7 +15340,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											peer->callbacks.write(peer->id, size);
+											peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 										// Переводим сокет обратно в неблокирующий режим
 										result = this->_eth.noblocking(peer->fd, net::socket_mode_t::ENABLED);
 									}
@@ -15237,7 +15392,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(peer->callbacks.write != nullptr)
 										// Вывзываем функцию обратного вызова для вывода записанных данных
-										peer->callbacks.write(peer->id, size);
+										peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 									// Устанавливаем результат выполнения функции
 									result = (static_cast <size_t> (bytes) == size);
 								}
@@ -15263,9 +15418,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Выполняем отправку данных в TCP/IP сокет
 										const int32_t bytes = ::send(client->fd, data, size, 0);
 										// Если данные отправлены успешно
-										if(bytes > 0){
+										if((result = (bytes > 0))){
 											// Если данные отправлены не полностью
-											if(!(result = (static_cast <size_t> (bytes) == size))){
+											if(static_cast <size_t> (bytes) != size){
 												// Сохраняем оставшиеся данные для последующей отправки
 												client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 												// Увеличиваем смещение передачи данных
@@ -15298,17 +15453,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, size - static_cast <size_t> (bytes));
-												// Выходим из функции
-												return true;
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
-												client->callbacks.write(client->id, size);
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -15348,7 +15497,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, size);
+													client->callbacks.write(client->id, 0);
 												// Выходим из функции
 												return result;
 											// Если произошла ошибка при отправке данных
@@ -15396,7 +15545,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, size);
+											client->callbacks.write(client->id, 0);
 										// Выходим из функции
 										return true;
 									}
@@ -15425,44 +15574,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошла какая-то ошибка при отправке данных
 										} else if(bytes == -1) {
 											// Переводим сокет обратно в неблокирующий режим
-											if((result = this->_eth.noblocking(client->fd, net::socket_mode_t::ENABLED))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												client->transfer.output.push(data, size);
-												// Увеличиваем смещение передачи данных
-												client->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), client->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если таймаут не установлен
-												if(client->timeout == event::action_t::NONE){
-													// Выполняем проверку на наличие таймаута для события записи
-													auto i = client->timeouts.find(event::action_t::WRITE);
-													// Если нужный нам таймаут найден
-													if((i != client->timeouts.end()) && (i->second > 0)){
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Активируем таймаут события
-														client->timeout = i->first;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-													}
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, size);
-											}
+											this->_eth.noblocking(client->fd, net::socket_mode_t::ENABLED);
 											// Устанавливаем текст ошибки
 											const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
@@ -15491,7 +15603,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, size);
+											client->callbacks.write(client->id, static_cast <size_t> (bytes));
 										// Переводим сокет обратно в неблокирующий режим
 										result = this->_eth.noblocking(client->fd, net::socket_mode_t::ENABLED);
 									}
@@ -15543,7 +15655,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr)
 										// Вывзываем функцию обратного вызова для вывода записанных данных
-										client->callbacks.write(client->id, size);
+										client->callbacks.write(client->id, static_cast <size_t> (bytes));
 									// Устанавливаем результат выполнения функции
 									result = (static_cast <size_t> (bytes) == size);
 								}
@@ -15557,52 +15669,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Выполняем отправку данных в UDP сокет
 										const int32_t bytes = ::sendto(client->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 										// Если данные отправлены успешно
-										if(bytes > 0){
-											// Если данные отправлены не полностью
-											if(!(result = (static_cast <size_t> (bytes) == size))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-												// Увеличиваем смещение передачи данных
-												client->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), client->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если таймаут не установлен
-												if(client->timeout == event::action_t::NONE){
-													// Выполняем проверку на наличие таймаута для события записи
-													auto i = client->timeouts.find(event::action_t::WRITE);
-													// Если нужный нам таймаут найден
-													if((i != client->timeouts.end()) && (i->second > 0)){
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Активируем таймаут события
-														client->timeout = i->first;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-													}
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, size - static_cast <size_t> (bytes));
-												// Выходим из функции
-												return true;
-											}
+										if((result = (bytes > 0))){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
-												client->callbacks.write(client->id, size);
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -15642,7 +15713,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, size);
+													client->callbacks.write(client->id, 0);
 												// Выходим из функции
 												return result;
 											// Если произошла ошибка при отправке данных
@@ -15690,7 +15761,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, size);
+											client->callbacks.write(client->id, 0);
 										// Выходим из функции
 										return true;
 									}
@@ -15719,44 +15790,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошла какая-то ошибка при отправке данных
 										} else if(bytes == -1) {
 											// Переводим сокет обратно в неблокирующий режим
-											if((result = this->_eth.noblocking(client->fd, net::socket_mode_t::ENABLED))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												client->transfer.output.push(data, size);
-												// Увеличиваем смещение передачи данных
-												client->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), client->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если таймаут не установлен
-												if(client->timeout == event::action_t::NONE){
-													// Выполняем проверку на наличие таймаута для события записи
-													auto i = client->timeouts.find(event::action_t::WRITE);
-													// Если нужный нам таймаут найден
-													if((i != client->timeouts.end()) && (i->second > 0)){
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Активируем таймаут события
-														client->timeout = i->first;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-													}
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, size);
-											}
+											this->_eth.noblocking(client->fd, net::socket_mode_t::ENABLED);
 											// Устанавливаем текст ошибки
 											const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
@@ -15785,7 +15819,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, size);
+											client->callbacks.write(client->id, static_cast <size_t> (bytes));
 										// Переводим сокет обратно в неблокирующий режим
 										result = this->_eth.noblocking(client->fd, net::socket_mode_t::ENABLED);
 									}
@@ -15837,7 +15871,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr)
 										// Вывзываем функцию обратного вызова для вывода записанных данных
-										client->callbacks.write(client->id, size);
+										client->callbacks.write(client->id, static_cast <size_t> (bytes));
 									// Устанавливаем результат выполнения функции
 									result = (static_cast <size_t> (bytes) == size);
 								}
@@ -15861,36 +15895,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Выполняем отправку данных в UDP сокет
 										const int32_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 										// Если данные отправлены успешно
-										if(bytes > 0){
-											// Если данные отправлены не полностью
-											if(!(result = (static_cast <size_t> (bytes) == size))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												server->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-												// Увеличиваем смещение передачи данных
-												server->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), server->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(server->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													server->callbacks.write(server->id, size - static_cast <size_t> (bytes));
-												// Выходим из функции
-												return true;
-											}
+										if((result = (bytes > 0))){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(server->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
-												server->callbacks.write(server->id, size);
+												server->callbacks.write(server->id, static_cast <size_t> (bytes));
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -15914,7 +15923,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
-													server->callbacks.write(server->id, size);
+													server->callbacks.write(server->id, 0);
 												// Выходим из функции
 												return result;
 											// Если произошла ошибка при отправке данных
@@ -15962,7 +15971,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(server->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											server->callbacks.write(server->id, size);
+											server->callbacks.write(server->id, 0);
 										// Выходим из функции
 										return true;
 									}
@@ -15991,28 +16000,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошла какая-то ошибка при отправке данных
 										} else if(bytes == -1) {
 											// Переводим сокет обратно в неблокирующий режим
-											if((result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED))){
-												// Сохраняем оставшиеся данные для последующей отправки
-												server->transfer.output.push(data, size);
-												// Увеличиваем смещение передачи данных
-												server->transfer.offset = 0;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Активируем событие на запись для клиентского сокета
-												EV_SET(&::__awh_change__.back(), server->fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(server->id, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(server->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													server->callbacks.write(server->id, size);
-											}
+											this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
 											// Устанавливаем текст ошибки
 											const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
@@ -16041,7 +16029,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(server->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
-											server->callbacks.write(server->id, size);
+											server->callbacks.write(server->id, static_cast <size_t> (bytes));
 										// Переводим сокет обратно в неблокирующий режим
 										result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
 									}
@@ -16087,7 +16075,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(server->callbacks.write != nullptr)
 										// Вывзываем функцию обратного вызова для вывода записанных данных
-										server->callbacks.write(server->id, size);
+										server->callbacks.write(server->id, static_cast <size_t> (bytes));
 									// Устанавливаем результат выполнения функции
 									result = (static_cast <size_t> (bytes) == size);
 								}
@@ -19148,9 +19136,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(this->connect(client->id, static_cast <bool> (
 											(client->state.options & event::options::NOIOBLOCK) ||
 											(client->state.options & event::options::SMIOBLOCK)
-										)))
-											// Выходим из условия
-											break;
+										))) break;
 									}
 								// Если статус события подключение в ожидании
 								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) {
