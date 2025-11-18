@@ -710,6 +710,8 @@ namespace io {
 						client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
 						// Активируем таймаут события
 						client->timeout = event::action_t::RECONNECT;
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
 						// Устанавливаем таймаут на получение данных
 						EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
 						// Создаём объект промежуточного звена
@@ -1253,6 +1255,8 @@ namespace io {
 					if((::__awh_kq__ != net::invalid_socket_t) && (ret.first->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 						// Получаем текущее значение объекта однорангового узла
 						peer_t * peer = awh_cast <peer_t *> (ret.first->second.get());
+						// Устанавливаем идентификатор объекта однорангового узла
+						peer->id = ret.first->first;
 						// Устанавливаем статус события в состояние ожидания
 						peer->state.status.store(event::status_t::PENDING, std::memory_order_release);
 						// Создаём объект промежуточного звена
@@ -20222,17 +20226,24 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление соединения
 								if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
-									// Устанавливаем статус события в состояние инициализировано
-									client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 									// Деактивируем таймаут события
 									client->timeout = event::action_t::NONE;
+									// Устанавливаем статус события в состояние инициализировано
+									client->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Обрабатываем событие сокета
 									if(io::socket(client, this->_log)){
-										// Выполняем повторное подключение клиента
-										if(this->connect(client->id, static_cast <bool> (
-											(client->state.options & event::options::NOIOBLOCK) ||
-											(client->state.options & event::options::SMIOBLOCK)
-										))) break;
+										// Запоминаем текущие опции события
+										const uint16_t options = client->state.options;
+										// Сбрасываем опции события
+										client->state.options = event::options::NONE;
+										// Выполняем фиксацию изменений перед обработкой сокета
+										if(this->options(client->id, options) && this->commit(client->id)){
+											// Выполняем повторное подключение клиента
+											if(this->connect(client->id, static_cast <bool> (
+												(client->state.options & event::options::NOIOBLOCK) ||
+												(client->state.options & event::options::SMIOBLOCK)
+											))) break;
+										} break;
 									}
 								// Если статус события подключение в ожидании
 								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) {

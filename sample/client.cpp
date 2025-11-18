@@ -1725,9 +1725,9 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем таймаут события на чтение
-				io.timeout(eid, event::action_t::READ, 5000);
+				io.timeout(eid, event::action_t::READ, 3000);
 				// Устанавливаем таймаут события на запись
-				io.timeout(eid, event::action_t::WRITE, 5000);
+				io.timeout(eid, event::action_t::WRITE, 3000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Если подключение к серверу прошло успешно

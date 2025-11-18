@@ -208,9 +208,96 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			io.on(eid, static_cast <event::callback::accept_t> ([&log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
+				// Устананавливаем опции события
+				if(io.options(cid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE)){
+					// Выводим сообщение об успешной установке опций события
+					cout << " Успешно установлены опции события!" << endl;
+					// Устанавливаем функцию обратного вызова на чтение из события
+					io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+						// Текст входящего сообщения
+						const string message(reinterpret_cast <const char *> (data), size);
+						// Выводим сообщение о переподключении события
+						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+						// Отправляем данные обратно клиенту
+						if(io.send(eid, reinterpret_cast <const char *> (data), size))
+							// Если данные успешно отправлены
+							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+						// Если данные не отправлены
+						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+					});
+					// Устанавливаем функцию обратного вызова на общее событие
+					io.on(cid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
+						/**
+						 * Обрабатываем действие события
+						 */
+						switch(static_cast <uint8_t> (action)){
+							// Если действие является чтением
+							case static_cast <uint8_t> (event::action_t::READ):
+								// Выводим сообщение о чтении события
+								log.print("Событие на чтение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является записью
+							case static_cast <uint8_t> (event::action_t::WRITE):
+								// Выводим сообщение о записи события
+								log.print("Событие на запись: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является подключением
+							case static_cast <uint8_t> (event::action_t::CONNECT):
+								// Выводим сообщение о подключении события
+								log.print("Событие на подключение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является отключением
+							case static_cast <uint8_t> (event::action_t::DISCONNECT):
+								// Выводим сообщение об отключении события
+								log.print("Событие на отключение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является переподключением
+							case static_cast <uint8_t> (event::action_t::RECONNECT):
+								// Выводим сообщение о переподключении события
+								log.print("Событие на переподключение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является закрытием
+							case static_cast <uint8_t> (event::action_t::CLOSE):
+								// Выводим сообщение о закрытии события
+								log.print("Событие на закрытие подключения: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является изменением
+							case static_cast <uint8_t> (event::action_t::CHANGE):
+								// Выводим сообщение об изменении события
+								log.print("Событие на изменение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является удалением
+							case static_cast <uint8_t> (event::action_t::DELETE):
+								// Выводим сообщение об удалении события
+								log.print("Событие на удаление: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является переименованием
+							case static_cast <uint8_t> (event::action_t::RENAME):
+								// Выводим сообщение о переименовании события
+								log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является изменением атрибутов
+							case static_cast <uint8_t> (event::action_t::ATTRIB):
+								// Выводим сообщение об изменении атрибутов события
+								log.print("Событие на изменение атрибутов: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является отзывом доступа
+							case static_cast <uint8_t> (event::action_t::REVOKE):
+								// Выводим сообщение об отзыве доступа события
+								log.print("Событие на отзыв доступа: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является изменением счётчика жёстких ссылок
+							case static_cast <uint8_t> (event::action_t::HDLINK):
+								// Выводим сообщение о изменении счётчика жёстких ссылок события
+								log.print("Событие на изменение счётчика жёстких ссылок: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+						}
+					});
+				// Выводим сообщение об ошибке установки опций события
+				} else cout << " Ошибка установки опций события!" << endl;
 			}));
 			// Устанавливаем функцию обратного вызова на общее событие
 			io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
