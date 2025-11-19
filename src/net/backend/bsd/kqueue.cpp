@@ -20362,6 +20362,32 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									client->state.status.store(event::status_t::NONE, std::memory_order_release);
 									// Обрабатываем событие сокета
 									if(io::socket(client, this->_log)){
+										// Если в списке промежуточного взаимодействия присутствует запись для данного события
+										auto i = ::__awh_inters__.find(client->id);
+										// Если запись найдена
+										if(i != ::__awh_inters__.end()){
+											// Количество записей в списке изменений
+											uint8_t count = 0;
+											// Получаем итератор на начало списка изменений
+											auto j = ::__awh_change__.begin();
+											// Получаем нужный нам итератор
+											std::advance(j, i->second.index);
+											// Проходим по всем изменениям промежуточного взаимодействия
+											for(; j != ::__awh_change__.end();){
+												// Если идентификатор события совпадает с идентификатором в записи списка изменений
+												if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+													// Удаляем запись из списка изменений
+													j = ::__awh_change__.erase(j);
+													// Увеличиваем счётчик удалённых записей
+													count++;
+													// Если записи удалены
+													if(count == i->second.count)
+														// Завершаем цикл
+														break;
+												// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+												} else ++j;
+											}
+										}
 										// Запоминаем текущие опции события
 										const uint16_t options = client->state.options;
 										// Сбрасываем опции события
