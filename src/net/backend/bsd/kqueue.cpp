@@ -360,63 +360,79 @@ namespace io {
 	/**
 	 * @brief Прототип функции обработки пользовательского события
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void user(user_t *, const log_t *) noexcept;
+	static bool user(user_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события подключения
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void connect(client_t *, const log_t *) noexcept;
+	static bool connect(client_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события таймера
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void timer(net::node_t *, const log_t *) noexcept;
+	static bool timer(net::node_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события закрытия
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void close(net::node_t *, const log_t *) noexcept;
+	static bool close(net::node_t *, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события удаления узла
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 */
+	static bool destroy(net::node_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект фреймворка
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void accept(server_t *, const fmk_t *, const log_t *) noexcept;
+	static bool accept(server_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события чтения
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект фреймворка
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void read(net::node_t *, const fmk_t *, const log_t *) noexcept;
+	static bool read(net::node_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события записи
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param объект фреймворка
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void write(net::node_t *, const fmk_t *, const log_t *) noexcept;
+	static bool write(net::node_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события ошибки
 	 *
-	 * @param нода в которой ироизошло событие
-	 * @param код ошибки
-	 * @param объект работы с логами
+	 * @param  узел в котором произошло событие
+	 * @param  код ошибки
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
 	 */
-	static void error(net::node_t *, const int32_t, const log_t *) noexcept;
+	static bool error(net::node_t *, const int32_t, const log_t *) noexcept;
 
 	/**
 	 * @brief Функция генерации уникального идентификатора
@@ -432,10 +448,13 @@ namespace io {
 	/**
 	 * @brief Функция обработки пользовательского события
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void user(user_t * node, const log_t * log) noexcept {
+	static bool user(user_t * node, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -443,7 +462,7 @@ namespace io {
 			// Если установлена функция обратного вызова
 			if(node->callbacks.read != nullptr){
 				// Есши в очереди есть данные для чтения
-				if(!node->events.empty()){
+				if((result = !node->events.empty())){
 					// Выполняем извлечение данных из очереди
 					node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
 					// Очищаем очередь от прочитанных данных
@@ -475,14 +494,19 @@ namespace io {
 				#endif
 			}
 		}
+		// Выводим результат
+		return result;
 	}
 	/**
 	 * @brief Функция обработки события подключения
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void connect(client_t * node, const log_t * log) noexcept {
+	static bool connect(client_t * node, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -527,6 +551,8 @@ namespace io {
 			if(node->callbacks.connect != nullptr)
 				// Вывзываем функцию обратного вызова для подключения
 				node->callbacks.connect(node->id, true);
+			// Устанавливаем результат выполнения функции
+			result = true;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -552,66 +578,57 @@ namespace io {
 				#endif
 			}
 		}
+		// Выводим результат
+		return result;
 	}
 	/**
 	 * @brief Функция обработки события таймера
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void timer(net::node_t * node, const log_t * log) noexcept {
+	static bool timer(net::node_t * node, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если нода является таймером
+				// Если узел является таймером
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Выполняем извлечение текущего значения объекта таймера
 					timer_t * timer = awh_cast <timer_t *> (node);
-					// Если таймер является одноразовым
-					if(timer->state.family == event::family_t::TIMER)
-						// Устанавливаем статус события в состояние уничтожения
-						timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова статуса события
 						timer->callbacks.status(timer->id, event::status_t::SUCCESS);
 					// Если таймер является одноразовым
-					if(timer->state.family == event::family_t::TIMER){
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(timer->id);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(timer->id);
-					}
+					if(timer->state.family == event::family_t::TIMER)
+						// Выполняем удаление узла
+						result = io::destroy(node, log);
 				} break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
 					// Выполняем обработку закрытия подключения
-					io::close(node, log);
-					// Производим удаление списка подготовленных событий
-					::__awh_inters__.erase(peer->id);
-					// Производим удаление ноды
-					::__awh_nodes__.erase(peer->id);
+					if(io::close(node, log))
+						// Выполняем удаление узла
+						result = io::destroy(node, log);
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
 					// Выполняем обработку закрытия подключения
-					io::close(node, log);
-					// Если режим постоянного подключения не установлен
-					if(!(client->state.options & event::options::KEEPALIVE)){
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(client->id);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(client->id);
-					}
+					if(io::close(node, log))
+						// Выполняем удаление узла
+						result = io::destroy(node, log);
 				} break;
 			}
 		/**
@@ -632,23 +649,26 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+		// Выводим результат
+		return result;
 	}
 	/**
 	 * @brief Функция обработки события закрытия
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void close(net::node_t * node, const log_t * log) noexcept {
+	static bool close(net::node_t * node, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
 					dir_t * dir = awh_cast <dir_t *> (node);
@@ -656,8 +676,10 @@ namespace io {
 					if(dir->callbacks.event != nullptr)
 						// Вызываем функцию обратного вызова флаг события
 						dir->callbacks.event(dir->id, event::action_t::CLOSE);
-				} break;
-				// Если нода является файловой системой
+					// Выводим результат выполнения функции
+					return true;
+				}
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (node);
@@ -665,8 +687,10 @@ namespace io {
 					if(fs->callbacks.event != nullptr)
 						// Вызываем функцию обратного вызова флаг события
 						fs->callbacks.event(fs->id, event::action_t::CLOSE);
-				} break;
-				// Если нода является межпрограммным взаимодействием
+					// Выводим результат выполнения функции
+					return true;
+				}
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
@@ -674,8 +698,10 @@ namespace io {
 					if(ipc->callbacks.event != nullptr)
 						// Вызываем функцию обратного вызова флаг события
 						ipc->callbacks.event(ipc->id, event::action_t::CLOSE);
-				} break;
-				// Если нода является одноранговым узлом
+					// Выводим результат выполнения функции
+					return true;
+				}
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
@@ -687,8 +713,10 @@ namespace io {
 					if(peer->callbacks.event != nullptr)
 						// Вызываем функцию обратного вызова флаг события
 						peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
-				} break;
-				// Если нода является клиентом
+					// Выводим результат выполнения функции
+					return true;
+				}
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
@@ -723,8 +751,10 @@ namespace io {
 						// Увеличиваем количество событий
 						ret.first->second.count++;
 					}
-				} break;
-				// Если нода является сервером
+					// Выводим результат выполнения функции
+					return true;
+				}
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (node);
@@ -732,7 +762,9 @@ namespace io {
 					if(server->callbacks.event != nullptr)
 						// Вызываем функцию обратного вызова флаг события
 						server->callbacks.event(server->id, event::action_t::CLOSE);
-				} break;
+					// Выводим результат выполнения функции
+					return true;
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -752,15 +784,164 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+	/**
+	 * @brief Прототип функции обработки события удаления узла
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool destroy(net::node_t * node, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER): {
+					// Получаем текущее значение объекта пользовательского события
+					user_t * user = awh_cast <user_t *> (node);
+					// Если установлена функция обратного вызова
+					if(user->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						user->callbacks.status(user->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * dir = awh_cast <dir_t *> (node);
+					// Если установлена функция обратного вызова
+					if(dir->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						dir->callbacks.status(dir->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (node);
+					// Если установлена функция обратного вызова
+					if(fs->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						fs->callbacks.status(fs->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMER): {
+					// Получаем текущее значение объекта таймера
+					timer_t * timer = awh_cast <timer_t *> (node);
+					// Если установлена функция обратного вызова
+					if(timer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						timer->callbacks.status(timer->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является межпрограммным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпрограммного взаимодействия
+					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					// Если установлена функция обратного вызова
+					if(ipc->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						ipc->callbacks.status(ipc->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					peer_t * peer = awh_cast <peer_t *> (node);
+					// Если установлена функция обратного вызова
+					if(peer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						peer->callbacks.status(peer->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					client_t * client = awh_cast <client_t *> (node);
+					// Если режим постоянного подключения не установлен
+					if(!(client->state.options & event::options::KEEPALIVE)){
+						// Если установлена функция обратного вызова
+						if(client->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							client->callbacks.status(client->id, event::status_t::DESTROYED);
+					// Если режим постоянного подключения установлен
+					} else return false;
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					server_t * server = awh_cast <server_t *> (node);
+					// Если установлена функция обратного вызова
+					if(server->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						server->callbacks.status(server->id, event::status_t::DESTROYED);
+				} break;
+			}
+			// Если в списке промежуточного взаимодействия присутствует запись для данного события
+			auto i = ::__awh_inters__.find(node->id);
+			// Если запись найдена
+			if(i != ::__awh_inters__.end()){
+				// Количество записей в списке изменений
+				uint8_t count = 0;
+				// Получаем итератор на начало списка изменений
+				auto j = ::__awh_change__.begin();
+				// Получаем нужный нам итератор
+				std::advance(j, i->second.index);
+				// Проходим по всем изменениям промежуточного взаимодействия
+				for(; j != ::__awh_change__.end();){
+					// Если идентификатор события совпадает с идентификатором в записи списка изменений
+					if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+						// Удаляем запись из списка изменений
+						j = ::__awh_change__.erase(j);
+						// Увеличиваем счётчик удалённых записей
+						count++;
+						// Если записи удалены
+						if(count == i->second.count)
+							// Завершаем цикл
+							break;
+					// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+					} else ++j;
+				}
+			}
+			// Производим удаление списка подготовленных событий
+			::__awh_inters__.erase(node->id);
+			// Производим удаление узла
+			::__awh_nodes__.erase(node->id);
+			// Выводим результат выполнения функции
+			return true;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
 	}
 	/**
 	 * @brief Функция обработки события принятия подключения
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void accept(server_t * node, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool accept(server_t * node, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -778,7 +959,7 @@ namespace io {
 					// Вызываем функцию обратного вызова об отмене подключения
 					node->callbacks.status(node->id, event::status_t::CANCELLED);
 				// Выходим из функции
-				return;
+				return false;
 			}
 			// Заполняем структуру клиента нулями
 			::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
@@ -863,9 +1044,9 @@ namespace io {
 							#endif
 						}
 						// Выходим из функции
-						return;
+						return false;
 					}
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <peer_t> peer = make_unique <peer_t> (node->backlog.count, fmk, log);
 					// Устанавливаем файловый дескриптор сокета
 					peer->fd = sock;
@@ -924,7 +1105,7 @@ namespace io {
 								// Закрываем сокет подключения
 								::close(peer->fd);
 								// Выходим из функции
-								return;
+								return false;
 							}
 						} break;
 						// Для семейства IPv4
@@ -980,7 +1161,7 @@ namespace io {
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
-										return;
+										return false;
 									}
 									// Если в белом списке нет адреса
 									if(!node->whitelist.empty() && (node->whitelist.find(mac) == node->whitelist.end())){
@@ -1009,7 +1190,7 @@ namespace io {
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
-										return;
+										return false;
 									}
 								}
 								// Устанавливаем полученный IP-адрес
@@ -1043,7 +1224,7 @@ namespace io {
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
-									return;
+									return false;
 								}
 								// Если в белом списке нет адреса
 								if(!node->whitelist.empty() && (node->whitelist.find(ip) == node->whitelist.end())){
@@ -1072,7 +1253,7 @@ namespace io {
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
-									return;
+									return false;
 								}
 							}
 							// Копируем MAC-адрес из временного объекта
@@ -1131,7 +1312,7 @@ namespace io {
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
-										return;
+										return false;
 									}
 									// Если в белом списке нет адреса
 									if(!node->whitelist.empty() && (node->whitelist.find(mac) == node->whitelist.end())){
@@ -1160,7 +1341,7 @@ namespace io {
 										// Закрываем сокет подключения
 										::close(peer->fd);
 										// Выходим из функции
-										return;
+										return false;
 									}
 								}
 								// Устанавливаем полученный IP-адрес
@@ -1194,7 +1375,7 @@ namespace io {
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
-									return;
+									return false;
 								}
 								// Если в белом списке нет адреса
 								if(!node->whitelist.empty() && (node->whitelist.find(ip) == node->whitelist.end())){
@@ -1223,7 +1404,7 @@ namespace io {
 									// Закрываем сокет подключения
 									::close(peer->fd);
 									// Выходим из функции
-									return;
+									return false;
 								}
 							}
 							// Копируем MAC-адрес из временного объекта
@@ -1330,8 +1511,11 @@ namespace io {
 								#endif
 							}
 						}
-					}
-				} break;
+						// Выводим положительный результат
+						return true;
+					// Удаляем только что добавленный узел
+					} else ::__awh_nodes__.erase(ret.first);
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -1358,24 +1542,27 @@ namespace io {
 				#endif
 			}
 		}
+		// Выводим результат по умолчанию
+		return false;
 	}
 	/**
 	 * @brief Функция обработки события чтения
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void read(net::node_t * node, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(net::node_t * node, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (node);
@@ -1473,13 +1660,15 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 									#endif
 								}
-								// Выходим из функции
-								return;
+								// Формируем отрицательный результат
+								return false;
 							}
 						}
 					}
+					// Формируем положительный результат
+					return true;
 				} break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
@@ -1505,6 +1694,37 @@ namespace io {
 										if(errno == EAGAIN)
 											// Выходим из цикла
 											break;
+										// Если мы получили другую ошибку
+										else {
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to receive data for inter-process communication: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(ipc->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
 									// Если мы получили данные из сокета
 									} else if(bytes > 0) {
 										// Если функция обратного вызова для вывода события установлена
@@ -1518,14 +1738,137 @@ namespace io {
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
-										io::close(node, log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(ipc->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(ipc->id);
-										// Выходим из функции
-										return;
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
+								}
+								// Формируем положительный результат
+								return true;
+							// Если событие является блокирующим
+							} else {
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to receive data for inter-process communication: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(ipc->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(ipc->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										ipc->callbacks.event(ipc->id, event::action_t::READ);
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(ipc->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Формируем положительный результат
+									return true;
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
+								}
+							}
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET):
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							// Если событие является неблокирующим
+							if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Если нам нужно повторить попытку позже
+									if(errno == EAGAIN)
+										// Формируем положительный результат
+										return true;
+									// Если мы получили другую ошибку
+									else {
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to receive data for inter-process communication: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
+									}
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(ipc->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										ipc->callbacks.event(ipc->id, event::action_t::READ);
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(ipc->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Формируем положительный результат
+									return true;
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							// Если событие является блокирующим
 							} else {
@@ -1555,8 +1898,12 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-									// Выходим из функции
-									return;
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								// Если мы получили данные из сокета
 								} else if(bytes > 0) {
 									// Если функция обратного вызова для вывода события установлена
@@ -1567,76 +1914,22 @@ namespace io {
 									if(ipc->callbacks.read != nullptr)
 										// Вывзываем функцию обратного вызова для вывода полученных данных
 										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Формируем положительный результат
+									return true;
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ipc->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(ipc->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
-							}
-						} break;
-						// Для типа сокета SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET):
-						// Для типа сокета DATAGRAM
-						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-							// Выполняем чтение данных из TCP/IP сокета
-							const int32_t bytes = ::recv(ipc->fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
-							// Если мы получили ошибку
-							if(bytes < 0){
-								// Устанавливаем текст ошибки
-								const string error = fmk->format("Failed to receive data for inter-process communication: %s", ::strerror(errno));
-								// Если установлена функция обратного вызова
-								if(ipc->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
-								// Если функция обратного вызова для вывода события установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-								// Выходим из функции
-								return;
-							// Если мы получили данные из сокета
-							} else if(bytes > 0) {
-								// Если функция обратного вызова для вывода события установлена
-								if(ipc->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
-									ipc->callbacks.event(ipc->id, event::action_t::READ);
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(ipc->callbacks.read != nullptr)
-									// Вывзываем функцию обратного вызова для вывода полученных данных
-									ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
-							// Если произошёл дисконнект
-							} else {
-								// Выполняем обработку закрытия подключения
-								io::close(node, log);
-								// Производим удаление списка подготовленных событий
-								::__awh_inters__.erase(ipc->id);
-								// Производим удаление ноды
-								::__awh_nodes__.erase(ipc->id);
-								// Выходим из функции
-								return;
 							}
 						} break;
 					}
 				} break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
@@ -1662,6 +1955,37 @@ namespace io {
 										if(errno == EAGAIN)
 											// Выходим из цикла
 											break;
+										// Если мы получили другую ошибку
+										else {
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
 									// Если мы получили данные из сокета
 									} else if(bytes > 0) {
 										// Если функция обратного вызова для вывода события установлена
@@ -1675,13 +1999,11 @@ namespace io {
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
-										io::close(node, log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(peer->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(peer->id);
-										// Выходим из функции
-										return;
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								}
 							// Если событие является блокирующим
@@ -1712,8 +2034,12 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-									// Выходим из функции
-									return;
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								// Если мы получили данные из сокета
 								} else if(bytes > 0) {
 									// Если функция обратного вызова для вывода события установлена
@@ -1727,13 +2053,11 @@ namespace io {
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(peer->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(peer->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							}
 						} break;
@@ -1765,8 +2089,12 @@ namespace io {
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-								// Выходим из функции
-								return;
+								// Выполняем обработку закрытия подключения
+								if(io::close(node, log))
+									// Выполняем удаление узла
+									io::destroy(node, log);
+								// Формируем отрицательный результат
+								return false;
 							// Если мы получили данные из сокета
 							} else if(bytes > 0) {
 								// Если функция обратного вызова для вывода события установлена
@@ -1780,13 +2108,11 @@ namespace io {
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
-								io::close(node, log);
-								// Производим удаление списка подготовленных событий
-								::__awh_inters__.erase(peer->id);
-								// Производим удаление ноды
-								::__awh_nodes__.erase(peer->id);
-								// Выходим из функции
-								return;
+								if(io::close(node, log))
+									// Выполняем удаление узла
+									io::destroy(node, log);
+								// Формируем отрицательный результат
+								return false;
 							}
 						} break;
 					}
@@ -1809,8 +2135,10 @@ namespace io {
 						// Увеличиваем количество событий
 						ret.first->second.count++;
 					}
-				} break;
-				// Если нода является клиентом
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
@@ -1846,6 +2174,37 @@ namespace io {
 										if(errno == EAGAIN)
 											// Выходим из цикла
 											break;
+										// Если мы получили другую ошибку
+										else {
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
 									// Если мы получили данные из сокета
 									} else if(bytes > 0) {
 										// Если функция обратного вызова для вывода события установлена
@@ -1859,13 +2218,11 @@ namespace io {
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
-										io::close(node, log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
-										// Выходим из функции
-										return;
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								}
 							// Если событие является блокирующим
@@ -1908,8 +2265,12 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
-									// Выходим из функции
-									return;
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								// Если мы получили данные из сокета
 								} else if(bytes > 0) {
 									// Если функция обратного вызова для вывода события установлена
@@ -1923,13 +2284,11 @@ namespace io {
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(client->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(client->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							}
 						} break;
@@ -1973,8 +2332,12 @@ namespace io {
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-								// Выходим из функции
-								return;
+								// Выполняем обработку закрытия подключения
+								if(io::close(node, log))
+									// Выполняем удаление узла
+									io::destroy(node, log);
+								// Формируем отрицательный результат
+								return false;
 							// Если мы получили данные из сокета
 							} else if(bytes > 0) {
 								// Если функция обратного вызова для вывода события установлена
@@ -1988,13 +2351,11 @@ namespace io {
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
-								io::close(node, log);
-								// Производим удаление списка подготовленных событий
-								::__awh_inters__.erase(client->id);
-								// Производим удаление ноды
-								::__awh_nodes__.erase(client->id);
-								// Выходим из функции
-								return;
+								if(io::close(node, log))
+									// Выполняем удаление узла
+									io::destroy(node, log);
+								// Формируем отрицательный результат
+								return false;
 							}
 						} break;
 						// Для типа сокета DATAGRAM
@@ -2033,8 +2394,12 @@ namespace io {
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-								// Выходим из функции
-								return;
+								// Выполняем обработку закрытия подключения
+								if(io::close(node, log))
+									// Выполняем удаление узла
+									io::destroy(node, log);
+								// Формируем отрицательный результат
+								return false;
 							// Если мы получили данные из сокета
 							} else if(bytes > 0) {
 								// Если функция обратного вызова для вывода события установлена
@@ -2069,8 +2434,10 @@ namespace io {
 						// Увеличиваем количество событий
 						ret.first->second.count++;
 					}
-				} break;
-				// Если нода является сервером
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					/**
 					 * Определяем тип сокета
@@ -2081,8 +2448,7 @@ namespace io {
 						// Для типа сокета SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Выполняем принятие нового подключения
-							io::accept(awh_cast <server_t *> (node), fmk, log);
-						break;
+							return io::accept(awh_cast <server_t *> (node), fmk, log);
 						// Для типа сокета DATAGRAM
 						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 							// Получаем текущее значение объекта сервера
@@ -2131,8 +2497,8 @@ namespace io {
 														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 													#endif
 												}
-												// Выходим из функции
-												return;
+												// Формируем положительный результат
+												return true;
 											}
 											// Если в белом списке нет адреса
 											if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
@@ -2158,8 +2524,8 @@ namespace io {
 														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 													#endif
 												}
-												// Выходим из функции
-												return;
+												// Формируем положительный результат
+												return true;
 											}
 										}
 										// Устанавливаем полученный IP-адрес
@@ -2190,8 +2556,8 @@ namespace io {
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										}
 										// Если в белом списке нет адреса
 										if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
@@ -2217,8 +2583,8 @@ namespace io {
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										}
 									}
 								} break;
@@ -2262,8 +2628,8 @@ namespace io {
 														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 													#endif
 												}
-												// Выходим из функции
-												return;
+												// Формируем положительный результат
+												return true;
 											}
 											// Если в белом списке нет адреса
 											if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
@@ -2289,8 +2655,8 @@ namespace io {
 														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 													#endif
 												}
-												// Выходим из функции
-												return;
+												// Формируем положительный результат
+												return true;
 											}
 										}
 										// Устанавливаем полученный IP-адрес
@@ -2321,8 +2687,8 @@ namespace io {
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										}
 										// Если в белом списке нет адреса
 										if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
@@ -2348,8 +2714,8 @@ namespace io {
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										}
 									}
 								} break;
@@ -2388,8 +2754,6 @@ namespace io {
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
-								// Выходим из функции
-								return;
 							// Если мы получили данные из сокета
 							} else if(bytes > 0) {
 								// Если функция обратного вызова для вывода события установлена
@@ -2403,7 +2767,9 @@ namespace io {
 								// Заполняем структуру клиента нулями после того как извлекли данные
 								::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 							}
-						} break;
+							// Формируем положительный результат
+							return true;
+						}
 					}
 				} break;
 			}
@@ -2425,24 +2791,27 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+		// Выводим результат по умолчанию
+		return false;
 	}
 	/**
 	 * @brief Функция обработки события записи
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void write(net::node_t * node, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool write(net::node_t * node, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
@@ -2468,15 +2837,15 @@ namespace io {
 									if(static_cast <size_t> (bytes) < size){
 										// Увеличиваем смещение передачи данных
 										ipc->transfer.offset += static_cast <size_t> (bytes);
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									}
 								// Если мы отправили не все данные
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
 									if(errno == EAGAIN)
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									// Если произошла ошибка при отправке данных
 									else {
 										// Устанавливаем текст ошибки
@@ -2501,19 +2870,21 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-										// Выходим из функции
-										return;
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ipc->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(ipc->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							} break;
 							// Для типа сокета SEQPACKET
@@ -2532,8 +2903,8 @@ namespace io {
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
 									if(errno == EAGAIN)
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									// Если произошла ошибка при отправке данных
 									else {
 										// Устанавливаем текст ошибки
@@ -2558,19 +2929,21 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-										// Выходим из функции
-										return;
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ipc->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(ipc->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							} break;
 						}
@@ -2594,8 +2967,10 @@ namespace io {
 							// Устанавливаем индекс текущего элемента
 							ret.first->second.index = (::__awh_change__.size() - 1);
 					}
-				} break;
-				// Если нода является одноранговым узлом
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
@@ -2643,15 +3018,15 @@ namespace io {
 												EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 											}
 										}
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									}
 								// Если мы отправили не все данные
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
 									if(errno == EAGAIN)
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									// Если произошла ошибка при отправке данных
 									else {
 										// Устанавливаем текст ошибки
@@ -2676,19 +3051,21 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-										// Выходим из функции
-										return;
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(peer->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(peer->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							} break;
 							// Для типа сокета SEQPACKET
@@ -2705,8 +3082,8 @@ namespace io {
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
 									if(errno == EAGAIN)
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									// Если произошла ошибка при отправке данных
 									else {
 										// Устанавливаем текст ошибки
@@ -2731,19 +3108,21 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-										// Выходим из функции
-										return;
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(peer->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(peer->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 							} break;
 						}
@@ -2778,8 +3157,10 @@ namespace io {
 							ret.first->second.count++;
 						}
 					}
-				} break;
-				// Если нода является клиентом
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
@@ -2788,7 +3169,7 @@ namespace io {
 						// Устанавливаем статус события в состояние подключено
 						client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
 						// Выполняем обработку события подключения клиента
-						io::connect(client, log);
+						return io::connect(client, log);
 					// Если татус события просто запись данных в сокет
 					} else {
 						// Если есть данные для отправки в сокет
@@ -2845,15 +3226,15 @@ namespace io {
 													EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 												}
 											}
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										}
 									// Если мы отправили не все данные
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
 										if(errno == EAGAIN)
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										// Если произошла ошибка при отправке данных
 										else {
 											// Устанавливаем текст ошибки
@@ -2878,19 +3259,21 @@ namespace io {
 													log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
 										}
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
-										io::close(node, log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
-										// Выходим из функции
-										return;
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								} break;
 								// Для типа сокета SEQPACKET
@@ -2919,8 +3302,8 @@ namespace io {
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
 										if(errno == EAGAIN)
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										// Если произошла ошибка при отправке данных
 										else {
 											// Устанавливаем текст ошибки
@@ -2945,19 +3328,21 @@ namespace io {
 													log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
 										}
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
-										io::close(node, log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
-										// Выходим из функции
-										return;
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								} break;
 								// Для типа сокета DATAGRAM
@@ -2980,8 +3365,8 @@ namespace io {
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
 										if(errno == EAGAIN)
-											// Выходим из функции
-											return;
+											// Формируем положительный результат
+											return true;
 										// Если произошла ошибка при отправке данных
 										else {
 											// Устанавливаем текст ошибки
@@ -3006,19 +3391,21 @@ namespace io {
 													log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return;
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
 										}
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
-										io::close(node, log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
-										// Выходим из функции
-										return;
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
 								} break;
 							}
@@ -3053,9 +3440,11 @@ namespace io {
 								ret.first->second.count++;
 							}
 						}
+						// Формируем положительный результат
+						return true;
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (node);
@@ -3085,8 +3474,8 @@ namespace io {
 								} else if(bytes == -1) {
 									// Если нам нужно повторить попытку позже
 									if(errno == EAGAIN)
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									// Если произошла ошибка при отправке данных
 									else {
 										// Устанавливаем текст ошибки
@@ -3111,26 +3500,26 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
-										// Выходим из функции
-										return;
+										// Формируем положительный результат
+										return true;
 									}
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
-									io::close(node, log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(server->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(server->id);
-									// Выходим из функции
-									return;
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
 								}
 								// Сбрасываем смещение передачи данных
 								server->transfer.offset = 0;
 								// Удаляем запись из очереди отправленных данных
 								server->transfer.output.pop();
 							}
-						} break;
+							// Формируем положительный результат
+							return true;
+						}
 						// Для остальных типов сокетов
 						default: {
 							// Устанавливаем текст ошибки
@@ -3177,24 +3566,27 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+		// Выводим результат по умолчанию
+		return false;
 	}
 	/**
 	 * @brief Функция обработки события ошибки
 	 *
-	 * @param node нода в которой ироизошло событие
+	 * @param node узел в котором произошло событие
 	 * @param code код ошибки
 	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static void error(net::node_t * node, const int32_t code, const log_t * log) noexcept {
+	static bool error(net::node_t * node, const int32_t code, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Получаем текущее значение объекта пользовательского события
 					user_t * user = awh_cast <user_t *> (node);
@@ -3218,10 +3610,12 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является таймаутом
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER): {
-					// Получаем текущее значение объекта директории
+					// Получаем текущее значение объекта таймера
 					timer_t * timer = awh_cast <timer_t *> (node);
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.error != nullptr)
@@ -3243,8 +3637,10 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является директорией
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
 					dir_t * dir = awh_cast <dir_t *> (node);
@@ -3268,8 +3664,10 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является файловой системой
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (node);
@@ -3293,8 +3691,10 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является межпрограммным взаимодействием
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
@@ -3318,8 +3718,10 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является одноранговым узлом
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
@@ -3343,8 +3745,10 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является клиентом
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
@@ -3368,8 +3772,10 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
-				// Если нода является сервером
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (node);
@@ -3393,7 +3799,9 @@ namespace io {
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -3413,11 +3821,13 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+		// Выводим результат по умолчанию
+		return false;
 	}
 	/**
 	 * @brief Функция создания сокета события
 	 *
-	 * @param node нода для которой создаётся сокет
+	 * @param node узел для которого создаётся сокет
 	 * @param log  объект работы с логами
 	 * @return     результат создания сокета
 	 */
@@ -3904,10 +4314,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Выполняем извлечение текущего значения объекта пользовательского события
 					user_t * node = awh_cast <user_t *> (i->second.get());
@@ -3951,7 +4361,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						}
 					}
 				} break;
-				// Если нода является таймаутом
+				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Выполняем извлечение текущего значения объекта таймаута
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
@@ -4035,7 +4445,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						}
 					}
 				} break;
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
 					dir_t * node = awh_cast <dir_t *> (i->second.get());
@@ -4207,7 +4617,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						return result;
 					}
 				} break;
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * node = awh_cast <file_t *> (i->second.get());
@@ -4357,7 +4767,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						return result;
 					}
 				} break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
@@ -4456,7 +4866,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						return result;
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * node = awh_cast <client_t *> (i->second.get());
@@ -5020,7 +5430,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						return result;
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * node = awh_cast <server_t *> (i->second.get());
@@ -5611,10 +6021,10 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 				// Для семейства UDPv6
 				case static_cast <uint8_t> (event::family_t::UDPV6): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является одноранговым узлом
+						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
 							peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -5625,7 +6035,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 							// Возвращаем результат работы функции
 							return awh_cast <net::attr_net_t *> (peer->remote.get())->port;
 						}
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
 							auto client = awh_cast <client_t *> (i->second.get());
@@ -5636,7 +6046,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 							// Возвращаем результат работы функции
 							return awh_cast <net::attr_net_t *> (client->target.get())->port;
 						}
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
 							auto server = awh_cast <server_t *> (i->second.get());
@@ -5739,10 +6149,10 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 				// Для семейства UDPv6
 				case static_cast <uint8_t> (event::family_t::UDPV6): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект адреса удалённого узла
 							client_t * client = awh_cast <client_t *> (i->second.get());
@@ -5775,7 +6185,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 							// Возвращаем результат работы функции
 							return true;
 						}
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект адреса сервера
 							server_t * server = awh_cast <server_t *> (i->second.get());
@@ -5865,10 +6275,10 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
@@ -5899,7 +6309,7 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 						}
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
@@ -6067,10 +6477,10 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
@@ -6172,7 +6582,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 						} break;
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
@@ -6305,10 +6715,10 @@ string awh::IO::target(const event::id_t id) const noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
 					dir_t * fs = awh_cast <dir_t *> (i->second.get());
@@ -6319,7 +6729,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 					// Возвращаем адрес директории
 					return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 				}
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (i->second.get());
@@ -6330,7 +6740,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 					// Возвращаем адрес файловой системы
 					return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 				}
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -6427,7 +6837,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 						}
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
@@ -6524,7 +6934,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 						}
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
@@ -6661,10 +7071,10 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Если типы адресов соответствуют
 					if(i->second->state.family == event::family_t::DIR){
@@ -6737,7 +7147,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 						}
 					}
 				} break;
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Если типы адресов соответствуют
 					if(i->second->state.family == event::family_t::FILE){
@@ -6810,7 +7220,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 						}
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
@@ -6956,7 +7366,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 						} break;
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
@@ -7157,62 +7567,62 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <user_t> user = make_unique <user_t> (this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					user->id = i->second->id;
-					// Выполняем перенос состояний ноды
+					// Выполняем перенос состояний узла
 					user->state = i->second->state;
-					// Выполняем перенос всей ноды
+					// Выполняем перенос всей узла
 					i->second = ::move(user);
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 				} break;
-				// Если нода является таймаутом
+				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER): {
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <timer_t> timer = make_unique <timer_t> ();
 					// Устанавливаем идентификатор события
 					timer->id = i->second->id;
-					// Выполняем перенос состояний ноды
+					// Выполняем перенос состояний узла
 					timer->state = i->second->state;
-					// Выполняем перенос всей ноды
+					// Выполняем перенос всей узла
 					i->second = ::move(timer);
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 				} break;
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <dir_t> fs = make_unique <dir_t> (this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					fs->id = i->second->id;
-					// Выполняем перенос состояний ноды
+					// Выполняем перенос состояний узла
 					fs->state = i->second->state;
-					// Выполняем перенос всей ноды
+					// Выполняем перенос всей узла
 					i->second = ::move(fs);
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 				} break;
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <file_t> fs = make_unique <file_t> (this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					fs->id = i->second->id;
-					// Выполняем перенос состояний ноды
+					// Выполняем перенос состояний узла
 					fs->state = i->second->state;
-					// Выполняем перенос всей ноды
+					// Выполняем перенос всей узла
 					i->second = ::move(fs);
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 				} break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					/**
 					 * Определяем семейство сокета
@@ -7259,26 +7669,26 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							return false;
 						}
 					}
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <ipc_t> ipc = make_unique <ipc_t> (this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					ipc->id = i->second->id;
-					// Выполняем перенос состояний ноды
+					// Выполняем перенос состояний узла
 					ipc->state = i->second->state;
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода ещё не определена
+						// Если узел ещё не определена
 						case static_cast <uint8_t> (event::node_t::NONE):
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
 							auto client = awh_cast <client_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							ipc->fd = client->fd;
 						} break;
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
 							auto server = awh_cast <server_t *> (i->second.get());
@@ -7286,12 +7696,12 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							ipc->fd = server->fd;
 						} break;
 					}
-					// Выполняем перенос всей ноды
+					// Выполняем перенос всей узла
 					i->second = ::move(ipc);
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект клиента
 					auto client = awh_cast <client_t *> (i->second.get());
@@ -7328,7 +7738,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						}
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					/**
 					 * Определяем семейство сокета
@@ -7393,38 +7803,38 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							return false;
 						}
 					}
-					// Выполняем создание нового объекта ноды
+					// Выполняем создание нового объекта узла
 					unique_ptr <server_t> server = make_unique <server_t> (&this->_eth, this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					server->id = i->second->id;
-					// Выполняем перенос состояний ноды
+					// Выполняем перенос состояний узла
 					server->state = i->second->state;
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является одноранговым узлом
+						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект объект однорангового узла
 							auto peer = awh_cast <peer_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							server->fd = peer->fd;
-							// Выполняем перенос хоста ноды
+							// Выполняем перенос хоста узла
 							server->host = ::move(peer->remote);
 						} break;
-						// Если нода ещё не определена
+						// Если узел ещё не определена
 						case static_cast <uint8_t> (event::node_t::NONE):
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект объект клиента
 							auto client = awh_cast <client_t *> (i->second.get());
 							// Устанавливаем значение сетевого сокета
 							server->fd = client->fd;
-							// Выполняем перенос хоста ноды
+							// Выполняем перенос хоста узла
 							server->host = ::move(client->target);
 						} break;
 					}
-					// Выполняем перенос всей ноды
+					// Выполняем перенос всей узла
 					i->second = ::move(server);
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
@@ -7477,10 +7887,10 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 				// Если тип адреса принадлежит к MAC-адресам
 				case static_cast <uint8_t> (event::address_t::MAC): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является одноранговым узлом
+						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект однорангового узла
 							auto peer = awh_cast <peer_t *> (i->second.get());
@@ -7661,7 +8071,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								}
 							}
 						} break;
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
 							auto client = awh_cast <client_t *> (i->second.get());
@@ -7838,7 +8248,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								}
 							}
 						} break;
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
 							auto server = awh_cast <server_t *> (i->second.get());
@@ -8244,10 +8654,10 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов соответствуют
 					if(address == i->second->state.address){
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
 								peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -8258,7 +8668,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								// Выводим результат работы функции
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (peer->remote.get())->path.get())->address;
 							}
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
 								client_t * client = awh_cast <client_t *> (i->second.get());
@@ -8269,7 +8679,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								// Выводим результат работы функции
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address;
 							}
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
 								server_t * server = awh_cast <server_t *> (i->second.get());
@@ -8288,20 +8698,20 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						 */
 						event::callback::error_t callback = nullptr;
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
 							break;
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
 							break;
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
@@ -8416,10 +8826,10 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов соответствуют
 					if(address == i->second->state.address){
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
 								peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -8432,7 +8842,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								// Выводим результат работы функции
 								return static_cast <string> (peer->addr);
 							}
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
 								client_t * client = awh_cast <client_t *> (i->second.get());
@@ -8445,7 +8855,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								// Выводим результат работы функции
 								return static_cast <string> (client->addr);
 							}
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
 								server_t * server = awh_cast <server_t *> (i->second.get());
@@ -8494,20 +8904,20 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						 */
 						event::callback::error_t callback = nullptr;
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
 							break;
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
 							break;
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
@@ -8542,10 +8952,10 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов соответствуют
 					if(address == i->second->state.address){
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
 								peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -8558,7 +8968,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								// Выводим результат работы функции
 								return static_cast <string> (peer->addr);
 							}
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
 								client_t * client = awh_cast <client_t *> (i->second.get());
@@ -8571,7 +8981,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								// Выводим результат работы функции
 								return static_cast <string> (client->addr);
 							}
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
 								server_t * server = awh_cast <server_t *> (i->second.get());
@@ -8624,20 +9034,20 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						 */
 						event::callback::error_t callback = nullptr;
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
 							break;
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
 							break;
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
 								// Получаем функцию обратного вызова ошибки события
 								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
@@ -8720,25 +9130,25 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					 */
 					event::callback::error_t callback = nullptr;
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является дирректорией
+						// Если узел является дирректорией
 						case static_cast <uint8_t> (event::node_t::DIR):
 							// Получаем функцию обратного вызова ошибки события
 							callback = awh_cast <dir_t *> (i->second.get())->callbacks.error;
 						break;
-						// Если нода является файловой системой
+						// Если узел является файловой системой
 						case static_cast <uint8_t> (event::node_t::FILE):
 							// Получаем функцию обратного вызова ошибки события
 							callback = awh_cast <file_t *> (i->second.get())->callbacks.error;
 						break;
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Получаем функцию обратного вызова ошибки события
 							callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
 						break;
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER):
 							// Получаем функцию обратного вызова ошибки события
 							callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
@@ -8770,18 +9180,18 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 				// Если тип адреса принадлежит к MAC-адресам
 				case static_cast <uint8_t> (event::address_t::MAC): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							/**
-							 * Определяем чем является текущая нода
+							 * Определяем чем является текущий узел
 							 */
 							switch(static_cast <uint8_t> (i->second->state.node)){
-								// Если нода является клиентом
+								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
 									// Получаем объект клиента
 									auto client = awh_cast <client_t *> (i->second.get());
@@ -8916,7 +9326,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 										}
 									}
 								} break;
-								// Если нода является сервером
+								// Если узел является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER): {
 									// Получаем объект сервера
 									auto server = awh_cast <server_t *> (i->second.get());
@@ -9047,7 +9457,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								} break;
 							}
 						} break;
-						// Если нода имеет неподдерживаемый тип
+						// Если узел имеет неподдерживаемый тип
 						default: {
 							/**
 							 * Если включён режим отладки
@@ -9070,18 +9480,18 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					// Если типы адресов соответствуют
 					if(i->second->state.family == event::family_t::UDS){
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем объект адреса удалённого узла
 										client_t * client = awh_cast <client_t *> (i->second.get());
@@ -9126,7 +9536,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											}
 										}
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем объект адреса сервера
 										server_t * server = awh_cast <server_t *> (i->second.get());
@@ -9173,7 +9583,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									} break;
 								}
 							} break;
-							// Если нода имеет неподдерживаемый тип
+							// Если узел имеет неподдерживаемый тип
 							default: {
 								/**
 								 * Если включён режим отладки
@@ -9210,10 +9620,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 				// Если тип адреса принадлежит к дирректориям файловой системы
 				case static_cast <uint8_t> (event::address_t::DIR): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является дирректорией
+						// Если узел является дирректорией
 						case static_cast <uint8_t> (event::node_t::DIR): {
 							// Получаем объект файловой системы
 							dir_t * fs = awh_cast <dir_t *> (i->second.get());
@@ -9282,7 +9692,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								}
 							}
 						} break;
-						// Если нода имеет неподдерживаемый тип
+						// Если узел имеет неподдерживаемый тип
 						default: {
 							/**
 							 * Если включён режим отладки
@@ -9303,10 +9713,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 				// Если тип адреса принадлежит к файлам файловой системы
 				case static_cast <uint8_t> (event::address_t::FILE): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является файловой системой
+						// Если узел является файловой системой
 						case static_cast <uint8_t> (event::node_t::FILE): {
 							// Получаем объект файловой системы
 							file_t * fs = awh_cast <file_t *> (i->second.get());
@@ -9375,7 +9785,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								}
 							}
 						} break;
-						// Если нода имеет неподдерживаемый тип
+						// Если узел имеет неподдерживаемый тип
 						default: {
 							/**
 							 * Если включён режим отладки
@@ -9396,10 +9806,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 				// Если тип адреса принадлежит к IPv4-адресам
 				case static_cast <uint8_t> (event::address_t::IPV4): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
 							auto client = awh_cast <client_t *> (i->second.get());
@@ -9409,7 +9819,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								if(client->addr.parse(value, net_addr_t::type_t::IPV4)){
 									// Извлекаем полученный IPv4-адрес
 									const uint32_t addr = client->addr.v4();
-									// Если адрес равен нулю и нода является клиентом
+									// Если адрес равен нулю и узел является клиентом
 									if(addr == 0){
 										// Устанавливаем тип адреса
 										client->state.address = address;
@@ -9523,7 +9933,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								}
 							}
 						} break;
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
 							auto server = awh_cast <server_t *> (i->second.get());
@@ -9628,7 +10038,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								}
 							}
 						} break;
-						// Если нода имеет неподдерживаемый тип
+						// Если узел имеет неподдерживаемый тип
 						default: {
 							/**
 							 * Если включён режим отладки
@@ -9649,10 +10059,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 				// Если тип адреса принадлежит к IPv6-адресам
 				case static_cast <uint8_t> (event::address_t::IPV6): {
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
 							auto client = awh_cast <client_t *> (i->second.get());
@@ -9662,7 +10072,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								if(client->addr.parse(value, net_addr_t::type_t::IPV6)){
 									// Извлекаем полученный IPv6-адрес
 									auto addr = ::move(client->addr.v6());
-									// Если адрес равен нулю и нода является клиентом
+									// Если адрес равен нулю и узел является клиентом
 									if(::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0){
 										// Устанавливаем тип адреса
 										client->state.address = address;
@@ -9776,7 +10186,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								}
 							}
 						} break;
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
 							auto server = awh_cast <server_t *> (i->second.get());
@@ -9881,7 +10291,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								}
 							}
 						} break;
-						// Если нода имеет неподдерживаемый тип
+						// Если узел имеет неподдерживаемый тип
 						default: {
 							/**
 							 * Если включён режим отладки
@@ -9918,10 +10328,10 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					// Если разделитель не найден
 					} else ip = value;
 					/**
-					 * Определяем чем является текущая нода
+					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если нода является клиентом
+						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем текущее значение объекта клиента
 							client_t * client = awh_cast <client_t *> (i->second.get());
@@ -10134,7 +10544,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								} break;
 							}
 						} break;
-						// Если нода является сервером
+						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем текущее значение объекта сервера
 							server_t * server = awh_cast <server_t *> (i->second.get());
@@ -10341,7 +10751,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								} break;
 							}
 						} break;
-						// Если нода имеет неподдерживаемый тип
+						// Если узел имеет неподдерживаемый тип
 						default: {
 							/**
 							 * Если включён режим отладки
@@ -10416,75 +10826,34 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 			// Устанавливаем статус события в состояние уничтожения
 			i->second->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER): {
-					// Производим удаление списка подготовленных событий
-					::__awh_inters__.erase(i->first);
-					// Производим удаление ноды
-					::__awh_nodes__.erase(i);
-				} break;
-				// Если нода является таймаутом
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::USER):
+					// Выполняем удаление узла
+					return io::destroy(i->second.get(), this->_log);
+				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Выполняем извлечение текущего значения объекта таймаута
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t){
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+					if(::__awh_kq__ == net::invalid_socket_t)
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					// Если дескриптор сокета активен
-					} else {
+					else {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
 						EV_SET(&event, node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-						// Если в списке промежуточного взаимодействия присутствует запись для данного события
-						auto j = ::__awh_inters__.find(i->first);
-						// Если запись найдена
-						if(j != ::__awh_inters__.end()){
-							// Количество записей в списке изменений
-							uint8_t count = 0;
-							// Получаем итератор на начало списка изменений
-							auto k = ::__awh_change__.begin();
-							// Получаем нужный нам итератор
-							std::advance(k, j->second.index);
-							// Проходим по всем изменениям промежуточного взаимодействия
-							for(; k != ::__awh_change__.end();){
-								// Если идентификатор события совпадает с идентификатором в записи списка изменений
-								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-									// Удаляем запись из списка изменений
-									k = ::__awh_change__.erase(k);
-									// Увеличиваем счётчик удалённых записей
-									count++;
-									// Если записи удалены
-									if(count == j->second.count)
-										// Завершаем цикл
-										break;
-								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-								} else ++k;
-							}
-						}
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					}
-				} break;
-				// Если нода является директорией
+				}
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
 					dir_t * node = awh_cast <dir_t *> (i->second.get());
@@ -10494,32 +10863,6 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-					// Если в списке промежуточного взаимодействия присутствует запись для данного события
-					auto j = ::__awh_inters__.find(i->first);
-					// Если запись найдена
-					if(j != ::__awh_inters__.end()){
-						// Количество записей в списке изменений
-						uint8_t count = 0;
-						// Получаем итератор на начало списка изменений
-						auto k = ::__awh_change__.begin();
-						// Получаем нужный нам итератор
-						std::advance(k, j->second.index);
-						// Проходим по всем изменениям промежуточного взаимодействия
-						for(; k != ::__awh_change__.end();){
-							// Если идентификатор события совпадает с идентификатором в записи списка изменений
-							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-								// Удаляем запись из списка изменений
-								k = ::__awh_change__.erase(k);
-								// Увеличиваем счётчик удалённых записей
-								count++;
-								// Если записи удалены
-								if(count == j->second.count)
-									// Завершаем цикл
-									break;
-							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-							} else ++k;
-						}
-					}
 					// Если каталог открыт
 					if(node->handle != nullptr){
 						// Закрываем каталог
@@ -10534,16 +10877,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Сбрасываем значение дескриптора сокета
 						node->fd = net::invalid_socket_t;
 					}
-					// Если установлена функция обратного вызова
-					if(node->callbacks.status != nullptr)
-						// Вызываем функцию обратного вызова при уничтожении события
-						node->callbacks.status(i->first, event::status_t::DESTROYED);
-					// Производим удаление списка подготовленных событий
-					::__awh_inters__.erase(i->first);
-					// Производим удаление ноды
-					::__awh_nodes__.erase(i);
-				} break;
-				// Если нода является файловой системой
+					// Выполняем удаление узла
+					return io::destroy(i->second.get(), this->_log);
+				}
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * node = awh_cast <file_t *> (i->second.get());
@@ -10553,32 +10890,6 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-					// Если в списке промежуточного взаимодействия присутствует запись для данного события
-					auto j = ::__awh_inters__.find(i->first);
-					// Если запись найдена
-					if(j != ::__awh_inters__.end()){
-						// Количество записей в списке изменений
-						uint8_t count = 0;
-						// Получаем итератор на начало списка изменений
-						auto k = ::__awh_change__.begin();
-						// Получаем нужный нам итератор
-						std::advance(k, j->second.index);
-						// Проходим по всем изменениям промежуточного взаимодействия
-						for(; k != ::__awh_change__.end();){
-							// Если идентификатор события совпадает с идентификатором в записи списка изменений
-							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-								// Удаляем запись из списка изменений
-								k = ::__awh_change__.erase(k);
-								// Увеличиваем счётчик удалённых записей
-								count++;
-								// Если записи удалены
-								if(count == j->second.count)
-									// Завершаем цикл
-									break;
-							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-							} else ++k;
-						}
-					}
 					// Если дескриптор сокета инициализирован
 					if(node->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -10586,16 +10897,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Сбрасываем значение дескриптора сокета
 						node->fd = net::invalid_socket_t;
 					}
-					// Если установлена функция обратного вызова
-					if(node->callbacks.status != nullptr)
-						// Вызываем функцию обратного вызова при уничтожении события
-						node->callbacks.status(i->first, event::status_t::DESTROYED);
-					// Производим удаление списка подготовленных событий
-					::__awh_inters__.erase(i->first);
-					// Производим удаление ноды
-					::__awh_nodes__.erase(i);
-				} break;
-				// Если нода является межпрограммным взаимодействием
+					// Выполняем удаление узла
+					return io::destroy(i->second.get(), this->_log);
+				}
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпрограммного взаимодействия
 					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
@@ -10608,42 +10913,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					// Если дескриптор сокета активен
 					} else {
-						// Если в списке промежуточного взаимодействия присутствует запись для данного события
-						auto j = ::__awh_inters__.find(i->first);
-						// Если запись найдена
-						if(j != ::__awh_inters__.end()){
-							// Количество записей в списке изменений
-							uint8_t count = 0;
-							// Получаем итератор на начало списка изменений
-							auto k = ::__awh_change__.begin();
-							// Получаем нужный нам итератор
-							std::advance(k, j->second.index);
-							// Проходим по всем изменениям промежуточного взаимодействия
-							for(; k != ::__awh_change__.end();){
-								// Если идентификатор события совпадает с идентификатором в записи списка изменений
-								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-									// Удаляем запись из списка изменений
-									k = ::__awh_change__.erase(k);
-									// Увеличиваем счётчик удалённых записей
-									count++;
-									// Если записи удалены
-									if(count == j->second.count)
-										// Завершаем цикл
-										break;
-								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-								} else ++k;
-							}
-						}
 						// Если дескриптор сокета инициализирован
 						if(node->fd != net::invalid_socket_t){
 							// Закрываем дескриптор сокета
@@ -10651,19 +10924,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						// Если дескриптор сокета не инициализирован
-						} else {
-							// Если установлена функция обратного вызова
-							if(node->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова при уничтожении события
-								node->callbacks.status(i->first, event::status_t::DESTROYED);
-							// Производим удаление списка подготовленных событий
-							::__awh_inters__.erase(i->first);
-							// Производим удаление ноды
-							::__awh_nodes__.erase(i);
-						}
+						} else return io::destroy(i->second.get(), this->_log);
 					}
 				} break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -10676,14 +10940,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					// Если дескриптор сокета активен
 					} else {
 						// Если дескриптор сокета инициализирован
@@ -10693,19 +10951,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						// Если дескриптор сокета не инициализирован
-						} else {
-							// Если установлена функция обратного вызова
-							if(node->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова при уничтожении события
-								node->callbacks.status(i->first, event::status_t::DESTROYED);
-							// Производим удаление списка подготовленных событий
-							::__awh_inters__.erase(i->first);
-							// Производим удаление ноды
-							::__awh_nodes__.erase(i);
-						}
+						} else return io::destroy(i->second.get(), this->_log);
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * node = awh_cast <client_t *> (i->second.get());
@@ -10718,14 +10967,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					// Если дескриптор сокета активен
 					} else {
 						// Если дескриптор сокета инициализирован
@@ -10735,19 +10978,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						// Если дескриптор сокета не инициализирован
-						} else {
-							// Если установлена функция обратного вызова
-							if(node->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова при уничтожении события
-								node->callbacks.status(i->first, event::status_t::DESTROYED);
-							// Производим удаление списка подготовленных событий
-							::__awh_inters__.erase(i->first);
-							// Производим удаление ноды
-							::__awh_nodes__.erase(i);
-						}
+						} else return io::destroy(i->second.get(), this->_log);
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * node = awh_cast <server_t *> (i->second.get());
@@ -10760,14 +10994,8 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					// Если дескриптор сокета активен
 					} else {
 						// Объект события для удаления из списка ожидания
@@ -10797,32 +11025,6 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 								#endif
 							}
 						}
-						// Если в списке промежуточного взаимодействия присутствует запись для данного события
-						auto j = ::__awh_inters__.find(i->first);
-						// Если запись найдена
-						if(j != ::__awh_inters__.end()){
-							// Количество записей в списке изменений
-							uint8_t count = 0;
-							// Получаем итератор на начало списка изменений
-							auto k = ::__awh_change__.begin();
-							// Получаем нужный нам итератор
-							std::advance(k, j->second.index);
-							// Проходим по всем изменениям промежуточного взаимодействия
-							for(; k != ::__awh_change__.end();){
-								// Если идентификатор события совпадает с идентификатором в записи списка изменений
-								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-									// Удаляем запись из списка изменений
-									k = ::__awh_change__.erase(k);
-									// Увеличиваем счётчик удалённых записей
-									count++;
-									// Если записи удалены
-									if(count == j->second.count)
-										// Завершаем цикл
-										break;
-								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-								} else ++k;
-							}
-						}
 						// Если дескриптор сокета инициализирован
 						if(node->fd != net::invalid_socket_t){
 							// Закрываем дескриптор сокета
@@ -10830,16 +11032,10 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
 						}
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
-						::__awh_nodes__.erase(i);
+						// Выполняем удаление узла
+						return io::destroy(i->second.get(), this->_log);
 					}
-				} break;
+				}
 			}
 			// Возвращаем результат работы функции
 			return true;
@@ -10908,10 +11104,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -10932,7 +11128,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 										// Выполняем копирование объекта подключения сервера
 										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -10970,10 +11166,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -10994,7 +11190,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 										// Выполняем копирование объекта подключения сервера
 										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -11032,10 +11228,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -11056,7 +11252,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 										// Выполняем копирование объекта подключения сервера
 										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -11122,10 +11318,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -11252,7 +11448,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											}
 										}
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -11405,10 +11601,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -11530,7 +11726,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											}
 										}
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -11706,10 +11902,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -11790,7 +11986,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											}
 										}
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -11897,10 +12093,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
 										client_t * first = awh_cast <client_t *> (i->second.get());
@@ -11971,7 +12167,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 											}
 										}
 									} break;
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
@@ -13328,39 +13524,39 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 			 */
 			net::socket_t fd = net::invalid_socket_t;
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <file_t *> (i->second.get())->fd;
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <peer_t *> (i->second.get())->fd;
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <client_t *> (i->second.get())->fd;
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <server_t *> (i->second.get())->fd;
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: return false;
 			}
 			// Если файловый дескриптор события получен успешно
 			if((result = (fd != net::invalid_socket_t))){
 				// Флаг установки опции
 				bool isSetup = false;
-				// Если нода не является директорией или файловой системой
+				// Если узел не является директорией или файловой системой
 				if((i->second->state.node != event::node_t::DIR) && 
 				   (i->second->state.node != event::node_t::FILE)){
 					// Если опция передана как TCP_CORK
@@ -13420,7 +13616,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
 					result = false;
-				// Если нода не является директорией или файловой системой
+				// Если узел не является директорией или файловой системой
 				if((i->second->state.node != event::node_t::DIR) && 
 				   (i->second->state.node != event::node_t::FILE)){
 					// Если опция передана как NO_SIGPIPE
@@ -13458,14 +13654,14 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 							// Если событие уже создано и не подлежит уничтожению
 							if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является одноранговым узлом
+									// Если узел является одноранговым узлом
 									case static_cast <uint8_t> (event::node_t::PEER):
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Создаём объект промежуточного звена
 										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -13496,10 +13692,10 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 												// Устанавливаем индекс текущего элемента
 												ret.first->second.index = (::__awh_change__.size() - 2);
 											/**
-											 * Определяем чем является текущая нода
+											 * Определяем чем является текущий узел
 											 */
 											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если нода является одноранговым узлом
+												// Если узел является одноранговым узлом
 												case static_cast <uint8_t> (event::node_t::PEER): {
 													// Получаем текущее значение объекта однорангового узла
 													peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -13517,7 +13713,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 														ret.first->second.count++;
 													}
 												} break;
-												// Если нода является клиентом
+												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT): {
 													// Получаем текущее значение объекта клиента
 													client_t * node = awh_cast <client_t *> (i->second.get());
@@ -13562,14 +13758,14 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 							// Если событие уже создано и не подлежит уничтожению
 							if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 								/**
-								 * Определяем чем является текущая нода
+								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если нода является одноранговым узлом
+									// Если узел является одноранговым узлом
 									case static_cast <uint8_t> (event::node_t::PEER):
-									// Если нода является клиентом
+									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Если нода является сервером
+									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Создаём объект промежуточного звена
 										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -13600,10 +13796,10 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 												// Устанавливаем индекс текущего элемента
 												ret.first->second.index = (::__awh_change__.size() - 2);
 											/**
-											 * Определяем чем является текущая нода
+											 * Определяем чем является текущий узел
 											 */
 											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если нода является одноранговым узлом
+												// Если узел является одноранговым узлом
 												case static_cast <uint8_t> (event::node_t::PEER): {
 													// Получаем текущее значение объекта однорангового узла
 													peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -13625,7 +13821,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 														// Устанавливаем таймаут на получение данных
 														this->_eth.timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 												} break;
-												// Если нода является клиентом
+												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT): {
 													// Получаем текущее значение объекта клиента
 													client_t * node = awh_cast <client_t *> (i->second.get());
@@ -13662,7 +13858,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
 					result = false;
-				// Если нода не является директорией или файловой системой
+				// Если узел не является директорией или файловой системой
 				if((i->second->state.node != event::node_t::DIR) && 
 				   (i->second->state.node != event::node_t::FILE)){
 					// Если опция передана как REUSEADDR
@@ -13797,32 +13993,32 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 			 */
 			net::socket_t fd = net::invalid_socket_t;
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <file_t *> (i->second.get())->fd;
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <peer_t *> (i->second.get())->fd;
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <client_t *> (i->second.get())->fd;
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <server_t *> (i->second.get())->fd;
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: return false;
 			}
 			// Если файловый дескриптор события получен успешно
@@ -13833,7 +14029,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 				switch(option){
 					// Если опция передана как TCP_CORK
 					case event::options::TCPCORK: {
-						// Если нода не является файловой системой
+						// Если узел не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
 							// Устанавливаем или снимаем режим алгоритма TCP/CORK
@@ -13849,7 +14045,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как IPV6_V6ONLY
 					case event::options::IPV6ONLY: {
-						// Если нода не является файловой системой
+						// Если узел не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
 							/**
@@ -13887,7 +14083,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как NO_SIGPIPE
 					case event::options::NOSIGPIPE: {
-						// Если нода не является файловой системой
+						// Если узел не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
 							// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
@@ -13922,14 +14118,14 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 									// Если событие уже создано и не подлежит уничтожению
 									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 										/**
-										 * Определяем чем является текущая нода
+										 * Определяем чем является текущий узел
 										 */
 										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если нода является одноранговым узлом
+											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER):
-											// Если нода является клиентом
+											// Если узел является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT):
-											// Если нода является сервером
+											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												// Создаём объект промежуточного звена
 												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -13960,10 +14156,10 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 														// Устанавливаем индекс текущего элемента
 														ret.first->second.index = (::__awh_change__.size() - 2);
 													/**
-													 * Определяем чем является текущая нода
+													 * Определяем чем является текущий узел
 													 */
 													switch(static_cast <uint8_t> (i->second->state.node)){
-														// Если нода является одноранговым узлом
+														// Если узел является одноранговым узлом
 														case static_cast <uint8_t> (event::node_t::PEER): {
 															// Получаем текущее значение объекта однорангового узла
 															peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -13981,7 +14177,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																ret.first->second.count++;
 															}
 														} break;
-														// Если нода является клиентом
+														// Если узел является клиентом
 														case static_cast <uint8_t> (event::node_t::CLIENT): {
 															// Получаем текущее значение объекта клиента
 															client_t * node = awh_cast <client_t *> (i->second.get());
@@ -14026,14 +14222,14 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 									// Если событие уже создано и не подлежит уничтожению
 									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 										/**
-										 * Определяем чем является текущая нода
+										 * Определяем чем является текущий узел
 										 */
 										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если нода является одноранговым узлом
+											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER):
-											// Если нода является клиентом
+											// Если узел является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT):
-											// Если нода является сервером
+											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												// Создаём объект промежуточного звена
 												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -14064,10 +14260,10 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 														// Устанавливаем индекс текущего элемента
 														ret.first->second.index = (::__awh_change__.size() - 2);
 													/**
-													 * Определяем чем является текущая нода
+													 * Определяем чем является текущий узел
 													 */
 													switch(static_cast <uint8_t> (i->second->state.node)){
-														// Если нода является одноранговым узлом
+														// Если узел является одноранговым узлом
 														case static_cast <uint8_t> (event::node_t::PEER): {
 															// Получаем текущее значение объекта однорангового узла
 															peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -14087,7 +14283,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																// Устанавливаем таймаут на получение данных
 																this->_eth.timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 														} break;
-														// Если нода является клиентом
+														// Если узел является клиентом
 														case static_cast <uint8_t> (event::node_t::CLIENT): {
 															// Получаем текущее значение объекта клиента
 															client_t * node = awh_cast <client_t *> (i->second.get());
@@ -14121,7 +14317,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как REUSEADDR
 					case event::options::REUSEADDR: {
-						// Если нода не является файловой системой
+						// Если узел не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
 							// Устанавливаем или снимаем режим повторного использования адреса сокета
@@ -14137,7 +14333,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как REUSEPORT
 					case event::options::REUSEPORT: {
-						// Если нода не является файловой системой
+						// Если узел не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
 							// Устанавливаем или снимаем режим повторного использования порта сокета
@@ -14153,7 +14349,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как TCP_NODELAY
 					case event::options::TCPNODELAY: {
-						// Если нода не является файловой системой
+						// Если узел не является файловой системой
 						if((i->second->state.node != event::node_t::DIR) && 
 						   (i->second->state.node != event::node_t::FILE)){
 							// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
@@ -14243,10 +14439,10 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 			)
 		){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Устанавливаем статус события в состояние отмены
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
@@ -14286,7 +14482,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 						node->fd = net::invalid_socket_t;
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем статус события в состояние отмены
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
@@ -14368,10 +14564,10 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * node = awh_cast <client_t *> (i->second.get());
@@ -14691,7 +14887,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 						result = true;
 					}
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -14750,10 +14946,10 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * node = awh_cast <server_t *> (i->second.get());
@@ -14899,7 +15095,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Выстанавливаем результат выполнения функции
 					result = true;
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -14960,10 +15156,10 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является файловой системой
+					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
 						file_t * fs = awh_cast <file_t *> (i->second.get());
@@ -15014,7 +15210,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						// Выводим успешный результат выполнения функции
 						return true;
 					}
-					// Если нода является пользовательским событием
+					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::USER): {
 						// Получаем текущее значение объекта пользовательского события
 						user_t * user = awh_cast <user_t *> (i->second.get());
@@ -15023,7 +15219,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						// Выводим успешный результат выполнения функции
 						return true;
 					}
-					// Если нода является межпрограммным взаимодействием
+					// Если узел является межпрограммным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпрограммного взаимодействия
 						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
@@ -15120,11 +15316,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(ipc, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ipc->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(ipc->id);
+											if(io::close(ipc, this->_log))
+												// Выполняем удаление узла
+												io::destroy(ipc, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -15148,11 +15342,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(ipc, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ipc->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(ipc->id);
+											if(io::close(ipc, this->_log))
+												// Выполняем удаление узла
+												io::destroy(ipc, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -15198,11 +15390,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(ipc, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(ipc->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(ipc->id);
+										if(io::close(ipc, this->_log))
+											// Выполняем удаление узла
+											io::destroy(ipc, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -15339,11 +15529,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(ipc, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ipc->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(ipc->id);
+											if(io::close(ipc, this->_log))
+												// Выполняем удаление узла
+												io::destroy(ipc, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -15367,11 +15555,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(ipc, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ipc->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(ipc->id);
+											if(io::close(ipc, this->_log))
+												// Выполняем удаление узла
+												io::destroy(ipc, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -15417,11 +15603,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(ipc, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(ipc->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(ipc->id);
+										if(io::close(ipc, this->_log))
+											// Выполняем удаление узла
+											io::destroy(ipc, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -15459,7 +15643,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							} break;
 						}
 					} break;
-					// Если нода является одноранговым узлом
+					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
 						peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -15588,11 +15772,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(peer, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(peer->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(peer->id);
+											if(io::close(peer, this->_log))
+												// Выполняем удаление узла
+												io::destroy(peer, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -15622,11 +15804,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(peer, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(peer->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(peer->id);
+											if(io::close(peer, this->_log))
+												// Выполняем удаление узла
+												io::destroy(peer, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -15678,11 +15858,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(peer, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(peer->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(peer->id);
+										if(io::close(peer, this->_log))
+											// Выполняем удаление узла
+											io::destroy(peer, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -15833,11 +16011,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(peer, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(peer->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(peer->id);
+											if(io::close(peer, this->_log))
+												// Выполняем удаление узла
+												io::destroy(peer, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -15867,11 +16043,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(peer, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(peer->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(peer->id);
+											if(io::close(peer, this->_log))
+												// Выполняем удаление узла
+												io::destroy(peer, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -15923,11 +16097,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(peer, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(peer->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(peer->id);
+										if(io::close(peer, this->_log))
+											// Выполняем удаление узла
+											io::destroy(peer, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -15965,7 +16137,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							} break;
 						}
 					} break;
-					// Если нода является клиентом
+					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						client_t * client = awh_cast <client_t *> (i->second.get());
@@ -16090,11 +16262,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
-												io::close(client, this->_log);
-												// Производим удаление списка подготовленных событий
-												::__awh_inters__.erase(client->id);
-												// Производим удаление ноды
-												::__awh_nodes__.erase(client->id);
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
 												// Выходим из функции
 												return result;
 											}
@@ -16215,11 +16385,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
-												io::close(client, this->_log);
-												// Производим удаление списка подготовленных событий
-												::__awh_inters__.erase(client->id);
-												// Производим удаление ноды
-												::__awh_nodes__.erase(client->id);
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
 												// Выходим из функции
 												return result;
 											}
@@ -16285,11 +16453,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(client, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(client->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(client->id);
+											if(io::close(client, this->_log))
+												// Выполняем удаление узла
+												io::destroy(client, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -16376,11 +16542,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(client, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
+										if(io::close(client, this->_log))
+											// Выполняем удаление узла
+											io::destroy(client, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -16537,11 +16701,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(client, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(client->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(client->id);
+											if(io::close(client, this->_log))
+												// Выполняем удаление узла
+												io::destroy(client, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -16577,11 +16739,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(client, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(client->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(client->id);
+											if(io::close(client, this->_log))
+												// Выполняем удаление узла
+												io::destroy(client, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -16639,11 +16799,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(client, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
+										if(io::close(client, this->_log))
+											// Выполняем удаление узла
+											io::destroy(client, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -16794,11 +16952,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(client, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(client->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(client->id);
+											if(io::close(client, this->_log))
+												// Выполняем удаление узла
+												io::destroy(client, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -16828,11 +16984,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(client, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(client->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(client->id);
+											if(io::close(client, this->_log))
+												// Выполняем удаление узла
+												io::destroy(client, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -16884,11 +17038,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(client, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(client->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(client->id);
+										if(io::close(client, this->_log))
+											// Выполняем удаление узла
+											io::destroy(client, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -16926,7 +17078,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							} break;
 						}
 					} break;
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						server_t * server = awh_cast <server_t *> (i->second.get());
@@ -17033,11 +17185,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
-											io::close(server, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(server->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(server->id);
+											if(io::close(server, this->_log))
+												// Выполняем удаление узла
+												io::destroy(server, this->_log);
 											// Выходим из функции
 											return result;
 										}
@@ -17067,11 +17217,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
-											io::close(server, this->_log);
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(server->id);
-											// Производим удаление ноды
-											::__awh_nodes__.erase(server->id);
+											if(io::close(server, this->_log))
+												// Выполняем удаление узла
+												io::destroy(server, this->_log);
 											// Выходим из функции
 											return result;
 										// Если произошла какая-то ошибка при отправке данных
@@ -17117,11 +17265,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если данные отправлены успешно
 									if(bytes == 0){
 										// Выполняем обработку закрытия подключения
-										io::close(server, this->_log);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(server->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(server->id);
+										if(io::close(server, this->_log))
+											// Выполняем удаление узла
+											io::destroy(server, this->_log);
 										// Выходим из функции
 										return result;
 									// Если произошла какая-то ошибка при отправке данных
@@ -17226,12 +17372,12 @@ bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем объект ноды
+					// Получаем объект узла
 					auto node = awh_cast <server_t *> (i->second.get());
 					// Очищаем чёрный список
 					node->blacklist.clear();
@@ -17280,10 +17426,10 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						server_t * node = awh_cast <server_t *> (i->second.get());
@@ -17370,7 +17516,7 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 							} break;
 						}
 					} break;
-					// Для других типов нод
+					// Для других типов узлов
 					default: {
 						/**
 						 * Если включён режим отладки
@@ -17431,12 +17577,12 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем объект ноды
+						// Получаем объект узла
 						auto node = awh_cast <server_t *> (i->second.get());
 						// Если чёрный список не пустой
 						if(!node->blacklist.empty()){
@@ -17467,7 +17613,7 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 							}
 						}
 					} break;
-					// Для других типов нод
+					// Для других типов узлов
 					default: {
 						/**
 						 * Если включён режим отладки
@@ -17525,14 +17671,14 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::blacklist(co
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
 					return awh_cast <server_t *> (i->second.get())->blacklist;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -17587,12 +17733,12 @@ bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем объект ноды
+					// Получаем объект узла
 					auto node = awh_cast <server_t *> (i->second.get());
 					// Очищаем белый список
 					node->whitelist.clear();
@@ -17641,10 +17787,10 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						server_t * node = awh_cast <server_t *> (i->second.get());
@@ -17731,7 +17877,7 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 							} break;
 						}
 					} break;
-					// Для других типов нод
+					// Для других типов узлов
 					default: {
 						/**
 						 * Если включён режим отладки
@@ -17792,12 +17938,12 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем объект ноды
+						// Получаем объект узла
 						auto node = awh_cast <server_t *> (i->second.get());
 						// Если белый список не пустой
 						if(!node->whitelist.empty()){
@@ -17828,7 +17974,7 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 							}
 						}
 					} break;
-					// Для других типов нод
+					// Для других типов узлов
 					default: {
 						/**
 						 * Если включён режим отладки
@@ -17886,14 +18032,14 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(co
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
 					return awh_cast <server_t *> (i->second.get())->whitelist;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -17949,19 +18095,19 @@ void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool ada
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Выполняем создание новой ноды
+					// Выполняем создание новой узла
 					auto node = awh_cast <server_t *> (i->second.get());
 					// Устанавливаем глубину очереди принятия входящих соединений
 					node->backlog.depth = depth;
 					// Устанавливаем режим адаптивной глубины очереди принятия входящих соединений
 					node->backlog.adaptive = adaptive;
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -18015,10 +18161,10 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end()){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (i->second.get());
@@ -18057,7 +18203,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						}
 					}
 				} break;
-				// Если нода является межпроцессным соединением
+				// Если узел является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного соединения
 					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
@@ -18105,7 +18251,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						} break;
 					}
 				} break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -18149,7 +18295,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						} break;
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
@@ -18193,7 +18339,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						} break;
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
@@ -18237,7 +18383,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						} break;
 					}
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -18296,10 +18442,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (i->second.get());
@@ -18343,7 +18489,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						}
 					}
 				} break;
-				// Если нода является межпроцессным соединением
+				// Если узел является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного соединения
 					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
@@ -18428,7 +18574,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						} break;
 					}
 				} break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (i->second.get());
@@ -18471,7 +18617,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						} break;
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
@@ -18539,7 +18685,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						} break;
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
@@ -18582,7 +18728,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 						} break;
 					}
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -18638,14 +18784,14 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end()){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является таймаутом
+				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER):
 					// Выводим значение задержки времени таймаута
 					return awh_cast <timer_t *> (i->second.get())->delay;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события однорангового узла
 					auto peer = awh_cast <peer_t *> (i->second.get());
@@ -18656,7 +18802,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 						// Выводим значение таймаута для действия события
 						return i->second;
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект события сервера
 					auto server = awh_cast <server_t *> (i->second.get());
@@ -18667,7 +18813,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 						// Выводим значение таймаута для действия события
 						return i->second;
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект события клиента
 					auto client = awh_cast <client_t *> (i->second.get());
@@ -18678,7 +18824,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 						// Выводим значение таймаута для действия события
 						return i->second;
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -18734,10 +18880,10 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является таймаутом
+				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMER): {
 					// Получаем объект события таймера
 					timer_t * timer = awh_cast <timer_t *> (i->second.get());
@@ -18781,7 +18927,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						}
 					}
 				} break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					/**
 					 * Определяем тип действия события
@@ -18823,7 +18969,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						}
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					/**
 					 * Определяем тип действия события
@@ -18869,7 +19015,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						}
 					}
 				} break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					/**
 					 * Определяем тип действия события
@@ -18911,7 +19057,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						}
 					}
 				} break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -18973,25 +19119,25 @@ bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t i
 			 */
 			net::socket_t socket = net::invalid_socket_t;
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
 					socket = awh_cast <peer_t *> (i->second.get())->fd;
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
 					socket = awh_cast <client_t *> (i->second.get())->fd;
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
 					socket = awh_cast <server_t *> (i->second.get())->fd;
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: return false;
 			}
 			// Если файловый дескриптор события получен успешно
@@ -19041,10 +19187,10 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является успешным
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
@@ -19108,7 +19254,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						result = true;
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если подключение клиента установлено
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
@@ -19212,10 +19358,10 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является паузой
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
@@ -19256,7 +19402,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						result = true;
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если статус события является паузой
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
@@ -19336,10 +19482,10 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является успешным
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
@@ -19351,7 +19497,7 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 						return ((j != node->timeouts.end()) ? (this->_eth.error(node->fd) == 0) : true);
 					}
 				} break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если подключение клиента установлено
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
@@ -19428,24 +19574,24 @@ bool awh::IO::initialize() noexcept {
 bool awh::IO::reinitialize() noexcept {
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
-		// Выполняем перебор всех активных нод
+		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
-			// Если нода уже находится в рабочем состоянии
+			// Если узел уже находится в рабочем состоянии
 			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является пользовательским событием
+					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::USER):
-					// Если нода является таймаутом
+					// Если узел является таймаутом
 					case static_cast <uint8_t> (event::node_t::TIMER): {
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является директорией
+					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
 						dir_t * node = awh_cast <dir_t *> (i->second.get());
@@ -19463,10 +19609,10 @@ bool awh::IO::reinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является файловой системой
+					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
 						file_t * node = awh_cast <file_t *> (i->second.get());
@@ -19480,10 +19626,10 @@ bool awh::IO::reinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является межпрограммным взаимодействием
+					// Если узел является межпрограммным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпрограммного взаимодействия
 						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
@@ -19497,10 +19643,10 @@ bool awh::IO::reinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является одноранговым узлом
+					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
 						peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -19514,10 +19660,10 @@ bool awh::IO::reinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является клиентом
+					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						client_t * node = awh_cast <client_t *> (i->second.get());
@@ -19531,10 +19677,10 @@ bool awh::IO::reinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						server_t * node = awh_cast <server_t *> (i->second.get());
@@ -19548,18 +19694,18 @@ bool awh::IO::reinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Для других типов нод
+					// Для других типов узлов
 					default: {
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					}
 				}
-			// Если нода не находится в рабочем состоянии, пропускаем её
+			// Если узел не находится в рабочем состоянии, пропускаем её
 			} else ++i;
 		}
 		// Выполняем закрытие Kqueue
@@ -19598,24 +19744,24 @@ bool awh::IO::reinitialize() noexcept {
 bool awh::IO::deinitialize() noexcept {
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
-		// Выполняем перебор всех активных нод
+		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
-			// Если нода уже находится в рабочем состоянии
+			// Если узел уже находится в рабочем состоянии
 			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 				/**
-				 * Определяем чем является текущая нода
+				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если нода является пользовательским событием
+					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::USER):
-					// Если нода является таймером
+					// Если узел является таймером
 					case static_cast <uint8_t> (event::node_t::TIMER): {
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является директорией
+					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
 						dir_t * node = awh_cast <dir_t *> (i->second.get());
@@ -19633,10 +19779,10 @@ bool awh::IO::deinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является файловой системой
+					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
 						file_t * node = awh_cast <file_t *> (i->second.get());
@@ -19650,10 +19796,10 @@ bool awh::IO::deinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является межпрограммным взаимодействием
+					// Если узел является межпрограммным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпрограммного взаимодействия
 						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
@@ -19667,10 +19813,10 @@ bool awh::IO::deinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является одноранговым узлом
+					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
 						peer_t * node = awh_cast <peer_t *> (i->second.get());
@@ -19684,10 +19830,10 @@ bool awh::IO::deinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является клиентом
+					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						client_t * node = awh_cast <client_t *> (i->second.get());
@@ -19701,10 +19847,10 @@ bool awh::IO::deinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если нода является сервером
+					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						server_t * node = awh_cast <server_t *> (i->second.get());
@@ -19718,22 +19864,22 @@ bool awh::IO::deinitialize() noexcept {
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Для других типов нод
+					// Для других типов узлов
 					default: {
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
-						// Производим удаление ноды
+						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					}
 				}
-			// Если нода не находится в рабочем состоянии уничтожаем её сразу
+			// Если узел не находится в рабочем состоянии уничтожаем её сразу
 			} else {
 				// Производим удаление списка подготовленных событий
 				::__awh_inters__.erase(i->first);
-				// Производим удаление ноды
+				// Производим удаление узла
 				i = ::__awh_nodes__.erase(i);
 			}
 		}
@@ -19903,21 +20049,21 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
-				// Значение ноды для обработки изменений
+				// Значение узла для обработки изменений
 				net::node_t * node = nullptr;
 				// Выполняем переход по всему объекту изменений
 				for(auto i = ::__awh_change__.begin(); i != ::__awh_change__.end();){
-					// Получаем текущее значение ноды
+					// Получаем текущее значение узла
 					node = reinterpret_cast <net::node_t *> (i->udata);
-					// Если нода определена и существует
+					// Если узел определена и существует
 					if(node != nullptr){
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (node->state.node)){
-							// Если нода является пользовательским событием
+							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::USER): break;
-							// Если нода является таймером
+							// Если узел является таймером
 							case static_cast <uint8_t> (event::node_t::TIMER): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (node);
@@ -19929,7 +20075,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
 								}
 							} break;
-							// Если нода является директорией
+							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
 								dir_t * dir = awh_cast <dir_t *> (node);
@@ -19941,7 +20087,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
 								}
 							} break;
-							// Если нода является файловой системой
+							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
 								file_t * fs = awh_cast <file_t *> (node);
@@ -19953,7 +20099,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
 								}
 							} break;
-							// Если нода является межпрограммным взаимодействием
+							// Если узел является межпрограммным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
 								// Получаем текущее значение объекта межпрограммного взаимодействия
 								ipc_t * ipc = awh_cast <ipc_t *> (node);
@@ -19965,7 +20111,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
 								}
 							} break;
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
 								peer_t * peer = awh_cast <peer_t *> (node);
@@ -19981,7 +20127,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Устанавливаем статус события в состояние подтверждено
 									peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
 							} break;
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
 								client_t * client = awh_cast <client_t *> (node);
@@ -19997,7 +20143,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Устанавливаем статус события в состояние подключено
 									client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
 							} break;
-							// Если нода является сервером
+							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем текущее значение объекта сервера
 								server_t * server = awh_cast <server_t *> (node);
@@ -20061,38 +20207,34 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				#endif
 			// Если есть события для обработки
 			} else if((result = (count > 0))) {
-				// Значение ноды для обработки изменений
+				// Значение узла для обработки изменений
 				net::node_t * node = nullptr;
 				// Выполняем перебор всех полученных событий
 				for(int32_t i = 0; i < count; i++){
 					// Получаем текущее значение события
 					struct kevent & ev = ::__awh_events__[i];
-					// Выполняем получение ноды к которой относится событие
+					// Выполняем получение узла к которой относится событие
 					node = reinterpret_cast <net::node_t *> (ev.udata);
-					// Если нода события не получена, значит нода уже удалёна
+					// Если узел события не получена, значит узел уже удалён
 					if(node == nullptr)
 						// Пропускаем событие
 						continue;
 					// Если мы получили событие файловой системы
 					if(ev.filter == EVFILT_VNODE){
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (node->state.node)){
-							// Если нода является директорией
+							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
 								dir_t * dir = awh_cast <dir_t *> (node);
 								// Если мы детектировали наличие ошибки
 								if(ev.flags & EV_ERROR){
-									// Устанавливаем статус события в состояние уничтожения
-									dir->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 									// Выполняем обработку ошибки
-									io::error(node, ev.data, this->_log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(dir->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(dir->id);
+									if(io::error(node, ev.data, this->_log))
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
 								// Если установлена функция обратного вызова
 								} else if(dir->callbacks.event != nullptr) {
 									// Если мы детектировали событие изменения директории
@@ -20107,10 +20249,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									else if(ev.fflags & NOTE_DELETE) {
 										// Вызываем функцию обратного вызова флаг события
 										dir->callbacks.event(dir->id, event::action_t::DELETE);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(dir->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(dir->id);
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
 									// Если мы детектировали событие изменения атрибутов директории
 									} else if(ev.fflags & NOTE_ATTRIB)
 										// Вызываем функцию обратного вызова флаг события
@@ -20125,20 +20265,16 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										dir->callbacks.event(dir->id, event::action_t::HDLINK);
 								}
 							} break;
-							// Если нода является файловой системой
+							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
 								file_t * fs = awh_cast <file_t *> (node);
 								// Если мы детектировали наличие ошибки
 								if(ev.flags & EV_ERROR){
-									// Устанавливаем статус события в состояние уничтожения
-									fs->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 									// Выполняем обработку ошибки
-									io::error(node, ev.data, this->_log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(fs->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(fs->id);
+									if(io::error(node, ev.data, this->_log))
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
 								// Если установлена функция обратного вызова
 								} else if(fs->callbacks.event != nullptr) {
 									// Если мы детектировали событие изменения файла
@@ -20146,7 +20282,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										// Вызываем функцию обратного вызова флаг события
 										fs->callbacks.event(fs->id, event::action_t::CHANGE);
 										// Выполняем чтение данных из файла
-										io::read(node, this->_fmk, this->_log);
+										if(!io::read(node, this->_fmk, this->_log))
+											// Пропускаем дальнейшую обработку события
+											continue;
 									// Если мы детектировали событие переименования файла
 									} else if(ev.fflags & NOTE_RENAME)
 										// Вызываем функцию обратного вызова флаг события
@@ -20157,10 +20295,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										const event::id_t id = fs->id;
 										// Вызываем функцию обратного вызова флаг события
 										fs->callbacks.event(fs->id, event::action_t::DELETE);
-										// Производим удаление списка подготовленных событий
-										::__awh_inters__.erase(fs->id);
-										// Производим удаление ноды
-										::__awh_nodes__.erase(fs->id);
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
 									// Если мы детектировали событие изменения атрибутов файла
 									} else if(ev.fflags & NOTE_ATTRIB)
 										// Вызываем функцию обратного вызова флаг события
@@ -20179,51 +20315,45 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 					// Если мы получили событие таймера
 					} else if(ev.filter == EVFILT_TIMER) {
 						/**
-						 * Определяем чем является текущая нода
+						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (node->state.node)){
-							// Если нода является таймером
+							// Если узел является таймером
 							case static_cast <uint8_t> (event::node_t::TIMER): {
 								// Выполняем извлечение текущего значения объекта таймера
 								timer_t * timer = awh_cast <timer_t *> (node);
 								// Если мы детектировали наличие ошибки
 								if(ev.flags & EV_ERROR){
-									// Устанавливаем статус события в состояние уничтожения
-									timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 									// Выполняем обработку ошибки
-									io::error(node, ev.data, this->_log);
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(timer->id);
-									// Производим удаление ноды
-									::__awh_nodes__.erase(timer->id);
+									if(io::error(node, ev.data, this->_log))
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
 								// Обрабатываем событие таймера
-								} else io::timer(node, this->_log);
+								} else if(io::timer(node, this->_log))
+									// Пропускаем дальнейшую обработку события
+									continue;
 							} break;
-							// Если нода является одноранговым узлом
+							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
 								peer_t * peer = awh_cast <peer_t *> (node);
 								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR){
-									// Устанавливаем статус события в состояние уничтожения
-									peer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+								if(ev.flags & EV_ERROR)
 									// Выполняем обработку ошибки
 									io::error(node, ev.data, this->_log);
-								}
 								// Обрабатываем событие таймаута
-								io::timer(node, this->_log);
+								if(io::timer(node, this->_log))
+									// Пропускаем дальнейшую обработку события
+									continue;
 							} break;
-							// Если нода является клиентом
+							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
 								client_t * client = awh_cast <client_t *> (node);
 								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR){
-									// Устанавливаем статус события в состояние уничтожения
-									client->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+								if(ev.flags & EV_ERROR)
 									// Выполняем обработку ошибки
 									io::error(node, ev.data, this->_log);
-								}
 								// Если статус события восстановление соединения
 								if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
 									// Деактивируем таймаут события
@@ -20236,7 +20366,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										const uint16_t options = client->state.options;
 										// Сбрасываем опции события
 										client->state.options = event::options::NONE;
-										// Выполняем фиксацию изменений перед обработкой сокета
+										// Выполняем установку опций события и фиксацию изменений
 										if(this->options(client->id, options) && this->commit(client->id)){
 											// Выполняем повторное подключение клиента
 											if(this->connect(client->id, static_cast <bool> (
@@ -20253,7 +20383,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										client->callbacks.connect(client->id, false);
 								}
 								// Обрабатываем событие таймаута
-								io::timer(node, this->_log);
+								if(io::timer(node, this->_log))
+									// Пропускаем дальнейшую обработку события
+									continue;
 							} break;
 						}
 					// Если мы получили событие пользовательского события
@@ -20262,30 +20394,43 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						user_t * user = awh_cast <user_t *> (node);
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR){
-							// Устанавливаем статус события в состояние уничтожения
-							user->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 							// Выполняем обработку ошибки
-							io::error(node, ev.data, this->_log);
-							// Производим удаление списка подготовленных событий
-							::__awh_inters__.erase(user->id);
-							// Производим удаление ноды
-							::__awh_nodes__.erase(user->id);
+							if(io::error(node, ev.data, this->_log))
+								// Выполняем удаление узла
+								io::destroy(node, this->_log);
 						// Если событие пользовательского события сработало корректно
-						} else io::user(user, this->_log);
+						} else if(io::user(user, this->_log))
+							// Пропускаем дальнейшую обработку события
+							continue;
 					// Если мы получили событие сокета
 					} else {
 						// Если мы детектировали событие готовности сокета на чтение данных
-						if(ev.filter == EVFILT_READ)
+						if(ev.filter == EVFILT_READ){
 							// Обрабатываем событие доступности сокета на чтение
-							io::read(node, this->_fmk, this->_log);
+							if(!io::read(node, this->_fmk, this->_log))
+								// Пропускаем дальнейшую обработку события
+								continue;
+						}
 						// Если мы детектировали событие готовности сокета на запись данных
-						if(ev.filter == EVFILT_WRITE)
-							// Обрабатываем событие доступности сокета на запись
-							io::write(node, this->_fmk, this->_log);
+						if(ev.filter == EVFILT_WRITE){
+							// Если в сокете нет ошибок
+							if(this->_eth.error(ev.ident) == 0){
+								// Обрабатываем событие доступности сокета на запись
+								if(!io::write(node, this->_fmk, this->_log))
+									// Пропускаем дальнейшую обработку события
+									continue;
+							// Если мы поймали шум
+							} else {
+								// Выполняем обработку события закрытия
+								if(io::close(node, this->_log))
+									// Выполняем удаление узла
+									io::destroy(node, this->_log);
+								// Пропускаем дальнейшую обработку события
+								continue;
+							}
+						}
 						// Если мы детектировали событие закрытия подключения или ошибку
 						if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
-							// Устанавливаем статус события в состояние уничтожения
-							node->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
 							// Если мы детектировали наличие ошибки
 							if(ev.flags & EV_ERROR)
 								// Выполняем обработку ошибки
@@ -20294,10 +20439,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							if(ev.flags & EV_EOF)
 								// Выполняем обработку события закрытия
 								io::close(node, this->_log);
-							// Производим удаление списка подготовленных событий
-							::__awh_inters__.erase(node->id);
-							// Производим удаление ноды
-							::__awh_nodes__.erase(node->id);
+							// Выполняем удаление узла
+							io::destroy(node, this->_log);
 						}
 					}
 				}
@@ -20355,40 +20498,40 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <file_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <user_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <peer_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <client_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <server_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -20441,35 +20584,35 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <user_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <peer_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <client_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <server_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -20522,45 +20665,45 @@ void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noex
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <user_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <dir_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <file_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <peer_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <client_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <server_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -20613,50 +20756,50 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <user_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является таймером
+				// Если узел является таймером
 				case static_cast <uint8_t> (event::node_t::TIMER):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <timer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <dir_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <file_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <ipc_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <peer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <client_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <server_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -20709,50 +20852,50 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является пользовательским событием
+				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <user_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является таймером
+				// Если узел является таймером
 				case static_cast <uint8_t> (event::node_t::TIMER):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <timer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является директорией
+				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <dir_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является файловой системой
+				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <file_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является межпрограммным взаимодействием
+				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является одноранговым узлом
+				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <peer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <client_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <server_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -20805,15 +20948,15 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является сервером
+				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на событие принятия нового подключения
 					awh_cast <server_t *> (i->second.get())->callbacks.accept = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
@@ -20866,15 +21009,15 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			/**
-			 * Определяем чем является текущая нода
+			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если нода является клиентом
+				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на событие подключения к серверу
 					awh_cast <client_t *> (i->second.get())->callbacks.connect = ::move(cb);
 				break;
-				// Для других типов нод
+				// Для других типов узлов
 				default: {
 					/**
 					 * Если включён режим отладки
