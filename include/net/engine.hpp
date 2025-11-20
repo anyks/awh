@@ -202,6 +202,15 @@ namespace awh {
 			virtual bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод перемещения данных между событиями
+			 *
+			 * @param id идентификатор события-источника
+			 * @param to идентификатор события-приёмника
+			 * @return   результат выполнения перемещения
+			 */
+			virtual bool splice(const event::id_t id, const event::id_t to) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод отключения события
 			 *
 			 * @param id идентификатор события

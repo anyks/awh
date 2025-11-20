@@ -185,6 +185,15 @@ namespace awh {
 			bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept;
 		public:
 			/**
+			 * @brief Метод перемещения данных между событиями
+			 *
+			 * @param id идентификатор события-источника
+			 * @param to идентификатор события-приёмника
+			 * @return   результат выполнения перемещения
+			 */
+			bool splice(const event::id_t id, const event::id_t to) noexcept;
+		public:
+			/**
 			 * @brief Метод отключения события
 			 *
 			 * @param id идентификатор события

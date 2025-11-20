@@ -109,6 +109,7 @@ namespace {
 	 *
 	 */
 	typedef struct Transfer {
+		event::id_t id; // Идентификатор события принимающей стороны
 		size_t offset;  // Смещение передачи данных
 		buffer_t input; // Буфер получения данных
 		queue_t output; // Очередь отправки данных
@@ -119,7 +120,7 @@ namespace {
 		 * @param log объект работы с логами
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
-		 offset(0), output(fmk, log) {}
+		 id(0), offset(0), output(fmk, log) {}
 	} transfer_t;
 	/**
 	 * @brief Структура таймера
@@ -142,15 +143,21 @@ namespace {
 	 *
 	 */
 	typedef struct User : public net::user_t {
+		// Идентификатор события принимающей стороны
+		event::id_t to;
 		// Очередь пользовательских событий
 		queue_t events;
+		// Объект ввода-вывода
+		awh::io_t * io;
 		/**
 		 * @brief Конструктор
 		 *
+		 * @param io  объект ввода-вывода
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit User(const fmk_t * fmk, const log_t * log) noexcept : events(fmk, log) {}
+		explicit User(awh::io_t * io, const fmk_t * fmk, const log_t * log) noexcept :
+		 to(0), events(fmk, log), io(io) {}
 	} user_t;
 	/**
 	 * @brief Структура события файла
@@ -161,6 +168,8 @@ namespace {
 		int64_t size;
 		// Время последней модификации файла
 		int64_t mtime;
+		// Объект ввода-вывода
+		awh::io_t * io;
 		// Файловый дескриптор
 		net::socket_t fd;
 		// Структура статистики файла
@@ -172,11 +181,12 @@ namespace {
 		/**
 		 * @brief Конструктор
 		 *
+		 * @param io  объект ввода-вывода
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Filename(const fmk_t * fmk, const log_t * log) noexcept :
-		 size(0), mtime(0),
+		explicit Filename(awh::io_t * io, const fmk_t * fmk, const log_t * log) noexcept :
+		 size(0), mtime(0), io(io),
 		 fd(net::invalid_socket_t),
 		 transfer(fmk, log), addr(fmk, log) {}
 	} file_t;
@@ -205,6 +215,8 @@ namespace {
 	 *
 	 */
 	typedef struct InterProcessCommunication : public net::ipc_t {
+		// Объект ввода-вывода
+		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Объект передачи данных
@@ -212,17 +224,20 @@ namespace {
 		/**
 		 * @brief Конструктор
 		 *
+		 * @param io  объект ввода-вывода
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), transfer(fmk, log) {}
+		explicit InterProcessCommunication(awh::io_t * io, const fmk_t * fmk, const log_t * log) noexcept :
+		 io(io), fd(net::invalid_socket_t), transfer(fmk, log) {}
 	} ipc_t;
 	/**
 	 * @brief Структура подключённого клиента
 	 *
 	 */
 	typedef struct Peer : public net::peer_t {
+		// Объект ввода-вывода
+		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Флаг таймаута события
@@ -237,11 +252,12 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 * @param num общее количество подключений сервера
+		 * @param io  объект ввода-вывода
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Peer(uint16_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t),
+		explicit Peer(uint16_t & num, awh::io_t * io, const fmk_t * fmk, const log_t * log) noexcept :
+		 io(io), fd(net::invalid_socket_t),
 		 timeout(event::action_t::NONE),
 		 transfer(fmk, log), addr(fmk, log), peers(num) {}
 	} peer_t;
@@ -250,6 +266,8 @@ namespace {
 	 *
 	 */
 	typedef struct Client : public net::client_t {
+		// Объект ввода-вывода
+		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Флаг таймаута события
@@ -263,11 +281,12 @@ namespace {
 		/**
 		 * @brief Конструктор
 		 *
+		 * @param io  объект ввода-вывода
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t),
+		explicit Client(awh::io_t * io, const fmk_t * fmk, const log_t * log) noexcept :
+		 io(io), fd(net::invalid_socket_t),
 		 timeout(event::action_t::NONE),
 		 transfer(fmk, log), addr(fmk, log) {}
 	} client_t;
@@ -276,6 +295,8 @@ namespace {
 	 *
 	 */
 	typedef struct Server : public net::server_t {
+		// Объект ввода-вывода
+		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Объект передачи данных
@@ -289,12 +310,13 @@ namespace {
 		/**
 		 * @brief Конструктор
 		 *
+		 * @param io  объект ввода-вывода
 		 * @param eth объект работы с Ethernet
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Server(const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), transfer(fmk, log), addr(fmk, log), eth(eth) {}
+		explicit Server(awh::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept :
+		 io(io), fd(net::invalid_socket_t), transfer(fmk, log), addr(fmk, log), eth(eth) {}
 	} server_t;
 	/**
 	 * @brief Структура промежуточного звена
@@ -460,11 +482,15 @@ namespace io {
 		 */
 		try {
 			// Если установлена функция обратного вызова
-			if(node->callbacks.read != nullptr){
+			if((node->callbacks.read != nullptr) || (node->id > 0)){
 				// Есши в очереди есть данные для чтения
 				if((result = !node->events.empty())){
-					// Выполняем извлечение данных из очереди
-					node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
+					// Если идентификатор события для передачи данных не установлен
+					if(node->id == 0)
+						// Выполняем извлечение данных из очереди
+						node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
+					// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+					else node->io->send(node->id, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
 					// Очищаем очередь от прочитанных данных
 					node->events.pop();
 				}
@@ -1047,7 +1073,7 @@ namespace io {
 						return false;
 					}
 					// Выполняем создание нового объекта узла
-					unique_ptr <peer_t> peer = make_unique <peer_t> (node->backlog.count, fmk, log);
+					unique_ptr <peer_t> peer = make_unique <peer_t> (node->backlog.count, node->io, fmk, log);
 					// Устанавливаем файловый дескриптор сокета
 					peer->fd = sock;
 					// Устанавливаем тип узла
@@ -1567,7 +1593,7 @@ namespace io {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (node);
 					// Если функция обратного вызова для вывода прочитанных данных установлена
-					if(fs->callbacks.read != nullptr){
+					if((fs->callbacks.read != nullptr) || (fs->transfer.id > 0)){
 						// Если не установлен флаг постоянного отслеживания файла
 						if(!(fs->state.options & event::options::KEEPALIVE)){
 							// Сбрасываем размер файла
@@ -1597,8 +1623,12 @@ namespace io {
 										if(fs->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
 											fs->callbacks.event(fs->id, event::action_t::READ);
-										// Вывзываем функцию обратного вызова для вывода полученных данных
-										fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
+										// Если идентификатор события для передачи данных не установлен
+										if(fs->transfer.id == 0)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
+										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+										else fs->io->send(fs->transfer.id, buffer, chunk);
 										// Отвязываем текущий маппинг
 										::munmap(buffer, chunk);
 									// Если мы получили ошибку
@@ -1731,10 +1761,14 @@ namespace io {
 										if(ipc->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
 											ipc->callbacks.event(ipc->id, event::action_t::READ);
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(ipc->callbacks.read != nullptr)
-											// Вывзываем функцию обратного вызова для вывода полученных данных
-											ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных не установлен
+										if(ipc->transfer.id == 0){
+											// Если функция обратного вызова для вывода прочитанных данных установлена
+											if(ipc->callbacks.read != nullptr)
+												// Вывзываем функцию обратного вызова для вывода полученных данных
+												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+										} else ipc->io->send(ipc->transfer.id, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -1787,10 +1821,14 @@ namespace io {
 									if(ipc->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова флаг события
 										ipc->callbacks.event(ipc->id, event::action_t::READ);
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(ipc->callbacks.read != nullptr)
-										// Вывзываем функцию обратного вызова для вывода полученных данных
-										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных не установлен
+									if(ipc->transfer.id == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(ipc->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else ipc->io->send(ipc->transfer.id, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Формируем положительный результат
 									return true;
 								// Если произошёл дисконнект
@@ -1855,10 +1893,14 @@ namespace io {
 									if(ipc->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова флаг события
 										ipc->callbacks.event(ipc->id, event::action_t::READ);
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(ipc->callbacks.read != nullptr)
-										// Вывзываем функцию обратного вызова для вывода полученных данных
-										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных не установлен
+									if(ipc->transfer.id == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(ipc->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else ipc->io->send(ipc->transfer.id, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Формируем положительный результат
 									return true;
 								// Если произошёл дисконнект
@@ -1910,10 +1952,14 @@ namespace io {
 									if(ipc->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова флаг события
 										ipc->callbacks.event(ipc->id, event::action_t::READ);
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(ipc->callbacks.read != nullptr)
-										// Вывзываем функцию обратного вызова для вывода полученных данных
-										ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных не установлен
+									if(ipc->transfer.id == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(ipc->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else ipc->io->send(ipc->transfer.id, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Формируем положительный результат
 									return true;
 								// Если произошёл дисконнект
@@ -1992,10 +2038,14 @@ namespace io {
 										if(peer->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
 											peer->callbacks.event(peer->id, event::action_t::READ);
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(peer->callbacks.read != nullptr)
-											// Вывзываем функцию обратного вызова для вывода полученных данных
-											peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных не установлен
+										if(peer->transfer.id == 0){
+											// Если функция обратного вызова для вывода прочитанных данных установлена
+											if(peer->callbacks.read != nullptr)
+												// Вывзываем функцию обратного вызова для вывода полученных данных
+												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+										} else peer->io->send(peer->transfer.id, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -2046,10 +2096,14 @@ namespace io {
 									if(peer->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова флаг события
 										peer->callbacks.event(peer->id, event::action_t::READ);
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(peer->callbacks.read != nullptr)
-										// Вывзываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных не установлен
+									if(peer->transfer.id == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(peer->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else peer->io->send(peer->transfer.id, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
@@ -2101,10 +2155,14 @@ namespace io {
 								if(peer->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова флаг события
 									peer->callbacks.event(peer->id, event::action_t::READ);
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(peer->callbacks.read != nullptr)
-									// Вывзываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных не установлен
+								if(peer->transfer.id == 0){
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(peer->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+								} else peer->io->send(peer->transfer.id, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -2211,10 +2269,14 @@ namespace io {
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
 											client->callbacks.event(client->id, event::action_t::READ);
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вывзываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных не установлен
+										if(client->transfer.id == 0){
+											// Если функция обратного вызова для вывода прочитанных данных установлена
+											if(client->callbacks.read != nullptr)
+												// Вывзываем функцию обратного вызова для вывода полученных данных
+												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+										} else client->io->send(client->transfer.id, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -2277,10 +2339,14 @@ namespace io {
 									if(client->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова флаг события
 										client->callbacks.event(client->id, event::action_t::READ);
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(client->callbacks.read != nullptr)
-										// Вывзываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных не установлен
+									if(client->transfer.id == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(client->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else client->io->send(client->transfer.id, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 								// Если произошёл дисконнект
 								} else {
 									// Выполняем обработку закрытия подключения
@@ -2344,10 +2410,14 @@ namespace io {
 								if(client->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова флаг события
 									client->callbacks.event(client->id, event::action_t::READ);
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(client->callbacks.read != nullptr)
-									// Вывзываем функцию обратного вызова для вывода полученных данных
-									client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных не установлен
+								if(client->transfer.id == 0){
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(client->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+								} else client->io->send(client->transfer.id, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -2406,10 +2476,14 @@ namespace io {
 								if(client->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова флаг события
 									client->callbacks.event(client->id, event::action_t::READ);
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(client->callbacks.read != nullptr)
-									// Вывзываем функцию обратного вызова для вывода полученных данных
-									client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных не установлен
+								if(client->transfer.id == 0){
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(client->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+								} else client->io->send(client->transfer.id, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 								// Заполняем структуру клиента нулями после того как извлекли данные
 								::memset(&client->endpoint.server, 0, sizeof(client->endpoint.server));
 							}
@@ -2760,10 +2834,14 @@ namespace io {
 								if(server->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова флаг события
 									server->callbacks.event(server->id, event::action_t::READ);
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(server->callbacks.read != nullptr)
-									// Вывзываем функцию обратного вызова для вывода полученных данных
-									server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных не установлен
+								if(server->transfer.id == 0){
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(server->callbacks.read != nullptr)
+										// Вывзываем функцию обратного вызова для вывода полученных данных
+										server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+								} else server->io->send(server->transfer.id, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 								// Заполняем структуру клиента нулями после того как извлекли данные
 								::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 							}
@@ -7573,7 +7651,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::USER): {
 					// Выполняем создание нового объекта узла
-					unique_ptr <user_t> user = make_unique <user_t> (this->_fmk, this->_log);
+					unique_ptr <user_t> user = make_unique <user_t> (this, this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					user->id = i->second->id;
 					// Выполняем перенос состояний узла
@@ -7612,7 +7690,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Выполняем создание нового объекта узла
-					unique_ptr <file_t> fs = make_unique <file_t> (this->_fmk, this->_log);
+					unique_ptr <file_t> fs = make_unique <file_t> (this, this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					fs->id = i->second->id;
 					// Выполняем перенос состояний узла
@@ -7670,7 +7748,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						}
 					}
 					// Выполняем создание нового объекта узла
-					unique_ptr <ipc_t> ipc = make_unique <ipc_t> (this->_fmk, this->_log);
+					unique_ptr <ipc_t> ipc = make_unique <ipc_t> (this, this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					ipc->id = i->second->id;
 					// Выполняем перенос состояний узла
@@ -7804,7 +7882,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						}
 					}
 					// Выполняем создание нового объекта узла
-					unique_ptr <server_t> server = make_unique <server_t> (&this->_eth, this->_fmk, this->_log);
+					unique_ptr <server_t> server = make_unique <server_t> (this, &this->_eth, this->_fmk, this->_log);
 					// Устанавливаем идентификатор события
 					server->id = i->second->id;
 					// Выполняем перенос состояний узла
@@ -11094,7 +11172,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -11156,7 +11234,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -11218,7 +11296,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -11308,7 +11386,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета RAW
 							case static_cast <uint8_t> (event::type_t::RAW): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -11591,7 +11669,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -11892,7 +11970,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -12083,7 +12161,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							// Для типа сокета SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг протокола сокета
@@ -12289,7 +12367,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 					// Для семейства файловой системы
 					case static_cast <uint8_t> (event::family_t::FILE): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг протокола сокета
@@ -12418,7 +12496,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12447,7 +12525,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12476,7 +12554,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12538,7 +12616,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета RAW
 					case static_cast <uint8_t> (event::type_t::RAW): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12578,7 +12656,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета DATAGRAM
 					 case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12651,7 +12729,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12691,7 +12769,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					// Для типа сокета SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -12773,7 +12851,7 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 			// Для семейства файловой системы
 			case static_cast <uint8_t> (event::family_t::FILE): {
 				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this->_fmk, this->_log));
+				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this, this->_fmk, this->_log));
 				// Устанавливаем идентификатор события
 				ret.first->second->id = ret.first->first;
 				// Устанавливаем флаг типа сокета
@@ -13391,7 +13469,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 			// Переходим по всему списку идентификаторов событий
 			for(uint8_t i = 0; i < 2; i++){
 				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this, this->_fmk, this->_log));
 				// Устанавливаем идентификатор события
 				ret.first->second->id = ret.first->first;
 				// Устанавливаем флаг типа сокета
@@ -14416,6 +14494,594 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 	}
 	// Возвращаем результат работы функции
 	return result;
+}
+/**
+ * @brief Метод перемещения данных между событиями
+ *
+ * @param id идентификатор события-источника
+ * @param to идентификатор события-приёмника
+ * @return   результат выполнения перемещения
+ */
+bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			// Выполняем поиск идентификатора события
+			auto j = ::__awh_nodes__.find(to);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((j != ::__awh_nodes__.end()) && (j->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::USER): {
+						// Получаем текущее значение объекта пользовательского события
+						user_t * user = awh_cast <user_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте пользовательского события
+								user->to = to;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						// Устанавливаем текст ошибки
+						const string error = "Cannot splice events for directory node";
+						// Если установлена функция обратного вызова
+						if(dir->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * fs = awh_cast <file_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a filesystem node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a filesystem node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте файловой системы
+								fs->transfer.id = to;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMER): {
+						// Получаем текущее значение объекта таймера
+						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						// Устанавливаем текст ошибки
+						const string error = "Cannot splice events for timer node";
+						// Если установлена функция обратного вызова
+						if(timer->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является межпрограммным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпрограммного взаимодействия
+						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a inter-process communication node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a inter-process communication node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте межпрограммного взаимодействия
+								ipc->transfer.id = to;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a peer node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a peer node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
+								peer->transfer.id = to;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * client = awh_cast <client_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a client node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a client node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте клиента
+								client->transfer.id = to;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						server_t * server = awh_cast <server_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a server node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMER): {
+								// Получаем текущее значение объекта директории
+								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a server node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::USER):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпрограммным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте сервера
+								server->transfer.id = to;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод отключения события
