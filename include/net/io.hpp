@@ -370,6 +370,12 @@ namespace awh {
 			bool isAlive(const event::id_t id) const noexcept;
 		public:
 			/**
+			 * @brief Метод принудительного срабатывания события
+			 *
+			 * @return результат выполнения операции
+			 */
+			bool kick() noexcept;
+			/**
 			 * @brief Метод инициализации основного движка фреймворка
 			 *
 			 * @return результат выполнения инициализации

@@ -199,7 +199,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
 			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
@@ -419,7 +419,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
 			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
@@ -646,7 +646,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
 			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
@@ -872,7 +872,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
 			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
@@ -1099,7 +1099,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
 			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
@@ -1319,7 +1319,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FILE, event::type_t::STREAM, event::protocol_t::TCP);
+			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем тип ноды
 			io.node(eid6, event::node_t::FILE);
 			// Устанавливаем порт события
@@ -1429,7 +1429,7 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " ======================================== IPC " << endl;
 
 		// Добавляем новое событие клиента TCP
-		auto eids2 = io.events(event::family_t::IPC, event::type_t::NONE, event::protocol_t::NONE);
+		auto eids2 = io.events(event::family_t::PIPE, event::type_t::NONE, event::protocol_t::NONE);
 
 		cout << " Найдено событий: " << eids2[0] << " == " << eids2[1] << endl;
 
@@ -1461,9 +1461,9 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " ======================================== TIMER " << endl;
 
 		// Добавляем новое событие клиента интервала
-		event::id_t eid = io.event(event::family_t::INTERVAL, event::type_t::NONE, event::protocol_t::NONE);
+		event::id_t eid = io.event(event::family_t::TIMER, event::type_t::NONE, event::protocol_t::NONE);
 		// Устанавливаем тип ноды
-		io.node(eid, event::node_t::TIMER);
+		io.node(eid, event::node_t::INTERVAL);
 
 		cout << " Таймерное событие ID: " << eid << endl;
 

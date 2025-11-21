@@ -486,11 +486,11 @@ namespace io {
 				// Есши в очереди есть данные для чтения
 				if((result = !node->events.empty())){
 					// Если идентификатор события для передачи данных не установлен
-					if(node->id == 0)
+					if(node->to == 0)
 						// Выполняем извлечение данных из очереди
 						node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
 					// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-					else node->io->send(node->id, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
+					else node->io->send(node->to, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
 					// Очищаем очередь от прочитанных данных
 					node->events.pop();
 				}
@@ -625,19 +625,6 @@ namespace io {
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является таймером
-				case static_cast <uint8_t> (event::node_t::TIMER): {
-					// Выполняем извлечение текущего значения объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (node);
-					// Если установлена функция обратного вызова
-					if(timer->callbacks.status != nullptr)
-						// Вызываем функцию обратного вызова статуса события
-						timer->callbacks.status(timer->id, event::status_t::SUCCESS);
-					// Если таймер является одноразовым
-					if(timer->state.family == event::family_t::TIMER)
-						// Выполняем удаление узла
-						result = io::destroy(node, log);
-				} break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
@@ -655,6 +642,26 @@ namespace io {
 					if(io::close(node, log))
 						// Выполняем удаление узла
 						result = io::destroy(node, log);
+				} break;
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT): {
+					// Выполняем извлечение текущего значения объекта таймера
+					timer_t * timer = awh_cast <timer_t *> (node);
+					// Если установлена функция обратного вызова
+					if(timer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова статуса события
+						timer->callbacks.status(timer->id, event::status_t::SUCCESS);
+					// Выполняем удаление узла
+					result = io::destroy(node, log);
+				} break;
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
+					// Выполняем извлечение текущего значения объекта таймера
+					timer_t * timer = awh_cast <timer_t *> (node);
+					// Если установлена функция обратного вызова
+					if(timer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова статуса события
+						timer->callbacks.status(timer->id, event::status_t::SUCCESS);
 				} break;
 			}
 		/**
@@ -830,7 +837,7 @@ namespace io {
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER): {
+				case static_cast <uint8_t> (event::node_t::NOTIFY): {
 					// Получаем текущее значение объекта пользовательского события
 					user_t * user = awh_cast <user_t *> (node);
 					// Если установлена функция обратного вызова
@@ -857,7 +864,9 @@ namespace io {
 						fs->callbacks.status(fs->id, event::status_t::DESTROYED);
 				} break;
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER): {
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Получаем текущее значение объекта таймера
 					timer_t * timer = awh_cast <timer_t *> (node);
 					// Если установлена функция обратного вызова
@@ -3665,7 +3674,7 @@ namespace io {
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER): {
+				case static_cast <uint8_t> (event::node_t::NOTIFY): {
 					// Получаем текущее значение объекта пользовательского события
 					user_t * user = awh_cast <user_t *> (node);
 					// Если установлена функция обратного вызова
@@ -3692,7 +3701,9 @@ namespace io {
 					return true;
 				}
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER): {
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Получаем текущее значение объекта таймера
 					timer_t * timer = awh_cast <timer_t *> (node);
 					// Если установлена функция обратного вызова
@@ -4396,7 +4407,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER): {
+				case static_cast <uint8_t> (event::node_t::NOTIFY): {
 					// Выполняем извлечение текущего значения объекта пользовательского события
 					user_t * node = awh_cast <user_t *> (i->second.get());
 					// Устанавливаем статус события в состояние ожидания
@@ -4408,7 +4419,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
 						// Устанавливаем пользовательское событие
-						EV_SET(&::__awh_change__.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, node);
+						EV_SET(&::__awh_change__.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
 						// Устанавливаем количество событий
 						ret.first->second.count = 1;
 						// Устанавливаем индекс текущего элемента
@@ -4440,7 +4451,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					}
 				} break;
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER): {
+				case static_cast <uint8_t> (event::node_t::TIMEOUT): {
 					// Выполняем извлечение текущего значения объекта таймаута
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Устанавливаем статус события в состояние ожидания
@@ -4449,50 +4460,54 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 					// Если событие успешно добавлено
 					if((result = (ret.second && (node->delay > 0)))){
-						/**
-						 * Определяем семейство сокета
-						 */
-						switch(static_cast <uint8_t> (node->state.family)){
-							// Для семейства таймаута
-							case static_cast <uint8_t> (event::family_t::TIMER): {
-								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
-								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
-							} break;
-							// Для семейства интервального таймаута
-							case static_cast <uint8_t> (event::family_t::INTERVAL): {
-								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
-								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-								EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
-							} break;
-							// Для неизвестного семейства
-							default: {
-								// Устанавливаем текст ошибки
-								const string error = "Timer cannot be activated because it is not defined";
-								// Если установлена функция обратного вызова
-								if(node->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									node->callbacks.error(node->id, event::error_t::UNKNOWN, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем событие таймаута на указанное количество миллисекунд
+						EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
+						// Устанавливаем количество событий
+						ret.first->second.count = 1;
+						// Устанавливаем индекс текущего элемента
+						ret.first->second.index = (::__awh_change__.size() - 1);
+					// Событие не может быть зафиксированно повторно
+					} else {
+						// Устанавливаем текст ошибки
+						const string error = "An event for a timer cannot be commit because it is already registered";
+						// Если установлена функция обратного вызова
+						if(node->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
 						}
+					}
+				} break;
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
+					// Выполняем извлечение текущего значения объекта таймаута
+					timer_t * node = awh_cast <timer_t *> (i->second.get());
+					// Устанавливаем статус события в состояние ожидания
+					node->state.status.store(event::status_t::PENDING, std::memory_order_release);
+					// Создаём объект промежуточного звена
+					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+					// Если событие успешно добавлено
+					if((result = (ret.second && (node->delay > 0)))){
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
+						EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
 						// Устанавливаем количество событий
 						ret.first->second.count = 1;
 						// Устанавливаем индекс текущего элемента
@@ -7155,7 +7170,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Если типы адресов соответствуют
-					if(i->second->state.family == event::family_t::DIR){
+					if(i->second->state.family == event::family_t::FSYS){
 						// Получаем текущее значение объекта файловой системы
 						dir_t * fs = awh_cast <dir_t *> (i->second.get());
 						// Если адрес соответствует адресу файловой системы
@@ -7228,7 +7243,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Если типы адресов соответствуют
-					if(i->second->state.family == event::family_t::FILE){
+					if(i->second->state.family == event::family_t::FSYS){
 						// Получаем текущее значение объекта файловой системы
 						file_t * fs = awh_cast <file_t *> (i->second.get());
 						// Если адрес соответствует адресу файловой системы
@@ -7649,31 +7664,14 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 			 */
 			switch(static_cast <uint8_t> (node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER): {
-					// Выполняем создание нового объекта узла
-					unique_ptr <user_t> user = make_unique <user_t> (this, this->_fmk, this->_log);
-					// Устанавливаем идентификатор события
-					user->id = i->second->id;
-					// Выполняем перенос состояний узла
-					user->state = i->second->state;
-					// Выполняем перенос всей узла
-					i->second = ::move(user);
-					// Устанавливаем тип узла события
-					i->second->state.node = node;
-				} break;
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER): {
-					// Выполняем создание нового объекта узла
-					unique_ptr <timer_t> timer = make_unique <timer_t> ();
-					// Устанавливаем идентификатор события
-					timer->id = i->second->id;
-					// Выполняем перенос состояний узла
-					timer->state = i->second->state;
-					// Выполняем перенос всей узла
-					i->second = ::move(timer);
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Устанавливаем тип узла события
 					i->second->state.node = node;
-				} break;
+				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Выполняем создание нового объекта узла
@@ -7682,10 +7680,12 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					fs->id = i->second->id;
 					// Выполняем перенос состояний узла
 					fs->state = i->second->state;
+					// Устанавливаем тип узла события
+					fs->state.node = node;
+					// Выполняем инициализацию объекта адреса файловой системы
+					fs->path = make_unique <net::addr_fs_t> ();
 					// Выполняем перенос всей узла
 					i->second = ::move(fs);
-					// Устанавливаем тип узла события
-					i->second->state.node = node;
 				} break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -7695,10 +7695,12 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					fs->id = i->second->id;
 					// Выполняем перенос состояний узла
 					fs->state = i->second->state;
+					// Устанавливаем тип узла события
+					fs->state.node = node;
+					// Выполняем инициализацию объекта адреса файловой системы
+					fs->path = make_unique <net::addr_fs_t> ();
 					// Выполняем перенос всей узла
 					i->second = ::move(fs);
-					// Устанавливаем тип узла события
-					i->second->state.node = node;
 				} break;
 				// Если узел является межпрограммным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -7706,10 +7708,8 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					 * Определяем семейство сокета
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
-						// Для семейства директорий
-						case static_cast <uint8_t> (event::family_t::DIR):
 						// Для семейства файловой системы
-						case static_cast <uint8_t> (event::family_t::FILE): {
+						case static_cast <uint8_t> (event::family_t::FSYS): {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -7726,10 +7726,8 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							// Выводим отрицательный результат
 							return false;
 						}
-						// Для семейства таймаутов
-						case static_cast <uint8_t> (event::family_t::TIMER):
-						// Для семейства интервалов
-						case static_cast <uint8_t> (event::family_t::INTERVAL): {
+						// Для семейства таймера
+						case static_cast <uint8_t> (event::family_t::TIMER): {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -7753,10 +7751,12 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					ipc->id = i->second->id;
 					// Выполняем перенос состояний узла
 					ipc->state = i->second->state;
+					// Устанавливаем тип узла события
+					ipc->state.node = node;
 					/**
 					 * Определяем чем является текущий узел
 					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
+					switch(static_cast <uint8_t> (ipc->state.node)){
 						// Если узел ещё не определена
 						case static_cast <uint8_t> (event::node_t::NONE):
 						// Если узел является клиентом
@@ -7776,8 +7776,6 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					}
 					// Выполняем перенос всей узла
 					i->second = ::move(ipc);
-					// Устанавливаем тип узла события
-					i->second->state.node = node;
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -7790,7 +7788,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 						/**
 						 * Определяем семейство сокета
 						 */
-						switch(static_cast <uint8_t> (i->second->state.family)){
+						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4):
 							// Для семейства UDPv4
@@ -7823,7 +7821,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					 */
 					switch(static_cast <uint8_t> (i->second->state.family)){
 						// Для семейства межпроцессного взаимодействия
-						case static_cast <uint8_t> (event::family_t::IPC): {
+						case static_cast <uint8_t> (event::family_t::PIPE): {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -7840,10 +7838,8 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							// Выводим отрицательный результат
 							return false;
 						}
-						// Для семейства директорий
-						case static_cast <uint8_t> (event::family_t::DIR):
 						// Для семейства файловой системы
-						case static_cast <uint8_t> (event::family_t::FILE): {
+						case static_cast <uint8_t> (event::family_t::FSYS): {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -7860,10 +7856,8 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 							// Выводим отрицательный результат
 							return false;
 						}
-						// Для семейства таймаутов
-						case static_cast <uint8_t> (event::family_t::TIMER):
-						// Для семейства интервалов
-						case static_cast <uint8_t> (event::family_t::INTERVAL): {
+						// Для семейства таймера
+						case static_cast <uint8_t> (event::family_t::TIMER): {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -7887,10 +7881,12 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					server->id = i->second->id;
 					// Выполняем перенос состояний узла
 					server->state = i->second->state;
+					// Устанавливаем тип узла события
+					server->state.node = node;
 					/**
 					 * Определяем чем является текущий узел
 					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
+					switch(static_cast <uint8_t> (server->state.node)){
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект объект однорангового узла
@@ -7914,8 +7910,6 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					}
 					// Выполняем перенос всей узла
 					i->second = ::move(server);
-					// Устанавливаем тип узла события
-					i->second->state.node = node;
 				} break;
 			}
 			// Возвращаем результат работы функции
@@ -9706,7 +9700,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							// Получаем объект файловой системы
 							dir_t * fs = awh_cast <dir_t *> (i->second.get());
 							// Если типы адресов соответствуют
-							if(fs->state.family == event::family_t::DIR){
+							if(fs->state.family == event::family_t::FSYS){
 								// Если адрес соответствует адресу файловой системы
 								if(fs->addr.check(value, net_addr_t::type_t::FS)){
 									// Устанавливаем тип адреса
@@ -9799,7 +9793,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							// Получаем объект файловой системы
 							file_t * fs = awh_cast <file_t *> (i->second.get());
 							// Если типы адресов соответствуют
-							if(fs->state.family == event::family_t::FILE){
+							if(fs->state.family == event::family_t::FSYS){
 								// Если адрес соответствует адресу файловой системы
 								if(fs->addr.check(value, net_addr_t::type_t::FS)){
 									// Устанавливаем тип адреса
@@ -10908,11 +10902,13 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Выполняем удаление узла
 					return io::destroy(i->second.get(), this->_log);
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER): {
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Выполняем извлечение текущего значения объекта таймаута
 					timer_t * node = awh_cast <timer_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
@@ -11163,6 +11159,51 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 				 * Определяем семейство сокета
 				 */
 				switch(static_cast <uint8_t> (i->second->state.family)){
+					// Для семейства директорий
+					case static_cast <uint8_t> (event::family_t::FSYS): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <net::node_t> ());
+						// Устанавливаем идентификатор события
+						ret.first->second->id = ret.first->first;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
+					// Для семейства таймера
+					case static_cast <uint8_t> (event::family_t::TIMER): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <timer_t> ());
+						// Устанавливаем идентификатор события
+						ret.first->second->id = ret.first->first;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
+					// Для семейства пользовательских событий
+					case static_cast <uint8_t> (event::family_t::USER): {
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <user_t> (this, this->_fmk, this->_log));
+						// Устанавливаем идентификатор события
+						ret.first->second->id = ret.first->first;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = i->second->state.type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = i->second->state.family;
+						// Возвращаем идентификатор созданного события
+						result = ret.first->first;
+					} break;
 					// Для семейства UNIX-доменных сокетов
 					case static_cast <uint8_t> (event::family_t::UDS): {
 						/**
@@ -12347,57 +12388,6 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::protocol_t pr
 							}
 						}
 					} break;
-					// Для семейства директорий
-					case static_cast <uint8_t> (event::family_t::DIR): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
-						// Устанавливаем идентификатор события
-						ret.first->second->id = ret.first->first;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						// Выполняем инициализацию объекта адреса файловой системы
-						awh_cast <dir_t &> (*ret.first->second).path = make_unique <net::addr_fs_t> ();
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
-					// Для семейства файловой системы
-					case static_cast <uint8_t> (event::family_t::FILE): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this, this->_fmk, this->_log));
-						// Устанавливаем идентификатор события
-						ret.first->second->id = ret.first->first;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						// Выполняем инициализацию объекта адреса файловой системы
-						awh_cast <file_t &> (*ret.first->second).path = make_unique <net::addr_fs_t> ();
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
-					// Для семейства таймаутов
-					case static_cast <uint8_t> (event::family_t::TIMER):
-					// Для семейства интервалов
-					case static_cast <uint8_t> (event::family_t::INTERVAL): {
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <timer_t> ());
-						// Устанавливаем идентификатор события
-						ret.first->second->id = ret.first->first;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = i->second->state.type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = i->second->state.family;
-						// Возвращаем идентификатор созданного события
-						result = ret.first->first;
-					} break;
 					// Для неизвестного семейства
 					default: {
 						/**
@@ -12487,6 +12477,51 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 		 * Определяем семейство сокета
 		 */
 		switch(static_cast <uint8_t> (family)){
+			// Для семейства директорий
+			case static_cast <uint8_t> (event::family_t::FSYS): {
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <net::node_t> ());
+				// Устанавливаем идентификатор события
+				ret.first->second->id = ret.first->first;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Возвращаем идентификатор созданного события
+				result = ret.first->first;
+			} break;
+			// Для семейства таймера
+			case static_cast <uint8_t> (event::family_t::TIMER): {
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <timer_t> ());
+				// Устанавливаем идентификатор события
+				ret.first->second->id = ret.first->first;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Возвращаем идентификатор созданного события
+				result = ret.first->first;
+			} break;
+			// Для семейства пользовательских событий
+			case static_cast <uint8_t> (event::family_t::USER): {
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <user_t> (this, this->_fmk, this->_log));
+				// Устанавливаем идентификатор события
+				ret.first->second->id = ret.first->first;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Возвращаем идентификатор созданного события
+				result = ret.first->first;
+			} break;
 			// Для семейства UNIX-доменных сокетов
 			case static_cast <uint8_t> (event::family_t::UDS): {
 				/**
@@ -12831,57 +12866,6 @@ awh::event::id_t awh::IO::event(const event::family_t family, const event::type_
 					}
 				}
 			} break;
-			// Для семейства директорий
-			case static_cast <uint8_t> (event::family_t::DIR): {
-				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
-				// Устанавливаем идентификатор события
-				ret.first->second->id = ret.first->first;
-				// Устанавливаем флаг типа сокета
-				ret.first->second->state.type = type;
-				// Устанавливаем флаг семейства сокета
-				ret.first->second->state.family = family;
-				// Устанавливаем флаг протокола сокета
-				ret.first->second->state.protocol = protocol;
-				// Выполняем инициализацию объекта адреса файловой системы
-				awh_cast <dir_t &> (* ret.first->second).path = make_unique <net::addr_fs_t> ();
-				// Возвращаем идентификатор созданного события
-				result = ret.first->first;
-			} break;
-			// Для семейства файловой системы
-			case static_cast <uint8_t> (event::family_t::FILE): {
-				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this, this->_fmk, this->_log));
-				// Устанавливаем идентификатор события
-				ret.first->second->id = ret.first->first;
-				// Устанавливаем флаг типа сокета
-				ret.first->second->state.type = type;
-				// Устанавливаем флаг семейства сокета
-				ret.first->second->state.family = family;
-				// Устанавливаем флаг протокола сокета
-				ret.first->second->state.protocol = protocol;
-				// Выполняем инициализацию объекта адреса файловой системы
-				awh_cast <file_t &> (* ret.first->second).path = make_unique <net::addr_fs_t> ();
-				// Возвращаем идентификатор созданного события
-				result = ret.first->first;
-			} break;
-			// Для семейства таймаутов
-			case static_cast <uint8_t> (event::family_t::TIMER):
-			// Для семейства интервалов
-			case static_cast <uint8_t> (event::family_t::INTERVAL): {
-				// Выполняем создание события
-				auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <timer_t> ());
-				// Устанавливаем идентификатор события
-				ret.first->second->id = ret.first->first;
-				// Устанавливаем флаг типа сокета
-				ret.first->second->state.type = type;
-				// Устанавливаем флаг семейства сокета
-				ret.first->second->state.family = family;
-				// Устанавливаем флаг протокола сокета
-				ret.first->second->state.protocol = protocol;
-				// Возвращаем идентификатор созданного события
-				result = ret.first->first;
-			} break;
 			// Для неизвестного семейства
 			default: {
 				/**
@@ -12952,7 +12936,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 		 */
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPC
-			case static_cast <uint8_t> (event::family_t::IPC): {
+			case static_cast <uint8_t> (event::family_t::PIPE): {
 				// Выполняем инициализацию файловых дескрипторов
 				if(::pipe(fds) != 0){
 					/**
@@ -14520,7 +14504,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
 					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::USER): {
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
 						user_t * user = awh_cast <user_t *> (i->second.get());
 						/**
@@ -14555,7 +14539,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (j->second.get());
 								// Устанавливаем текст ошибки
@@ -14582,7 +14568,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER):
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
 							// Если узел является межпрограммным взаимодействием
@@ -14663,7 +14649,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (j->second.get());
 								// Устанавливаем текст ошибки
@@ -14690,7 +14678,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER):
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
 							// Если узел является межпрограммным взаимодействием
@@ -14709,7 +14697,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 						}
 					} break;
 					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMER): {
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Получаем текущее значение объекта таймера
 						timer_t * timer = awh_cast <timer_t *> (i->second.get());
 						// Устанавливаем текст ошибки
@@ -14771,7 +14761,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (j->second.get());
 								// Устанавливаем текст ошибки
@@ -14798,7 +14790,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER):
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
 							// Если узел является межпрограммным взаимодействием
@@ -14852,7 +14844,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (j->second.get());
 								// Устанавливаем текст ошибки
@@ -14879,7 +14873,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER):
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
 							// Если узел является межпрограммным взаимодействием
@@ -14933,7 +14927,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (j->second.get());
 								// Устанавливаем текст ошибки
@@ -14960,7 +14956,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER):
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
 							// Если узел является межпрограммным взаимодействием
@@ -15014,7 +15010,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (j->second.get());
 								// Устанавливаем текст ошибки
@@ -15041,7 +15039,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 								}
 							} break;
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER):
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
 							// Если узел является межпрограммным взаимодействием
@@ -15877,14 +15875,32 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						return true;
 					}
 					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::USER): {
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
 						user_t * user = awh_cast <user_t *> (i->second.get());
 						// Добавляем данные в очередь событий пользователя
 						user->events.push(data, size);
-						// Выводим успешный результат выполнения функции
-						return true;
-					}
+						// Создаём событие триггера
+						struct kevent trigger;
+						// Выполняем установку события триггера
+						EV_SET(&trigger, i->first, EVFILT_USER, 0, NOTE_TRIGGER, 0, user);
+						// Триггерим событие Kqueue
+						if(!(result = (::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
 					// Если узел является межпрограммным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпрограммного взаимодействия
@@ -18878,7 +18894,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 					 */
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
-						case static_cast <uint8_t> (event::family_t::IPC):
+						case static_cast <uint8_t> (event::family_t::PIPE):
 							// Извлекаем размер буфера на чтение и запись
 							return ipc->transfer.input.size;
 						// Для семейства UNIX-доменных сокетов
@@ -19164,7 +19180,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					 */
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
-						case static_cast <uint8_t> (event::family_t::IPC): {
+						case static_cast <uint8_t> (event::family_t::PIPE): {
 							// Устанавливаем результат выполнения операции
 							result = true;
 							/**
@@ -19292,7 +19308,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства межпроцессных соединений
-						case static_cast <uint8_t> (event::family_t::IPC): {
+						case static_cast <uint8_t> (event::family_t::PIPE): {
 							/**
 							 * Определяем тип действия события
 							 */
@@ -19454,7 +19470,9 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER):
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Выводим значение задержки времени таймаута
 					return awh_cast <timer_t *> (i->second.get())->delay;
 				// Если узел является одноранговым узлом
@@ -19550,7 +19568,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMER): {
+				case static_cast <uint8_t> (event::node_t::TIMEOUT): {
 					// Получаем объект события таймера
 					timer_t * timer = awh_cast <timer_t *> (i->second.get());
 					// Устанавливаем значение задержки времени таймаута
@@ -19573,21 +19591,39 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						if(timeout > 0){
 							// Добавляем новое событие в список изменений
 							::__awh_change__.push_back((struct kevent){});
-							/**
-							 * Определяем семейство сокета
-							 */
-							switch(static_cast <uint8_t> (timer->state.family)){
-								// Для семейства таймаута
-								case static_cast <uint8_t> (event::family_t::TIMER):
-									// Устанавливаем событие таймаута на указанное количество миллисекунд
-									EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
-								break;
-								// Для семейства интервального таймаута
-								case static_cast <uint8_t> (event::family_t::INTERVAL):
-									// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-									EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
-								break;
-							}
+							// Устанавливаем событие таймаута на указанное количество миллисекунд
+							EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+						}
+					}
+				} break;
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
+					// Получаем объект события таймера
+					timer_t * timer = awh_cast <timer_t *> (i->second.get());
+					// Устанавливаем значение задержки времени таймаута
+					timer->delay = timeout;
+					// Если таймаут находится в состоянии ожидания
+					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Останавливаем активный таймаут
+						EV_SET(&::__awh_change__.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Увеличиваем количество событий
+						ret.first->second.count++;
+						// Если таймаут необходимо запустить
+						if(timeout > 0){
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
+							EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
@@ -20199,6 +20235,40 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 	return false;
 }
 /**
+ * @brief Метод принудительного срабатывания события
+ *
+ * @return результат выполнения операции
+ */
+bool awh::IO::kick() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
+		// Создаём событие триггера
+		struct kevent trigger;
+		// Выполняем установку события триггера
+		EV_SET(&trigger, 0, EVFILT_USER, 0, NOTE_TRIGGER, 0, nullptr);
+		// Триггерим событие Kqueue
+		if(!(result = (::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
  * @brief Метод инициализации основного движка фреймворка
  *
  * @return результат выполнения инициализации
@@ -20226,6 +20296,10 @@ bool awh::IO::initialize() noexcept {
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
+		// Добавляем новое событие в список изменений
+		::__awh_change__.push_back((struct kevent){});
+		// Устанавливаем пользовательское событие
+		EV_SET(&::__awh_change__.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
 		// Выводим результат успешной инициализации
 		return true;
 	}
@@ -20249,9 +20323,11 @@ bool awh::IO::reinitialize() noexcept {
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
 					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::USER):
+					case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMER): {
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
 						// Производим удаление узла
@@ -20374,6 +20450,8 @@ bool awh::IO::reinitialize() noexcept {
 			// Если узел не находится в рабочем состоянии, пропускаем её
 			} else ++i;
 		}
+		// Выполняем пинок Kqueue для обработки всех удалений
+		this->kick();
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Выполняем инициализацию Kqueue
@@ -20419,9 +20497,11 @@ bool awh::IO::deinitialize() noexcept {
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
 					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::USER):
-					// Если узел является таймером
-					case static_cast <uint8_t> (event::node_t::TIMER): {
+					case static_cast <uint8_t> (event::node_t::NOTIFY):
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Производим удаление списка подготовленных событий
 						::__awh_inters__.erase(i->first);
 						// Производим удаление узла
@@ -20549,6 +20629,8 @@ bool awh::IO::deinitialize() noexcept {
 				i = ::__awh_nodes__.erase(i);
 			}
 		}
+		// Выполняем пинок Kqueue для обработки всех удалений
+		this->kick();
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Сбрасываем значение Kqueue
@@ -20728,9 +20810,11 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						 */
 						switch(static_cast <uint8_t> (node->state.node)){
 							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::USER): break;
-							// Если узел является таймером
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							case static_cast <uint8_t> (event::node_t::NOTIFY): break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
 								timer_t * timer = awh_cast <timer_t *> (node);
 								// Если установлена функция обратного вызова
@@ -20984,8 +21068,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является таймером
-							case static_cast <uint8_t> (event::node_t::TIMER): {
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Выполняем извлечение текущего значения объекта таймера
 								timer_t * timer = awh_cast <timer_t *> (node);
 								// Если мы детектировали наличие ошибки
@@ -21199,7 +21285,7 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 					awh_cast <file_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <user_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
@@ -21280,7 +21366,7 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <user_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
@@ -21361,7 +21447,7 @@ void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noex
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <user_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
@@ -21452,12 +21538,14 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <user_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если узел является таймером
-				case static_cast <uint8_t> (event::node_t::TIMER):
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <timer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
@@ -21548,12 +21636,14 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::USER):
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <user_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если узел является таймером
-				case static_cast <uint8_t> (event::node_t::TIMER):
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <timer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;

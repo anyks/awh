@@ -48,17 +48,17 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
-	// Добавляем новое событие клиента таймера
+	// Добавляем новое событие таймера
 	event::id_t eid1 = io.event(event::family_t::TIMER, event::type_t::NONE, event::protocol_t::NONE);
-	// Добавляем новое событие клиента интервала
-	event::id_t eid2 = io.event(event::family_t::INTERVAL, event::type_t::NONE, event::protocol_t::NONE);
+	// Добавляем новое событие интервала
+	event::id_t eid2 = io.event(event::family_t::TIMER, event::type_t::NONE, event::protocol_t::NONE);
 	// Устанавливаем тип ноды для таймера
-	io.node(eid1, event::node_t::TIMER);
+	io.node(eid1, event::node_t::TIMEOUT);
 	// Устанавливаем тип ноды для интервала
-	io.node(eid2, event::node_t::TIMER);
-	// Добавляем новое событие клиента таймера
+	io.node(eid2, event::node_t::INTERVAL);
+	// Добавляем новое событие таймера
 	io.timeout(eid1, event::action_t::NONE, 12000);
-	// Добавляем новое событие клиента интервала
+	// Добавляем новое событие интервала
 	io.timeout(eid2, event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
