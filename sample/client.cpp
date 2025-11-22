@@ -1581,7 +1581,7 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(eid, [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Выводим сообщение о переподключении события
@@ -1612,6 +1612,11 @@ int32_t main(int32_t argc, char * argv[]){
 						case static_cast <uint8_t> (event::error_t::ALREADY_EXISTS):
 							// Выводим сообщение об ошибке уже существующего объекта
 							log.print("Объект события уже существует: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка доступа к сокету
+						case static_cast <uint8_t> (event::error_t::INVALID_SOCKET):
+							// Выводим сообщение об ошибке доступа к сокету
+							log.print("Ошибка доступа к сокету события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
 						break;
 						// Если ошибка некорректного адреса
 						case static_cast <uint8_t> (event::error_t::INVALID_ADDRESS):

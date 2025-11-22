@@ -353,6 +353,24 @@ namespace awh {
 			virtual void timeout(const event::id_t id, const event::action_t action, const uint16_t timeout) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения действия события
+			 *
+			 * @param id     идентификатор события
+			 * @param action тип действия события
+			 * @return       режим действия события
+			 */
+			virtual event::mode_t action(const event::id_t id, const event::action_t action) const noexcept = 0;
+			/**
+			 * @brief Метод установки действия события
+			 *
+			 * @param id     идентификатор события
+			 * @param action тип действия события
+			 * @param mode   режим установки действия события
+			 * @return       результат выполнения установки
+			 */
+			virtual bool action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод установки параметров keep-alive для события
 			 *
 			 * @param id    идентификатор события

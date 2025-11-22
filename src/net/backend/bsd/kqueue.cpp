@@ -73,6 +73,97 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Структура флагов активаций действий события
+	 *
+	 */
+	typedef struct Action {
+		event::mode_t read;  // Событие чтения
+		event::mode_t write; // Событие записи
+		event::mode_t close; // Событие закрытия
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Action() noexcept :
+		 read(event::mode_t::DISABLED),
+		 write(event::mode_t::DISABLED),
+		 close(event::mode_t::DISABLED) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Action() = default;
+	} __attribute__((packed)) action_t;
+	/**
+	 * @brief Структура флагов активаций действий события однорангового узла
+	 *
+	 */
+	typedef struct ActionPeer : public action_t {
+		// Отключение от удалённого хоста
+		event::mode_t disconnect;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ActionPeer() noexcept :
+		 disconnect(event::mode_t::DISABLED) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~ActionPeer() = default;
+	} __attribute__((packed)) action_peer_t;
+	/**
+	 * @brief Структура флагов активаций действий события клиента
+	 *
+	 */
+	typedef struct ActionClient : public action_t {
+		event::mode_t connect;    // Подключение к удалённому хосту
+		event::mode_t reconnect;  // Повторное подключение к удалённому хосту
+		event::mode_t disconnect; // Отключение от удалённого хоста
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ActionClient() noexcept :
+		 connect(event::mode_t::DISABLED),
+		 reconnect(event::mode_t::DISABLED),
+		 disconnect(event::mode_t::DISABLED) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~ActionClient() = default;
+	} __attribute__((packed)) action_client_t;
+	/**
+	 * @brief Структура флагов активаций действий события VNODE
+	 *
+	 */
+	typedef struct ActionVNode : public action_t {
+		event::mode_t change; // Файл изменён
+		event::mode_t remove; // Файл удалён
+		event::mode_t rename; // Файл переименован
+		event::mode_t attrib; // Атрибуты файла изменены (chmod, chown, utime)
+		event::mode_t revoke; // Доступ к файлу отозван (например, файл был удалён или размонтирована ФС)
+		event::mode_t hdlink; // Счётчик жёстких ссылок на файл изменился
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ActionVNode() noexcept :
+		 change(event::mode_t::DISABLED),
+		 remove(event::mode_t::DISABLED),
+		 rename(event::mode_t::DISABLED),
+		 attrib(event::mode_t::DISABLED),
+		 revoke(event::mode_t::DISABLED),
+		 hdlink(event::mode_t::DISABLED) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~ActionVNode() = default;
+	} __attribute__((packed)) action_vnode_t;
+	/**
 	 * @brief Структура конечного подключения
 	 *
 	 */
@@ -172,6 +263,8 @@ namespace {
 		awh::io_t * io;
 		// Файловый дескриптор
 		net::socket_t fd;
+		// Объект действия события файла
+		action_vnode_t action;
 		// Структура статистики файла
 		struct stat info;
 		// Объект передачи данных
@@ -199,6 +292,8 @@ namespace {
 		DIR * handle;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
+		// Объект действия события каталога
+		action_vnode_t action;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
 		/**
@@ -219,6 +314,8 @@ namespace {
 		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
+		// Объект действия события межпроцессного взаимодействия
+		action_t action;
 		// Объект передачи данных
 		transfer_t transfer;
 		/**
@@ -240,6 +337,8 @@ namespace {
 		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
+		// Объект действия события однорангового узла
+		action_peer_t action;
 		// Флаг таймаута события
 		event::action_t timeout;
 		// Объект передачи данных
@@ -270,6 +369,8 @@ namespace {
 		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
+		// Объект действия события клиента
+		action_client_t action;
 		// Флаг таймаута события
 		event::action_t timeout;
 		// Объект передачи данных
@@ -302,6 +403,8 @@ namespace {
 		awh::io_t * io;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
+		// Объект действия события сервера
+		action_t action;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Объект параметров конечной точки
@@ -748,9 +851,9 @@ namespace io {
 					// Выводим результат выполнения функции
 					return true;
 				}
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.event != nullptr)
@@ -899,9 +1002,9 @@ namespace io {
 						// Вызываем функцию обратного вызова при уничтожении события
 						timer->callbacks.status(timer->id, event::status_t::DESTROYED);
 				} break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.status != nullptr)
@@ -1723,9 +1826,9 @@ namespace io {
 					// Формируем положительный результат
 					return true;
 				} break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
 					/**
 					 * Определяем тип сокета
@@ -1762,7 +1865,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+														ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -1823,7 +1926,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+												ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -1925,7 +2028,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+												ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -1986,7 +2089,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова для вывода события установлена
 									else {
 										/**
@@ -2057,7 +2160,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -2117,7 +2220,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова для вывода события установлена
 									else {
 										/**
@@ -2202,7 +2305,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+												peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -2261,7 +2364,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+										peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова для вывода события установлена
 									else {
 										/**
@@ -2320,7 +2423,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+									peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 								// Если функция обратного вызова для вывода события установлена
 								else {
 									/**
@@ -2433,7 +2536,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -2504,7 +2607,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+										client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова для вывода события установлена
 									else {
 										/**
@@ -2577,7 +2680,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 								// Если функция обратного вызова для вывода события установлена
 								else {
 									/**
@@ -2951,7 +3054,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
+									server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 								// Если функция обратного вызова для вывода события установлена
 								else {
 									/**
@@ -3029,9 +3132,9 @@ namespace io {
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
 					// Если есть данные для отправки в сокет
 					if(!ipc->transfer.output.empty()){
@@ -3077,7 +3180,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -3170,7 +3273,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3229,7 +3332,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3351,7 +3454,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3408,7 +3511,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3559,7 +3662,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -3630,7 +3733,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -3745,7 +3848,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
+											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3973,9 +4076,9 @@ namespace io {
 					// Формируем положительный результат
 					return true;
 				}
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.error != nullptr)
@@ -5061,9 +5164,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						return result;
 					}
 				} break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
 					// Устанавливаем статус события в состояние ожидания
 					node->state.status.store(event::status_t::PENDING, std::memory_order_release);
@@ -7883,7 +7986,7 @@ bool awh::IO::node(const event::id_t id, const event::node_t node) noexcept {
 					// Выполняем перенос всей узла
 					i->second = ::move(fs);
 				} break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					/**
 					 * Определяем семейство сокета
@@ -11155,9 +11258,9 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Выполняем удаление узла
 					return io::destroy(i->second.get(), this->_log);
 				}
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпрограммного взаимодействия
+					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(node->fd != net::invalid_socket_t){
@@ -11192,6 +11295,32 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							::close(node->fd);
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
+							// Если в списке промежуточного взаимодействия присутствует запись для данного события
+							auto i = ::__awh_inters__.find(node->id);
+							// Если запись найдена
+							if(i != ::__awh_inters__.end()){
+								// Количество записей в списке изменений
+								uint8_t count = 0;
+								// Получаем итератор на начало списка изменений
+								auto j = ::__awh_change__.begin();
+								// Получаем нужный нам итератор
+								std::advance(j, i->second.index);
+								// Проходим по всем изменениям промежуточного взаимодействия
+								for(; j != ::__awh_change__.end();){
+									// Если идентификатор события совпадает с идентификатором в записи списка изменений
+									if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+										// Удаляем запись из списка изменений
+										j = ::__awh_change__.erase(j);
+										// Увеличиваем счётчик удалённых записей
+										count++;
+										// Если записи удалены
+										if(count == i->second.count)
+											// Завершаем цикл
+											break;
+									// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+									} else ++j;
+								}
+							}
 						// Если дескриптор сокета не инициализирован
 						} else return io::destroy(i->second.get(), this->_log);
 					}
@@ -11219,6 +11348,32 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							::close(node->fd);
 							// Сбрасываем значение дескриптора сокета
 							node->fd = net::invalid_socket_t;
+							// Если в списке промежуточного взаимодействия присутствует запись для данного события
+							auto i = ::__awh_inters__.find(node->id);
+							// Если запись найдена
+							if(i != ::__awh_inters__.end()){
+								// Количество записей в списке изменений
+								uint8_t count = 0;
+								// Получаем итератор на начало списка изменений
+								auto j = ::__awh_change__.begin();
+								// Получаем нужный нам итератор
+								std::advance(j, i->second.index);
+								// Проходим по всем изменениям промежуточного взаимодействия
+								for(; j != ::__awh_change__.end();){
+									// Если идентификатор события совпадает с идентификатором в записи списка изменений
+									if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+										// Удаляем запись из списка изменений
+										j = ::__awh_change__.erase(j);
+										// Увеличиваем счётчик удалённых записей
+										count++;
+										// Если записи удалены
+										if(count == i->second.count)
+											// Завершаем цикл
+											break;
+									// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+									} else ++j;
+								}
+							}
 						// Если дескриптор сокета не инициализирован
 						} else return io::destroy(i->second.get(), this->_log);
 					}
@@ -13811,7 +13966,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <ipc_t *> (i->second.get())->fd;
@@ -13845,7 +14000,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 			if((result = (fd != net::invalid_socket_t))){
 				// Флаг установки опции
 				bool isSetup = false;
-				// Если узел не является файловой системой и не является межпрограммным взаимодействием
+				// Если узел не является файловой системой и не является межпроцессным взаимодействием
 				if((i->second->state.node != event::node_t::IPC) &&
 				   (i->second->state.family != event::family_t::FSYS)){
 					// Если опция передана как TCP_CORK
@@ -13946,7 +14101,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если узел является межпрограммным взаимодействием
+									// Если узел является межпроцессным взаимодействием
 									case static_cast <uint8_t> (event::node_t::IPC):
 									// Если узел является одноранговым узлом
 									case static_cast <uint8_t> (event::node_t::PEER):
@@ -14054,7 +14209,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 								 * Определяем чем является текущий узел
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
-									// Если узел является межпрограммным взаимодействием
+									// Если узел является межпроцессным взаимодействием
 									case static_cast <uint8_t> (event::node_t::IPC):
 									// Если узел является одноранговым узлом
 									case static_cast <uint8_t> (event::node_t::PEER):
@@ -14155,7 +14310,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
 					result = false;
-				// Если узел не является файловой системой и не является межпрограммным взаимодействием
+				// Если узел не является файловой системой и не является межпроцессным взаимодействием
 				if((i->second->state.node != event::node_t::IPC) &&
 				   (i->second->state.family != event::family_t::FSYS)){
 					// Если опция передана как REUSEADDR
@@ -14293,7 +14448,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Получаем файловый дескриптор события
 					fd = awh_cast <ipc_t *> (i->second.get())->fd;
@@ -14331,7 +14486,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 				switch(option){
 					// Если опция передана как TCP_CORK
 					case event::options::TCPCORK: {
-						// Если узел не является файловой системой и не является межпрограммным взаимодействием
+						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
 							// Устанавливаем или снимаем режим алгоритма TCP/CORK
@@ -14423,7 +14578,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 										 * Определяем чем является текущий узел
 										 */
 										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является межпрограммным взаимодействием
+											// Если узел является межпроцессным взаимодействием
 											case static_cast <uint8_t> (event::node_t::IPC):
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER):
@@ -14531,7 +14686,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 										 * Определяем чем является текущий узел
 										 */
 										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является межпрограммным взаимодействием
+											// Если узел является межпроцессным взаимодействием
 											case static_cast <uint8_t> (event::node_t::IPC):
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER):
@@ -14659,7 +14814,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					} break;
 					// Если опция передана как TCP_NODELAY
 					case event::options::TCPNODELAY: {
-						// Если узел не является файловой системой и не является межпрограммным взаимодействием
+						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
 							// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
@@ -14819,7 +14974,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
@@ -14929,7 +15084,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
@@ -14973,9 +15128,9 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							#endif
 						}
 					} break;
-					// Если узел является межпрограммным взаимодействием
+					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпрограммного взаимодействия
+						// Получаем текущее значение объекта межпроцессного взаимодействия
 						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
@@ -15041,7 +15196,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
@@ -15049,7 +15204,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем идентификатор события-приёмника в объекте межпрограммного взаимодействия
+								// Устанавливаем идентификатор события-приёмника в объекте межпроцессного взаимодействия
 								ipc->transfer.id = to;
 								// Выводим положительный результат
 								return true;
@@ -15124,7 +15279,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
@@ -15207,7 +15362,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
@@ -15290,7 +15445,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
@@ -16149,9 +16304,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							#endif
 						}
 					} break;
-					// Если узел является межпрограммным взаимодействием
+					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпрограммного взаимодействия
+						// Получаем текущее значение объекта межпроцессного взаимодействия
 						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
 						/**
 						 * Определяем тип сокета
@@ -16229,7 +16384,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+															ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -16292,7 +16447,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+														ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -16338,7 +16493,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -16457,7 +16612,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -16520,7 +16675,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+												ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -16566,7 +16721,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -16670,7 +16825,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -16733,7 +16888,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+												ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -16779,7 +16934,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
+											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -16913,7 +17068,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -16982,7 +17137,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+												peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -17034,7 +17189,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -17152,7 +17307,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -17221,7 +17376,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+												peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -17273,7 +17428,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -17403,7 +17558,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -17526,7 +17681,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -17631,7 +17786,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -17718,7 +17873,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -17844,7 +17999,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -17919,7 +18074,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -17977,7 +18132,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -18095,7 +18250,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
+													server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -18170,7 +18325,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
+												server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -18222,7 +18377,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
+											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -20064,6 +20219,319 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 	}
 }
 /**
+ * @brief Метод получения действия события
+ *
+ * @param id     идентификатор события
+ * @param action тип действия события
+ * @return       режим действия события
+ */
+awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t action) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является закрытием узла
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим значение установленного режима действия события
+							return dir->action.close;
+						// Если действие является изменением узла
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим значение установленного режима действия события
+							return dir->action.change;
+						// Если действие является удалением узла
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим значение установленного режима действия события
+							return dir->action.remove;
+						// Если действие является переименованием узла
+						case static_cast <uint8_t> (event::action_t::RENAME):
+							// Выводим значение установленного режима действия события
+							return dir->action.rename;
+						// Если действие является изменением атрибутов узла
+						case static_cast <uint8_t> (event::action_t::ATTRIB):
+							// Выводим значение установленного режима действия события
+							return dir->action.attrib;
+						// Если действие является отзывом доступа к узлу
+						case static_cast <uint8_t> (event::action_t::REVOKE):
+							// Выводим значение установленного режима действия события
+							return dir->action.revoke;
+						// Если действие является изменением счётчика жёстких ссылок на узел
+						case static_cast <uint8_t> (event::action_t::HDLINK):
+							// Выводим значение установленного режима действия события
+							return dir->action.hdlink;
+					}
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из файла
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение установленного режима действия события
+							return fs->action.read;
+						// Если действие является записью данных в файл
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение установленного режима действия события
+							return fs->action.write;
+						// Если действие является закрытием файла
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим значение установленного режима действия события
+							return fs->action.close;
+						// Если действие является изменением файла
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим значение установленного режима действия события
+							return fs->action.change;
+						// Если действие является удалением файла
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим значение установленного режима действия события
+							return fs->action.remove;
+						// Если действие является переименованием файла
+						case static_cast <uint8_t> (event::action_t::RENAME):
+							// Выводим значение установленного режима действия события
+							return fs->action.rename;
+						// Если действие является изменением атрибутов файла
+						case static_cast <uint8_t> (event::action_t::ATTRIB):
+							// Выводим значение установленного режима действия события
+							return fs->action.attrib;
+						// Если действие является отзывом доступа к файлу
+						case static_cast <uint8_t> (event::action_t::REVOKE):
+							// Выводим значение установленного режима действия события
+							return fs->action.revoke;
+						// Если действие является изменением счётчика жёстких ссылок на файл
+						case static_cast <uint8_t> (event::action_t::HDLINK):
+							// Выводим значение установленного режима действия события
+							return fs->action.hdlink;
+					}
+				} break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из сокета
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение установленного режима действия события
+							return ipc->action.read;
+						// Если действие является записью данных в сокете
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение установленного режима действия события
+							return ipc->action.write;
+						// Если действие является закрытием сокета
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим значение установленного режима действия события
+							return ipc->action.close;
+					}
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из сокета
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение установленного режима действия события
+							return peer->action.read;
+						// Если действие является записью данных в сокете
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение установленного режима действия события
+							return peer->action.write;
+						// Если действие является закрытием сокета
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим значение установленного режима действия события
+							return peer->action.close;
+						// Если действие является отключением от сервера
+						case static_cast <uint8_t> (event::action_t::DISCONNECT):
+							// Выводим значение установленного режима действия события
+							return peer->action.disconnect;
+					}
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					client_t * client = awh_cast <client_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из сокета
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение установленного режима действия события
+							return client->action.read;
+						// Если действие является записью данных в сокете
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение установленного режима действия события
+							return client->action.write;
+						// Если действие является закрытием сокета
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим значение установленного режима действия события
+							return client->action.close;
+						// Если действие является подключением к серверу
+						case static_cast <uint8_t> (event::action_t::CONNECT):
+							// Выводим значение установленного режима действия события
+							return client->action.connect;
+						// Если действие является переподключением к серверу
+						case static_cast <uint8_t> (event::action_t::RECONNECT):
+							// Выводим значение установленного режима действия события
+							return client->action.reconnect;
+						// Если действие является отключением от сервера
+						case static_cast <uint8_t> (event::action_t::DISCONNECT):
+							// Выводим значение установленного режима действия события
+							return client->action.disconnect;
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					server_t * server = awh_cast <server_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из сокета
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение установленного режима действия события
+							return server->action.read;
+						// Если действие является записью данных в сокете
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение установленного режима действия события
+							return server->action.write;
+						// Если действие является закрытием сокета
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим значение установленного режима действия события
+							return server->action.close;
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */	
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::mode_t::DISABLED;
+}
+/**
+ * @brief Метод установки действия события
+ *
+ * @param id     идентификатор события
+ * @param action тип действия события
+ * @param mode   режим установки действия события
+ * @return       результат выполнения установки
+ */
+bool awh::IO::action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (i->second.get());
+
+				} break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+ 
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					client_t * client = awh_cast <client_t *> (i->second.get());
+					
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					server_t * server = awh_cast <server_t *> (i->second.get());
+					
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
  * @brief Метод установки параметров keep-alive для события
  *
  * @param id    идентификатор события
@@ -20855,7 +21323,7 @@ bool awh::IO::reinitialize() noexcept {
 					// Удаляем ненужный нам узел
 					} else i = ::__awh_nodes__.erase(i);
 				} break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Если событие ожидает результата обработки события
 					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) ||
@@ -21313,9 +21781,9 @@ bool awh::IO::deinitialize() noexcept {
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
-					// Если узел является межпрограммным взаимодействием
+					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпрограммного взаимодействия
+						// Получаем текущее значение объекта межпроцессного взаимодействия
 						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
 						// Если дескриптор сокета инициализирован
 						if(node->fd != net::invalid_socket_t)
@@ -21621,9 +22089,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Устанавливаем статус события в состояние ожидание
 									fs->state.status.store(event::status_t::PENDING, std::memory_order_release);
 							} break;
-							// Если узел является межпрограммным взаимодействием
+							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
-								// Получаем текущее значение объекта межпрограммного взаимодействия
+								// Получаем текущее значение объекта межпроцессного взаимодействия
 								ipc_t * ipc = awh_cast <ipc_t *> (node);
 								// Если установлена функция обратного вызова
 								if((ipc->callbacks.status != nullptr) && ::__awh_processed__.find(ipc->id) == ::__awh_processed__.end()){
@@ -22069,7 +22537,7 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <user_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.read = ::move(cb);
@@ -22150,7 +22618,7 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <user_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.write = ::move(cb);
@@ -22241,7 +22709,7 @@ void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noex
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <file_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.event = ::move(cb);
@@ -22339,7 +22807,7 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <file_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <ipc_t *> (i->second.get())->callbacks.error = ::move(cb);
@@ -22437,7 +22905,7 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <file_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
-				// Если узел является межпрограммным взаимодействием
+				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <ipc_t *> (i->second.get())->callbacks.status = ::move(cb);

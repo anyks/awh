@@ -180,6 +180,11 @@ int32_t main(int32_t argc, char * argv[]){
 						// Выводим сообщение об ошибке уже существующего объекта
 						log.print("Объект события уже существует: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
 					break;
+					// Если ошибка доступа к сокету
+					case static_cast <uint8_t> (event::error_t::INVALID_SOCKET):
+						// Выводим сообщение об ошибке доступа к сокету
+						log.print("Ошибка доступа к сокету события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
 					// Если ошибка некорректного адреса
 					case static_cast <uint8_t> (event::error_t::INVALID_ADDRESS):
 						// Выводим сообщение об ошибке некорректного адреса

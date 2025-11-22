@@ -117,9 +117,10 @@ namespace awh {
 			EVENT_FAIL       = 0x04, // Ошибка события
 			ACCESS_DENIED    = 0x05, // Доступ запрещён
 			ALREADY_EXISTS   = 0x06, // Объект уже существует
-			INVALID_ADDRESS  = 0x07, // Некорректный адрес
-			CONNECTION_FAIL  = 0x08, // Ошибка подключения
-			INSUFFICIENT_RES = 0x09  // Недостаточно ресурсов
+			INVALID_SOCKET   = 0x07, // Ошибка доступа к сокету
+			INVALID_ADDRESS  = 0x08, // Некорректный адрес
+			CONNECTION_FAIL  = 0x09, // Ошибка подключения
+			INSUFFICIENT_RES = 0x0A  // Недостаточно ресурсов
 		};
 		/**
 		 * @brief Происхождение событий
