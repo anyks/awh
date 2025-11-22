@@ -551,11 +551,11 @@ namespace io {
 				node->callbacks.event(node->id, event::action_t::CONNECT);
 			// Добавляем новое событие в список изменений
 			::__awh_change__.push_back((struct kevent){});
-			// Устанавливаем событие на чтение и активируем его
+			// Активируем событие на чтение данных
 			EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 			// Добавляем новое событие в список изменений
 			::__awh_change__.push_back((struct kevent){});
-			// Устанавливаем событие на запись но отключаем его
+			// Деактивируем событие на запись данных
 			EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 			// Создаём объект промежуточного звена
 			auto ret = ::__awh_inters__.emplace(node->id, intmd_t{});
@@ -602,8 +602,8 @@ namespace io {
 				// Устанавливаем таймаут на получение данных
 				} else node->eth->timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 			}
-			// Устанавливаем результат выполнения функции
-			result = true;
+			// Выполняем "пинок" для применения изменений
+			result = node->io->kick();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1508,9 +1508,9 @@ namespace io {
 							::__awh_change__.push_back((struct kevent){});
 							// Если сокет является неблокирующим
 							if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
-								// Устанавливаем событие на чтение но отключаем его
+								// Устанавливаем событие на чтение и активируем его
 								EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
-							// Устанавливаем событие на чтение но отключаем его
+							// Устанавливаем событие на чтение и активируем его
 							else EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_READ, EV_ADD, 0, 0, peer);
 							// Добавляем новое событие в список изменений
 							::__awh_change__.push_back((struct kevent){});
@@ -3273,7 +3273,7 @@ namespace io {
 					if(ipc->transfer.output.empty()){
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на запись но отключаем его
+						// Деактивируем событие на запись данных
 						EV_SET(&::__awh_change__.back(), ipc->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(ipc->id, intmd_t{});
@@ -3452,7 +3452,7 @@ namespace io {
 					if(peer->transfer.output.empty()){
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на запись но отключаем его
+						// Деактивируем событие на запись данных
 						EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
@@ -3674,7 +3674,7 @@ namespace io {
 						if(client->transfer.output.empty()){
 							// Добавляем новое событие в список изменений
 							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие на запись но отключаем его
+							// Деактивируем событие на запись данных
 							EV_SET(&::__awh_change__.back(), client->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 							// Создаём объект промежуточного звена
 							auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
@@ -3783,7 +3783,7 @@ namespace io {
 							if(server->transfer.output.empty()){
 								// Добавляем новое событие в список изменений
 								::__awh_change__.push_back((struct kevent){});
-								// Устанавливаем событие на запись но отключаем его
+								// Деактивируем событие на запись данных
 								EV_SET(&::__awh_change__.back(), server->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
 								// Создаём объект промежуточного звена
 								auto ret = ::__awh_inters__.emplace(server->id, intmd_t{});
@@ -5088,9 +5088,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							::__awh_change__.push_back((struct kevent){});
 							// Если сокет является неблокирующим
 							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-								// Устанавливаем событие на чтение но отключаем его
+								// Устанавливаем событие на чтение и активируем его
 								EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-							// Устанавливаем событие на чтение но отключаем его
+							// Устанавливаем событие на чтение и активируем его
 							else EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ADD, 0, 0, node);
 							// Добавляем новое событие в список изменений
 							::__awh_change__.push_back((struct kevent){});
@@ -14027,6 +14027,8 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 												} break;
 											}
 										}
+										// Выполняем "пинок" для применения изменений
+										isSetup = this->kick();
 									} break;
 								}
 							}
@@ -14141,6 +14143,8 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 												} break;
 											}
 										}
+										// Выполняем "пинок" для применения изменений
+										isSetup = this->kick();
 									} break;
 								}
 							}
@@ -14500,6 +14504,8 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 														} break;
 													}
 												}
+												// Выполняем "пинок" для применения изменений
+												result = this->kick();
 											} break;
 										}
 									}
@@ -14610,6 +14616,8 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 														} break;
 													}
 												}
+												// Выполняем "пинок" для применения изменений
+												result = this->kick();
 											} break;
 										}
 									}
@@ -15996,8 +16004,8 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					::__awh_change__.push_back((struct kevent){});
 					// Активируем событие на чтение для серверного сокета
 					EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-					// Выстанавливаем результат выполнения функции
-					result = true;
+					// Выполняем "пинок" для применения изменений
+					result = this->kick();
 				} break;
 				// Для других типов узлов
 				default: {
@@ -19851,6 +19859,8 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
+						// Выполняем "пинок" для применения изменений
+						this->kick();
 					}
 				} break;
 				// Если узел является интервалом
@@ -19882,6 +19892,8 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
+						// Выполняем "пинок" для применения изменений
+						this->kick();
 					}
 				} break;
 				// Если узел является одноранговым узлом
@@ -20147,6 +20159,82 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является межпроцессным соединением
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Если событие ожидает результата обработки события
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+						// Получаем текущее значение объекта межпроцессного соединения
+						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+						// Устанавливаем статус события в состояние паузы
+						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Деактивируем событие на чтение данных
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Деактивируем событие на запись данных
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count += 2;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 2);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					}
+				} break;
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Если событие ожидает результата обработки события
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+						// Получаем текущее значение объекта директории
+						dir_t * node = awh_cast <dir_t *> (i->second.get());
+						// Устанавливаем статус события в состояние паузы
+						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Деактивируем событие на отслеживание изменения каталога
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_DISABLE, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count += 1;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					}
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Если событие ожидает результата обработки события
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+						// Получаем текущее значение объекта файловой системы
+						file_t * node = awh_cast <file_t *> (i->second.get());
+						// Устанавливаем статус события в состояние паузы
+						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Деактивируем событие на отслеживание изменения файла
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_DISABLE, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count += 1;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					}
+				} break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является успешным
@@ -20157,11 +20245,11 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на чтение но отключаем его
+						// Деактивируем событие на чтение данных
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на запись но отключаем его
+						// Деактивируем событие на запись данных
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -20207,8 +20295,8 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 								} else break;
 							}
 						}
-						// Устанавливаем результат выполнения операции
-						result = true;
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
 					}
 				} break;
 				// Если узел является клиентом
@@ -20221,11 +20309,11 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на чтение но отключаем его
+						// Деактивируем событие на чтение данных
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на запись но отключаем его
+						// Деактивируем событие на запись данных
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -20270,8 +20358,41 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 								}
 							}
 						}
-						// Устанавливаем результат выполнения операции
-						result = true;
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Если событие находится в запущенном состоянии
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING){
+						// Получаем объект события сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						// Устанавливаем статус события в состояние паузы
+						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Деактивируем событие на чтение данных
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count++;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Если событие является датаграммой
+						if(node->state.type == event::type_t::DATAGRAM){
+							// Устанавливаем количество событий
+							ret.first->second.count++;
+							// Добавляем новое событие в список изменений
+							::__awh_change__.push_back((struct kevent){});
+							// Деактивируем событие на запись данных
+							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+						}
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
 					}
 				} break;
 			}
@@ -20314,21 +20435,84 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Если статус события является паузой
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+			// Если статус события является паузой
+			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является межпроцессным соединением
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпроцессного соединения
+						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+						// Устанавливаем статус события в состояние возобновлено
+						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Активируем событие на чтение данных
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count++;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					} break;
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * node = awh_cast <dir_t *> (i->second.get());
+						// Устанавливаем статус события в состояние возобновлено
+						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Активируем событие на отслеживание изменения каталога
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ENABLE, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count++;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * node = awh_cast <file_t *> (i->second.get());
+						// Устанавливаем статус события в состояние возобновлено
+						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Активируем событие на отслеживание изменения файла
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ENABLE, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count++;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
 						peer_t * node = awh_cast <peer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на чтение но отключаем его
+						// Активируем событие на чтение данных
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -20355,21 +20539,18 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Если сокет является блокирующим
 							} else this->_eth.timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 						}
-						// Устанавливаем результат выполнения операции
-						result = true;
-					}
-				} break;
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Если статус события является паузой
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						client_t * node = awh_cast <client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на чтение но отключаем его
+						// Активируем событие на чтение данных
 						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -20396,10 +20577,31 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Если сокет является блокирующим
 							} else this->_eth.timeout(node->fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 						}
-						// Устанавливаем результат выполнения операции
-						result = true;
-					}
-				} break;
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект события сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						// Устанавливаем статус события в состояние возобновлено
+						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Активируем событие на чтение данных
+						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count++;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Выполняем "пинок" для применения изменений
+						result = this->kick();
+					} break;
+				}
 			}
 		}
 	/**
@@ -20529,6 +20731,8 @@ bool awh::IO::kick() noexcept {
  * @return результат выполнения инициализации
  */
 bool awh::IO::initialize() noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если Kqueue ещё не инициализирован
 	if(::__awh_kq__ == net::invalid_socket_t){
 		// Выполняем инициализацию Kqueue
@@ -20551,15 +20755,29 @@ bool awh::IO::initialize() noexcept {
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
-		// Добавляем новое событие в список изменений
-		::__awh_change__.push_back((struct kevent){});
+		// Создаём пользовательское событие
+		struct kevent event;
 		// Устанавливаем пользовательское событие
-		EV_SET(&::__awh_change__.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
-		// Выводим результат успешной инициализации
-		return true;
+		EV_SET(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
+		// Активируем пользовательское событие Kqueue
+		if(!(result = (::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
 	}
-	// Выводим результат по умолчанию
-	return false;
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод реинициализации основного движка фреймворка
@@ -20567,6 +20785,8 @@ bool awh::IO::initialize() noexcept {
  * @return результат выполнения реинициализации
  */
 bool awh::IO::reinitialize() noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
 		// Если процесс является основным процессом
@@ -20580,7 +20800,7 @@ bool awh::IO::reinitialize() noexcept {
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Выполняем инициализацию Kqueue
-		if((::__awh_kq__ = ::kqueue()) == net::invalid_socket_t){
+		if(!(result = ((::__awh_kq__ = ::kqueue()) != net::invalid_socket_t))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -20672,11 +20892,22 @@ bool awh::IO::reinitialize() noexcept {
 						// Закрываем дескриптор сокета
 						::close(node->fd);
 					// Если событие ожидает результата обработки события
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) ||
+					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем сброс статуса ожидания события
 						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выполняем фиксацию события заново
 						this->commit(i->first);
+						// Увеличиваем значение итератора
+						++i;
+					// Если событие поставленно на паузу
+					} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+						// Выполняем сброс статуса ожидания события
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выполняем фиксацию события заново
+						if(this->commit(i->first))
+							// Устанавливаем статус события в состояние паузы
+							this->pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Удаляем ненужный нам узел
@@ -20691,11 +20922,22 @@ bool awh::IO::reinitialize() noexcept {
 						// Закрываем дескриптор сокета
 						::close(node->fd);
 					// Если событие ожидает результата обработки события
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) ||
+					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем сброс статуса ожидания события
 						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
 						// Выполняем фиксацию события заново
 						this->commit(i->first);
+						// Увеличиваем значение итератора
+						++i;
+					// Если событие поставленно на паузу
+					} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+						// Выполняем сброс статуса ожидания события
+						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						// Выполняем фиксацию события заново
+						if(this->commit(i->first))
+							// Устанавливаем статус события в состояние паузы
+							this->pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Удаляем ненужный нам узел
@@ -20712,9 +20954,9 @@ bool awh::IO::reinitialize() noexcept {
 						::__awh_change__.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
-							// Устанавливаем событие на чтение но отключаем его
+							// Устанавливаем событие на чтение и активируем его
 							EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
-						// Устанавливаем событие на чтение но отключаем его
+						// Устанавливаем событие на чтение и активируем его
 						else EV_SET(&::__awh_change__.back(), peer->fd, EVFILT_READ, EV_ADD, 0, 0, peer);
 						// Добавляем новое событие в список изменений
 						::__awh_change__.push_back((struct kevent){});
@@ -20879,7 +21121,9 @@ bool awh::IO::reinitialize() noexcept {
 					auto server = awh_cast <server_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING)){
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) ||
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED) ||
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)){
 						/**
 						 * Определяем семейство сокета
 						 */
@@ -20980,7 +21224,8 @@ bool awh::IO::reinitialize() noexcept {
 						break;
 					}
 					// Если событие находится в запущенном состоянии
-					if(server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING){
+					if((server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) ||
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Создаём объект промежуточного звена
 						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 						// Устанавливаем количество событий
@@ -20995,11 +21240,9 @@ bool awh::IO::reinitialize() noexcept {
 				} break;
 			}
 		}
-		// Выводим результат успешной деинициализации
-		return true;
 	}
-	// Выводим результат по умолчанию
-	return false;
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод деинициализации основного движка фреймворка
@@ -21007,8 +21250,12 @@ bool awh::IO::reinitialize() noexcept {
  * @return результат выполнения деинициализации
  */
 bool awh::IO::deinitialize() noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если Kqueue инициализирован
-	if(::__awh_kq__ != net::invalid_socket_t){
+	if((result = (::__awh_kq__ != net::invalid_socket_t))){
+		// Выполняем пинок Kqueue для обработки всех удалений
+		this->kick();
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			// Если узел уже находится в рабочем состоянии
@@ -21150,17 +21397,13 @@ bool awh::IO::deinitialize() noexcept {
 				i = ::__awh_nodes__.erase(i);
 			}
 		}
-		// Выполняем пинок Kqueue для обработки всех удалений
-		this->kick();
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Сбрасываем значение Kqueue
 		::__awh_kq__ = net::invalid_socket_t;
-		// Выводим результат успешной деинициализации
-		return true;
 	}
-	// Выводим результат по умолчанию
-	return false;
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод проверки состояния инициализации основного движка фреймворка
@@ -21357,6 +21600,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Вызываем функцию обратного вызова статуса события
 									dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
 								}
+								// Если статус события восстановление из паузы
+								if(dir->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+									// Устанавливаем статус события в состояние ожидание
+									dir->state.status.store(event::status_t::PENDING, std::memory_order_release);
 							} break;
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
@@ -21369,6 +21616,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Вызываем функцию обратного вызова статуса события
 									fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
 								}
+								// Если статус события восстановление из паузы
+								if(fs->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+									// Устанавливаем статус события в состояние ожидание
+									fs->state.status.store(event::status_t::PENDING, std::memory_order_release);
 							} break;
 							// Если узел является межпрограммным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
@@ -21381,6 +21632,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Вызываем функцию обратного вызова статуса события
 									ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
 								}
+								// Если статус события восстановление из паузы
+								if(ipc->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+									// Устанавливаем статус события в состояние ожидание
+									ipc->state.status.store(event::status_t::PENDING, std::memory_order_release);
 							} break;
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
@@ -21425,6 +21680,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Вызываем функцию обратного вызова статуса события
 									server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
 								}
+								// Если статус события восстановление из паузы
+								if(server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+									// Устанавливаем статус события в состояние запущено
+									server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 							} break;
 						}
 					}
