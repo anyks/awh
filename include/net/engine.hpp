@@ -109,21 +109,6 @@ namespace awh {
 			virtual bool target(const event::id_t id, const string & target) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения типа узла события
-			 *
-			 * @param id идентификатор события
-			 * @return   тип узла события
-			 */
-			virtual event::node_t node(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки типа узла события
-			 * @param id   идентификатор события
-			 * @param node тип узла события
-			 * @return     результат выполнения установки
-			 */
-			virtual bool node(const event::id_t id, const event::node_t node) noexcept = 0;
-		public:
-			/**
 			 * @brief Метод получения адреса события
 			 *
 			 * @param id      идентификатор события
@@ -153,19 +138,22 @@ namespace awh {
 			 * @brief Метод создания нового события на основе существующего
 			 *
 			 * @param id       идентификатор существующего события
+			 * @param node     узел события
 			 * @param protocol протокол сокета
 			 * @return         идентификатор созданного события
 			 */
-			virtual event::id_t event(const event::id_t id, const event::protocol_t protocol) noexcept = 0;
+			virtual event::id_t event(const event::id_t id, const event::node_t node, const event::protocol_t protocol) noexcept = 0;
 			/**
 			 * @brief Метод создания нового события
 			 *
+			 * @param node     узел события
 			 * @param family   семейство сокета
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
 			 * @return         идентификатор созданного события
 			 */
-			virtual event::id_t event(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
+			virtual event::id_t event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
+		public:
 			/**
 			 * @brief Метод получения пары событий для сокета
 			 *
@@ -443,6 +431,13 @@ namespace awh {
 			 * @return   тип события
 			 */
 			virtual event::type_t type(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод получения типа узла события
+			 *
+			 * @param id идентификатор события
+			 * @return   тип узла события
+			 */
+			virtual event::node_t node(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод получения семейства события
 			 *

@@ -50,9 +50,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое пользовательское событие
-	event::id_t eid = io.event(event::family_t::USER, event::type_t::NONE, event::protocol_t::NONE);
-	// Устанавливаем тип ноды уведомления
-	io.node(eid, event::node_t::NOTIFY);
+	event::id_t eid = io.event(event::node_t::NOTIFY, event::family_t::USER);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устанавливаем функцию обратного вызова на событие таймера

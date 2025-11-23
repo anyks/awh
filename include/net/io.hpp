@@ -92,21 +92,6 @@ namespace awh {
 			bool target(const event::id_t id, const string & target) noexcept;
 		public:
 			/**
-			 * @brief Метод получения типа узла события
-			 *
-			 * @param id идентификатор события
-			 * @return   тип узла события
-			 */
-			event::node_t node(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки типа узла события
-			 * @param id   идентификатор события
-			 * @param node тип узла события
-			 * @return     результат выполнения установки
-			 */
-			bool node(const event::id_t id, const event::node_t node) noexcept;
-		public:
-			/**
 			 * @brief Метод получения адреса события
 			 *
 			 * @param id      идентификатор события
@@ -136,19 +121,22 @@ namespace awh {
 			 * @brief Метод создания нового события на основе существующего
 			 *
 			 * @param id       идентификатор существующего события
+			 * @param node     узел события
 			 * @param protocol протокол сокета
 			 * @return         идентификатор созданного события
 			 */
-			event::id_t event(const event::id_t id, const event::protocol_t protocol) noexcept;
+			event::id_t event(const event::id_t id, const event::node_t node, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 			/**
 			 * @brief Метод создания нового события
 			 *
+			 * @param node     узел события
 			 * @param family   семейство сокета
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
 			 * @return         идентификатор созданного события
 			 */
-			event::id_t event(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept;
+			event::id_t event(const event::node_t node, const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+		public:
 			/**
 			 * @brief Метод получения пары событий для сокета
 			 *
@@ -157,7 +145,7 @@ namespace awh {
 			 * @param protocol протокол сокета
 			 * @return         пара идентификаторов созданных событий
 			 */
-			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept;
+			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 		public:
 			/**
 			 * @brief Метод получения опций события
@@ -426,6 +414,13 @@ namespace awh {
 			 * @return   тип события
 			 */
 			event::type_t type(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод получения типа узла события
+			 *
+			 * @param id идентификатор события
+			 * @return   тип узла события
+			 */
+			event::node_t node(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод получения семейства события
 			 *

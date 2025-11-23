@@ -50,21 +50,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое события межпроцессного взаимодействия для родительского процесса
-	const auto & mfds = io.events(event::family_t::PIPE, event::type_t::NONE, event::protocol_t::NONE);
+	const auto & mfds = io.events(event::family_t::PIPE);
 	// Добавляем новое события межпроцессного взаимодействия для дочернего процесса
-	const auto & cfds = io.events(event::family_t::PIPE, event::type_t::NONE, event::protocol_t::NONE);
+	const auto & cfds = io.events(event::family_t::PIPE);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Получаем идентификатор родительского процесса
 		const pid_t mpid = ::getpid();
-		// Выполняем переход по всем родительским событиям межпроцессного взаимодействия
-		for(const auto & eid : mfds)
-			// Устанавливаем тип ноды межпроцессного события
-			io.node(eid, event::node_t::IPC);
-		// Выполняем переход по всем дочерним событиям межпроцессного взаимодействия
-		for(const auto & eid : cfds)
-			// Устанавливаем тип ноды межпроцессного события
-			io.node(eid, event::node_t::IPC);
 		// Устанавливаем идентификатор процесса
 		pid_t pid = -1;
 		/**

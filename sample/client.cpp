@@ -60,9 +60,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IFACE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid1 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid1, event::node_t::CLIENT);
+			event::id_t eid1 = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid1, 8080);
 			// MAC-адрес сетевого интерфейса
@@ -95,9 +93,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid2 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid2, event::node_t::CLIENT);
+			event::id_t eid2 = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
@@ -121,9 +117,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid3, event::node_t::CLIENT);
+			event::id_t eid3 = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
@@ -147,9 +141,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== NETWORK IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid4 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid4, event::node_t::CLIENT);
+			event::id_t eid4 = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
@@ -173,9 +165,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid5, event::node_t::CLIENT);
+			event::id_t eid5 = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
@@ -199,9 +189,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FILE);
+			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -225,9 +213,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid7 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid7, event::node_t::CLIENT);
+			event::id_t eid7 = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -251,9 +237,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid8 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid8, event::node_t::CLIENT);
+			event::id_t eid8 = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -280,9 +264,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IFACE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid1 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid1, event::node_t::CLIENT);
+			event::id_t eid1 = io.event(event::node_t::CLIENT, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid1, 8080);
 			// MAC-адрес сетевого интерфейса
@@ -315,9 +297,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid2 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid2, event::node_t::CLIENT);
+			event::id_t eid2 = io.event(event::node_t::CLIENT, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
@@ -341,9 +321,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid3, event::node_t::CLIENT);
+			event::id_t eid3 = io.event(event::node_t::CLIENT, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
@@ -367,9 +345,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== NETWORK IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid4 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid4, event::node_t::CLIENT);
+			event::id_t eid4 = io.event(event::node_t::CLIENT, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
@@ -393,9 +369,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid5, event::node_t::CLIENT);
+			event::id_t eid5 = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
@@ -419,9 +393,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FILE);
+			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -445,9 +417,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid7 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid7, event::node_t::CLIENT);
+			event::id_t eid7 = io.event(event::node_t::CLIENT, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -471,9 +441,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid8 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid8, event::node_t::CLIENT);
+			event::id_t eid8 = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -507,9 +475,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IFACE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid1 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid1, event::node_t::SERVER);
+			event::id_t eid1 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid1, 8080);
 			// MAC-адрес сетевого интерфейса
@@ -542,9 +508,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid2 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid2, event::node_t::SERVER);
+			event::id_t eid2 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
@@ -568,9 +532,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::UDPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-			// Устанавливаем тип ноды
-			io.node(eid3, event::node_t::SERVER);
+			event::id_t eid3 = io.event(event::node_t::SERVER, event::family_t::UDPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
@@ -594,9 +556,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== NETWORK IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid4 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid4, event::node_t::SERVER);
+			event::id_t eid4 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
@@ -620,9 +580,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid5, event::node_t::SERVER);
+			event::id_t eid5 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
@@ -646,9 +604,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FILE);
+			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -672,9 +628,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid7 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid7, event::node_t::SERVER);
+			event::id_t eid7 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -698,9 +652,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid8 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid8, event::node_t::SERVER);
+			event::id_t eid8 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -727,9 +679,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IFACE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid1 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid1, event::node_t::SERVER);
+			event::id_t eid1 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid1, 8080);
 			// MAC-адрес сетевого интерфейса
@@ -762,9 +712,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid2 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid2, event::node_t::SERVER);
+			event::id_t eid2 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
@@ -788,9 +736,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid3, event::node_t::SERVER);
+			event::id_t eid3 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 
@@ -817,9 +763,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== NETWORK IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid4 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid4, event::node_t::SERVER);
+			event::id_t eid4 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 
@@ -846,9 +790,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid5, event::node_t::SERVER);
+			event::id_t eid5 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
@@ -872,9 +814,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FILE);
+			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -898,9 +838,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid7 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid7, event::node_t::SERVER);
+			event::id_t eid7 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -924,9 +862,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid8 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid8, event::node_t::SERVER);
+			event::id_t eid8 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -960,9 +896,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IFACE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid1 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid1, event::node_t::PEER);
+			event::id_t eid1 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid1, 8080);
 			// MAC-адрес сетевого интерфейса
@@ -995,9 +929,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid2 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid2, event::node_t::PEER);
+			event::id_t eid2 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
@@ -1021,9 +953,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid3, event::node_t::PEER);
+			event::id_t eid3 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
@@ -1047,9 +977,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== NETWORK IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid4 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid4, event::node_t::PEER);
+			event::id_t eid4 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1073,9 +1001,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid5, event::node_t::PEER);
+			event::id_t eid5 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1099,9 +1025,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FILE);
+			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1125,9 +1049,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid7 = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid7, event::node_t::PEER);
+			event::id_t eid7 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -1151,9 +1073,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid8 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid8, event::node_t::PEER);
+			event::id_t eid8 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -1180,9 +1100,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IFACE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid1 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid1, event::node_t::PEER);
+			event::id_t eid1 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid1, 8080);
 			// MAC-адрес сетевого интерфейса
@@ -1215,9 +1133,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== MAC " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid2 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid2, event::node_t::PEER);
+			event::id_t eid2 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
@@ -1241,9 +1157,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid3, event::node_t::PEER);
+			event::id_t eid3 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
@@ -1267,9 +1181,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== NETWORK IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid4 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid4, event::node_t::PEER);
+			event::id_t eid4 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1293,9 +1205,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid5 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid5, event::node_t::PEER);
+			event::id_t eid5 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1319,9 +1229,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== FILE " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid6 = io.event(event::family_t::FSYS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid6, event::node_t::FILE);
+			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
@@ -1345,9 +1253,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET IPv6 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid7 = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid7, event::node_t::PEER);
+			event::id_t eid7 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -1371,9 +1277,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== TARGET UDS " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid8 = io.event(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
-			// Устанавливаем тип ноды
-			io.node(eid8, event::node_t::PEER);
+			event::id_t eid8 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
@@ -1404,12 +1308,10 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " ======================================== UDS " << endl;
 
 		// Добавляем новое событие клиента TCP
-		auto eids1 = io.events(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::NONE);
+		auto eids1 = io.events(event::family_t::UDS);
 
 		cout << " Найдено событий: " << eids1[0] << " == " << eids1[1] << endl;
 
-		// Устанавливаем тип ноды
-		io.node(eids1[0], event::node_t::IPC);
 		// Устанавливаем порт события
 		io.port(eids1[0], 8080);
 
@@ -1429,12 +1331,10 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " ======================================== IPC " << endl;
 
 		// Добавляем новое событие клиента TCP
-		auto eids2 = io.events(event::family_t::PIPE, event::type_t::NONE, event::protocol_t::NONE);
+		auto eids2 = io.events(event::family_t::PIPE);
 
 		cout << " Найдено событий: " << eids2[0] << " == " << eids2[1] << endl;
 
-		// Устанавливаем тип ноды
-		io.node(eids2[0], event::node_t::IPC);
 		// Устанавливаем порт события
 		io.port(eids2[0], 8080);
 
@@ -1461,9 +1361,7 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " ======================================== TIMER " << endl;
 
 		// Добавляем новое событие клиента интервала
-		event::id_t eid = io.event(event::family_t::TIMER, event::type_t::NONE, event::protocol_t::NONE);
-		// Устанавливаем тип ноды
-		io.node(eid, event::node_t::INTERVAL);
+		event::id_t eid = io.event(event::node_t::TIMER, event::family_t::INTERVAL, event::type_t::NONE, event::protocol_t::NONE);
 
 		cout << " Таймерное событие ID: " << eid << endl;
 
@@ -1484,9 +1382,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-	// Устанавливаем тип ноды
-	io.node(eid, event::node_t::CLIENT);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -1777,9 +1673,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-	// Устанавливаем тип ноды
-	io.node(eid, event::node_t::SERVER);
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
 	io.port(eid, 8080);
 	// Устанавливаем адрес события (en0 -> ea:ab:fd:74:1d:0d -> 10.9.5.161)

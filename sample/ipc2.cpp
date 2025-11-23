@@ -58,10 +58,6 @@ int32_t main(int32_t argc, char * argv[]){
 	if(io.initialize()){
 		// Получаем идентификатор родительского процесса
 		const pid_t mpid = ::getpid();
-		// Выполняем переход по всем событиям
-		for(const auto & eid : events)
-			// Устанавливаем тип ноды межпроцессного события
-			io.node(eid, event::node_t::IPC);
 		// Устанавливаем идентификатор процесса
 		pid_t pid = -1;
 		/**
