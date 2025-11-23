@@ -7844,7 +7844,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 							// Если тип адреса не установлен
 							if(fs->state.address == event::address_t::NONE)
 								// Устанавливаем тип адреса как файл в файловой системе
-								fs->state.address = event::address_t::FILE;
+								fs->state.address = event::address_t::FS;
 							// Устанавливаем адрес файловой системы
 							awh_cast <net::addr_fs_t *> (fs->path.get())->address = target;
 							// Выводим результат работы функции
@@ -7917,7 +7917,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 							// Если тип адреса не установлен
 							if(fs->state.address == event::address_t::NONE)
 								// Устанавливаем тип адреса как файл в файловой системе
-								fs->state.address = event::address_t::FILE;
+								fs->state.address = event::address_t::FS;
 							// Устанавливаем адрес файловой системы
 							awh_cast <net::addr_fs_t *> (fs->path.get())->address = target;
 							// Выводим результат работы функции
@@ -8302,6 +8302,65 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 			 * Определяем тип адреса события
 			 */
 			switch(static_cast <uint8_t> (address)){
+				// Если тип адреса принадлежит к файловой системе
+				case static_cast <uint8_t> (event::address_t::FS): {
+					// Если типы адресов соответствуют
+					if(address == i->second->state.address){
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является дирректорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем объект файловой системы
+								dir_t * fs = awh_cast <dir_t *> (i->second.get());
+								// Если объект адреса файловой системы не инициализирован
+								if(fs->path == nullptr)
+									// Прерываем выполнение
+									break;
+								// Выводим результат работы функции
+								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+							}
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Получаем объект файловой системы
+								file_t * fs = awh_cast <file_t *> (i->second.get());
+								// Если объект адреса файловой системы не инициализирован
+								if(fs->path == nullptr)
+									// Прерываем выполнение
+									break;
+								// Выводим результат работы функции
+								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+							}
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						// Устанавливаем текст ошибки
+						const string error = "Requested filesystem address does not match current address";
+						// Получаем объект файловой системы
+						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
 				// Если тип адреса принадлежит к MAC-адресам
 				case static_cast <uint8_t> (event::address_t::MAC): {
 					/**
@@ -9015,86 +9074,6 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						}
 					}
 				} break;
-				// Если тип адреса принадлежит к дирректориям файловой системы
-				case static_cast <uint8_t> (event::address_t::DIR): {
-					// Если типы адресов соответствуют
-					if(address == i->second->state.address){
-						// Получаем объект файловой системы
-						dir_t * fs = awh_cast <dir_t *> (i->second.get());
-						// Если объект адреса файловой системы не инициализирован
-						if(fs->path == nullptr)
-							// Прерываем выполнение
-							break;
-						// Выводим результат работы функции
-						return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
-					// Если типы адресов не соответствуют
-					} else {
-						// Устанавливаем текст ошибки
-						const string error = "Requested filesystem address does not match current address";
-						// Получаем объект файловой системы
-						dir_t * fs = awh_cast <dir_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					}
-				} break;
-				// Если тип адреса принадлежит к файлам файловой системы
-				case static_cast <uint8_t> (event::address_t::FILE): {
-					// Если типы адресов соответствуют
-					if(address == i->second->state.address){
-						// Получаем объект файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
-						// Если объект адреса файловой системы не инициализирован
-						if(fs->path == nullptr)
-							// Прерываем выполнение
-							break;
-						// Выводим результат работы функции
-						return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
-					// Если типы адресов не соответствуют
-					} else {
-						// Устанавливаем текст ошибки
-						const string error = "Requested filesystem address does not match current address";
-						// Получаем объект файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					}
-				} break;
 				// Если тип адреса принадлежит к IPv4-адресам
 				case static_cast <uint8_t> (event::address_t::IPV4): {
 					// Если типы адресов соответствуют
@@ -9429,6 +9408,168 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
+					}
+				} break;
+				// Если тип адреса принадлежит к адресу файловой системы
+				case static_cast <uint8_t> (event::address_t::FS): {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является дирректорией
+						case static_cast <uint8_t> (event::node_t::DIR): {
+							// Получаем объект файловой системы
+							dir_t * fs = awh_cast <dir_t *> (i->second.get());
+							// Если типы адресов соответствуют
+							if(fs->state.family == event::family_t::FSYS){
+								// Если адрес соответствует адресу файловой системы
+								if(fs->addr.check(value, net_addr_t::type_t::FS)){
+									// Устанавливаем тип адреса
+									fs->state.address = address;
+									// Если объект адреса файловой системы не инициализирован
+									if(fs->path == nullptr)
+										// Создаём новый объект адреса файловой системы
+										fs->path = make_unique <net::addr_fs_t> ();
+									// Устанавливаем адрес файловой системы события
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
+									// Возвращаем результат работы функции
+									return true;
+								// Если адрес не принадлежит к адресу файловой системы
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Если узел является файловой системой
+						case static_cast <uint8_t> (event::node_t::FILE): {
+							// Получаем объект файловой системы
+							file_t * fs = awh_cast <file_t *> (i->second.get());
+							// Если типы адресов соответствуют
+							if(fs->state.family == event::family_t::FSYS){
+								// Если адрес соответствует адресу файловой системы
+								if(fs->addr.check(value, net_addr_t::type_t::FS)){
+									// Устанавливаем тип адреса
+									fs->state.address = address;
+									// Если объект адреса файловой системы не инициализирован
+									if(fs->path == nullptr)
+										// Создаём новый объект адреса файловой системы
+										fs->path = make_unique <net::addr_fs_t> ();
+									// Устанавливаем адрес файловой системы события
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
+									// Возвращаем результат работы функции
+									return true;
+								// Если адрес не принадлежит к адресу файловой системы
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							// Если типы адресов не соответствуют
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Если узел имеет неподдерживаемый тип
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Address \"%s\" can only be set for node", log_t::flag_t::WARNING, value.c_str());
+							#endif
+						}
 					}
 				} break;
 				// Если тип адреса принадлежит к MAC-адресам
@@ -9861,192 +10002,6 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 							// Выводим сообщение об ошибке
 							this->_log->print("You cannot set address \"%s\" because event family does not belong to unix domain socket", log_t::flag_t::WARNING, value.c_str());
 						#endif
-					}
-				} break;
-				// Если тип адреса принадлежит к дирректориям файловой системы
-				case static_cast <uint8_t> (event::address_t::DIR): {
-					/**
-					 * Определяем чем является текущий узел
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является дирректорией
-						case static_cast <uint8_t> (event::node_t::DIR): {
-							// Получаем объект файловой системы
-							dir_t * fs = awh_cast <dir_t *> (i->second.get());
-							// Если типы адресов соответствуют
-							if(fs->state.family == event::family_t::FSYS){
-								// Если адрес соответствует адресу файловой системы
-								if(fs->addr.check(value, net_addr_t::type_t::FS)){
-									// Устанавливаем тип адреса
-									fs->state.address = address;
-									// Если объект адреса файловой системы не инициализирован
-									if(fs->path == nullptr)
-										// Создаём новый объект адреса файловой системы
-										fs->path = make_unique <net::addr_fs_t> ();
-									// Устанавливаем адрес файловой системы события
-									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
-									// Возвращаем результат работы функции
-									return true;
-								// Если адрес не принадлежит к адресу файловой системы
-								} else {
-									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
-									// Если установлена функция обратного вызова
-									if(fs->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-									// Если функция обратного вызова для вывода события установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-										#endif
-									}
-								}
-							// Если типы адресов не соответствуют
-							} else {
-								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
-								// Если установлена функция обратного вызова
-								if(fs->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-								// Если функция обратного вызова для вывода события установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
-						} break;
-						// Если узел имеет неподдерживаемый тип
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Address \"%s\" can only be set for DIR node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Address \"%s\" can only be set for DIR node", log_t::flag_t::WARNING, value.c_str());
-							#endif
-						}
-					}
-				} break;
-				// Если тип адреса принадлежит к файлам файловой системы
-				case static_cast <uint8_t> (event::address_t::FILE): {
-					/**
-					 * Определяем чем является текущий узел
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является файловой системой
-						case static_cast <uint8_t> (event::node_t::FILE): {
-							// Получаем объект файловой системы
-							file_t * fs = awh_cast <file_t *> (i->second.get());
-							// Если типы адресов соответствуют
-							if(fs->state.family == event::family_t::FSYS){
-								// Если адрес соответствует адресу файловой системы
-								if(fs->addr.check(value, net_addr_t::type_t::FS)){
-									// Устанавливаем тип адреса
-									fs->state.address = address;
-									// Если объект адреса файловой системы не инициализирован
-									if(fs->path == nullptr)
-										// Создаём новый объект адреса файловой системы
-										fs->path = make_unique <net::addr_fs_t> ();
-									// Устанавливаем адрес файловой системы события
-									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
-									// Возвращаем результат работы функции
-									return true;
-								// Если адрес не принадлежит к адресу файловой системы
-								} else {
-									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
-									// Если установлена функция обратного вызова
-									if(fs->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-									// Если функция обратного вызова для вывода события установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-										#endif
-									}
-								}
-							// Если типы адресов не соответствуют
-							} else {
-								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
-								// Если установлена функция обратного вызова
-								if(fs->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-								// Если функция обратного вызова для вывода события установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
-						} break;
-						// Если узел имеет неподдерживаемый тип
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Address \"%s\" can only be set for FILE node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Address \"%s\" can only be set for FILE node", log_t::flag_t::WARNING, value.c_str());
-							#endif
-						}
 					}
 				} break;
 				// Если тип адреса принадлежит к IPv4-адресам

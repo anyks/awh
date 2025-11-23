@@ -351,6 +351,7 @@ SET(SOURCE_FILES
 # Задаем именя библиотеки и бинарника
 SET(IP_APP_NAME ip)
 SET(IPC_APP_NAME ipc)
+SET(DIR_APP_NAME dir)
 SET(DATE_APP_NAME date)
 SET(TIMER_APP_NAME timer)
 SET(EVENT_APP_NAME event)
@@ -387,6 +388,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Выполняем создание демонстрационных приложений
     add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
     add_executable(${IPC_APP_NAME} sample/ipc.cpp ${RES_FILES})
+    add_executable(${DIR_APP_NAME} sample/dir.cpp ${RES_FILES})
     add_executable(${DATE_APP_NAME} sample/date.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${EVENT_APP_NAME} sample/event.cpp ${RES_FILES})
@@ -397,6 +399,7 @@ else()
     # Выполняем создание демонстрационных приложений
     add_executable(${IP_APP_NAME} sample/ip.cpp)
     add_executable(${IPC_APP_NAME} sample/ipc.cpp)
+    add_executable(${DIR_APP_NAME} sample/dir.cpp)
     add_executable(${DATE_APP_NAME} sample/date.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
     add_executable(${EVENT_APP_NAME} sample/event.cpp)
@@ -435,6 +438,14 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения межпроцессного взаимодействия
         target_link_libraries(
             ${IPC_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
+            ${WINFLAGS}
+        )
+
+        # Выполняем сборку приложения работы с каталогами
+        target_link_libraries(
+            ${DIR_APP_NAME}
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
@@ -501,6 +512,13 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения межпроцессного взаимодействия
         target_link_libraries(
             ${IPC_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения работы с каталогами
+        target_link_libraries(
+            ${DIR_APP_NAME}
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
         )
@@ -564,6 +582,15 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WINFLAGS}
         )
 
+        # Выполняем сборку приложения работы с каталогами
+        target_link_libraries(
+            ${DIR_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+            ${WINFLAGS}
+        )
+
         # Выполняем сборку приложения даты и времени
         target_link_libraries(
             ${DATE_APP_NAME}
@@ -623,6 +650,14 @@ else (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения межпроцессного взаимодействия
         target_link_libraries(
             ${IPC_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения работы с каталогами
+        target_link_libraries(
+            ${DIR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
@@ -688,6 +723,12 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
+        add_custom_command(TARGET "${DIR_APP_NAME}" POST_BUILD
+            COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DIR_APP_NAME}>" "${entitlements_file}"
+            COMMENT "Sign target \"${DIR_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
         add_custom_command(TARGET "${DATE_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DATE_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${DATE_APP_NAME}\" to enable core dump on MacOS X"
@@ -732,6 +773,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         # Выполняем анализ собранных приложений
         pvs_studio_add_target(TARGET ${IP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${IPC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${DIR_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DIR_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${DATE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${EVENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${EVENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -796,6 +838,7 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
 install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${IPC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${DIR_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${DATE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${EVENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

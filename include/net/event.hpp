@@ -78,13 +78,12 @@ namespace awh {
 		 */
 		enum class address_t : uint8_t {
 			NONE    = 0x00, // Адрес не определён
-			MAC     = 0x01, // MAC-адрес
-			UDS     = 0x02, // Адрес Unix Domain Socket
-			DIR     = 0x03, // Адрес директории
-			FILE    = 0x04, // Файловый адрес
-			IPV4    = 0x05, // Адрес IPv4
-			IPV6    = 0x06, // Адрес IPv6
-			NETWORK = 0x07  // Сетевой адрес
+			FS      = 0x01, // Адрес файловой системы
+			MAC     = 0x02, // MAC-адрес
+			UDS     = 0x03, // Адрес Unix Domain Socket
+			IPV4    = 0x04, // Адрес IPv4
+			IPV6    = 0x05, // Адрес IPv6
+			NETWORK = 0x06  // Сетевой адрес
 		};
 		/**
 		 * @brief Статусы событий

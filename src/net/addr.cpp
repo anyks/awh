@@ -1843,8 +1843,8 @@ bool awh::NetworkAddress::check(const string_view addr, const type_t type) const
 					  ((addr[0] == '\\') && (addr[1] == '\\'))))
 						// Возвращаем результат проверки
 						return true;
-					// Unix: начинается с /
-					return (addr.front() == '/');
+					// Unix: начинается с / или ~ или .
+					return ((addr.front() == '/') || (addr.front() == '~') || (addr.front() == '.'));
 				}
 				// Если адрес принадлежит к доменным именам
 				case static_cast <uint8_t> (type_t::FQDN): {
