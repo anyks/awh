@@ -532,7 +532,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " ======================================== IPv4 " << endl;
 
 			// Добавляем новое событие клиента TCP
-			event::id_t eid3 = io.event(event::node_t::SERVER, event::family_t::UDPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+			event::id_t eid3 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
