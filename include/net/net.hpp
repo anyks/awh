@@ -361,12 +361,15 @@ namespace awh {
 			event::callback::write_t write;
 			// Обратный вызов при получении общего события
 			event::callback::event_t event;
+			// Обратный вызов при изменении события
+			event::callback::change_t change;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit FileSystemCallbacks() noexcept :
-			 read(nullptr), write(nullptr), event(nullptr) {}
+			 read(nullptr), write(nullptr),
+			 event(nullptr), change(nullptr) {}
 		} fs_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов сервера

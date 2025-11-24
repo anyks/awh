@@ -179,6 +179,143 @@ int32_t main(int32_t argc, char * argv[]){
 				break;
 			}
 		});
+		// Устанавливаем функцию обратного вызова на изменение события
+		io.on(eid, [&log](const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
+			/**
+			 * Обрабатываем тип узла события
+			 */
+			switch(static_cast <uint8_t> (vnode)){
+				// Если тип узла не определён
+				case static_cast <uint8_t> (event::vnode_t::NONE):
+					// Выводим сообщение о типе узла события
+					log.print("Тип узла события: Не определён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+				break;
+				case static_cast <uint8_t> (event::vnode_t::CHR): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Символьный узел устройства добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							log.print("Тип узла события: Символьный узел устройства удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+				case static_cast <uint8_t> (event::vnode_t::BLK): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Блочный узел устройства добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							log.print("Тип узла события: Блочный узел устройства удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+				// Если тип узла является каналом FIFO
+				case static_cast <uint8_t> (event::vnode_t::FIFO): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Канал FIFO добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							log.print("Тип узла события: Канал FIFO удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+				// Если тип узла является сокетом
+				case static_cast <uint8_t> (event::vnode_t::SOCK): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Сокет добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							log.print("Тип узла события: Сокет удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+				// Если тип узла является файлом
+				case static_cast <uint8_t> (event::vnode_t::FILE): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Файл добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							log.print("Тип узла события: Файл удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+				// Если тип узла является каталогом
+				case static_cast <uint8_t> (event::vnode_t::DIR): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Каталог добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение о типе узла события
+							log.print("Тип узла события: Каталог удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+				// Если тип узла является символической ссылкой
+				case static_cast <uint8_t> (event::vnode_t::LINK): {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение о изменении события
+							log.print("Тип узла события: Символическая ссылка добавлена, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение о типе узла события
+							log.print("Тип узла события: Символическая ссылка удалена, Путь=%s", log_t::flag_t::INFO, path.c_str());
+						break;
+					}
+				} break;
+			}
+		});
 		// Устанавливаем функцию обратного вызова на общее событие
 		io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**

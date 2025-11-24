@@ -73,6 +73,20 @@ namespace awh {
 			INTERVAL = 0x09  // Узел интервала времени
 		};
 		/**
+		 * @brief Типы виртуальных узлов
+		 *
+		 */
+		enum class vnode_t : uint8_t {
+			NONE = 0x00, // Узел не определён
+			CHR  = 0x01, // Виртуальный символьный узел устройства
+			BLK  = 0x02, // Виртуальный блочный узел устройства
+			DIR  = 0x03, // Виртуальный узел каталога
+			FILE = 0x04, // Виртуальный узел файла
+			FIFO = 0x05, // Виртуальный узел канала FIFO
+			SOCK = 0x06, // Виртуальный сокет узел
+			LINK = 0x07  // Виртуальный узел символической ссылки
+		};
+		/**
 		 * @brief Типы адресов событий
 		 *
 		 */
@@ -252,33 +266,37 @@ namespace awh {
 		 */
 		namespace callback {
 			/**
-			 * Обратный вызов при подключении события
+			 * Функция обратного вызова срабатывающая при подключении события
 			 */
 			using connect_t = std::function <void (const event::id_t, const bool)>;
 			/**
-			 * Обратный вызов при записи в событие
+			 * Функция обратного вызова срабатывающая при записи в событие
 			 */
 			using write_t = std::function <void (const event::id_t, const size_t)>;
 			/**
-			 * Обратный вызов при принятии события
+			 * Функция обратного вызова срабатывающая при принятии события
 			 */
 			using accept_t = std::function <void (const event::id_t, const event::id_t)>;
 			/**
-			 * Обратный вызов общего события
+			 * Функция обратного вызова срабатывающая при общем событии
 			 */
 			using event_t = std::function <void (const event::id_t, const event::action_t)>;
 			/**
-			 * Обратный вызов при изменении статуса события
+			 * Функция обратного вызова срабатывающая при изменении статуса события
 			 */
 			using status_t = std::function <void (const event::id_t, const event::status_t)>;
 			/**
-			 * Обратный вызов при чтении из события
+			 * Функция обратного вызова срабатывающая при чтении из события
 			 */
 			using read_t = std::function <void (const event::id_t, const uint8_t *, const size_t)>;
 			/**
-			 * Обратный вызов при ошибке события
+			 * Функция обратного вызова срабатывающая при ошибке события
 			 */
 			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
+			/**
+			 * Функция обратного вызова срабатывающая при изменении каталога
+			 */
+			using change_t = std::function <void (const event::id_t, const action_t, const vnode_t, const std::string &)>;
 		};
 	};
 };

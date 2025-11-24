@@ -268,6 +268,8 @@ namespace {
 		struct stat info;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
+		// Множество уже прочитанных записей каталога
+		unordered_map <string, event::vnode_t> entries;
 		/**
 		 * @brief Конструктор
 		 *
@@ -441,6 +443,14 @@ namespace io {
 	 */
 	static bool close(net::node_t *, const log_t *) noexcept;
 	/**
+	 * @brief Функция создания сокета события
+	 *
+	 * @param  узел для которого создаётся сокет
+	 * @param  объект работы с логами
+	 * @return результат создания сокета
+	 */
+	static bool socket(net::node_t *, const log_t *) noexcept;
+	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param  узел в котором произошло событие
@@ -466,6 +476,16 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool error(net::node_t *, const int32_t, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события изменения файла или каталога
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 */
+	static bool change(dir_t *, const io_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения
 	 *
@@ -519,169 +539,6 @@ namespace io {
 		static atomic_uint32_t id{1};
 		// Выводим новое значение идентификатора
 		return id.fetch_add(1, memory_order_relaxed);
-	}
-	/**
-	 * @brief Функция обработки пользовательского события
-	 *
-	 * @param node узел в котором произошло событие
-	 * @param io   объект работы с асинхронными событиями
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
-	 */
-	static bool user(user_t * node, const io_t * io, const log_t * log) noexcept {
-		// Результат работы функции
-		bool result = false;
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если установлена функция обратного вызова
-			if((node->callbacks.read != nullptr) || (node->id > 0)){
-				// Есши в очереди есть данные для чтения
-				if((result = !node->events.empty())){
-					// Если идентификатор события для передачи данных не установлен
-					if(node->to == 0)
-						// Выполняем извлечение данных из очереди
-						node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
-					// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-					else const_cast <io_t *> (io)->send(node->to, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
-					// Очищаем очередь от прочитанных данных
-					node->events.pop();
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если установлена функция обратного вызова
-			if(node->callbacks.error != nullptr)
-				// Вызываем функцию обратного вызова ошибки события
-				node->callbacks.error(node->id, event::error_t::UNKNOWN, error.what());
-			// Если функция обратного вызова для вывода события установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			}
-		}
-		// Выводим результат
-		return result;
-	}
-	/**
-	 * @brief Функция обработки события подключения
-	 *
-	 * @param node узел в котором произошло событие
-	 * @param io   объект работы с асинхронными событиями
-	 * @param eth  объект работы с сетевыми интерфейсами
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
-	 */
-	static bool connect(client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
-		bool result = false;
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если разрешено выполнять подключения
-			if(node->transfer.actions & action::CONNECT){
-				// Если установлена функция обратного вызова
-				if(node->callbacks.event != nullptr)
-					// Вызываем функцию обратного вызова флаг события
-					node->callbacks.event(node->id, event::action_t::CONNECT);
-				// Добавляем новое событие в список изменений
-				::__awh_change__.push_back((struct kevent){});
-				// Активируем событие на чтение данных
-				EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-				// Добавляем новое событие в список изменений
-				::__awh_change__.push_back((struct kevent){});
-				// Деактивируем событие на запись данных
-				EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
-				// Создаём объект промежуточного звена
-				auto ret = ::__awh_inters__.emplace(node->id, intmd_t{});
-				// Устанавливаем количество событий
-				ret.first->second.count += 2;
-				// Если событие успешно добавлено
-				if(ret.second)
-					// Устанавливаем индекс текущего элемента
-					ret.first->second.index = (::__awh_change__.size() - 2);
-				// Если сокет является неблокирующим
-				if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-					// Выполняем проверку на наличие таймаута для подключения к серверу
-					auto i = node->timeouts.find(node->timeout);
-					// Если нужный нам таймаут найден
-					if((i != node->timeouts.end()) && (i->second > 0)){
-						// Деактивируем таймаут события
-						node->timeout = event::action_t::NONE;
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Снимаем таймаут на получение данных
-						EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
-						// Увеличиваем количество событий
-						ret.first->second.count++;
-					}
-				}
-				// Если функция обратного вызова для вывода подключения установлена
-				if(node->callbacks.connect != nullptr)
-					// Вывзываем функцию обратного вызова для подключения
-					node->callbacks.connect(node->id, true);
-				// Если необходимо установить таймаут на чтение данных
-				auto i = node->timeouts.find(event::action_t::READ);
-				// Если таймаут на подключение найден
-				if((i != node->timeouts.end()) && (i->second > 0)){
-					// Если сокет является неблокирующим
-					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-						// Активируем таймаут события
-						node->timeout = i->first;
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем таймаут на получение данных
-						EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
-						// Увеличиваем количество событий
-						ret.first->second.count++;
-					// Устанавливаем таймаут на получение данных
-					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
-				}
-				// Выполняем "пинок" для применения изменений
-				result = const_cast <io_t *> (io)->kick();
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если установлена функция обратного вызова
-			if(node->callbacks.error != nullptr)
-				// Вызываем функцию обратного вызова ошибки события
-				node->callbacks.error(node->id, event::error_t::UNKNOWN, error.what());
-			// Если функция обратного вызова для вывода события установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			}
-		}
-		// Выводим результат
-		return result;
 	}
 	/**
 	 * @brief Функция обработки события таймера
@@ -918,6 +775,816 @@ namespace io {
 		return false;
 	}
 	/**
+	 * @brief Функция создания сокета события
+	 *
+	 * @param node узел для которого создаётся сокет
+	 * @param log  объект работы с логами
+	 * @return     результат создания сокета
+	 */
+	static bool socket(net::node_t * node, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем семейство события
+			 */
+			switch(static_cast <uint8_t> (node->state.family)){
+				// Для семейства UNIX-доменных сокетов
+				case static_cast <uint8_t> (event::family_t::UDS): {
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (node->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Создаём сокет подключения
+									awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+								break;
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER):
+									// Создаём сокет подключения
+									awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+								break;
+							}
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+									/**
+									 * Для операционной системы MacOS X, NetBSD, OpenBSD
+									 */
+									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+										// Создаём сокет подключения
+										awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+									/**
+									 * Для остальных операционных систем
+									 */
+									#else
+										// Создаём сокет подключения
+										awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+									#endif
+								break;
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER):
+									/**
+									 * Для операционной системы MacOS X, NetBSD, OpenBSD
+									 */
+									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+										// Создаём сокет подключения
+										awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+									/**
+									 * Для остальных операционных систем
+									 */
+									#else
+										// Создаём сокет подключения
+										awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+									#endif
+								break;
+							}
+						} break;
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Создаём сокет подключения
+									awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+								break;
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER):
+									// Создаём сокет подключения
+									awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+								break;
+							}
+						} break;
+						// Для неизвестного типа сокета
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug(
+									"An socket for a Unix event cannot be created because it has an invalid initialization type",
+									__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								log->print("An socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Флаг удачного выполнения объединение событий
+					bool ok = true;
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (node->state.type)){
+						// Для типа сокета RAW
+						case static_cast <uint8_t> (event::type_t::RAW): {
+							/**
+							 * Определяем тип подключения
+							 */
+							switch(static_cast <uint8_t> (node->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+												break;
+											}
+										} break;
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::RAW): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+												break;
+											}
+										} break;
+										// Если протокол определён как UDP
+										case static_cast <uint8_t> (event::protocol_t::UDP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+												break;
+											}
+										} break;
+										// Если протокол определён как IGMP
+										case static_cast <uint8_t> (event::protocol_t::IGMP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+												break;
+											}
+										} break;
+										// Если протокол определён как ICMP
+										case static_cast <uint8_t> (event::protocol_t::ICMP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+												break;
+											}
+										} break;
+										// Если протокол определён как UDP
+										case static_cast <uint8_t> (event::protocol_t::UDP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+												break;
+											}
+										} break;
+										// Если протокол определён как ICMP
+										case static_cast <uint8_t> (event::protocol_t::ICMP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+							}
+							// Если сокет не создан
+							if(!ok){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug(
+										"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
+										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								#endif
+							}
+						} break;
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							/**
+							 * Определяем тип подключения
+							 */
+							switch(static_cast <uint8_t> (node->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+												break;
+											}
+										} break;
+										// Если протокол определён как UDP
+										case static_cast <uint8_t> (event::protocol_t::UDP):
+										// Если протокол определён как DTLS
+										case static_cast <uint8_t> (event::protocol_t::DTLS): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+												break;
+											}
+										} break;
+										// Если протокол определён как IGMP
+										case static_cast <uint8_t> (event::protocol_t::IGMP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+												break;
+											}
+										} break;
+										// Если протокол определён как ICMP
+										case static_cast <uint8_t> (event::protocol_t::ICMP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+												break;
+											}
+										} break;
+										// Если протокол определён как UDP
+										case static_cast <uint8_t> (event::protocol_t::UDP):
+										// Если протокол определён как DTLS
+										case static_cast <uint8_t> (event::protocol_t::DTLS): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+												break;
+											}
+										} break;
+										// Если протокол определён как ICMP
+										case static_cast <uint8_t> (event::protocol_t::ICMP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+							}
+							// Если сокет не создан
+							if(!ok){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug(
+										"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
+										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								#endif
+							}
+						} break;
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							/**
+							 * Определяем тип подключения
+							 */
+							switch(static_cast <uint8_t> (node->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+												break;
+											}
+										} break;
+										// Если протокол определён как TCP
+										case static_cast <uint8_t> (event::protocol_t::TCP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+												break;
+											}
+										} break;
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол не определён
+										case static_cast <uint8_t> (event::protocol_t::NONE): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+												break;
+											}
+										} break;
+										// Если протокол определён как TCP
+										case static_cast <uint8_t> (event::protocol_t::TCP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+												break;
+											}
+										} break;
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+							}
+							// Если сокет не создан
+							if(!ok){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug(
+										"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
+										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								#endif
+							}
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							/**
+							 * Определяем тип подключения
+							 */
+							switch(static_cast <uint8_t> (node->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем протокол
+									 */
+									switch(static_cast <uint8_t> (node->state.protocol)){
+										// Если протокол определён как SCTP
+										case static_cast <uint8_t> (event::protocol_t::SCTP): {
+											/**
+											 * Определяем чем является текущий узел
+											 */
+											switch(static_cast <uint8_t> (node->state.node)){
+												// Если узел является клиентом
+												case static_cast <uint8_t> (event::node_t::CLIENT):
+													// Создаём сокет подключения
+													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+												break;
+												// Если узел является сервером
+												case static_cast <uint8_t> (event::node_t::SERVER):
+													// Создаём сокет подключения
+													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+												break;
+											}
+										} break;
+										// Если установлен другой протокол
+										default: ok = false;
+									}
+								} break;
+							}
+							// Если сокет не создан
+							if(!ok){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug(
+										"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
+										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								#endif
+							}
+						} break;
+						// Для неизвестного типа сокета
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug(
+									"An socket for a IP event cannot be created because it has an invalid initialization type",
+									__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								log->print("An socket for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Для неизвестного семейства
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug(
+							"Socket cannot be created because family it belongs to is not defined",
+							__PRETTY_FUNCTION__,std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("Socket cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Возвращаем результат создания сокета
+					return (awh_cast <client_t *> (node)->transfer.fd != net::invalid_socket_t);
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Возвращаем результат создания сокета
+					return (awh_cast <server_t *> (node)->transfer.fd != net::invalid_socket_t);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param node узел в котором произошло событие
@@ -1044,6 +1711,435 @@ namespace io {
 			::__awh_nodes__.erase(node->id);
 			// Выводим результат выполнения функции
 			return true;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+	/**
+	 * @brief Функция обработки пользовательского события
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param io   объект работы с асинхронными событиями
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool user(user_t * node, const io_t * io, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если установлена функция обратного вызова
+			if((node->callbacks.read != nullptr) || (node->id > 0)){
+				// Есши в очереди есть данные для чтения
+				if((result = !node->events.empty())){
+					// Если идентификатор события для передачи данных не установлен
+					if(node->to == 0)
+						// Выполняем извлечение данных из очереди
+						node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
+					// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+					else const_cast <io_t *> (io)->send(node->to, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
+					// Очищаем очередь от прочитанных данных
+					node->events.pop();
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если установлена функция обратного вызова
+			if(node->callbacks.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки события
+				node->callbacks.error(node->id, event::error_t::UNKNOWN, error.what());
+			// Если функция обратного вызова для вывода события установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция обработки события ошибки
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param code код ошибки
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool error(net::node_t * node, const int32_t code, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::NOTIFY): {
+					// Получаем текущее значение объекта пользовательского события
+					user_t * user = awh_cast <user_t *> (node);
+					// Если установлена функция обратного вызова
+					if(user->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						user->callbacks.error(user->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
+					// Получаем текущее значение объекта таймера
+					timer_t * timer = awh_cast <timer_t *> (node);
+					// Если установлена функция обратного вызова
+					if(timer->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * dir = awh_cast <dir_t *> (node);
+					// Если установлена функция обратного вызова
+					if(dir->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (node);
+					// Если установлена функция обратного вызова
+					if(fs->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					// Если установлена функция обратного вызова
+					if(ipc->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					peer_t * peer = awh_cast <peer_t *> (node);
+					// Если установлена функция обратного вызова
+					if(peer->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					client_t * client = awh_cast <client_t *> (node);
+					// Если установлена функция обратного вызова
+					if(client->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						client->callbacks.error(client->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					server_t * server = awh_cast <server_t *> (node);
+					// Если установлена функция обратного вызова
+					if(server->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return true;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+	/**
+	 * @brief Прототип функции обработки события изменения файла или каталога
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param io   объект работы с асинхронными событиями
+	 * @param fmk  объект фреймворка
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool change(dir_t * node, const io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если событие изменения каталога разрешено
+			if(node->actions & action::CHANGE){
+				// Если функция обратного вызова для вывода прочитанных данных установлена
+				if(node->callbacks.change != nullptr){
+					// Создаем указатель на содержимое каталога
+					struct dirent * ptr = nullptr;
+					// Переменная для хранения типа узла
+					event::vnode_t vnode = event::vnode_t::NONE;
+					// Создаем множество для хранения текущих записей каталога
+					unordered_map <string, event::vnode_t> entries = node->entries;
+					// Получаем адрес каталога
+					const string & path = awh_cast <net::addr_fs_t *> (node->path.get())->address;
+					/**
+					 * Выполняем чтение содержимого каталога
+					 */
+					while((ptr = ::readdir(node->handle)) != nullptr){
+						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+							// Выполняем пропуск каталога
+							continue;
+						// Получаем адрес в виде строки
+						const string & address = fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
+						// Если статистика извлечена
+						if(::stat(address.c_str(), &node->info) == 0){
+							// Если это каталог
+							if(S_ISDIR(node->info.st_mode))
+								// Устанавливаем тип узла как каталог
+								vnode = event::vnode_t::DIR;
+							// Если это файл
+							else if(S_ISREG(node->info.st_mode))
+								// Устанавливаем тип узла как файл
+								vnode = event::vnode_t::FILE;
+							// Если это символическое устройство
+							else if(S_ISLNK(node->info.st_mode))
+								// Устанавливаем тип узла как символическое устройство
+								vnode = event::vnode_t::LINK;
+							// Если это устройство блока
+							else if(S_ISBLK(node->info.st_mode))
+								// Устанавливаем тип узла как устройство блока
+								vnode = event::vnode_t::BLK;
+							// Если это символьное устройство
+							else if(S_ISCHR(node->info.st_mode))
+								// Устанавливаем тип узла как символьное устройство
+								vnode = event::vnode_t::CHR;
+							// Если это FIFO устройство
+							else if(S_ISFIFO(node->info.st_mode))
+								// Устанавливаем тип узла как FIFO устройство
+								vnode = event::vnode_t::FIFO;
+							// Если это сокетное устройство
+							else if(S_ISSOCK(node->info.st_mode))
+								// Устанавливаем тип узла как сокетное устройство
+								vnode = event::vnode_t::SOCK;
+							// Если тип узла не определён, пропускаем его
+							else continue;
+							// Добавляем новый адрес в список отслеживаемых
+							auto ret = node->entries.emplace(address, vnode);
+							// Если адрес был успешно добавлен
+							if(ret.second)
+								// Вызываем функцию обратного вызова
+								node->callbacks.change(node->id, event::action_t::CHANGE, vnode, address);
+							// Удаляем адрес из списка отслеживаемых
+							else entries.erase(address);
+						}
+					}
+					// Сбрасываем указатель каталога в начало
+					::rewinddir(node->handle);
+					// Если произошло событие удаления файла или каталога
+					if(!entries.empty()){
+						// Проходим по всем записям во временном множестве
+						for(const auto & entry : entries){
+							// Вызываем функцию обратного вызова
+							node->callbacks.change(node->id, event::action_t::DELETE, entry.second, entry.first);
+							// Удаляем адрес из списка отслеживаемых
+							node->entries.erase(entry.first);
+						}
+					}
+					// Формируем положительный результат
+					return true;
+				}
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1683,6 +2779,112 @@ namespace io {
 		}
 		// Выводим результат по умолчанию
 		return false;
+	}
+	/**
+	 * @brief Функция обработки события подключения
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param io   объект работы с асинхронными событиями
+	 * @param eth  объект работы с сетевыми интерфейсами
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool connect(client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если разрешено выполнять подключения
+			if(node->transfer.actions & action::CONNECT){
+				// Если установлена функция обратного вызова
+				if(node->callbacks.event != nullptr)
+					// Вызываем функцию обратного вызова флаг события
+					node->callbacks.event(node->id, event::action_t::CONNECT);
+				// Добавляем новое событие в список изменений
+				::__awh_change__.push_back((struct kevent){});
+				// Активируем событие на чтение данных
+				EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+				// Добавляем новое событие в список изменений
+				::__awh_change__.push_back((struct kevent){});
+				// Деактивируем событие на запись данных
+				EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+				// Создаём объект промежуточного звена
+				auto ret = ::__awh_inters__.emplace(node->id, intmd_t{});
+				// Устанавливаем количество событий
+				ret.first->second.count += 2;
+				// Если событие успешно добавлено
+				if(ret.second)
+					// Устанавливаем индекс текущего элемента
+					ret.first->second.index = (::__awh_change__.size() - 2);
+				// Если сокет является неблокирующим
+				if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+					// Выполняем проверку на наличие таймаута для подключения к серверу
+					auto i = node->timeouts.find(node->timeout);
+					// Если нужный нам таймаут найден
+					if((i != node->timeouts.end()) && (i->second > 0)){
+						// Деактивируем таймаут события
+						node->timeout = event::action_t::NONE;
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Снимаем таймаут на получение данных
+						EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+						// Увеличиваем количество событий
+						ret.first->second.count++;
+					}
+				}
+				// Если функция обратного вызова для вывода подключения установлена
+				if(node->callbacks.connect != nullptr)
+					// Вывзываем функцию обратного вызова для подключения
+					node->callbacks.connect(node->id, true);
+				// Если необходимо установить таймаут на чтение данных
+				auto i = node->timeouts.find(event::action_t::READ);
+				// Если таймаут на подключение найден
+				if((i != node->timeouts.end()) && (i->second > 0)){
+					// Если сокет является неблокирующим
+					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+						// Активируем таймаут события
+						node->timeout = i->first;
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Устанавливаем таймаут на получение данных
+						EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
+						// Увеличиваем количество событий
+						ret.first->second.count++;
+					// Устанавливаем таймаут на получение данных
+					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+				}
+				// Выполняем "пинок" для применения изменений
+				result = const_cast <io_t *> (io)->kick();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если установлена функция обратного вызова
+			if(node->callbacks.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки события
+				node->callbacks.error(node->id, event::error_t::UNKNOWN, error.what());
+			// Если функция обратного вызова для вывода события установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+		// Выводим результат
+		return result;
 	}
 	/**
 	 * @brief Функция обработки события чтения
@@ -3961,1073 +5163,6 @@ namespace io {
 		// Выводим результат по умолчанию
 		return false;
 	}
-	/**
-	 * @brief Функция обработки события ошибки
-	 *
-	 * @param node узел в котором произошло событие
-	 * @param code код ошибки
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
-	 */
-	static bool error(net::node_t * node, const int32_t code, const log_t * log) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::NOTIFY): {
-					// Получаем текущее значение объекта пользовательского события
-					user_t * user = awh_cast <user_t *> (node);
-					// Если установлена функция обратного вызова
-					if(user->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						user->callbacks.error(user->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMEOUT):
-				// Если узел является интервалом
-				case static_cast <uint8_t> (event::node_t::INTERVAL): {
-					// Получаем текущее значение объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (node);
-					// Если установлена функция обратного вызова
-					if(timer->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является директорией
-				case static_cast <uint8_t> (event::node_t::DIR): {
-					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (node);
-					// Если установлена функция обратного вызова
-					if(dir->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (node);
-					// Если установлена функция обратного вызова
-					if(fs->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является межпроцессным взаимодействием
-				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (node);
-					// Если установлена функция обратного вызова
-					if(ipc->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
-					// Если установлена функция обратного вызова
-					if(peer->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
-					// Если установлена функция обратного вызова
-					if(client->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						client->callbacks.error(client->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (node);
-					// Если установлена функция обратного вызова
-					if(server->callbacks.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки события
-						server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(code));
-					// Если функция обратного вызова вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
-						#endif
-					}
-					// Формируем положительный результат
-					return true;
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат по умолчанию
-		return false;
-	}
-	/**
-	 * @brief Функция создания сокета события
-	 *
-	 * @param node узел для которого создаётся сокет
-	 * @param log  объект работы с логами
-	 * @return     результат создания сокета
-	 */
-	static bool socket(net::node_t * node, const log_t * log) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			/**
-			 * Определяем семейство события
-			 */
-			switch(static_cast <uint8_t> (node->state.family)){
-				// Для семейства UNIX-доменных сокетов
-				case static_cast <uint8_t> (event::family_t::UDS): {
-					/**
-					 * Определяем тип сокета
-					 */
-					switch(static_cast <uint8_t> (node->state.type)){
-						// Для типа сокета STREAM
-						case static_cast <uint8_t> (event::type_t::STREAM): {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Создаём сокет подключения
-									awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-								break;
-								// Если узел является сервером
-								case static_cast <uint8_t> (event::node_t::SERVER):
-									// Создаём сокет подключения
-									awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-								break;
-							}
-						} break;
-						// Для типа сокета SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT):
-									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Создаём сокет подключения
-										awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-									/**
-									 * Для остальных операционных систем
-									 */
-									#else
-										// Создаём сокет подключения
-										awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
-									#endif
-								break;
-								// Если узел является сервером
-								case static_cast <uint8_t> (event::node_t::SERVER):
-									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Создаём сокет подключения
-										awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-									/**
-									 * Для остальных операционных систем
-									 */
-									#else
-										// Создаём сокет подключения
-										awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
-									#endif
-								break;
-							}
-						} break;
-						// Для типа сокета DATAGRAM
-						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Создаём сокет подключения
-									awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-								break;
-								// Если узел является сервером
-								case static_cast <uint8_t> (event::node_t::SERVER):
-									// Создаём сокет подключения
-									awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-								break;
-							}
-						} break;
-						// Для неизвестного типа сокета
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								log->debug(
-									"An socket for a Unix event cannot be created because it has an invalid initialization type",
-									__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								log->print("An socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-							#endif
-						}
-					}
-				} break;
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Флаг удачного выполнения объединение событий
-					bool ok = true;
-					/**
-					 * Определяем тип сокета
-					 */
-					switch(static_cast <uint8_t> (node->state.type)){
-						// Для типа сокета RAW
-						case static_cast <uint8_t> (event::type_t::RAW): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
-												break;
-											}
-										} break;
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::RAW): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как IGMP
-										case static_cast <uint8_t> (event::protocol_t::IGMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Для типа сокета DATAGRAM
-						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Если протокол определён как DTLS
-										case static_cast <uint8_t> (event::protocol_t::DTLS): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как IGMP
-										case static_cast <uint8_t> (event::protocol_t::IGMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Если протокол определён как DTLS
-										case static_cast <uint8_t> (event::protocol_t::DTLS): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Для типа сокета STREAM
-						case static_cast <uint8_t> (event::type_t::STREAM): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как TCP
-										case static_cast <uint8_t> (event::protocol_t::TCP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-												break;
-											}
-										} break;
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как TCP
-										case static_cast <uint8_t> (event::protocol_t::TCP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-												break;
-											}
-										} break;
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Для типа сокета SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Для неизвестного типа сокета
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								log->debug(
-									"An socket for a IP event cannot be created because it has an invalid initialization type",
-									__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								log->print("An socket for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-							#endif
-						}
-					}
-				} break;
-				// Для неизвестного семейства
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						log->debug(
-							"Socket cannot be created because family it belongs to is not defined",
-							__PRETTY_FUNCTION__,std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						log->print("Socket cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Возвращаем результат создания сокета
-					return (awh_cast <client_t *> (node)->transfer.fd != net::invalid_socket_t);
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Возвращаем результат создания сокета
-					return (awh_cast <server_t *> (node)->transfer.fd != net::invalid_socket_t);
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат по умолчанию
-		return false;
-	}
 }
 
 /**
@@ -5244,6 +5379,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									ret.first->second.index = (::__awh_change__.size() - 1);
 									// Устанавливаем флаги разрешающие получать события
 									node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE);
+									// Выполняем изменение содержимого в директории
+									io::change(node, this, this->_fmk, this->_log);
 								// Событие не может быть зафиксированно повторно
 								} else {
 									// Устанавливаем текст ошибки
@@ -9408,6 +9545,47 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									if(fs->path == nullptr)
 										// Создаём новый объект адреса файловой системы
 										fs->path = make_unique <net::addr_fs_t> ();
+									// Если адрес каталога начинается не с корня
+									if(value.front() != '/'){
+										// Временный буфер для хранения реального пути
+										char path[PATH_MAX];
+										// Если мы смогли получить полный путь каталога
+										if(::realpath(value.c_str(), path) != nullptr){
+											// Устанавливаем полный адрес переданного каталога
+											awh_cast <net::addr_fs_t *> (fs->path.get())->address = path;
+											// Возвращаем результат работы функции
+											return true;
+										// Если мы не смогли получить полный путь каталога и он начинается с текущего каталога
+										} else if(value.front() == '.') {
+											// Выполняем получение адреса текущего каталога
+											if(::getcwd(path, sizeof(path)) == nullptr)
+												// Выводим результат работы функции
+												return false;
+											// Если следующий символ за точкой является разделителем
+											if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
+												// Устанавливаем адрес файловой системы события
+												awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", path, value.c_str() + 1);
+											// Устанавливаем адрес файловой системы события
+											else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", path, AWH_FS_SEPARATOR, value.c_str() + 1);
+											// Возвращаем результат работы функции
+											return true;
+										// Если мы не смогли получить полный путь каталога и он начинается с тильды
+										} else if(value.front() == '~') {
+											// Получаем домашний каталог пользователя
+											const char * home = ::getenv("HOME");
+											// Если домашний каталог пользователя получен
+											if(home != nullptr){
+												// Если следующий символ за тильдой является разделителем
+												if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
+													// Устанавливаем адрес файловой системы события
+													awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", home, value.c_str() + 1);
+												// Устанавливаем адрес файловой системы события
+												else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", home, AWH_FS_SEPARATOR, value.c_str() + 1);
+												// Возвращаем результат работы функции
+												return true;
+											}
+										}
+									}
 									// Устанавливаем адрес файловой системы события
 									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
 									// Возвращаем результат работы функции
@@ -9477,6 +9655,47 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									if(fs->path == nullptr)
 										// Создаём новый объект адреса файловой системы
 										fs->path = make_unique <net::addr_fs_t> ();
+									// Если адрес каталога начинается не с корня
+									if(value.front() != '/'){
+										// Временный буфер для хранения реального пути
+										char path[PATH_MAX];
+										// Если мы смогли получить полный путь каталога
+										if(::realpath(value.c_str(), path) != nullptr){
+											// Устанавливаем полный адрес переданного каталога
+											awh_cast <net::addr_fs_t *> (fs->path.get())->address = path;
+											// Возвращаем результат работы функции
+											return true;
+										// Если мы не смогли получить полный путь каталога и он начинается с текущего каталога
+										} else if(value.front() == '.') {
+											// Выполняем получение адреса текущего каталога
+											if(::getcwd(path, sizeof(path)) == nullptr)
+												// Выводим результат работы функции
+												return false;
+											// Если следующий символ за точкой является разделителем
+											if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
+												// Устанавливаем адрес файловой системы события
+												awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", path, value.c_str() + 1);
+											// Устанавливаем адрес файловой системы события
+											else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", path, AWH_FS_SEPARATOR, value.c_str() + 1);
+											// Возвращаем результат работы функции
+											return true;
+										// Если мы не смогли получить полный путь каталога и он начинается с тильды
+										} else if(value.front() == '~') {
+											// Получаем домашний каталог пользователя
+											const char * home = ::getenv("HOME");
+											// Если домашний каталог пользователя получен
+											if(home != nullptr){
+												// Если следующий символ за тильдой является разделителем
+												if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
+													// Устанавливаем адрес файловой системы события
+													awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", home, value.c_str() + 1);
+												// Устанавливаем адрес файловой системы события
+												else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", home, AWH_FS_SEPARATOR, value.c_str() + 1);
+												// Возвращаем результат работы функции
+												return true;
+											}
+										}
+									}
 									// Устанавливаем адрес файловой системы события
 									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
 									// Возвращаем результат работы функции
@@ -26045,6 +26264,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(dir->actions & action::CHANGE)
 											// Вызываем функцию обратного вызова флаг события
 											dir->callbacks.event(dir->id, event::action_t::CHANGE);
+										// Выполняем изменение содержимого в директории
+										if(!io::change(dir, this, this->_fmk, this->_log))
+											// Пропускаем дальнейшую обработку события
+											continue;
 									// Если мы детектировали событие переименования директории
 									} else if(ev.fflags & NOTE_RENAME) {
 										// Если событие переименования директории разрешено
@@ -26077,6 +26300,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(dir->actions & action::HDLINK)
 											// Вызываем функцию обратного вызова флаг события
 											dir->callbacks.event(dir->id, event::action_t::HDLINK);
+										// Выполняем изменение содержимого в директории
+										if(!io::change(dir, this, this->_fmk, this->_log))
+											// Пропускаем дальнейшую обработку события
+											continue;
 									}
 								}
 							} break;
@@ -26779,6 +27006,67 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A status callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Методы установки функции обратного вызова на изменение события
+ *
+ * @param id идентификатор события
+ * @param cb объект обратного вызова события
+ */
+void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
+					// Устанавливаем функцию обратного вызова на получение статуса события
+					awh_cast <dir_t *> (i->second.get())->callbacks.change = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A change callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}
