@@ -1748,36 +1748,49 @@ namespace io {
 								// Сбрасываем время последней модификации файла
 								fs->mtime = 0;
 							}
-							// Смещение в файле и размер исходящего буфера данных
-							size_t chunk = fs->transfer.input.size;
+							// Размер полученных данных
+							size_t size = 0;
+							// Смещение в файле
+							off_t offset = 0;
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
 							for(;;){
 								// Если файл открыт удачно
 								if(::fstat(fs->fd, &fs->info) == 0){
+									
+									cout << " ^^^^^^^^^^^^^^ " << fs->info.st_size << " == " << fs->size << endl;
+									
 									// Если размер файла изменился
 									if(fs->info.st_size > fs->size){
-										// Если размер считываемого куска данных больше общего размера файла
-										if((fs->size + static_cast <int64_t> (chunk)) > fs->info.st_size)
-											// Выполняем корректировку считывающего чанка
-											chunk = static_cast <size_t> (fs->info.st_size - fs->size);
+										// Выполняем расчёт смещения в файле
+										offset = (fs->size > 0 ? ((fs->size / fs->transfer.input.size) * fs->transfer.input.size) : 0);
 										// Считываем данные из файла
-										char * buffer = static_cast <char *> (::mmap(nullptr, chunk, PROT_READ, MAP_SHARED, fs->fd, fs->size));
+										char * buffer = static_cast <char *> (::mmap(nullptr, fs->transfer.input.size, PROT_READ, MAP_SHARED, fs->fd, offset));
 										// Если мы прочитали нормально файл
 										if(buffer != MAP_FAILED){
 											// Если функция обратного вызова для вывода события установлена
 											if(fs->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
 												fs->callbacks.event(fs->id, event::action_t::READ);
+											// Получаем размер прочитанных данных из файла
+											size = ::min(fs->transfer.input.size, static_cast <size_t> (fs->info.st_size - fs->size));
+											// Если мы заполнили весь буфер данных
+											if(size == fs->transfer.input.size)
+												// Выполняем сброс смещения в буфере
+												offset = 0;
+											// Формируем смещение в буфере, согласно только порции новым данных
+											else offset = (fs->size - offset);
 											// Если идентификатор события для передачи данных не установлен
 											if(fs->transfer.id == 0)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer), chunk);
+												fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											else fs->io->send(fs->transfer.id, buffer, chunk);
+											else fs->io->send(fs->transfer.id, buffer + offset, size);
 											// Отвязываем текущий маппинг
-											::munmap(buffer, chunk);
+											::munmap(buffer, fs->transfer.input.size);
+											// Устанавливаем новый размер файла
+											fs->size += size;
 										// Если мы получили ошибку
 										} else {
 											// Если установлена функция обратного вызова
@@ -1805,8 +1818,6 @@ namespace io {
 										}
 										// Устанавливаем время последней модификации файла
 										fs->mtime = fs->info.st_mtime;
-										// Устанавливаем новый размер файла
-										fs->size += static_cast <int64_t> (chunk);
 									// Если время последней модификации файла изменилось
 									} else if(fs->info.st_mtime != fs->mtime) {
 										// Сбрасываем размер файла
@@ -5394,14 +5405,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							// Если файловый дескриптор файла существует
 							if(node->fd != net::invalid_socket_t){
 								// Если буфер на чтение не создан
-								if(node->transfer.input.data == nullptr){
+								if(node->transfer.input.data == nullptr)
 									// Устанавливаем размер буфера на чтение
-									node->transfer.input.size = 0x1000;
-									// Выполняем создание нового буфера на чтение
-									node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-								}
-								// Выполняем чтение данных из файла
-								io::read(node, this->_fmk, this->_log);
+									node->transfer.input.size = ::getpagesize();
 								// Создаём объект промежуточного звена
 								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
 								// Если событие успешно добавлено
@@ -5416,6 +5422,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									ret.first->second.index = (::__awh_change__.size() - 1);
 									// Устанавливаем флаги разрешающие получать события
 									node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE | action::READ);
+									// Выполняем чтение данных из файла
+									io::read(node, this->_fmk, this->_log);
 								// Событие не может быть зафиксированно повторно
 								} else {
 									// Устанавливаем текст ошибки
@@ -16178,7 +16186,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция не установлена
 					if(!isSetup)
 						// Устанавливаем результат работы функции как ложь
-						result = false;
+						result = isSetup;
 					/**
 					 * Определяем семейство события
 					 */
@@ -16201,7 +16209,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 							// Если опция не установлена
 							if(result && !isSetup)
 								// Устанавливаем результат работы функции как ложь
-								result = false;
+								result = isSetup;
 						} break;
 					}
 				}
@@ -16212,7 +16220,12 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NOSIGILL;
 				// Если опция не передана как NOSIGILL
-				} else i->second->state.options &= ~event::options::NOSIGILL;
+				} else {
+					// Устанавливаем результат установки опции
+					isSetup = true;
+					// Снимаем игнорирование сигнала SIGILL
+					i->second->state.options &= ~event::options::NOSIGILL;
+				}
 				// Если опция не установлена
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
@@ -16633,7 +16646,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					fd = awh_cast <server_t *> (i->second.get())->fd;
 				break;
 				// Для других типов узлов
-				default: return false;
+				default: return result;
 			}
 			// Если файловый дескриптор события получен успешно
 			if((result = (fd != net::invalid_socket_t))){
@@ -16815,8 +16828,8 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													}
 												}
 												// Выполняем "пинок" для применения изменений
-												result = this->kick();
-											} break;
+												return this->kick();
+											}
 										}
 									}
 								}
@@ -16927,8 +16940,8 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													}
 												}
 												// Выполняем "пинок" для применения изменений
-												result = this->kick();
-											} break;
+												return this->kick();
+											}
 										}
 									}
 								}
@@ -16991,7 +17004,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							i->second->state.options |= event::options::ONSHOT;
 						// Если необходимо деактивировать параметры одиночного использования для сокета события
 						else i->second->state.options &= ~event::options::ONSHOT;
-					} break;
+						// Выводим положительный результат
+						return true;
+					}
 					// Если опция передана как KEEPALIVE
 					case event::options::KEEPALIVE: {
 						// Если необходимо активировать режим постоянного поддержания соединения
@@ -17000,7 +17015,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							i->second->state.options |= event::options::KEEPALIVE;
 						// Если необходимо деактивировать параметры keep-alive для сокета события
 						else i->second->state.options &= ~event::options::KEEPALIVE;
-					} break;
+						// Выводим положительный результат
+						return true;
+					}
 					// Если опция передана как CLOSE_ON_EXEC
 					case event::options::CLOSEONEXEC: {
 						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
@@ -18385,10 +18402,32 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						file_t * fs = awh_cast <file_t *> (i->second.get());
 						// Если изменение файла разрешено
 						if(fs->actions & action::CHANGE){
+
+							
+							// Если файл открыт удачно
+							if(::fstat(fs->fd, &fs->info) == 0){
+							
+							
+								
+
+							}
+
+							
+
+							cout << " !!!!!!!!! " << (size + fs->size) << " == " << size << " == " << fs->size << " || " << fs->info.st_size << " || " << fs->transfer.input.size << endl;
+							
 							// Выделяем память под запись данных в файл
-							::ftruncate(fs->fd, size + fs->size);
+							// ::ftruncate(fs->fd, size + fs->size);
 							// Выполняем запись данных в файл
-							void * buffer = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, fs->size);
+							// void * buffer = ::mmap(nullptr, fs->transfer.input.size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, fs->size);
+
+							::ftruncate(fs->fd, 49152);
+
+							char * buffer = reinterpret_cast <char *> (::mmap(nullptr, 16384, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, 32768));
+							
+							
+							cout << " !!!!!!!!!!!!2 " << errno << endl;
+							
 							// Если mmap выполнился с ошибкой
 							if(buffer == MAP_FAILED){
 								// Если установлена функция обратного вызова
@@ -18414,17 +18453,34 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								// Выходим из функции с ошибкой
 								return false;
 							}
+
+							// ::memcpy(buffer, data, size);
+							::memcpy(buffer + 1482, data, size);
+
+							
+							
 							// Если сокет является неблокирующим
 							if((fs->state.options & event::options::NOIOBLOCK) ||
-							(fs->state.options & event::options::SMIOBLOCK))
+							   (fs->state.options & event::options::SMIOBLOCK))
 								// Выполняем синхронизацию данных в файл
-								::msync(buffer, fs->size, MS_ASYNC);
+								::msync(buffer, 16384, MS_ASYNC);
 							// Выполняем синхронизацию данных в файл
-							else ::msync(buffer, fs->size, MS_SYNC);
+							else ::msync(buffer, 16384, MS_SYNC);
+							
+							
 							// Выполняем освобождение маппинга файла
-							::munmap(buffer, size);
+							// ::munmap(buffer, size);
+
+							::munmap(buffer, 16384);
+
+							::ftruncate(fs->fd, fs->size + 14); // ← вот это ключ!
+
+
 							// Увеличиваем размер файла
-							fs->size += size;
+							// fs->size += size;
+							// Устанавливаем время последней модификации файла
+							fs->mtime = fs->info.st_mtime;
+
 							// Если функция обратного вызова для вывода записанных данных установлена
 							if(fs->callbacks.write != nullptr)
 								// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -21710,9 +21766,11 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 							// Устанавливаем результат выполнения операции
 							result = true;
 							// Устанавливаем размер буфера на чтение
-							fs->transfer.input.size = size;
-							// Выполняем создание нового буфера на чтение
-							fs->transfer.input.data = make_unique <uint8_t []> (fs->transfer.input.size);
+							fs->transfer.input.size = ::getpagesize();
+							// Если устанавливаемый размер файла выше текущего размера
+							if(size > fs->transfer.input.size)
+								// Устанавливаем размер буфера на чтение
+								fs->transfer.input.size = size;
 						} break;
 						// Если действие не определено
 						default: {
@@ -25897,6 +25955,11 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <file_t *> (i->second.get())->callbacks.write = ::move(cb);
+				break;
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на запись события
