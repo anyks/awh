@@ -105,13 +105,14 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Событие выполнено с ошибкой: ID=%u", log_t::flag_t::CRITICAL, eid);
 				break;
 				// Если статус выполнения события в ожидании
-				case static_cast <uint8_t> (event::status_t::PENDING):
+				case static_cast <uint8_t> (event::status_t::PENDING): {
 					// Выводим сообщение о выполнении события в ожидании
 					log.print("Событие в ожидании: ID=%u", log_t::flag_t::INFO, eid);
-
-					io.send(eid, "Hello World!!!", 15);
-
-				break;
+					// Устанавливаем смещение в файле
+					// io.seek(eid, 1024);
+					// Отправляем тестовое сообщение в файл
+					io.send(eid, "Hello World!!!", 14);
+				} break;
 				// Если статус подключения события
 				case static_cast <uint8_t> (event::status_t::CONNECTED):
 					// Выводим сообщение о подключении события
@@ -257,6 +258,8 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
+				// Отключаем событие на чтение
+				// io.action(eid, event::action_t::READ, event::mode_t::DISABLED);
 				/**
 				 * Запускаем опрос событий
 				 */

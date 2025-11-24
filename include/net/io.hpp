@@ -76,6 +76,22 @@ namespace awh {
 			bool iface(const event::id_t id, const string & name) noexcept;
 		public:
 			/**
+			 * @brief Метод получения смещения в файле события
+			 *
+			 * @param id идентификатор события
+			 * @return   смещение в файле события
+			 */
+			size_t seek(const event::id_t id) noexcept;
+			/**
+			 * @brief Метод установки смещения в файле события
+			 *
+			 * @param id     идентификатор события
+			 * @param offset смещение в файле события
+			 * @return       результат выполнения установки
+			 */
+			bool seek(const event::id_t id, const size_t offset) noexcept;
+		public:
+			/**
 			 * @brief Метод получения хоста целевой машины
 			 *
 			 * @param id идентификатор события

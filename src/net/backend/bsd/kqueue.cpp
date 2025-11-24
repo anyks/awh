@@ -1758,9 +1758,6 @@ namespace io {
 							for(;;){
 								// Если файл открыт удачно
 								if(::fstat(fs->fd, &fs->info) == 0){
-									
-									cout << " ^^^^^^^^^^^^^^ " << fs->info.st_size << " == " << fs->size << endl;
-									
 									// Если размер файла изменился
 									if(fs->info.st_size > fs->size){
 										// Выполняем расчёт смещения в файле
@@ -5422,8 +5419,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									ret.first->second.index = (::__awh_change__.size() - 1);
 									// Устанавливаем флаги разрешающие получать события
 									node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE | action::READ);
-									// Выполняем чтение данных из файла
-									io::read(node, this->_fmk, this->_log);
+									// Если файл открыт удачно
+									if(::fstat(node->fd, &node->info) == 0){
+										// Если размер файла не пустой
+										if(node->info.st_size > 0)
+											// Выполняем чтение данных из файла
+											io::read(node, this->_fmk, this->_log);
+									}
 								// Событие не может быть зафиксированно повторно
 								} else {
 									// Устанавливаем текст ошибки
@@ -7014,7 +7016,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Port cannot be set for events that are not network related",	 __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+						this->_log->debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -7473,6 +7475,134 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 	}
 	// Возвращаем результат работы функции
 	return result;
+}
+/**
+ * @brief Метод получения смещения в файле события
+ *
+ * @param id идентификатор события
+ * @return   смещение в файле события
+ */
+size_t awh::IO::seek(const event::id_t id) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Выводим смещение в файле события
+					return awh_cast <file_t *> (i->second.get())->size;
+				// Если узел не является файловым
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Seek offset cannot be get for events that are not file system related", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки смещения в файле события
+ *
+ * @param id     идентификатор события
+ * @param offset смещение в файле события
+ * @return       результат выполнения установки
+ */
+bool awh::IO::seek(const event::id_t id, const size_t offset) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Устанавливаем смещение в файле события
+					awh_cast <file_t *> (i->second.get())->size = offset;
+					// Возвращаем результат работы функции
+					return true;
+				}
+				// Если узел не является файловым
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Seek offset cannot be set for events that are not file system related", __PRETTY_FUNCTION__, std::make_tuple(id, offset), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Seek offset cannot be set for events that are not file system related", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, offset), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения хоста целевой машины
@@ -18402,32 +18532,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						file_t * fs = awh_cast <file_t *> (i->second.get());
 						// Если изменение файла разрешено
 						if(fs->actions & action::CHANGE){
-
-							
-							// Если файл открыт удачно
-							if(::fstat(fs->fd, &fs->info) == 0){
-							
-							
-								
-
-							}
-
-							
-
-							cout << " !!!!!!!!! " << (size + fs->size) << " == " << size << " == " << fs->size << " || " << fs->info.st_size << " || " << fs->transfer.input.size << endl;
-							
+							// Получаем актуальный итоговый размер файла
+							const off_t actual = (fs->size + static_cast <uint64_t> (size));
+							// Получаем смещение в файле с учётом размера страницы
+							const off_t offset = ((fs->size / fs->transfer.input.size) * fs->transfer.input.size);
 							// Выделяем память под запись данных в файл
-							// ::ftruncate(fs->fd, size + fs->size);
-							// Выполняем запись данных в файл
-							// void * buffer = ::mmap(nullptr, fs->transfer.input.size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, fs->size);
-
-							::ftruncate(fs->fd, 49152);
-
-							char * buffer = reinterpret_cast <char *> (::mmap(nullptr, 16384, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, 32768));
-							
-							
-							cout << " !!!!!!!!!!!!2 " << errno << endl;
-							
+							::ftruncate(fs->fd, (((actual + fs->transfer.input.size - 1) / fs->transfer.input.size) * fs->transfer.input.size));
+							// Выполняем маппинг файла в память
+							char * buffer = reinterpret_cast <char *> (::mmap(nullptr, fs->transfer.input.size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, offset));
 							// Если mmap выполнился с ошибкой
 							if(buffer == MAP_FAILED){
 								// Если установлена функция обратного вызова
@@ -18453,34 +18565,25 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								// Выходим из функции с ошибкой
 								return false;
 							}
-
-							// ::memcpy(buffer, data, size);
-							::memcpy(buffer + 1482, data, size);
-
-							
-							
+							// Выполняем запись данных в файл
+							::memcpy(buffer + (fs->size - static_cast <size_t> (offset)), data, size);
 							// Если сокет является неблокирующим
 							if((fs->state.options & event::options::NOIOBLOCK) ||
 							   (fs->state.options & event::options::SMIOBLOCK))
 								// Выполняем синхронизацию данных в файл
-								::msync(buffer, 16384, MS_ASYNC);
+								::msync(buffer, fs->transfer.input.size, MS_ASYNC);
 							// Выполняем синхронизацию данных в файл
-							else ::msync(buffer, 16384, MS_SYNC);
-							
-							
+							else ::msync(buffer, fs->transfer.input.size, MS_SYNC);
 							// Выполняем освобождение маппинга файла
-							// ::munmap(buffer, size);
-
-							::munmap(buffer, 16384);
-
-							::ftruncate(fs->fd, fs->size + 14); // ← вот это ключ!
-
-
-							// Увеличиваем размер файла
-							// fs->size += size;
+							::munmap(buffer, fs->transfer.input.size);
+							// Обрезаем файл до нужных нам размеров
+							::ftruncate(fs->fd, actual);
+							// Если чтение из файла не предполагается
+							if(!(fs->actions & action::READ) || ((fs->callbacks.read == nullptr) && (fs->transfer.id == 0)))
+								// Увеличиваем размер файла
+								fs->size += size;
 							// Устанавливаем время последней модификации файла
 							fs->mtime = fs->info.st_mtime;
-
 							// Если функция обратного вызова для вывода записанных данных установлена
 							if(fs->callbacks.write != nullptr)
 								// Вывзываем функцию обратного вызова для вывода записанных данных
