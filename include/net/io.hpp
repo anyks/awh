@@ -76,22 +76,6 @@ namespace awh {
 			bool iface(const event::id_t id, const string & name) noexcept;
 		public:
 			/**
-			 * @brief Метод получения смещения в файле события
-			 *
-			 * @param id идентификатор события
-			 * @return   смещение в файле события
-			 */
-			size_t seek(const event::id_t id) noexcept;
-			/**
-			 * @brief Метод установки смещения в файле события
-			 *
-			 * @param id     идентификатор события
-			 * @param offset смещение в файле события
-			 * @return       результат выполнения установки
-			 */
-			bool seek(const event::id_t id, const size_t offset) noexcept;
-		public:
-			/**
 			 * @brief Метод получения хоста целевой машины
 			 *
 			 * @param id идентификатор события
@@ -162,6 +146,24 @@ namespace awh {
 			 * @return         пара идентификаторов созданных событий
 			 */
 			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+		public:
+			/**
+			 * @brief Метод получения смещения в файле события
+			 *
+			 * @param id   идентификатор события
+			 * @param seek тип смещения в файле события
+			 * @return     смещение в файле события
+			 */
+			size_t seek(const event::id_t id, const event::seek_t seek) noexcept;
+			/**
+			 * @brief Метод установки смещения в файле события
+			 *
+			 * @param id     идентификатор события
+			 * @param seek   тип смещения в файле события
+			 * @param offset смещение в файле события
+			 * @return       результат выполнения установки
+			 */
+			bool seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept;
 		public:
 			/**
 			 * @brief Метод получения опций события
