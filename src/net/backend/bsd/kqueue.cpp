@@ -28,6 +28,7 @@
 #include <cerrno>
 #include <atomic>
 #include <memory>
+#include <vector>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -37,8 +38,11 @@
 /**
  * Подключаем системные заголовки
  */
+#include <pwd.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 #include <sys/un.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -415,6 +419,154 @@ namespace {
 	 * Глобальная переменная списка узлов событий
 	 */
 	unordered_map <event::id_t, unique_ptr <net::node_t>> __awh_nodes__;
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён файловой системы
+ */
+namespace fs {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция получения полного пути файла или каталога
+	 *
+	 * @param input входная строка пути
+	 * @param log   объект работы с логами
+	 * @return      полная строка пути
+	 */
+	string fullpath(const string & input, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если входная строка пуста, возвращаем текущий рабочий каталог
+			if(input.empty()){
+				// Временный буфер для текущего рабочего каталога
+				char cwd[PATH_MAX];
+				// Получаем текущий рабочий каталог
+				return (::getcwd(cwd, sizeof(cwd)) ? cwd : AWH_FS_SEPARATOR);
+			}
+			// 1. Обрабатываем вход: превращаем в абсолютный путь как строку
+			string path = "";
+			// Если путь уже абсолютный
+			if(input.front() == AWH_FS_SEPARATOR[0])
+				// Уже абсолютный
+				path = input;
+			// Если путь начинается с '~'
+			else if(input.front() == '~') {
+				// Выполняем поиск следующего слэша ~/ или ~
+				size_t sep = input.find(AWH_FS_SEPARATOR[0], 1);
+				// Получаем домашний каталог пользователя
+				const char * home = ::getenv("HOME");
+				// Если переменная окружения не установлена
+				if(home == nullptr){
+					// Получаем информацию о пользователе из системы
+					struct passwd * pw = ::getpwuid(::getuid());
+					// Если информация о пользователе получена
+					if(pw != nullptr)
+						// Устанавливаем домашний каталог пользователя
+						home = pw->pw_dir;
+				}
+				// Добавляем домашний каталог пользователя в путь
+				path.append(home != nullptr ? home : AWH_FS_SEPARATOR);
+				// Если найден слэш после тильды
+				if(sep != string::npos)
+					// Добавляем оставшуюся часть пути
+					path.append(input.substr(sep));
+			// Если путь относительный
+			} else {
+				// Временный буфер для текущего рабочего каталога
+				char cwd[PATH_MAX];
+				// Получаем текущий рабочий каталог
+				if(!::getcwd(cwd, sizeof(cwd))){
+					// Устанавливаем корневой каталог как текущий
+					cwd[0] = '/';
+					// Завершаем строку
+					cwd[1] = '\0';
+				}
+				// Добавляем текущий рабочий каталог в путь
+				path.append(cwd);
+				// Добавляем слэш разделителя файловой системы
+				path.append(AWH_FS_SEPARATOR);
+				// Добавляем оставшуюся часть пути
+				path.append(input);
+			}
+			// Компонент пути
+			string part = "";
+			// Составные части пути
+			vector <string> parts;
+			// 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
+			for(char letter : path){
+				// Если встретили слэш разделителя файловой системы
+				if(letter == AWH_FS_SEPARATOR[0]){
+					// Если компонент не пустой
+					if(!part.empty()){
+						// Обрабатываем компонент пути
+						if(part == ".."){
+							// Если есть из чего удалять, удаляем последний компонент
+							if(!parts.empty())
+								// Удаляем последний компонент пути
+								parts.pop_back();
+						// Если компонент не текущий каталог
+						} else if(part != ".")
+							// Добавляем компонент в составные части пути
+							parts.push_back(part);
+						// Очищаем компонент пути
+						part.clear();
+					}
+				// Иначе накапливаем символ в компонент пути
+				} else part.append(1, letter);
+			}
+			// Последний компонент
+			if(!part.empty()){
+				// Обрабатываем компонент пути
+				if(part == ".."){
+					// Если есть из чего удалять, удаляем последний компонент
+					if(!parts.empty())
+						// Удаляем последний компонент пути
+						parts.pop_back();
+				// Если компонент не текущий каталог
+				} else if(part != ".")
+					// Добавляем компонент в составные части пути
+					parts.push_back(part);
+			}
+			// 3. Собираем результат — строго один слэш в начале
+			string result = AWH_FS_SEPARATOR;
+			// Проходим по всем частям пути
+			for(size_t i = 0; i < parts.size(); ++i){
+				// Если это не первая часть пути
+				if(i > 0)
+					// Добавляем слэш разделителя файловой системы
+					result.append(AWH_FS_SEPARATOR);
+				// Добавляем часть пути
+				result.append(parts[i]);
+			}
+			// 4. Возвращаем результат
+			return result;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(input), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return AWH_FS_SEPARATOR;
+	}
 };
 
 /**
@@ -2062,7 +2214,7 @@ namespace io {
 		try {
 			// Если событие изменения каталога разрешено
 			if(node->actions & action::CHANGE){
-				// Если функция обратного вызова для вывода прочитанных данных установлена
+				// Если функция обратного вызова для сигнализации изменения каталога установлена
 				if(node->callbacks.change != nullptr){
 					// Создаем указатель на содержимое каталога
 					struct dirent * ptr = nullptr;
@@ -5523,7 +5675,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Устанавливаем индекс текущего элемента
 									ret.first->second.index = (::__awh_change__.size() - 1);
 									// Устанавливаем флаги разрешающие получать события
-									node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE | action::READ);
+									node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE | action::READ | action::WRITE);
 									// Если файл открыт удачно
 									if(::fstat(node->fd, &node->info) == 0){
 										// Если размер файла не пустой
@@ -9545,49 +9697,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									if(fs->path == nullptr)
 										// Создаём новый объект адреса файловой системы
 										fs->path = make_unique <net::addr_fs_t> ();
-									// Если адрес каталога начинается не с корня
-									if(value.front() != '/'){
-										// Временный буфер для хранения реального пути
-										char path[PATH_MAX];
-										// Если мы смогли получить полный путь каталога
-										if(::realpath(value.c_str(), path) != nullptr){
-											// Устанавливаем полный адрес переданного каталога
-											awh_cast <net::addr_fs_t *> (fs->path.get())->address = path;
-											// Возвращаем результат работы функции
-											return true;
-										// Если мы не смогли получить полный путь каталога и он начинается с текущего каталога
-										} else if(value.front() == '.') {
-											// Выполняем получение адреса текущего каталога
-											if(::getcwd(path, sizeof(path)) == nullptr)
-												// Выводим результат работы функции
-												return false;
-											// Если следующий символ за точкой является разделителем
-											if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
-												// Устанавливаем адрес файловой системы события
-												awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", path, value.c_str() + 1);
-											// Устанавливаем адрес файловой системы события
-											else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", path, AWH_FS_SEPARATOR, value.c_str() + 1);
-											// Возвращаем результат работы функции
-											return true;
-										// Если мы не смогли получить полный путь каталога и он начинается с тильды
-										} else if(value.front() == '~') {
-											// Получаем домашний каталог пользователя
-											const char * home = ::getenv("HOME");
-											// Если домашний каталог пользователя получен
-											if(home != nullptr){
-												// Если следующий символ за тильдой является разделителем
-												if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
-													// Устанавливаем адрес файловой системы события
-													awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", home, value.c_str() + 1);
-												// Устанавливаем адрес файловой системы события
-												else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", home, AWH_FS_SEPARATOR, value.c_str() + 1);
-												// Возвращаем результат работы функции
-												return true;
-											}
-										}
-									}
 									// Устанавливаем адрес файловой системы события
-									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = fs::fullpath(value, this->_log);
 									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
@@ -9655,49 +9766,8 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									if(fs->path == nullptr)
 										// Создаём новый объект адреса файловой системы
 										fs->path = make_unique <net::addr_fs_t> ();
-									// Если адрес каталога начинается не с корня
-									if(value.front() != '/'){
-										// Временный буфер для хранения реального пути
-										char path[PATH_MAX];
-										// Если мы смогли получить полный путь каталога
-										if(::realpath(value.c_str(), path) != nullptr){
-											// Устанавливаем полный адрес переданного каталога
-											awh_cast <net::addr_fs_t *> (fs->path.get())->address = path;
-											// Возвращаем результат работы функции
-											return true;
-										// Если мы не смогли получить полный путь каталога и он начинается с текущего каталога
-										} else if(value.front() == '.') {
-											// Выполняем получение адреса текущего каталога
-											if(::getcwd(path, sizeof(path)) == nullptr)
-												// Выводим результат работы функции
-												return false;
-											// Если следующий символ за точкой является разделителем
-											if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
-												// Устанавливаем адрес файловой системы события
-												awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", path, value.c_str() + 1);
-											// Устанавливаем адрес файловой системы события
-											else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", path, AWH_FS_SEPARATOR, value.c_str() + 1);
-											// Возвращаем результат работы функции
-											return true;
-										// Если мы не смогли получить полный путь каталога и он начинается с тильды
-										} else if(value.front() == '~') {
-											// Получаем домашний каталог пользователя
-											const char * home = ::getenv("HOME");
-											// Если домашний каталог пользователя получен
-											if(home != nullptr){
-												// Если следующий символ за тильдой является разделителем
-												if((value.size() > 1) && (value[1] == AWH_FS_SEPARATOR[0]))
-													// Устанавливаем адрес файловой системы события
-													awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s", home, value.c_str() + 1);
-												// Устанавливаем адрес файловой системы события
-												else awh_cast <net::addr_fs_t *> (fs->path.get())->address = this->_fmk->format("%s%s%s", home, AWH_FS_SEPARATOR, value.c_str() + 1);
-												// Возвращаем результат работы функции
-												return true;
-											}
-										}
-									}
 									// Устанавливаем адрес файловой системы события
-									awh_cast <net::addr_fs_t *> (fs->path.get())->address = value;
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = fs::fullpath(value, this->_log);
 									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
@@ -18781,8 +18851,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
 						file_t * fs = awh_cast <file_t *> (i->second.get());
-						// Если изменение файла разрешено
-						if(fs->actions & action::CHANGE){
+						// Если запись в файл разрешена
+						if(fs->actions & action::WRITE){
 							// Получаем актуальный итоговый размер файла
 							const off_t actual = (fs->offset + static_cast <uint64_t> (size));
 							// Получаем смещение в файле с учётом размера страницы
@@ -26325,10 +26395,17 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(fs->actions & action::CHANGE){
 											// Вызываем функцию обратного вызова флаг события
 											fs->callbacks.event(fs->id, event::action_t::CHANGE);
-											// Выполняем чтение данных из файла
-											if(!io::read(node, this, &this->_eth, this->_fmk, this->_log))
-												// Пропускаем дальнейшую обработку события
-												continue;
+											// Если функция обратного вызова для сигнализации изменения файла установлена
+											if(fs->callbacks.change != nullptr)
+												// Вызываем функцию обратного вызова
+												fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+											// Если событие чтения разрешено
+											if(fs->actions & action::READ){
+												// Выполняем чтение данных из файла
+												if(!io::read(node, this, &this->_eth, this->_fmk, this->_log))
+													// Пропускаем дальнейшую обработку события
+													continue;
+											}
 										}
 									// Если мы детектировали событие переименования файла
 									} else if(ev.fflags & NOTE_RENAME) {
@@ -26342,6 +26419,13 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(fs->actions & action::DELETE)
 											// Вызываем функцию обратного вызова флаг события
 											fs->callbacks.event(fs->id, event::action_t::DELETE);
+										// Если событие изменения файла разрешено
+										if(fs->actions & action::CHANGE){
+											// Если функция обратного вызова для сигнализации изменения файла установлена
+											if(fs->callbacks.change != nullptr)
+												// Вызываем функцию обратного вызова
+												fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+										}
 										// Выполняем удаление узла
 										io::destroy(node, this->_log);
 									// Если мы детектировали событие изменения атрибутов файла
@@ -27050,8 +27134,13 @@ void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова на получение изменения каталога
 					awh_cast <dir_t *> (i->second.get())->callbacks.change = ::move(cb);
+				break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на получение изменения файла
+					awh_cast <file_t *> (i->second.get())->callbacks.change = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
