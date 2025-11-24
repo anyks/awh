@@ -394,6 +394,12 @@ namespace awh {
 			bool isAlive(const event::id_t id) const noexcept;
 		public:
 			/**
+			 * @brief Метод очистки основного движка фреймворка
+			 *
+			 */
+			void clear() noexcept;
+		public:
+			/**
 			 * @brief Метод принудительного срабатывания события
 			 *
 			 * @return результат выполнения операции
@@ -424,6 +430,21 @@ namespace awh {
 			 * @return состояние инициализации
 			 */
 			bool isInitialized() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения количества событий в основном движке фреймворка
+			 *
+			 * @return количество событий
+			 */
+			size_t eventsCount() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения размера отслеживаемого файла
+			 *
+			 * @param id идентификатор события
+			 * @return   размер файла
+			 */
+			size_t size(const event::id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения типа события

@@ -11009,9 +11009,18 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::NOTIFY):
+				case static_cast <uint8_t> (event::node_t::NOTIFY): {
+					// Выполняем извлечение текущего значения объекта пользовательского события
+					user_t * node = awh_cast <user_t *> (i->second.get());
+					// Объект события для удаления из списка ожидания
+					struct kevent event{};
+					// Снимаем событие из списка ожидания
+					EV_SET(&event, node->id, EVFILT_USER, EV_DELETE, 0, 0, node);
+					// Выполняем удаление события из списка ожидания
+					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
-					return io::destroy(i->second.get(), this->_log);
+					return io::destroy(node, this->_log);
+				}
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
@@ -11021,7 +11030,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
-						return io::destroy(i->second.get(), this->_log);
+						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
 					else {
 						// Объект события для удаления из списка ожидания
@@ -11031,7 +11040,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Выполняем удаление узла
-						return io::destroy(i->second.get(), this->_log);
+						return io::destroy(node, this->_log);
 					}
 				}
 				// Если узел является директорией
@@ -11059,7 +11068,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						node->fd = net::invalid_socket_t;
 					}
 					// Выполняем удаление узла
-					return io::destroy(i->second.get(), this->_log);
+					return io::destroy(node, this->_log);
 				}
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -11079,7 +11088,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						node->fd = net::invalid_socket_t;
 					}
 					// Выполняем удаление узла
-					return io::destroy(i->second.get(), this->_log);
+					return io::destroy(node, this->_log);
 				}
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -11093,7 +11102,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						node->transfer.fd = net::invalid_socket_t;
 					}
 					// Выполняем удаление узла
-					return io::destroy(i->second.get(), this->_log);
+					return io::destroy(node, this->_log);
 				}
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
@@ -11109,7 +11118,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->transfer.fd = net::invalid_socket_t;
 						}
 						// Выполняем удаление узла
-						return io::destroy(i->second.get(), this->_log);
+						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
 					} else {
 						// Если дескриптор сокета инициализирован
@@ -11145,7 +11154,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 								}
 							}
 						// Если дескриптор сокета не инициализирован
-						} else return io::destroy(i->second.get(), this->_log);
+						} else return io::destroy(node, this->_log);
 					}
 				} break;
 				// Если узел является клиентом
@@ -11162,7 +11171,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->transfer.fd = net::invalid_socket_t;
 						}
 						// Выполняем удаление узла
-						return io::destroy(i->second.get(), this->_log);
+						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
 					} else {
 						// Если дескриптор сокета инициализирован
@@ -11198,7 +11207,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 								}
 							}
 						// Если дескриптор сокета не инициализирован
-						} else return io::destroy(i->second.get(), this->_log);
+						} else return io::destroy(node, this->_log);
 					}
 				} break;
 				// Если узел является сервером
@@ -11215,7 +11224,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->transfer.fd = net::invalid_socket_t;
 						}
 						// Выполняем удаление узла
-						return io::destroy(i->second.get(), this->_log);
+						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
 					} else {
 						// Объект события для удаления из списка ожидания
@@ -11253,7 +11262,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->transfer.fd = net::invalid_socket_t;
 						}
 						// Выполняем удаление узла
-						return io::destroy(i->second.get(), this->_log);
+						return io::destroy(node, this->_log);
 					}
 				}
 			}
@@ -16093,7 +16102,7 @@ size_t awh::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -16113,7 +16122,7 @@ size_t awh::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -16204,7 +16213,7 @@ bool awh::IO::seek(const event::id_t id, const event::seek_t seek, const size_t 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, offset), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -18622,7 +18631,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						// Добавляем данные в очередь событий пользователя
 						user->events.push(data, size);
 						// Создаём событие триггера
-						struct kevent trigger;
+						struct kevent trigger{};
 						// Выполняем установку события триггера
 						EV_SET(&trigger, i->first, EVFILT_USER, 0, NOTE_TRIGGER, 0, user);
 						// Триггерим событие Kqueue
@@ -24567,6 +24576,253 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 	return false;
 }
 /**
+ * @brief Метод очистки основного движка фреймворка
+ *
+ */
+void awh::IO::clear() noexcept {
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
+		// Выполняем пинок Kqueue для обработки всех удалений
+		this->kick();
+		// Выполняем перебор всех активных узлов
+		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
+			// Если узел уже находится в рабочем состоянии
+			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
+						// Получаем текущее значение объекта пользовательского события
+						user_t * node = awh_cast <user_t *> (i->second.get());
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, i->first, EVFILT_USER, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
+						// Получаем объект события интервала
+						timer_t * node = awh_cast <timer_t *> (i->second.get());
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, i->first, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * node = awh_cast <dir_t *> (i->second.get());
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+						// Если каталог открыт
+						if(node->handle != nullptr)
+							// Закрываем каталог
+							::closedir(node->handle);
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * node = awh_cast <file_t *> (i->second.get());
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+						// Если дескриптор сокета инициализирован
+						if(node->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->fd);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпроцессного взаимодействия
+						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+						// Объекты событий для удаления из списка ожидания
+						struct kevent events[2] = {};
+						// Снимаем событие на чтение из списка ожидания
+						EV_SET(&events[0], node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+						// Снимаем событие на запись из списка ожидания
+						EV_SET(&events[1], node->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
+						// Если дескриптор сокета инициализирован
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->transfer.fd);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Количество событий для удаления
+						size_t count = 2;
+						// Объекты событий для удаления из списка ожидания
+						struct kevent events[3] = {};
+						// Снимаем событие на чтение из списка ожидания
+						EV_SET(&events[0], node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+						// Снимаем событие на запись из списка ожидания
+						EV_SET(&events[1], node->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, node);
+						// Если установлен таймаут для события
+						if(node->timeout != event::action_t::NONE){
+							// Увеличиваем количество событий
+							count++;
+							// Объект события для удаления из списка ожидания
+							struct kevent event{};
+							// Снимаем событие таймаута из списка ожидания
+							EV_SET(&events[2], node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+						}
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
+						// Если дескриптор сокета инициализирован
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->transfer.fd);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Количество событий для удаления
+						size_t count = 2;
+						// Объекты событий для удаления из списка ожидания
+						struct kevent events[3] = {};
+						// Снимаем событие на чтение из списка ожидания
+						EV_SET(&events[0], node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+						// Снимаем событие на запись из списка ожидания
+						EV_SET(&events[1], node->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, node);
+						// Если установлен таймаут для события
+						if(node->timeout != event::action_t::NONE){
+							// Увеличиваем количество событий
+							count++;
+							// Объект события для удаления из списка ожидания
+							struct kevent event{};
+							// Снимаем событие таймаута из списка ожидания
+							EV_SET(&events[2], node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+						}
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
+						// Если дескриптор сокета инициализирован
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->transfer.fd);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						// Объекты событий для удаления из списка ожидания
+						struct kevent events[2] = {};
+						// Снимаем событие на чтение из списка ожидания
+						EV_SET(&events[0], node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+						// Снимаем событие на запись из списка ожидания
+						EV_SET(&events[1], node->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, node);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
+						// Если дескриптор сокета инициализирован
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(node->transfer.fd);
+						// Если установлена функция обратного вызова
+						if(node->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Для других типов узлов
+					default: {
+						// Производим удаление списка подготовленных событий
+						::__awh_inters__.erase(i->first);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				}
+			// Если узел не находится в рабочем состоянии уничтожаем её сразу
+			} else {
+				// Производим удаление списка подготовленных событий
+				::__awh_inters__.erase(i->first);
+				// Производим удаление узла
+				i = ::__awh_nodes__.erase(i);
+			}
+		}
+	}
+}
+/**
  * @brief Метод принудительного срабатывания события
  *
  * @return результат выполнения операции
@@ -24577,7 +24833,7 @@ bool awh::IO::kick() noexcept {
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
 		// Создаём событие триггера
-		struct kevent trigger;
+		struct kevent trigger{};
 		// Выполняем установку события триггера
 		EV_SET(&trigger, 0, EVFILT_USER, 0, NOTE_TRIGGER, 0, nullptr);
 		// Триггерим событие Kqueue
@@ -24631,7 +24887,7 @@ bool awh::IO::initialize() noexcept {
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
 		// Создаём пользовательское событие
-		struct kevent event;
+		struct kevent event{};
 		// Устанавливаем пользовательское событие
 		EV_SET(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
 		// Активируем пользовательское событие Kqueue
@@ -25280,6 +25536,117 @@ bool awh::IO::deinitialize() noexcept {
 bool awh::IO::isInitialized() const noexcept {
 	// Выводим результат проверки состояния инициализации
 	return (::__awh_kq__ != net::invalid_socket_t);
+}
+/**
+ * @brief Метод получения количества событий в основном движке фреймворка
+ *
+ * @return количество событий
+ */
+size_t awh::IO::eventsCount() const noexcept {
+	// Выводим количество событий в основном движке фреймворка
+	return ::__awh_nodes__.size();
+}
+/**
+ * @brief Метод получения размера отслеживаемого файла
+ *
+ * @param id идентификатор события
+ * @return   размер файла
+ */
+size_t awh::IO::size(const event::id_t id) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					// Если объект адреса файловой системы не инициализирован
+					if(dir->path == nullptr)
+						// Прерываем выполнение
+						break;
+					// Получаем адрес каталога
+					const string & path = awh_cast <net::addr_fs_t *> (dir->path.get())->address;
+					// Создаем указатель на содержимое каталога
+					struct dirent * ptr = nullptr;
+					/**
+					 * Выполняем чтение содержимого каталога
+					 */
+					while((ptr = ::readdir(dir->handle)) != nullptr){
+						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+							// Выполняем пропуск каталога
+							continue;
+						// Получаем адрес в виде строки
+						const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
+						// Если статистика извлечена
+						if(::stat(address.c_str(), &dir->info) == 0){
+							// Если текущий элемент является файлом
+							if(S_ISREG(dir->info.st_mode))
+								// Выводим размер файла
+								result += static_cast <size_t> (dir->info.st_size);
+						}
+					}
+					// Сбрасываем указатель каталога в начало
+					::rewinddir(dir->handle);
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * fs = awh_cast <file_t *> (i->second.get());
+					// Если файл открыт удачно
+					if(::fstat(fs->fd, &fs->info) == 0)
+						// Выводим смещение в файле события
+						result = static_cast <size_t> (fs->info.st_size);
+				} break;
+				// Если узел не является файловым
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to get size for non-file system events", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to get size for non-file system events", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
 }
 /**
  * @brief Метод получения типа события
