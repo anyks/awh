@@ -437,7 +437,7 @@ namespace fs {
 	 * @param log   объект работы с логами
 	 * @return      полная строка пути
 	 */
-	string fullpath(const string & input, const log_t * log) noexcept {
+	string fullpath(const string_view input, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -458,7 +458,7 @@ namespace fs {
 			// Если путь начинается с '~'
 			else if(input.front() == '~') {
 				// Выполняем поиск следующего слэша ~/ или ~
-				size_t sep = input.find(AWH_FS_SEPARATOR[0], 1);
+				const size_t pos = input.find(AWH_FS_SEPARATOR[0], 1);
 				// Получаем домашний каталог пользователя
 				const char * home = ::getenv("HOME");
 				// Если переменная окружения не установлена
@@ -473,9 +473,9 @@ namespace fs {
 				// Добавляем домашний каталог пользователя в путь
 				path.append(home != nullptr ? home : AWH_FS_SEPARATOR);
 				// Если найден слэш после тильды
-				if(sep != string::npos)
+				if(pos != string::npos)
 					// Добавляем оставшуюся часть пути
-					path.append(input.substr(sep));
+					path.append(input.substr(pos));
 			// Если путь относительный
 			} else {
 				// Временный буфер для текущего рабочего каталога
