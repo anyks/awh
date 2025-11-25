@@ -373,7 +373,7 @@ namespace {
 		// Индекс текущего элемента
 		size_t index;
 		// Общее количество элементов
-		uint8_t count;
+		size_t count;
 		/**
 		 * @brief Конструктор
 		 *
@@ -1836,7 +1836,7 @@ namespace io {
 			// Если запись найдена
 			if(i != ::__awh_inters__.end()){
 				// Количество записей в списке изменений
-				uint8_t count = 0;
+				size_t count = 0;
 				// Получаем итератор на начало списка изменений
 				auto j = ::__awh_change__.begin();
 				// Получаем нужный нам итератор
@@ -11421,7 +11421,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Если запись найдена
 							if(i != ::__awh_inters__.end()){
 								// Количество записей в списке изменений
-								uint8_t count = 0;
+								size_t count = 0;
 								// Получаем итератор на начало списка изменений
 								auto j = ::__awh_change__.begin();
 								// Получаем нужный нам итератор
@@ -11474,7 +11474,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							// Если запись найдена
 							if(i != ::__awh_inters__.end()){
 								// Количество записей в списке изменений
-								uint8_t count = 0;
+								size_t count = 0;
 								// Получаем итератор на начало списка изменений
 								auto j = ::__awh_change__.begin();
 								// Получаем нужный нам итератор
@@ -18141,7 +18141,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 					// Если запись найдена
 					if(j != ::__awh_inters__.end()){
 						// Количество записей в списке изменений
-						uint8_t count = 0;
+						size_t count = 0;
 						// Получаем итератор на начало списка изменений
 						auto k = ::__awh_change__.begin();
 						// Получаем нужный нам итератор
@@ -18181,7 +18181,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 					// Если запись найдена
 					if(j != ::__awh_inters__.end()){
 						// Количество записей в списке изменений
-						uint8_t count = 0;
+						size_t count = 0;
 						// Получаем итератор на начало списка изменений
 						auto k = ::__awh_change__.begin();
 						// Получаем нужный нам итератор
@@ -26509,7 +26509,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 											// Если запись найдена
 											if(i != ::__awh_inters__.end()){
 												// Количество записей в списке изменений
-												uint8_t count = 0;
+												size_t count = 0;
 												// Получаем итератор на начало списка изменений
 												auto j = ::__awh_change__.begin();
 												// Получаем нужный нам итератор
