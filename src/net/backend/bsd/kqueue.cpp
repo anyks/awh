@@ -1765,6 +1765,13 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
 					dir_t * dir = awh_cast <dir_t *> (node);
+					// Если дескриптор сокета инициализирован
+					if(dir->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(dir->fd);
+						// Сбрасываем значение дескриптора сокета
+						dir->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(dir->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -1774,6 +1781,13 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (node);
+					// Если дескриптор сокета инициализирован
+					if(fs->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(fs->fd);
+						// Сбрасываем значение дескриптора сокета
+						fs->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(fs->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -1794,6 +1808,13 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					// Если дескриптор сокета инициализирован
+					if(ipc->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(ipc->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						ipc->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -1803,6 +1824,13 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (node);
+					// Если дескриптор сокета инициализирован
+					if(peer->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(peer->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						peer->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(peer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -1812,6 +1840,13 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (node);
+					// Если дескриптор сокета инициализирован
+					if(client->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(client->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						client->transfer.fd = net::invalid_socket_t;
+					}
 					// Если режим постоянного подключения не установлен
 					if(!(client->state.options & event::options::KEEPALIVE)){
 						// Если установлена функция обратного вызова
@@ -1825,6 +1860,13 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (node);
+					// Если дескриптор сокета инициализирован
+					if(server->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(server->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						server->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -11349,13 +11391,6 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Сбрасываем значение указателя на каталог
 						node->handle = nullptr;
 					}
-					// Если дескриптор сокета инициализирован
-					if(node->fd != net::invalid_socket_t){
-						// Закрываем дескриптор сокета
-						::close(node->fd);
-						// Сбрасываем значение дескриптора сокета
-						node->fd = net::invalid_socket_t;
-					}
 					// Выполняем удаление узла
 					return io::destroy(node, this->_log);
 				}
@@ -11369,47 +11404,23 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					EV_SET(&event, node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-					// Если дескриптор сокета инициализирован
-					if(node->fd != net::invalid_socket_t){
-						// Закрываем дескриптор сокета
-						::close(node->fd);
-						// Сбрасываем значение дескриптора сокета
-						node->fd = net::invalid_socket_t;
-					}
 					// Выполняем удаление узла
 					return io::destroy(node, this->_log);
 				}
 				// Если узел является межпроцессным взаимодействием
-				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
-					// Если дескриптор сокета инициализирован
-					if(node->transfer.fd != net::invalid_socket_t){
-						// Закрываем дескриптор сокета
-						::close(node->transfer.fd);
-						// Сбрасываем значение дескриптора сокета
-						node->transfer.fd = net::invalid_socket_t;
-					}
+				case static_cast <uint8_t> (event::node_t::IPC):
 					// Выполняем удаление узла
-					return io::destroy(node, this->_log);
-				}
+					return io::destroy(awh_cast <ipc_t *> (i->second.get()), this->_log);
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * node = awh_cast <peer_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t){
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							node->transfer.fd = net::invalid_socket_t;
-						}
+					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
 						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
-					} else {
+					else {
 						// Если дескриптор сокета инициализирован
 						if(node->transfer.fd != net::invalid_socket_t){
 							// Закрываем дескриптор сокета
@@ -11442,8 +11453,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 									} else ++j;
 								}
 							}
+							// Выходим из условия
+							break;
+						}
 						// Если дескриптор сокета не инициализирован
-						} else return io::destroy(node, this->_log);
+						return io::destroy(node, this->_log);
 					}
 				} break;
 				// Если узел является клиентом
@@ -11451,18 +11465,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Получаем текущее значение объекта клиента
 					client_t * node = awh_cast <client_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t){
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							node->transfer.fd = net::invalid_socket_t;
-						}
+					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
 						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
-					} else {
+					else {
 						// Если дескриптор сокета инициализирован
 						if(node->transfer.fd != net::invalid_socket_t){
 							// Закрываем дескриптор сокета
@@ -11495,8 +11502,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 									} else ++j;
 								}
 							}
+							// Выходим из условия
+							break;
+						}
 						// Если дескриптор сокета не инициализирован
-						} else return io::destroy(node, this->_log);
+						return io::destroy(node, this->_log);
 					}
 				} break;
 				// Если узел является сервером
@@ -11504,18 +11514,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Получаем текущее значение объекта сервера
 					server_t * node = awh_cast <server_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t){
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							node->transfer.fd = net::invalid_socket_t;
-						}
+					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
 						return io::destroy(node, this->_log);
 					// Если дескриптор сокета активен
-					} else {
+					else {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
@@ -11542,13 +11545,6 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							}
-						}
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							node->transfer.fd = net::invalid_socket_t;
 						}
 						// Выполняем удаление узла
 						return io::destroy(node, this->_log);
