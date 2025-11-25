@@ -1382,7 +1382,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -1540,22 +1540,6 @@ int32_t main(int32_t argc, char * argv[]){
 						break;
 					}
 				});
-				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				io.on(eid, static_cast <event::callback::connect_t> ([&io, &log](const event::id_t eid, const bool ok) noexcept -> void {
-					// Выводим сообщение о принятии события
-					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
-					// Если подключение успешно
-					if(ok){
-						// Текст исходящего сообщения
-						const string message("Hello from async client!");
-						// Отправляем данные обратно клиенту
-						if(io.send(eid, message.c_str(), message.size()))
-							// Если данные успешно отправлены
-							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
-						// Если данные не отправлены
-						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
-					}
-				}));
 				// Устанавливаем функцию обратного вызова на общее событие
 				io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
@@ -1632,13 +1616,18 @@ int32_t main(int32_t argc, char * argv[]){
 				io.timeout(eid, event::action_t::CONNECT, 5000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
-					// Если подключение к серверу прошло успешно
-					if(io.connect(eid, true)){
-						/**
-						 * Запускаем опрос событий
-						 */
-						while(io.poll());
-					}
+					// Текст исходящего сообщения
+					const string message("Hello from async client!");
+					// Отправляем данные обратно клиенту
+					if(io.send(eid, message.c_str(), message.size()))
+						// Если данные успешно отправлены
+						log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
+					// Если данные не отправлены
+					else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+					/**
+					 * Запускаем опрос событий
+					 */
+					while(io.poll());
 				}
 			// Если адрес назначения не установлен
 			} else cout << " Ошибка установки адреса сервера!" << endl;

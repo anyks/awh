@@ -856,35 +856,51 @@ namespace io {
 						if(client->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова флаг события
 							client->callbacks.event(client->id, event::action_t::DISCONNECT);
-						// Если установлен режим постоянного подключения
-						if(client->state.options & event::options::KEEPALIVE){
-							// Если событие переподключения к серверу разрешено
-							if(client->transfer.actions & action::RECONNECT){
-								// Время задержки таймаута
-								int64_t delay = 5000000; // 5 секунд
-								// Если необходимо установить таймаут на переподключение
-								auto i = client->timeouts.find(event::action_t::RECONNECT);
-								// Если таймаут на переподключение найден найден
-								if((i != client->timeouts.end()) && (i->second > 0))
-									// Устанавливаем задержку таймаута на значение из конфигурации
-									delay = (static_cast <int64_t> (i->second) * 1000);
-								// Устанавливаем статус события в состояние переподключения
-								client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
-								// Активируем таймаут события
-								client->timeout = event::action_t::RECONNECT;
-								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
-								// Устанавливаем таймаут на получение данных
-								EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
-								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
-								// Если событие успешно добавлено
-								if(ret.second)
-									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::__awh_change__.size() - 1);
-								// Увеличиваем количество событий
-								ret.first->second.count++;
-							}
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (client->state.type)){
+							// Для типа сокета STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Если установлен режим постоянного подключения
+								if(client->state.options & event::options::KEEPALIVE){
+									// Если событие переподключения к серверу разрешено
+									if(client->transfer.actions & action::RECONNECT){
+										// Если клиент не подразумевает переподключение
+										if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING)
+											// Выводим результат выполнения функции
+											return true;
+										// Время задержки таймаута
+										int64_t delay = 5000000; // 5 секунд
+										// Если необходимо установить таймаут на переподключение
+										auto i = client->timeouts.find(event::action_t::RECONNECT);
+										// Если таймаут на переподключение найден найден
+										if((i != client->timeouts.end()) && (i->second > 0))
+											// Устанавливаем задержку таймаута на значение из конфигурации
+											delay = (static_cast <int64_t> (i->second) * 1000);
+										// Устанавливаем статус события в состояние переподключения
+										client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
+										// Активируем таймаут события
+										client->timeout = event::action_t::RECONNECT;
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Устанавливаем таймаут на получение данных
+										EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
+										// Создаём объект промежуточного звена
+										auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+										// Если событие успешно добавлено
+										if(ret.second)
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::__awh_change__.size() - 1);
+										// Увеличиваем количество событий
+										ret.first->second.count++;
+									}
+								}
+							} break;
 						}
 						// Выводим результат выполнения функции
 						return true;
@@ -1277,9 +1293,7 @@ namespace io {
 											}
 										} break;
 										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Если протокол определён как DTLS
-										case static_cast <uint8_t> (event::protocol_t::DTLS): {
+										case static_cast <uint8_t> (event::protocol_t::UDP): {
 											/**
 											 * Определяем чем является текущий узел
 											 */
@@ -1361,9 +1375,7 @@ namespace io {
 											}
 										} break;
 										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Если протокол определён как DTLS
-										case static_cast <uint8_t> (event::protocol_t::DTLS): {
+										case static_cast <uint8_t> (event::protocol_t::UDP): {
 											/**
 											 * Определяем чем является текущий узел
 											 */
@@ -1848,7 +1860,8 @@ namespace io {
 						client->transfer.fd = net::invalid_socket_t;
 					}
 					// Если режим постоянного подключения не установлен
-					if(!(client->state.options & event::options::KEEPALIVE)){
+					if(!(client->state.options & event::options::KEEPALIVE) ||
+					    (client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING)){
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
@@ -3812,9 +3825,7 @@ namespace io {
 								}
 							} break;
 							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							// Для типа сокета DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем чтение данных из TCP/IP сокета
 								const int32_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
 								// Если мы получили ошибку
@@ -3915,18 +3926,8 @@ namespace io {
 									 * Выполняем получение данных пока их не получим
 									 */
 									for(;;){
-										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT)
-											// Выполняем чтение данных из TCP/IP сокета
-											bytes = ::recvfrom(
-												client->transfer.fd,
-												client->transfer.input.data.get(),
-												client->transfer.input.size, 0,
-												reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
-												&client->endpoint.size
-											);
 										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если нам нужно повторить попытку позже
@@ -3990,20 +3991,8 @@ namespace io {
 									}
 								// Если событие является блокирующим
 								} else {
-									// Количество прочитанных байт
-									int32_t bytes = -1;
-									// Если установлен флаг однократного использования сокета
-									if(client->state.options & event::options::ONSHOT)
-										// Выполняем чтение данных из TCP/IP сокета
-										bytes = ::recvfrom(
-											client->transfer.fd,
-											client->transfer.input.data.get(),
-											client->transfer.input.size, 0,
-											reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
-											&client->endpoint.size
-										);
 									// Выполняем чтение данных из TCP/IP сокета
-									else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									const int32_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -4060,23 +4049,9 @@ namespace io {
 								}
 							} break;
 							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							// Для типа сокета DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-								// Количество прочитанных байт
-								int32_t bytes = -1;
-								// Если установлен флаг однократного использования сокета
-								if(client->state.options & event::options::ONSHOT)
-									// Выполняем чтение данных из TCP/IP сокета
-									bytes = ::recvfrom(
-										client->transfer.fd,
-										client->transfer.input.data.get(),
-										client->transfer.input.size, 0,
-										reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
-										&client->endpoint.size
-									);
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+								const int32_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Устанавливаем текст ошибки
@@ -4131,6 +4106,206 @@ namespace io {
 									return false;
 								}
 							} break;
+							// Для типа сокета RAW
+							case static_cast <uint8_t> (event::type_t::RAW): {
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recvfrom(
+									client->transfer.fd,
+									client->transfer.input.data.get(),
+									client->transfer.input.size, 0,
+									reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
+									&client->endpoint.size
+								);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(client->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										client->callbacks.event(client->id, event::action_t::READ);
+									// Если идентификатор события для передачи данных не установлен
+									if(client->transfer.to == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(client->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем положительный результат
+									return true;
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									if(io::close(node, log))
+										// Выполняем удаление узла
+										io::destroy(node, log);
+									// Формируем отрицательный результат
+									return false;
+								}
+							} break;
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Если подключение установлено
+								if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+									// Выполняем чтение данных из TCP/IP сокета
+									const int32_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									// Если мы получили ошибку
+									if(bytes < 0){
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
+									// Если мы получили данные из сокета
+									} else if(bytes > 0) {
+										// Если функция обратного вызова для вывода события установлена
+										if(client->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											client->callbacks.event(client->id, event::action_t::READ);
+										// Если идентификатор события для передачи данных не установлен
+										if(client->transfer.to == 0){
+											// Если функция обратного вызова для вывода прочитанных данных установлена
+											if(client->callbacks.read != nullptr)
+												// Вывзываем функцию обратного вызова для вывода полученных данных
+												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если произошёл дисконнект
+									} else {
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
+									}
+								// Если клиент находится в запущенном состоянии
+								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) {
+									// Выполняем чтение данных из TCP/IP сокета
+									const int32_t bytes = ::recvfrom(
+										client->transfer.fd,
+										client->transfer.input.data.get(),
+										client->transfer.input.size, 0,
+										reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
+										&client->endpoint.size
+									);
+									// Если мы получили ошибку
+									if(bytes < 0){
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
+									// Если мы получили данные из сокета
+									} else if(bytes > 0) {
+										// Если функция обратного вызова для вывода события установлена
+										if(client->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова флаг события
+											client->callbacks.event(client->id, event::action_t::READ);
+										// Если идентификатор события для передачи данных не установлен
+										if(client->transfer.to == 0){
+											// Если функция обратного вызова для вывода прочитанных данных установлена
+											if(client->callbacks.read != nullptr)
+												// Вывзываем функцию обратного вызова для вывода полученных данных
+												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем положительный результат
+										return true;
+									// Если произошёл дисконнект
+									} else {
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
+									}
+								}
+							} break;
 						}
 						// Если необходимо установить таймаут на чтение данных
 						auto i = client->timeouts.find(event::action_t::READ);
@@ -4164,98 +4339,46 @@ namespace io {
 						// Для типа сокета STREAM
 						case static_cast <uint8_t> (event::type_t::STREAM):
 						// Для типа сокета SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET):
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							// Получаем текущее значение объекта сервера
+							server_t * server = awh_cast <server_t *> (node);
+							// Если событие чтения разрешено
+							if(server->transfer.actions & action::READ)
+								// Выполняем принятие нового подключения
+								return io::accept(server, eth, fmk, log);
+						} break;
+						// Для типа сокета RAW
+						case static_cast <uint8_t> (event::type_t::RAW):
 						// Для типа сокета DATAGRAM
 						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 							// Получаем текущее значение объекта сервера
 							server_t * server = awh_cast <server_t *> (node);
 							// Если событие чтения разрешено
 							if(server->transfer.actions & action::READ){
-								// Если установлен флаг однократного использования сокета
-								if(server->state.options & event::options::ONSHOT){
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (server->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Если чёрный или белый список адресов не пустой
-											if(!server->blacklist.empty() || !server->whitelist.empty()){
-												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-												// Устанавливаем полученный IP-адрес во временный объект
-												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr;
-												// Выполняем извлечение сетевых параметров
-												eth->fillsource(event::node_t::PEER, source);
-												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-													// Устанавливаем полученный MAC-адрес в объект события
-													server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-													// Получаем MAC-адрес для проверки
-													string mac = ::move(static_cast <string> (server->addr));
-													// Если адрес находится в чёрном списке
-													if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Формируем положительный результат
-														return true;
-													}
-													// Если в белом списке нет адреса
-													if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Формируем положительный результат
-														return true;
-													}
-												}
-												// Устанавливаем полученный IP-адрес
-												server->addr.v4(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-												// Получаем IP-адрес для проверки
-												string ip = ::move(static_cast <string> (server->addr));
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (server->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Если чёрный или белый список адресов не пустой
+										if(!server->blacklist.empty() || !server->whitelist.empty()){
+											// Временный объект для извлечения сетевого интерфейса
+											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+											// Устанавливаем полученный IP-адрес во временный объект
+											awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr;
+											// Выполняем извлечение сетевых параметров
+											eth->fillsource(event::node_t::PEER, source);
+											// Если MAC-адрес успешно получен
+											if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+												// Устанавливаем полученный MAC-адрес в объект события
+												server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+												// Получаем MAC-адрес для проверки
+												string mac = ::move(static_cast <string> (server->addr));
 												// Если адрес находится в чёрном списке
-												if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+												if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 													// Устанавливаем текст ошибки
-													const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
+													const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -4280,9 +4403,9 @@ namespace io {
 													return true;
 												}
 												// Если в белом списке нет адреса
-												if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+												if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
 													// Устанавливаем текст ошибки
-													const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
+													const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -4307,192 +4430,249 @@ namespace io {
 													return true;
 												}
 											}
-										} break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Если чёрный или белый список адресов не пустой
-											if(!server->blacklist.empty() || !server->whitelist.empty()){
-												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-												// Устанавливаем полученный IP-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &reinterpret_cast <struct sockaddr_in6 *> (&server->endpoint.client)->sin6_addr, 16);
-												// Выполняем извлечение сетевых параметров
-												eth->fillsource(event::node_t::PEER, source);
-												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-													// Устанавливаем полученный MAC-адрес в объект события
-													server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-													// Получаем MAC-адрес для проверки
-													string mac = ::move(static_cast <string> (server->addr));
-													// Если адрес находится в чёрном списке
-													if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Формируем положительный результат
-														return true;
-													}
-													// Если в белом списке нет адреса
-													if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Формируем положительный результат
-														return true;
-													}
+											// Устанавливаем полученный IP-адрес
+											server->addr.v4(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+											// Получаем IP-адрес для проверки
+											string ip = ::move(static_cast <string> (server->addr));
+											// Если адрес находится в чёрном списке
+											if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
 												}
-												// Устанавливаем полученный IP-адрес
-												server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
-												// Получаем IP-адрес для проверки
-												string ip = ::move(static_cast <string> (server->addr));
-												// Если адрес находится в чёрном списке
-												if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
-													// Устанавливаем текст ошибки
-													const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
-													// Если установлена функция обратного вызова
-													if(server->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-														#endif
-													}
-													// Формируем положительный результат
-													return true;
-												}
-												// Если в белом списке нет адреса
-												if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
-													// Устанавливаем текст ошибки
-													const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
-													// Если установлена функция обратного вызова
-													if(server->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-														#endif
-													}
-													// Формируем положительный результат
-													return true;
-												}
+												// Формируем положительный результат
+												return true;
 											}
-										} break;
-									}
-									// Выполняем чтение данных из TCP/IP сокета
-									const int32_t bytes = ::recvfrom(
-										server->transfer.fd,
-										server->transfer.input.data.get(),
-										server->transfer.input.size, 0,
-										reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
-										&server->endpoint.size
-									);
-									// Если мы получили ошибку
-									if(bytes < 0){
-										// Устанавливаем текст ошибки
-										const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+											// Если в белом списке нет адреса
+											if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
+												// Формируем положительный результат
+												return true;
+											}
 										}
-									// Если мы получили данные из сокета
-									} else if(bytes > 0) {
-										// Если функция обратного вызова для вывода события установлена
-										if(server->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова флаг события
-											server->callbacks.event(server->id, event::action_t::READ);
-										// Если идентификатор события для передачи данных не установлен
-										if(server->transfer.to == 0){
-											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(server->callbacks.read != nullptr)
-												// Вывзываем функцию обратного вызова для вывода полученных данных
-												server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
-										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(server->transfer.to, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
-										// Заполняем структуру клиента нулями после того как извлекли данные
-										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Если чёрный или белый список адресов не пустой
+										if(!server->blacklist.empty() || !server->whitelist.empty()){
+											// Временный объект для извлечения сетевого интерфейса
+											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+											// Устанавливаем полученный IP-адрес во временный объект
+											::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &reinterpret_cast <struct sockaddr_in6 *> (&server->endpoint.client)->sin6_addr, 16);
+											// Выполняем извлечение сетевых параметров
+											eth->fillsource(event::node_t::PEER, source);
+											// Если MAC-адрес успешно получен
+											if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+												// Устанавливаем полученный MAC-адрес в объект события
+												server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+												// Получаем MAC-адрес для проверки
+												string mac = ::move(static_cast <string> (server->addr));
+												// Если адрес находится в чёрном списке
+												if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+														#endif
+													}
+													// Формируем положительный результат
+													return true;
+												}
+												// Если в белом списке нет адреса
+												if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+														#endif
+													}
+													// Формируем положительный результат
+													return true;
+												}
+											}
+											// Устанавливаем полученный IP-адрес
+											server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
+											// Получаем IP-адрес для проверки
+											string ip = ::move(static_cast <string> (server->addr));
+											// Если адрес находится в чёрном списке
+											if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
+												// Формируем положительный результат
+												return true;
+											}
+											// Если в белом списке нет адреса
+											if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
+												// Формируем положительный результат
+												return true;
+											}
+										}
+									} break;
+								}
+								// Выполняем чтение данных из TCP/IP сокета
+								const int32_t bytes = ::recvfrom(
+									server->transfer.fd,
+									server->transfer.input.data.get(),
+									server->transfer.input.size, 0,
+									reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
+									&server->endpoint.size
+								);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
 									}
-									// Формируем положительный результат
-									return true;
-								// Выполняем принятие нового подключения
-								} else return io::accept(server, eth, fmk, log);
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если функция обратного вызова для вывода события установлена
+									if(server->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										server->callbacks.event(server->id, event::action_t::READ);
+									// Если идентификатор события для передачи данных не установлен
+									if(server->transfer.to == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(server->callbacks.read != nullptr)
+											// Вывзываем функцию обратного вызова для вывода полученных данных
+											server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else const_cast <io_t *> (io)->send(server->transfer.to, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+									// Заполняем структуру клиента нулями после того как извлекли данные
+									::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+								}
+								// Формируем положительный результат
+								return true;
 							}
 						}
 					}
@@ -4900,9 +5080,7 @@ namespace io {
 									}
 								} break;
 								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-								// Для типа сокета DATAGRAM
-								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Выполняем отправку данных в TCP/IP сокет
 									const int32_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()), peer->transfer.output.size(), 0);
 									// Если данные отправлены успешно
@@ -5016,20 +5194,10 @@ namespace io {
 								switch(static_cast <uint8_t> (client->state.type)){
 									// Для типа сокета STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM): {
-										// Количество прочитанных байт
-										int32_t bytes = -1;
 										// Определяем размер отправляемых данных
 										const size_t size = (client->transfer.output.size() - client->transfer.offset);
-										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT)
-											// Выполняем отправку данных в UDP сокет
-											bytes = ::sendto(
-												client->transfer.fd,
-												reinterpret_cast <const uint8_t *> (client->transfer.output.data()) + client->transfer.offset,
-												size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size
-											);
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()) + client->transfer.offset, size, 0);
+										const int32_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()) + client->transfer.offset, size, 0);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -5113,23 +5281,9 @@ namespace io {
 										}
 									} break;
 									// Для типа сокета SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET):
-									// Для типа сокета DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Количество прочитанных байт
-										int32_t bytes = -1;
-										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT)
-											// Выполняем отправку данных в UDP сокет
-											bytes = ::sendto(
-												client->transfer.fd,
-												reinterpret_cast <const uint8_t *> (client->transfer.output.data()),
-												client->transfer.output.size(), 0,
-												reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
-												client->endpoint.size
-											);
+									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+										const int32_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -5183,6 +5337,191 @@ namespace io {
 											return false;
 										}
 									} break;
+									// Для типа сокета RAW
+									case static_cast <uint8_t> (event::type_t::RAW): {
+										// Выполняем отправку данных в UDP сокет
+										const int32_t bytes = ::sendto(
+											client->transfer.fd,
+											reinterpret_cast <const uint8_t *> (client->transfer.output.data()),
+											client->transfer.output.size(), 0,
+											reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
+											client->endpoint.size
+										);
+										// Если данные отправлены успешно
+										if(bytes > 0){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(client->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
+										// Если мы отправили не все данные
+										} else if(bytes == -1) {
+											// Если нам нужно повторить попытку позже
+											if(errno == EAGAIN)
+												// Формируем положительный результат
+												return true;
+											// Если произошла ошибка при отправке данных
+											else {
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+												// Выполняем обработку закрытия подключения
+												if(io::close(node, log))
+													// Выполняем удаление узла
+													io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
+											}
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
+									} break;
+									// Для типа сокета DATAGRAM
+									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+										// Если подключение установлено
+										if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+											// Выполняем отправку данных в TCP/IP сокет
+											const int32_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+											// Если данные отправлены успешно
+											if(bytes > 0){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Если мы отправили не все данные
+											} else if(bytes == -1) {
+												// Если нам нужно повторить попытку позже
+												if(errno == EAGAIN)
+													// Формируем положительный результат
+													return true;
+												// Если произошла ошибка при отправке данных
+												else {
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выполняем обработку закрытия подключения
+													if(io::close(node, log))
+														// Выполняем удаление узла
+														io::destroy(node, log);
+													// Формируем отрицательный результат
+													return false;
+												}
+											// Если произошёл дисконнект
+											} else {
+												// Выполняем обработку закрытия подключения
+												if(io::close(node, log))
+													// Выполняем удаление узла
+													io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
+											}
+										// Если клиент находится в запущенном состоянии
+										} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) {
+											// Выполняем отправку данных в UDP сокет
+											const int32_t bytes = ::sendto(
+												client->transfer.fd,
+												reinterpret_cast <const uint8_t *> (client->transfer.output.data()),
+												client->transfer.output.size(), 0,
+												reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
+												client->endpoint.size
+											);
+											// Если данные отправлены успешно
+											if(bytes > 0){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Если мы отправили не все данные
+											} else if(bytes == -1) {
+												// Если нам нужно повторить попытку позже
+												if(errno == EAGAIN)
+													// Формируем положительный результат
+													return true;
+												// Если произошла ошибка при отправке данных
+												else {
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выполняем обработку закрытия подключения
+													if(io::close(node, log))
+														// Выполняем удаление узла
+														io::destroy(node, log);
+													// Формируем отрицательный результат
+													return false;
+												}
+											// Если произошёл дисконнект
+											} else {
+												// Выполняем обработку закрытия подключения
+												if(io::close(node, log))
+													// Выполняем удаление узла
+													io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
+											}
+										}
+									} break;
 								}
 								// Сбрасываем смещение передачи данных
 								client->transfer.offset = 0;
@@ -5226,111 +5565,119 @@ namespace io {
 					server_t * server = awh_cast <server_t *> (node);
 					// Если событие записи разрешено
 					if(server->transfer.actions & action::WRITE){
-						// Если установлен флаг однократного использования сокета
-						if(server->state.options & event::options::ONSHOT){
-							// Если есть данные для отправки в сокет
-							if(!server->transfer.output.empty()){
-								// Выполняем отправку данных в UDP сокет
-								const int32_t bytes = ::sendto(
-									server->transfer.fd,
-									reinterpret_cast <const uint8_t *> (server->transfer.output.data()),
-									server->transfer.output.size(), 0,
-									reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
-									server->endpoint.size
-								);
-								// Если данные отправлены успешно
-								if(bytes > 0){
-									// Если функция обратного вызова для вывода записанных данных установлена
-									if(server->callbacks.write != nullptr)
-										// Вывзываем функцию обратного вызова для вывода записанных данных
-										server->callbacks.write(server->id, static_cast <size_t> (bytes));
-								// Если мы отправили не все данные
-								} else if(bytes == -1) {
-									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN)
-										// Формируем положительный результат
-										return true;
-									// Если произошла ошибка при отправке данных
-									else {
-										// Устанавливаем текст ошибки
-										const string error = fmk->format("Failed to send data from server: %s", ::strerror(errno));
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-										// Если функция обратного вызова для вывода события установлена
+						/**
+						 * Определяем тип сокета
+						*/
+						switch(static_cast <uint8_t> (server->state.type)){
+							// Для типа сокета RAW
+							case static_cast <uint8_t> (event::type_t::RAW):
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Если есть данные для отправки в сокет
+								if(!server->transfer.output.empty()){
+									// Выполняем отправку данных в UDP сокет
+									const int32_t bytes = ::sendto(
+										server->transfer.fd,
+										reinterpret_cast <const uint8_t *> (server->transfer.output.data()),
+										server->transfer.output.size(), 0,
+										reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
+										server->endpoint.size
+									);
+									// Если данные отправлены успешно
+									if(bytes > 0){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(server->callbacks.write != nullptr)
+											// Вывзываем функцию обратного вызова для вывода записанных данных
+											server->callbacks.write(server->id, static_cast <size_t> (bytes));
+									// Если мы отправили не все данные
+									} else if(bytes == -1) {
+										// Если нам нужно повторить попытку позже
+										if(errno == EAGAIN)
+											// Формируем положительный результат
+											return true;
+										// Если произошла ошибка при отправке данных
 										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to send data from server: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Формируем положительный результат
+											return true;
 										}
-										// Формируем положительный результат
-										return true;
+									// Если произошёл дисконнект
+									} else {
+										// Выполняем обработку закрытия подключения
+										if(io::close(node, log))
+											// Выполняем удаление узла
+											io::destroy(node, log);
+										// Формируем отрицательный результат
+										return false;
 									}
-								// Если произошёл дисконнект
-								} else {
-									// Выполняем обработку закрытия подключения
-									if(io::close(node, log))
-										// Выполняем удаление узла
-										io::destroy(node, log);
-									// Формируем отрицательный результат
-									return false;
+									// Сбрасываем смещение передачи данных
+									server->transfer.offset = 0;
+									// Удаляем запись из очереди отправленных данных
+									server->transfer.output.pop();
 								}
-								// Сбрасываем смещение передачи данных
-								server->transfer.offset = 0;
-								// Удаляем запись из очереди отправленных данных
-								server->transfer.output.pop();
-							}
-							// Если в очереди данных больше не осталось данных для отправки
-							if(server->transfer.output.empty()){
-								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
-								// Деактивируем событие на запись данных
-								EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
-								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(server->id, intmd_t{});
-								// Устанавливаем количество событий
-								ret.first->second.count++;
-								// Если событие успешно добавлено
-								if(ret.second)
-									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::__awh_change__.size() - 1);
-							}
-							// Формируем положительный результат
-							return true;
-						// Если флаг однократного использования сокета не установлен
-						} else {
-							// Устанавливаем текст ошибки
-							const string error = "Server cannot send data for connection socket";
-							// Если установлена функция обратного вызова
-							if(server->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-							// Если функция обратного вызова для вывода события установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-								#endif
+								// Если в очереди данных больше не осталось данных для отправки
+								if(server->transfer.output.empty()){
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Деактивируем событие на запись данных
+									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
+									// Создаём объект промежуточного звена
+									auto ret = ::__awh_inters__.emplace(server->id, intmd_t{});
+									// Устанавливаем количество событий
+									ret.first->second.count++;
+									// Если событие успешно добавлено
+									if(ret.second)
+										// Устанавливаем индекс текущего элемента
+										ret.first->second.index = (::__awh_change__.size() - 1);
+								}
+								// Формируем положительный результат
+								return true;
+							} break;
+							// Для остальных типов сокетов
+							default: {
+								// Устанавливаем текст ошибки
+								const string error = "Server cannot send data for connection socket";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
 							}
 						}
 					}
@@ -5992,6 +6339,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											// Выполняем копирование объект подключения сервера в сторейдж
 											::memcpy(&node->endpoint.server, &server, sizeof(server));
 										} break;
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
 										// Для типа сокета DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Устанавливаем протокол интернета для клиента
@@ -6558,6 +6907,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											// Выполняем копирование объект подключения сервера в сторейдж
 											::memcpy(&node->endpoint.server, &server, sizeof(server));
 										} break;
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
 										// Для типа сокета DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Устанавливаем протокол интернета для клиента
@@ -6685,12 +7036,35 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								if((result = ret.second)){
 									// Добавляем новое событие в список изменений
 									::__awh_change__.push_back((struct kevent){});
-									// Если сокет является неблокирующим
-									if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-									// Устанавливаем событие на чтение но отключаем его
-									else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (node->state.type)){
+										// Для типа сокета STREAM
+										case static_cast <uint8_t> (event::type_t::STREAM):
+										// Для типа сокета SEQPACKET
+										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											// Если сокет является неблокирующим
+											if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											// Устанавливаем событие на чтение но отключаем его
+											else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+										} break;
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Устанавливаем статус события в состояние подключения
+											node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+											// Если сокет является неблокирующим
+											if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+											// Устанавливаем событие на чтение но отключаем его
+											else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+										} break;
+									}
 									// Устанавливаем количество событий
 									ret.first->second.count = 1;
 									// Устанавливаем индекс текущего элемента
@@ -6795,15 +7169,22 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выходим из приложения
 										::exit(EXIT_FAILURE);
 									}
-									// Если событие является однократным
-									if(node->state.options & event::options::ONSHOT){
-										// Если буфер на чтение не создан
-										if(node->transfer.input.data == nullptr){
-											// Устанавливаем размер буфера на чтение
-											node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-											// Выполняем создание нового буфера на чтение
-											node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-										}
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (node->state.type)){
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если буфер на чтение не создан
+											if(node->transfer.input.data == nullptr){
+												// Устанавливаем размер буфера на чтение
+												node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
+												// Выполняем создание нового буфера на чтение
+												node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
+											}
+										} break;
 									}
 									// Создаём объект промежуточного звена
 									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -6811,24 +7192,54 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
 										::__awh_change__.push_back((struct kevent){});
-										// Если сокет является неблокирующим
-										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-										// Устанавливаем событие на чтение но отключаем его
-										else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (node->state.type)){
+											// Для типа сокета STREAM
+											case static_cast <uint8_t> (event::type_t::STREAM):
+											// Для типа сокета SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+												// Если сокет является неблокирующим
+												if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+												// Устанавливаем событие на чтение но отключаем его
+												else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+											} break;
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Устанавливаем статус события в состояние подключения
+												node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+												// Если сокет является неблокирующим
+												if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+												// Устанавливаем событие на чтение но отключаем его
+												else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+											} break;
+										}
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
 										ret.first->second.index = (::__awh_change__.size() - 1);
-										// Если событие является однократным
-										if(node->state.options & event::options::ONSHOT){
-											// Устанавливаем количество событий
-											ret.first->second.count++;
-											// Добавляем новое событие в список изменений
-											::__awh_change__.push_back((struct kevent){});
-											// Устанавливаем событие на запись но отключаем его
-											EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (node->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Устанавливаем количество событий
+												ret.first->second.count++;
+												// Добавляем новое событие в список изменений
+												::__awh_change__.push_back((struct kevent){});
+												// Устанавливаем событие на запись но отключаем его
+												EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											} break;
 										}
 										// Устанавливаем флаг разрешающий выполнять чтение из сокета
 										node->transfer.actions |= action::READ;
@@ -6895,8 +7306,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Устанавливаем статус события в состояние подключения
-								node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 								// Если адрес целевой машины указан
 								if(node->host != nullptr){
 									// Создаём объект клиента
@@ -6950,15 +7359,22 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выходим из приложения
 										::exit(EXIT_FAILURE);
 									}
-									// Если событие является однократным
-									if(node->state.options & event::options::ONSHOT){
-										// Если буфер на чтение не создан
-										if(node->transfer.input.data == nullptr){
-											// Устанавливаем размер буфера на чтение
-											node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-											// Выполняем создание нового буфера на чтение
-											node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-										}
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (node->state.type)){
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если буфер на чтение не создан
+											if(node->transfer.input.data == nullptr){
+												// Устанавливаем размер буфера на чтение
+												node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
+												// Выполняем создание нового буфера на чтение
+												node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
+											}
+										} break;
 									}
 									// Создаём объект промежуточного звена
 									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
@@ -6966,24 +7382,54 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
 										::__awh_change__.push_back((struct kevent){});
-										// Если сокет является неблокирующим
-										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-										// Устанавливаем событие на чтение но отключаем его
-										else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (node->state.type)){
+											// Для типа сокета STREAM
+											case static_cast <uint8_t> (event::type_t::STREAM):
+											// Для типа сокета SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+												// Если сокет является неблокирующим
+												if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+												// Устанавливаем событие на чтение но отключаем его
+												else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+											} break;
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Устанавливаем статус события в состояние подключения
+												node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+												// Если сокет является неблокирующим
+												if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+												// Устанавливаем событие на чтение но отключаем его
+												else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+											} break;
+										}
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
 										ret.first->second.index = (::__awh_change__.size() - 1);
-										// Если событие является однократным
-										if(node->state.options & event::options::ONSHOT){
-											// Устанавливаем количество событий
-											ret.first->second.count++;
-											// Добавляем новое событие в список изменений
-											::__awh_change__.push_back((struct kevent){});
-											// Устанавливаем событие на запись но отключаем его
-											EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (node->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Устанавливаем количество событий
+												ret.first->second.count++;
+												// Добавляем новое событие в список изменений
+												::__awh_change__.push_back((struct kevent){});
+												// Устанавливаем событие на запись но отключаем его
+												EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											} break;
 										}
 										// Устанавливаем флаг разрешающий выполнять чтение из сокета
 										node->transfer.actions |= action::READ;
@@ -7167,12 +7613,19 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 								case static_cast <uint8_t> (event::family_t::IPV4):
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
-									// Если событие является однократным
-									if(server->state.options & event::options::ONSHOT){
-										// Если подключение к серверу предположительно подготовлено
-										if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0)
-											// Возвращаем результат работы функции
-											return ntohs(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port);
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (server->state.type)){
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если подключение к серверу предположительно подготовлено
+											if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0)
+												// Возвращаем результат работы функции
+												return ntohs(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port);
+										} break;
 									}
 									// Возвращаем результат работы функции
 									return awh_cast <net::attr_net_t *> (server->host.get())->port;
@@ -9040,48 +9493,55 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
-									// Если событие является однократным
-									if(server->state.options & event::options::ONSHOT){
-										// Если подключение к серверу предположительно подготовлено
-										if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-											// Устанавливаем полученный IP-адрес во временный объект
-											awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr;
-											// Выполняем извлечение сетевых параметров
-											this->_eth.fillsource(event::node_t::PEER, source);
-											// Если MAC-адрес успешно получен
-											if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-												// Устанавливаем полученный MAC-адрес в объект события
-												server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-												// Выводим результат работы функции
-												return static_cast <string> (server->addr);
-											// Если MAC-адрес не получен
-											} else {
-												// Устанавливаем текст ошибки
-												const string error = "MAC-address for specified event could not be retrieved";
-												// Если установлена функция обратного вызова
-												if(server->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (server->state.type)){
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если подключение к серверу предположительно подготовлено
+											if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												// Устанавливаем полученный IP-адрес во временный объект
+												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr;
+												// Выполняем извлечение сетевых параметров
+												this->_eth.fillsource(event::node_t::PEER, source);
+												// Если MAC-адрес успешно получен
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+													// Устанавливаем полученный MAC-адрес в объект события
+													server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+													// Выводим результат работы функции
+													return static_cast <string> (server->addr);
+												// Если MAC-адрес не получен
+												} else {
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address for specified event could not be retrieved";
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
 											}
-										}
+										} break;
 									}
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
@@ -9152,48 +9612,55 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 								} break;
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
-									// Если событие является однократным
-									if(server->state.options & event::options::ONSHOT){
-										// Если подключение к серверу предположительно подготовлено
-										if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-											// Устанавливаем полученный IP-адрес во временный объект
-											::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], reinterpret_cast <struct sockaddr_in6 *> (&server->endpoint.client)->sin6_addr.s6_addr, 16);
-											// Выполняем извлечение сетевых параметров
-											this->_eth.fillsource(event::node_t::PEER, source);
-											// Если MAC-адрес успешно получен
-											if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-												// Устанавливаем полученный MAC-адрес в объект события
-												server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-												// Выводим результат работы функции
-												return static_cast <string> (server->addr);
-											// Если MAC-адрес не получен
-											} else {
-												// Устанавливаем текст ошибки
-												const string error = "MAC-address for specified event could not be retrieved";
-												// Если установлена функция обратного вызова
-												if(server->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (server->state.type)){
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если подключение к серверу предположительно подготовлено
+											if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												// Устанавливаем полученный IP-адрес во временный объект
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], reinterpret_cast <struct sockaddr_in6 *> (&server->endpoint.client)->sin6_addr.s6_addr, 16);
+												// Выполняем извлечение сетевых параметров
+												this->_eth.fillsource(event::node_t::PEER, source);
+												// Если MAC-адрес успешно получен
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+													// Устанавливаем полученный MAC-адрес в объект события
+													server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+													// Выводим результат работы функции
+													return static_cast <string> (server->addr);
+												// Если MAC-адрес не получен
+												} else {
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address for specified event could not be retrieved";
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
 											}
-										}
+										} break;
 									}
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
@@ -9431,15 +9898,22 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 										if(server->host == nullptr)
 											// Прерываем выполнение
 											break;
-										// Если событие является однократным
-										if(server->state.options & event::options::ONSHOT){
-											// Если подключение к серверу предположительно подготовлено
-											if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
-												// Устанавливаем полученный IPv4-адрес
-												server->addr.v4(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-												// Выводим результат работы функции
-												return static_cast <string> (server->addr);
-											}
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (server->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Если подключение к серверу предположительно подготовлено
+												if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
+													// Устанавливаем полученный IPv4-адрес
+													server->addr.v4(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+													// Выводим результат работы функции
+													return static_cast <string> (server->addr);
+												}
+											} break;
 										}
 										// Устанавливаем полученный IPv4-адрес
 										server->addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
@@ -9547,19 +10021,26 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 										if(server->host == nullptr)
 											// Прерываем выполнение
 											break;
-										// Если событие является однократным
-										if(server->state.options & event::options::ONSHOT){
-											// Если подключение к серверу предположительно подготовлено
-											if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
-												// Создаём массив байтов для хранения IPv6-адреса
-												array <uint8_t, 16> buffer;
-												// Копируем полученный IPv6-адрес во временный буфер
-												::memcpy(&buffer[0], reinterpret_cast <struct sockaddr_in6 *> (&server->endpoint.client)->sin6_addr.s6_addr, 16);
-												// Устанавливаем полученный IPv6-адрес
-												server->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
-												// Выводим результат работы функции
-												return static_cast <string> (server->addr);
-											}
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (server->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Если подключение к серверу предположительно подготовлено
+												if(reinterpret_cast <struct sockaddr_in *> (&server->endpoint.client)->sin_port > 0){
+													// Создаём массив байтов для хранения IPv6-адреса
+													array <uint8_t, 16> buffer;
+													// Копируем полученный IPv6-адрес во временный буфер
+													::memcpy(&buffer[0], reinterpret_cast <struct sockaddr_in6 *> (&server->endpoint.client)->sin6_addr.s6_addr, 16);
+													// Устанавливаем полученный IPv6-адрес
+													server->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+													// Выводим результат работы функции
+													return static_cast <string> (server->addr);
+												}
+											} break;
 										}
 										// Устанавливаем полученный IPv6-адрес
 										server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
@@ -11788,110 +12269,52 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Выполняем создание события
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								// Устанавливаем идентификатор события
+								ret.first->second->id = ret.first->first;
+								// Устанавливаем тип узла события
+								ret.first->second->state.node = node;
+								// Устанавливаем флаг протокола сокета
+								ret.first->second->state.protocol = protocol;
+								// Устанавливаем флаг типа сокета
+								ret.first->second->state.type = i->second->state.type;
+								// Устанавливаем флаг семейства сокета
+								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем тип сокета
+								 * Определяем чем является текущий узел
 								 */
-								switch(static_cast <uint8_t> (i->second->state.type)){
-									// Для типа сокета STREAM
-									case static_cast <uint8_t> (event::type_t::STREAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * first = awh_cast <client_t *> (i->second.get());
+										// Получаем текущее значение клиента получающего параметры
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста клиента
+										second->target = make_unique <net::attr_uds_t> ();
+										// Получаем объект хоста UDS-сокета
+										net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
+										// Выполняем инициализацию объекта адреса файловой системы
+										target->path = make_unique <net::addr_fs_t> ();
+										// Устанавливаем адрес файловой системы
+										awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
 										/**
-										 * Определяем чем является текущий узел
+										 * Определяем тип сокета
 										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												target->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
+										switch(static_cast <uint8_t> (i->second->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_RAW, 0);
+											break;
+											// Для типа сокета STREAM
+											case static_cast <uint8_t> (event::type_t::STREAM):
 												// Создаём сокет подключения
 												second->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												target->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
-												// Создаём сокет подключения
-												second->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-										}
-										// Возвращаем идентификатор созданного события
-										return ret.first->first;
-									}
-									// Для типа сокета SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												target->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
+											break;
+											// Для типа сокета SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 												/**
 												 * Для операционной системы MacOS X, NetBSD, OpenBSD
 												 */
@@ -11905,27 +12328,73 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 													// Создаём сокет подключения
 													second->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 												#endif
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												target->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
+											break;
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+											break;
+											// Для неизвестного типа сокета
+											default: {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug(
+														"An event for a Unix event cannot be created because it has an invalid initialization type",
+														__PRETTY_FUNCTION__, std::make_tuple(
+															id,
+															static_cast <uint16_t> (node),
+															static_cast <uint16_t> (protocol)
+														),
+														log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+												#endif
+											}
+										}
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_un);
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * first = awh_cast <server_t *> (i->second.get());
+										// Получаем текущее значение клиента получающего параметры
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста клиента
+										second->target = make_unique <net::attr_uds_t> ();
+										// Получаем объект хоста UDS-сокета
+										net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
+										// Выполняем инициализацию объекта адреса файловой системы
+										target->path = make_unique <net::addr_fs_t> ();
+										// Устанавливаем адрес файловой системы
+										awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (i->second->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_RAW, 0);
+											break;
+											// Для типа сокета STREAM
+											case static_cast <uint8_t> (event::type_t::STREAM):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+											break;
+											// Для типа сокета SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 												/**
 												 * Для операционной системы MacOS X, NetBSD, OpenBSD
 												 */
@@ -11939,162 +12408,105 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 													// Создаём сокет подключения
 													second->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 												#endif
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-										}
-										// Возвращаем идентификатор созданного события
-										return ret.first->first;
-									}
-									// Для типа сокета DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												target->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
+											break;
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM):
 												// Создаём сокет подключения
 												second->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (second->target.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												target->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
-												// Создаём сокет подключения
-												second->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
+											break;
+											// Для неизвестного типа сокета
+											default: {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug(
+														"An event for a Unix event cannot be created because it has an invalid initialization type",
+														__PRETTY_FUNCTION__, std::make_tuple(
+															id,
+															static_cast <uint16_t> (node),
+															static_cast <uint16_t> (protocol)
+														),
+														log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+												#endif
+											}
 										}
-										// Возвращаем идентификатор созданного события
-										return ret.first->first;
-									}
-									// Для неизвестного типа сокета
-									default: {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug(
-												"An event for a Unix event cannot be created because it has an invalid initialization type",
-												__PRETTY_FUNCTION__, std::make_tuple(
-													id,
-													static_cast <uint16_t> (node),
-													static_cast <uint16_t> (protocol)
-												),
-												log_t::flag_t::WARNING);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-										#endif
-									}
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_un);
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									} break;
 								}
-							} break;
+								// Возвращаем идентификатор созданного события
+								return ret.first->first;
+							}
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4):
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Флаг удачного выполнения объединение событий
-								bool ok = true;
+								// Выполняем создание события
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								// Устанавливаем идентификатор события
+								ret.first->second->id = ret.first->first;
+								// Устанавливаем тип узла события
+								ret.first->second->state.node = node;
+								// Устанавливаем флаг протокола сокета
+								ret.first->second->state.protocol = protocol;
+								// Устанавливаем флаг типа сокета
+								ret.first->second->state.type = i->second->state.type;
+								// Устанавливаем флаг семейства сокета
+								ret.first->second->state.family = i->second->state.family;
+								// Результат создания события
+								bool result = true;
 								/**
-								 * Определяем тип сокета
+								 * Определяем чем является текущий узел
 								 */
-								switch(static_cast <uint8_t> (i->second->state.type)){
-									// Для типа сокета RAW
-									case static_cast <uint8_t> (event::type_t::RAW): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * first = awh_cast <client_t *> (i->second.get());
+										// Получаем текущее значение клиента получающего параметры
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста клиента
+										second->target = make_unique <net::attr_net_t> ();
 										/**
-										 * Определяем чем является текущий узел
+										 * Определяем тип подключения
 										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
+										switch(static_cast <uint8_t> (first->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in);
 												/**
-												 * Определяем тип подключения
+												 * Определяем тип сокета
 												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как RAW
 															case static_cast <uint8_t> (event::protocol_t::RAW):
 																// Создаём сокет подключения
@@ -12111,129 +12523,336 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
 													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+															break;
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+															break;
+															// Если протокол определён как ICMP
+															case static_cast <uint8_t> (event::protocol_t::ICMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+															break;
+															// Если протокол определён как IGMP
+															case static_cast <uint8_t> (event::protocol_t::IGMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
+																	id,
+																	static_cast <uint16_t> (node),
+																	static_cast <uint16_t> (protocol)
+																), log_t::flag_t::WARNING
+															);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
+													}
+												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
+												// Выполняем инициализацию объекта IP-адреса клиента
+												target->ip = make_unique <net::addr_net_ipv4_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in6);
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+															break;
+															// Если протокол определён как UDP
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как ICMP
 															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
 																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
 													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как RAW
-														case static_cast <uint8_t> (event::protocol_t::RAW):
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_RAW, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_RAW, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "RAW socket type only supports UDP protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																	id,
-																	static_cast <uint16_t> (node),
-																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+															break;
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+															break;
+															// Если протокол определён как ICMP
+															case static_cast <uint8_t> (event::protocol_t::ICMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
+																	id,
+																	static_cast <uint16_t> (node),
+																	static_cast <uint16_t> (protocol)
+																), log_t::flag_t::WARNING
+															);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
+													}
+												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
+												// Выполняем инициализацию объекта IP-адреса клиента
+												target->ip = make_unique <net::addr_net_ipv6_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
+											} break;
+										}
+										// Если всё прошло успешно
+										if(result){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+										}
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * first = awh_cast <server_t *> (i->second.get());
+										// Получаем текущее значение клиента получающего параметры
+										client_t * second = awh_cast <client_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста клиента
+										second->target = make_unique <net::attr_net_t> ();
+										/**
+										 * Определяем тип подключения
+										 */
+										switch(static_cast <uint8_t> (first->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in);
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+															break;
+															// Если протокол определён как UDP
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как RAW
 															case static_cast <uint8_t> (event::protocol_t::RAW):
 																// Создаём сокет подключения
@@ -12250,946 +12869,334 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
 													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+															break;
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+															break;
+															// Если протокол определён как ICMP
+															case static_cast <uint8_t> (event::protocol_t::ICMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+															break;
+															// Если протокол определён как IGMP
+															case static_cast <uint8_t> (event::protocol_t::IGMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
+																	id,
+																	static_cast <uint16_t> (node),
+																	static_cast <uint16_t> (protocol)
+																), log_t::flag_t::WARNING
+															);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
+													}
+												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
+												// Выполняем инициализацию объекта IP-адреса клиента
+												target->ip = make_unique <net::addr_net_ipv4_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in6);
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+															break;
+															// Если протокол определён как UDP
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как ICMP
 															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
 																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
 													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как RAW
-														case static_cast <uint8_t> (event::protocol_t::RAW):
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_RAW, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_RAW, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "RAW socket type only supports UDP protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																	id,
-																	static_cast <uint16_t> (node),
-																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-													}
-												}
-											} break;
-										}
-										// Если всё прошло успешно
-										if(ok){
-											/**
-											 * Определяем семейство события
-											 */
-											switch(static_cast <uint8_t> (ret.first->second->state.family)){
-												// Для семейства IPv4
-												case static_cast <uint8_t> (event::family_t::IPV4): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-												// Для семейства IPv6
-												case static_cast <uint8_t> (event::family_t::IPV6): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-											}
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										} else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
-										}
-									} break;
-									// Для типа сокета DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
-															// Если протокол определён как ICMP
-															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
 															break;
-															// Если протокол определён как IGMP
-															case static_cast <uint8_t> (event::protocol_t::IGMP):
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
 																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
 													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+															break;
 															// Если протокол определён как ICMP
 															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
 																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
 													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-														// Если протокол определён как DTLS
-														case static_cast <uint8_t> (event::protocol_t::DTLS):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
 																	id,
 																	static_cast <uint16_t> (node),
 																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+																), log_t::flag_t::WARNING
+															);
 														/**
-														 * Определяем протокол
+														 * Если режим отладки не включён
 														 */
-														switch(static_cast <uint8_t> (protocol)){
-															// Если протокол не определён
-															case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
-															// Если протокол определён как ICMP
-															case static_cast <uint8_t> (event::protocol_t::ICMP):
-																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-															break;
-															// Если протокол определён как IGMP
-															case static_cast <uint8_t> (event::protocol_t::IGMP):
-																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-															break;
-															// Если установлен другой протокол
-															default: ok = false;
-														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														/**
-														 * Определяем протокол
-														 */
-														switch(static_cast <uint8_t> (protocol)){
-															// Если протокол не определён
-															case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
-															// Если протокол определён как ICMP
-															case static_cast <uint8_t> (event::protocol_t::ICMP):
-																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-															break;
-															// Если установлен другой протокол
-															default: ok = false;
-														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-														// Если протокол определён как DTLS
-														case static_cast <uint8_t> (event::protocol_t::DTLS):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																	id,
-																	static_cast <uint16_t> (node),
-																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
 													}
 												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
+												// Выполняем инициализацию объекта IP-адреса клиента
+												target->ip = make_unique <net::addr_net_ipv6_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
 											} break;
 										}
 										// Если всё прошло успешно
-										if(ok){
-											/**
-											 * Определяем семейство события
-											 */
-											switch(static_cast <uint8_t> (ret.first->second->state.family)){
-												// Для семейства IPv4
-												case static_cast <uint8_t> (event::family_t::IPV4): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-												// Для семейства IPv6
-												case static_cast <uint8_t> (event::family_t::IPV6): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-											}
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										} else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
+										if(result){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 										}
 									} break;
-									// Для типа сокета STREAM
-									case static_cast <uint8_t> (event::type_t::STREAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол не определён
-													case static_cast <uint8_t> (event::protocol_t::NONE):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, 0);
-													break;
-													// Если протокол определён как TCP
-													case static_cast <uint8_t> (event::protocol_t::TCP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, IPPROTO_TCP);
-													break;
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол не определён
-													case static_cast <uint8_t> (event::protocol_t::NONE):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, 0);
-													break;
-													// Если протокол определён как TCP
-													case static_cast <uint8_t> (event::protocol_t::TCP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, IPPROTO_TCP);
-													break;
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-										}
-										// Если всё прошло успешно
-										if(ok){
-											/**
-											 * Определяем семейство события
-											 */
-											switch(static_cast <uint8_t> (ret.first->second->state.family)){
-												// Для семейства IPv4
-												case static_cast <uint8_t> (event::family_t::IPV4): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-												// Для семейства IPv6
-												case static_cast <uint8_t> (event::family_t::IPV6): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-											}
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										} else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
-										}
-									} break;
-									// Для типа сокета SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_SEQPACKET, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение клиента получающего параметры
-												client_t * second = awh_cast <client_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста клиента
-												second->target = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * target = awh_cast <net::attr_net_t *> (second->target.get());
-														// Выполняем инициализацию объекта IP-адреса клиента
-														target->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_SEQPACKET, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-										}
-										// Если всё прошло успешно
-										if(ok){
-											/**
-											 * Определяем семейство события
-											 */
-											switch(static_cast <uint8_t> (ret.first->second->state.family)){
-												// Для семейства IPv4
-												case static_cast <uint8_t> (event::family_t::IPV4): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-												// Для семейства IPv6
-												case static_cast <uint8_t> (event::family_t::IPV6): {
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-													// Выполняем извлечение сетевых параметров по умолчаинию
-													this->_eth.fillsource(event::node_t::NONE, source);
-													// Инициализируем источник сетевого адреса
-													awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
-												} break;
-											}
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										} else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
-										}
-									} break;
-									// Для неизвестного типа сокета
-									default: {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug(
-												"An event for a IP event cannot be created because it has an invalid initialization type",
-												__PRETTY_FUNCTION__, std::make_tuple(
-													id,
-													static_cast <uint16_t> (node),
-													static_cast <uint16_t> (protocol)
-												), log_t::flag_t::WARNING
-											);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-										#endif
+								}
+								// Если всё прошло успешно
+								if(result){
+									/**
+									 * Определяем семейство события
+									 */
+									switch(static_cast <uint8_t> (ret.first->second->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4): {
+											// Временный объект для извлечения сетевого интерфейса
+											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+											// Выполняем извлечение сетевых параметров по умолчаинию
+											this->_eth.fillsource(event::node_t::NONE, source);
+											// Инициализируем источник сетевого адреса
+											awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
+										} break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6): {
+											// Временный объект для извлечения сетевого интерфейса
+											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+											// Выполняем извлечение сетевых параметров по умолчаинию
+											this->_eth.fillsource(event::node_t::NONE, source);
+											// Инициализируем источник сетевого адреса
+											awh_cast <client_t *> (ret.first->second.get())->source = ::move(source.ip);
+										} break;
 									}
+									// Возвращаем идентификатор созданного события
+									return ret.first->first;
+								// Если всё прошло не успешно
+								} else {
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ret.first->first);
+									// Удаляем созданное событие
+									::__awh_nodes__.erase(ret.first);
 								}
 							} break;
 							// Для других семейств событий
@@ -13225,110 +13232,52 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Выполняем создание события
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
+								// Устанавливаем идентификатор события
+								ret.first->second->id = ret.first->first;
+								// Устанавливаем тип узла события
+								ret.first->second->state.node = node;
+								// Устанавливаем флаг протокола сокета
+								ret.first->second->state.protocol = protocol;
+								// Устанавливаем флаг типа сокета
+								ret.first->second->state.type = i->second->state.type;
+								// Устанавливаем флаг семейства сокета
+								ret.first->second->state.family = i->second->state.family;
 								/**
-								 * Определяем тип сокета
+								 * Определяем чем является текущий узел
 								 */
-								switch(static_cast <uint8_t> (i->second->state.type)){
-									// Для типа сокета STREAM
-									case static_cast <uint8_t> (event::type_t::STREAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * first = awh_cast <client_t *> (i->second.get());
+										// Получаем текущее значение сервера получающего параметры
+										server_t * second = awh_cast <server_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста сервера
+										second->host = make_unique <net::attr_uds_t> ();
+										// Получаем объект хоста UDS-сокета
+										net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
+										// Выполняем инициализацию объекта адреса файловой системы
+										host->path = make_unique <net::addr_fs_t> ();
+										// Устанавливаем адрес файловой системы
+										awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
 										/**
-										 * Определяем чем является текущий узел
+										 * Определяем тип сокета
 										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												host->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
+										switch(static_cast <uint8_t> (i->second->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_RAW, 0);
+											break;
+											// Для типа сокета STREAM
+											case static_cast <uint8_t> (event::type_t::STREAM):
 												// Создаём сокет подключения
 												second->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												host->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
-												// Создаём сокет подключения
-												second->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-										}
-										// Возвращаем идентификатор созданного события
-										return ret.first->first;
-									}
-									// Для типа сокета SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												host->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
+											break;
+											// Для типа сокета SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 												/**
 												 * Для операционной системы MacOS X, NetBSD, OpenBSD
 												 */
@@ -13342,27 +13291,73 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 													// Создаём сокет подключения
 													second->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 												#endif
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												host->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
+											break;
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+											break;
+											// Для неизвестного типа сокета
+											default: {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug(
+														"An event for a Unix event cannot be created because it has an invalid initialization type",
+														__PRETTY_FUNCTION__, std::make_tuple(
+															id,
+															static_cast <uint16_t> (node),
+															static_cast <uint16_t> (protocol)
+														),
+														log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+												#endif
+											}
+										}
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_un);
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * first = awh_cast <server_t *> (i->second.get());
+										// Получаем текущее значение сервера получающего параметры
+										server_t * second = awh_cast <server_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста сервера
+										second->host = make_unique <net::attr_uds_t> ();
+										// Получаем объект хоста UDS-сокета
+										net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
+										// Выполняем инициализацию объекта адреса файловой системы
+										host->path = make_unique <net::addr_fs_t> ();
+										// Устанавливаем адрес файловой системы
+										awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (i->second->state.type)){
+											// Для типа сокета RAW
+											case static_cast <uint8_t> (event::type_t::RAW):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_RAW, 0);
+											break;
+											// Для типа сокета STREAM
+											case static_cast <uint8_t> (event::type_t::STREAM):
+												// Создаём сокет подключения
+												second->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+											break;
+											// Для типа сокета SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 												/**
 												 * Для операционной системы MacOS X, NetBSD, OpenBSD
 												 */
@@ -13376,162 +13371,105 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 													// Создаём сокет подключения
 													second->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 												#endif
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-										}
-										// Возвращаем идентификатор созданного события
-										return ret.first->first;
-									}
-									// Для типа сокета DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												host->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->target.get())->path.get())->address;
+											break;
+											// Для типа сокета DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM):
 												// Создаём сокет подключения
 												second->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_uds_t> ();
-												// Получаем объект хоста UDS-сокета
-												net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (second->host.get());
-												// Выполняем инициализацию объекта адреса файловой системы
-												host->path = make_unique <net::addr_fs_t> ();
-												// Устанавливаем адрес файловой системы
-												awh_cast <net::addr_fs_t *> (host->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
-												// Создаём сокет подключения
-												second->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-												// Запоминаем размер структуры
-												second->endpoint.size = sizeof(struct sockaddr_un);
-												// Выполняем копирование объекта подключения клиента
-												::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-												// Выполняем копирование объекта подключения сервера
-												::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-											} break;
+											break;
+											// Для неизвестного типа сокета
+											default: {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug(
+														"An event for a Unix event cannot be created because it has an invalid initialization type",
+														__PRETTY_FUNCTION__, std::make_tuple(
+															id,
+															static_cast <uint16_t> (node),
+															static_cast <uint16_t> (protocol)
+														),
+														log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+												#endif
+											}
 										}
-										// Возвращаем идентификатор созданного события
-										return ret.first->first;
-									}
-									// Для неизвестного типа сокета
-									default: {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug(
-												"An event for a Unix event cannot be created because it has an invalid initialization type",
-												__PRETTY_FUNCTION__, std::make_tuple(
-													id,
-													static_cast <uint16_t> (node),
-													static_cast <uint16_t> (protocol)
-												),
-												log_t::flag_t::WARNING);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-										#endif
-									}
+										// Запоминаем размер структуры
+										second->endpoint.size = sizeof(struct sockaddr_un);
+										// Выполняем копирование объекта подключения клиента
+										::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+										// Выполняем копирование объекта подключения сервера
+										::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+									} break;
 								}
-							} break;
+								// Возвращаем идентификатор созданного события
+								return ret.first->first;
+							}
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4):
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Флаг удачного выполнения объединение событий
-								bool ok = true;
+								// Выполняем создание события
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
+								// Устанавливаем идентификатор события
+								ret.first->second->id = ret.first->first;
+								// Устанавливаем тип узла события
+								ret.first->second->state.node = node;
+								// Устанавливаем флаг протокола сокета
+								ret.first->second->state.protocol = protocol;
+								// Устанавливаем флаг типа сокета
+								ret.first->second->state.type = i->second->state.type;
+								// Устанавливаем флаг семейства сокета
+								ret.first->second->state.family = i->second->state.family;
+								// Результат создания события
+								bool result = true;
 								/**
-								 * Определяем тип сокета
+								 * Определяем чем является текущий узел
 								 */
-								switch(static_cast <uint8_t> (i->second->state.type)){
-									// Для типа сокета RAW
-									case static_cast <uint8_t> (event::type_t::RAW): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * first = awh_cast <client_t *> (i->second.get());
+										// Получаем текущее значение сервера получающего параметры
+										server_t * second = awh_cast <server_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста сервера
+										second->host = make_unique <net::attr_net_t> ();
 										/**
-										 * Определяем чем является текущий узел
+										 * Определяем тип подключения
 										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
+										switch(static_cast <uint8_t> (first->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in);
 												/**
-												 * Определяем тип подключения
+												 * Определяем тип сокета
 												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как RAW
 															case static_cast <uint8_t> (event::protocol_t::RAW):
 																// Создаём сокет подключения
@@ -13548,129 +13486,336 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
 													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+															break;
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+															break;
+															// Если протокол определён как ICMP
+															case static_cast <uint8_t> (event::protocol_t::ICMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+															break;
+															// Если протокол определён как IGMP
+															case static_cast <uint8_t> (event::protocol_t::IGMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
+																	id,
+																	static_cast <uint16_t> (node),
+																	static_cast <uint16_t> (protocol)
+																), log_t::flag_t::WARNING
+															);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
+													}
+												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
+												// Выполняем инициализацию объекта IP-адреса сервера
+												host->ip = make_unique <net::addr_net_ipv4_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in6);
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+															break;
+															// Если протокол определён как UDP
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как ICMP
 															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
 																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
 													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как RAW
-														case static_cast <uint8_t> (event::protocol_t::RAW):
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_RAW, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_RAW, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "RAW socket type only supports UDP protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																	id,
-																	static_cast <uint16_t> (node),
-																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+															break;
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+															break;
+															// Если протокол определён как ICMP
+															case static_cast <uint8_t> (event::protocol_t::ICMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
+																	id,
+																	static_cast <uint16_t> (node),
+																	static_cast <uint16_t> (protocol)
+																), log_t::flag_t::WARNING
+															);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
+													}
+												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
+												// Выполняем инициализацию объекта IP-адреса сервера
+												host->ip = make_unique <net::addr_net_ipv6_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
+											} break;
+										}
+										// Если всё прошло успешно
+										if(result){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
+										}
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * first = awh_cast <server_t *> (i->second.get());
+										// Получаем текущее значение сервера получающего параметры
+										server_t * second = awh_cast <server_t *> (ret.first->second.get());
+										// Выполняем инициализацию объекта хоста сервера
+										second->host = make_unique <net::attr_net_t> ();
+										/**
+										 * Определяем тип подключения
+										 */
+										switch(static_cast <uint8_t> (first->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in);
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+															break;
+															// Если протокол определён как UDP
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как RAW
 															case static_cast <uint8_t> (event::protocol_t::RAW):
 																// Создаём сокет подключения
@@ -13687,854 +13832,311 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 																second->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
 													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+															break;
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+															break;
+															// Если протокол определён как ICMP
+															case static_cast <uint8_t> (event::protocol_t::ICMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+															break;
+															// Если протокол определён как IGMP
+															case static_cast <uint8_t> (event::protocol_t::IGMP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+															break;
+															// Если установлен другой протокол
+															default: result = false;
+														}
+													} break;
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
+																	id,
+																	static_cast <uint16_t> (node),
+																	static_cast <uint16_t> (protocol)
+																), log_t::flag_t::WARNING
+															);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
+													}
+												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
+												// Выполняем инициализацию объекта IP-адреса сервера
+												host->ip = make_unique <net::addr_net_ipv4_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Запоминаем размер структуры
+												second->endpoint.size = sizeof(struct sockaddr_in6);
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (first->state.type)){
+													// Для типа сокета RAW
+													case static_cast <uint8_t> (event::type_t::RAW): {
+														/**
+														 * Определяем протокол
+														 */
+														switch(static_cast <uint8_t> (protocol)){
+															// Если протокол не определён
+															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+															break;
+															// Если протокол определён как UDP
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+															break;
 															// Если протокол определён как ICMP
 															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
 																second->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
 													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как RAW
-														case static_cast <uint8_t> (event::protocol_t::RAW):
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_RAW, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_RAW, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "RAW socket type only supports UDP protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																	id,
-																	static_cast <uint16_t> (node),
-																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-													}
-												}
-											} break;
-										}
-										// Если всё прошло успешно
-										if(ok)
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
-										}
-									} break;
-									// Для типа сокета DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+													// Для типа сокета STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
-															// Если протокол определён как ICMP
-															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
 															break;
-															// Если протокол определён как IGMP
-															case static_cast <uint8_t> (event::protocol_t::IGMP):
+															// Если протокол определён как TCP
+															case static_cast <uint8_t> (event::protocol_t::TCP):
 																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+															break;
+															// Если протокол определён как SCTP
+															case static_cast <uint8_t> (event::protocol_t::SCTP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
 													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
+													// Для типа сокета SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+														/**
+														 * Для операционной системы MacOS X, NetBSD, OpenBSD
+														 */
+														#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														/**
+														 * Для остальных операционных систем
+														 */
+														#else
+															/**
+															 * Определяем протокол
+															 */
+															switch(static_cast <uint8_t> (protocol)){
+																// Если протокол не определён
+																case static_cast <uint8_t> (event::protocol_t::NONE):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
+																break;
+																// Если протокол определён как SCTP
+																case static_cast <uint8_t> (event::protocol_t::SCTP):
+																	// Создаём сокет подключения
+																	second->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+																break;
+																// Если установлен другой протокол
+																default: result = false;
+															}
+														#endif
+													} break;
+													// Для типа сокета DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 														/**
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (protocol)){
 															// Если протокол не определён
 															case static_cast <uint8_t> (event::protocol_t::NONE):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+															break;
 															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
+															case static_cast <uint8_t> (event::protocol_t::UDP):
+																// Создаём сокет подключения
+																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+															break;
 															// Если протокол определён как ICMP
 															case static_cast <uint8_t> (event::protocol_t::ICMP):
 																// Создаём сокет подключения
 																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 															break;
 															// Если установлен другой протокол
-															default: ok = false;
+															default: result = false;
 														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
 													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-														// Если протокол определён как DTLS
-														case static_cast <uint8_t> (event::protocol_t::DTLS):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_DGRAM, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+													// Для неизвестного типа сокета
+													default: {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug(
+																"An event for a IP event cannot be created because it has an invalid initialization type",
+																__PRETTY_FUNCTION__, std::make_tuple(
 																	id,
 																	static_cast <uint16_t> (node),
 																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
+																), log_t::flag_t::WARNING
+															);
 														/**
-														 * Определяем протокол
+														 * Если режим отладки не включён
 														 */
-														switch(static_cast <uint8_t> (protocol)){
-															// Если протокол не определён
-															case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
-															// Если протокол определён как ICMP
-															case static_cast <uint8_t> (event::protocol_t::ICMP):
-																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-															break;
-															// Если протокол определён как IGMP
-															case static_cast <uint8_t> (event::protocol_t::IGMP):
-																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-															break;
-															// Если установлен другой протокол
-															default: ok = false;
-														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														/**
-														 * Определяем протокол
-														 */
-														switch(static_cast <uint8_t> (protocol)){
-															// Если протокол не определён
-															case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Если протокол определён как UDP
-															case static_cast <uint8_t> (event::protocol_t::UDP): break;
-															// Если протокол определён как ICMP
-															case static_cast <uint8_t> (event::protocol_t::ICMP):
-																// Создаём сокет подключения
-																second->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-															break;
-															// Если установлен другой протокол
-															default: ok = false;
-														}
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													/**
-													 * Определяем протокол
-													 */
-													switch(static_cast <uint8_t> (protocol)){
-														// Если протокол определён как ICMP
-														case static_cast <uint8_t> (event::protocol_t::ICMP):
-														// Если протокол определён как IGMP
-														case static_cast <uint8_t> (event::protocol_t::IGMP): break;
-														// Если протокол не определён
-														case static_cast <uint8_t> (event::protocol_t::NONE):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, 0);
-														break;
-														// Если протокол определён как UDP
-														case static_cast <uint8_t> (event::protocol_t::UDP):
-														// Если протокол определён как DTLS
-														case static_cast <uint8_t> (event::protocol_t::DTLS):
-															// Создаём сокет подключения
-															second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_DGRAM, IPPROTO_UDP);
-														break;
-														// Если установлен другой протокол
-														default: ok = false;
-													}
-													// Если всё хорошо, продолжаем работу
-													if(ok){
-														// Выполняем копирование объекта подключения клиента
-														::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-														// Выполняем копирование объекта подключения сервера
-														::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-													// Если протокол не определён
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "DGRAM socket type only supports UDP or DTLS protocol or Unix family socket with empty protocol";
-														// Если установлена функция обратного вызова
-														if(first->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																	id,
-																	static_cast <uint16_t> (node),
-																	static_cast <uint16_t> (protocol)
-																), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+														#endif
 													}
 												}
+												// Получаем объект IP-адреса
+												net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
+												// Выполняем инициализацию объекта IP-адреса сервера
+												host->ip = make_unique <net::addr_net_ipv6_t> ();
+												// Устанавливаем полученный IP-адрес во временный объект
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
 											} break;
 										}
 										// Если всё прошло успешно
-										if(ok)
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
+										if(result){
+											// Выполняем копирование объекта подключения клиента
+											::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
+											// Выполняем копирование объекта подключения сервера
+											::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
 										}
 									} break;
-									// Для типа сокета STREAM
-									case static_cast <uint8_t> (event::type_t::STREAM): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол не определён
-													case static_cast <uint8_t> (event::protocol_t::NONE):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, 0);
-													break;
-													// Если протокол определён как TCP
-													case static_cast <uint8_t> (event::protocol_t::TCP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, IPPROTO_TCP);
-													break;
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_STREAM, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол не определён
-													case static_cast <uint8_t> (event::protocol_t::NONE):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, 0);
-													break;
-													// Если протокол определён как TCP
-													case static_cast <uint8_t> (event::protocol_t::TCP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, IPPROTO_TCP);
-													break;
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_STREAM, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-										}
-										// Если всё прошло успешно
-										if(ok)
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
-										}
-									} break;
-									// Для типа сокета SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-										// Устанавливаем идентификатор события
-										ret.first->second->id = ret.first->first;
-										// Устанавливаем тип узла события
-										ret.first->second->state.node = node;
-										// Устанавливаем флаг протокола сокета
-										ret.first->second->state.protocol = protocol;
-										// Устанавливаем флаг типа сокета
-										ret.first->second->state.type = i->second->state.type;
-										// Устанавливаем флаг семейства сокета
-										ret.first->second->state.family = i->second->state.family;
-										/**
-										 * Определяем чем является текущий узел
-										 */
-										switch(static_cast <uint8_t> (i->second->state.node)){
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT): {
-												// Получаем текущее значение объекта клиента
-												client_t * first = awh_cast <client_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->target.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.client.ss_family, SOCK_SEQPACKET, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Получаем текущее значение объекта сервера
-												server_t * first = awh_cast <server_t *> (i->second.get());
-												// Получаем текущее значение сервера получающего параметры
-												server_t * second = awh_cast <server_t *> (ret.first->second.get());
-												// Выполняем инициализацию объекта хоста сервера
-												second->host = make_unique <net::attr_net_t> ();
-												/**
-												 * Определяем тип подключения
-												 */
-												switch(static_cast <uint8_t> (first->state.family)){
-													// Для семейства IPv4
-													case static_cast <uint8_t> (event::family_t::IPV4): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv4_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address;
-													} break;
-													// Для семейства IPv6
-													case static_cast <uint8_t> (event::family_t::IPV6): {
-														// Запоминаем размер структуры
-														second->endpoint.size = sizeof(struct sockaddr_in6);
-														// Получаем объект IP-адреса
-														net::attr_net_t * host = awh_cast <net::attr_net_t *> (second->host.get());
-														// Выполняем инициализацию объекта IP-адреса сервера
-														host->ip = make_unique <net::addr_net_ipv6_t> ();
-														// Устанавливаем полученный IP-адрес во временный объект
-														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (first->host.get())->ip.get())->address[0], 16);
-													} break;
-												}
-												/**
-												 * Определяем протокол
-												 */
-												switch(static_cast <uint8_t> (protocol)){
-													// Если протокол определён как SCTP
-													case static_cast <uint8_t> (event::protocol_t::SCTP):
-														// Создаём сокет подключения
-														second->transfer.fd = ::socket(first->endpoint.server.ss_family, SOCK_SEQPACKET, IPPROTO_SCTP);
-													break;
-													// Если установлен другой протокол
-													default: ok = false;
-												}
-												// Если всё хорошо, продолжаем работу
-												if(ok){
-													// Выполняем копирование объекта подключения клиента
-													::memcpy(&second->endpoint.client, &first->endpoint.client, sizeof(struct sockaddr_storage));
-													// Выполняем копирование объекта подключения сервера
-													::memcpy(&second->endpoint.server, &first->endpoint.server, sizeof(struct sockaddr_storage));
-												// Если протокол не определён
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol";
-													// Если установлена функция обратного вызова
-													if(first->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														first->callbacks.error(first->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-																id,
-																static_cast <uint16_t> (node),
-																static_cast <uint16_t> (protocol)
-															), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												}
-											} break;
-										}
-										// Если всё прошло успешно
-										if(ok)
-											// Возвращаем идентификатор созданного события
-											return ret.first->first;
-										// Если всё прошло не успешно
-										else {
-											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
-											// Удаляем созданное событие
-											::__awh_nodes__.erase(ret.first);
-										}
-									} break;
-									// Для неизвестного типа сокета
-									default: {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug(
-												"An event for a IP event cannot be created because it has an invalid initialization type",
-												__PRETTY_FUNCTION__, std::make_tuple(
-													id,
-													static_cast <uint16_t> (node),
-													static_cast <uint16_t> (protocol)
-												), log_t::flag_t::WARNING
-											);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-										#endif
-									}
+								}
+								// Если всё прошло успешно
+								if(result)
+									// Возвращаем идентификатор созданного события
+									return ret.first->first;
+								// Если всё прошло не успешно
+								else {
+									// Производим удаление списка подготовленных событий
+									::__awh_inters__.erase(ret.first->first);
+									// Удаляем созданное событие
+									::__awh_nodes__.erase(ret.first);
 								}
 							} break;
 							// Для других семейств событий
@@ -14866,68 +14468,12 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (type)){
+							// Для типа сокета RAW
+							case static_cast <uint8_t> (event::type_t::RAW):
 							// Для типа сокета STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_uds_t> ();
-								// Получаем объект хоста UDS-сокета
-								net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
-								// Выполняем инициализацию объекта адреса файловой системы
-								target->path = make_unique <net::addr_fs_t> ();
-								// Выполняем создание сокета
-								if(!io::socket(client, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
+							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_uds_t> ();
-								// Получаем объект хоста UDS-сокета
-								net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
-								// Выполняем инициализацию объекта адреса файловой системы
-								target->path = make_unique <net::addr_fs_t> ();
-								// Выполняем создание сокета
-								if(!io::socket(client, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Выполняем создание события
@@ -14994,211 +14540,13 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						 */
 						switch(static_cast <uint8_t> (type)){
 							// Для типа сокета RAW
-							case static_cast <uint8_t> (event::type_t::RAW): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Выполняем создание сокета
-								if(!io::socket(client, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								} else {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
-											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
-										} break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
-											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
-										} break;
-									}
-									// Возвращаем идентификатор созданного события
-									return ret.first->first;
-								}
-							} break;
+							case static_cast <uint8_t> (event::type_t::RAW):
+							// Для типа сокета STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Выполняем создание сокета
-								if(!io::socket(client, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								} else {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
-											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
-										} break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
-											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
-										} break;
-									}
-									// Возвращаем идентификатор созданного события
-									return ret.first->first;
-								}
-							} break;
-							// Для типа сокета STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Выполняем создание сокета
-								if(!io::socket(client, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								} else {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
-											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
-										} break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
-											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
-										} break;
-									}
-									// Возвращаем идентификатор созданного события
-									return ret.first->first;
-								}
-							} break;
-							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -15329,68 +14677,12 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (type)){
+							// Для типа сокета RAW
+							case static_cast <uint8_t> (event::type_t::RAW):
 							// Для типа сокета STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_uds_t> ();
-								// Получаем объект хоста UDS-сокета
-								net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
-								// Выполняем инициализацию объекта адреса файловой системы
-								host->path = make_unique <net::addr_fs_t> ();
-								// Выполняем создание сокета
-								if(!io::socket(server, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
+							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_uds_t> ();
-								// Получаем объект хоста UDS-сокета
-								net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
-								// Выполняем инициализацию объекта адреса файловой системы
-								host->path = make_unique <net::addr_fs_t> ();
-								// Выполняем создание сокета
-								if(!io::socket(server, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Выполняем создание события
@@ -15457,133 +14749,13 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						 */
 						switch(static_cast <uint8_t> (type)){
 							// Для типа сокета RAW
-							case static_cast <uint8_t> (event::type_t::RAW): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Выполняем создание сокета
-								if(!io::socket(server, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
+							case static_cast <uint8_t> (event::type_t::RAW):
+							// Для типа сокета STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Выполняем создание сокета
-								if(!io::socket(server, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
-							// Для типа сокета STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM): {
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Выполняем создание сокета
-								if(!io::socket(server, this->_log)){
-									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								} else return ret.first->first;
-							} break;
-							// Для типа сокета SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -16007,9 +15179,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 										fds[1] = ::socket(AF_INET, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
-									case static_cast <uint8_t> (event::protocol_t::UDP):
-									// Если протокол определён как DTLS
-									case static_cast <uint8_t> (event::protocol_t::DTLS): {
+									case static_cast <uint8_t> (event::protocol_t::UDP): {
 										// Создаём первый сокет для дейтграмного подключения
 										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 										// Создаём второй сокет для дейтграмного подключения
@@ -16045,9 +15215,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
-									case static_cast <uint8_t> (event::protocol_t::UDP):
-									// Если протокол определён как DTLS
-									case static_cast <uint8_t> (event::protocol_t::DTLS): {
+									case static_cast <uint8_t> (event::protocol_t::UDP): {
 										// Создаём первый сокет для дейтграмного подключения
 										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 										// Создаём второй сокет для дейтграмного подключения
@@ -16614,23 +15782,6 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если узел не является файловой системой и не является межпроцессным взаимодействием
 				if((i->second->state.node != event::node_t::IPC) &&
 				   (i->second->state.family != event::family_t::FSYS)){
-					// Если опция передана как TCP_CORK
-					if(event::options::TCPCORK & options){
-						// Активируем алгоритм TCP/CORK
-						if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
-							// Устанавливаем опцию события
-							i->second->state.options |= event::options::TCPCORK;
-					// Если опция не передана как TCP_CORK
-					} else {
-						// Деактивируем алгоритм TCP/CORK
-						if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
-							// Снимаем опцию события
-							i->second->state.options &= ~event::options::TCPCORK;
-					}
-					// Если опция не установлена
-					if(!isSetup)
-						// Устанавливаем результат работы функции как ложь
-						result = isSetup;
 					/**
 					 * Определяем семейство события
 					 */
@@ -16673,7 +15824,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если опция не установлена
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
-					result = false;
+					result = isSetup;
 				// Если узел не является файловой системой и не является каналом
 				if((i->second->state.family != event::family_t::FSYS) && 
 				   (i->second->state.family != event::family_t::PIPE)){
@@ -16693,7 +15844,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция не установлена
 					if(result && !isSetup)
 						// Устанавливаем результат работы функции как ложь
-						result = false;
+						result = isSetup;
 				}
 				// Если опция передана как NOIOBLOCK или SMIOBLOCK
 				if((event::options::NOIOBLOCK & options) || (event::options::SMIOBLOCK & options)){
@@ -16923,7 +16074,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если опция не установлена
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
-					result = false;
+					result = isSetup;
 				// Если узел не является файловой системой и не является межпроцессным взаимодействием
 				if((i->second->state.node != event::node_t::IPC) &&
 				   (i->second->state.family != event::family_t::FSYS)){
@@ -16943,7 +16094,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция не установлена
 					if(result && !isSetup)
 						// Устанавливаем результат работы функции как ложь
-						result = false;
+						result = isSetup;
 					// Если опция передана как REUSEPORT
 					if(event::options::REUSEPORT & options){
 						// Устанавливаем режим повторного использования порта
@@ -16960,33 +16111,92 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция не установлена
 					if(result && !isSetup)
 						// Устанавливаем результат работы функции как ложь
-						result = false;
-					// Если опция передана как TCP_NODELAY
-					if(event::options::TCPNODELAY & options){
-						// Устанавливаем режим отключения алгоритма Нейгла
-						if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
-							// Устанавливаем опцию события
-							i->second->state.options |= event::options::TCPNODELAY;
-					// Если опция не передана как TCP_NODELAY
-					} else {
-						// Снимаем режим отключения алгоритма Нейгла
-						if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
-							// Снимаем опцию события
-							i->second->state.options &= ~event::options::TCPNODELAY;
+						result = isSetup;
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							// Если опция передана как TCP_CORK
+							if(event::options::TCPCORK & options){
+								// Активируем алгоритм TCP/CORK
+								if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::TCPCORK;
+							// Если опция не передана как TCP_CORK
+							} else {
+								// Деактивируем алгоритм TCP/CORK
+								if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
+									// Снимаем опцию события
+									i->second->state.options &= ~event::options::TCPCORK;
+							}
+							// Если опция не установлена
+							if(!isSetup)
+								// Устанавливаем результат работы функции как ложь
+								result = isSetup;
+							// Если опция передана как TCP_NODELAY
+							if(event::options::TCPNODELAY & options){
+								// Устанавливаем режим отключения алгоритма Нейгла
+								if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
+									// Устанавливаем опцию события
+									i->second->state.options |= event::options::TCPNODELAY;
+							// Если опция не передана как TCP_NODELAY
+							} else {
+								// Снимаем режим отключения алгоритма Нейгла
+								if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
+									// Снимаем опцию события
+									i->second->state.options &= ~event::options::TCPNODELAY;
+							}
+							// Если опция не установлена
+							if(result && !isSetup)
+								// Устанавливаем результат работы функции как ложь
+								result = isSetup;
+						} break;
+						// Для типа сокета SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							/**
+							 * Для операционной системы FreeBSD
+							 */
+							#if __FreeBSD__
+								// Если опция передана как TCP_CORK
+								if(event::options::TCPCORK & options){
+									// Активируем алгоритм TCP/CORK
+									if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
+										// Устанавливаем опцию события
+										i->second->state.options |= event::options::TCPCORK;
+								// Если опция не передана как TCP_CORK
+								} else {
+									// Деактивируем алгоритм TCP/CORK
+									if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
+										// Снимаем опцию события
+										i->second->state.options &= ~event::options::TCPCORK;
+								}
+								// Если опция не установлена
+								if(!isSetup)
+									// Устанавливаем результат работы функции как ложь
+									result = isSetup;
+								// Если опция передана как TCP_NODELAY
+								if(event::options::TCPNODELAY & options){
+									// Устанавливаем режим отключения алгоритма Нейгла
+									if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
+										// Устанавливаем опцию события
+										i->second->state.options |= event::options::TCPNODELAY;
+								// Если опция не передана как TCP_NODELAY
+								} else {
+									// Снимаем режим отключения алгоритма Нейгла
+									if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
+										// Снимаем опцию события
+										i->second->state.options &= ~event::options::TCPNODELAY;
+								}
+								// Если опция не установлена
+								if(result && !isSetup)
+									// Устанавливаем результат работы функции как ложь
+									result = isSetup;
+							#endif
+						} break;
 					}
-					// Если опция не установлена
-					if(result && !isSetup)
-						// Устанавливаем результат работы функции как ложь
-						result = false;
 				}
-				// Если опция передана как ONSHOT
-				if(event::options::ONSHOT & options)
-					// Устанавливаем флаг одиночного использования сокета в состояние включено
-					i->second->state.options |= event::options::ONSHOT;
-				// Если опция не передана как ONSHOT
-				else
-					// Если необходимо деактивировать параметры одиночного использования для сокета события
-					i->second->state.options &= ~event::options::ONSHOT;
 				// Если опция передана как KEEPALIVE
 				if(event::options::KEEPALIVE & options)
 					// Устанавливаем флаг keep-alive в состояние включено
@@ -17011,7 +16221,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если опция не установлена
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
-					result = false;
+					result = isSetup;
 			}
 		}
 	/**
@@ -17101,22 +16311,6 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 				 * Определяем опцию события которую необходимо установить или снять
 				 */
 				switch(option){
-					// Если опция передана как TCP_CORK
-					case event::options::TCPCORK: {
-						// Если узел не является файловой системой и не является межпроцессным взаимодействием
-						if((i->second->state.node != event::node_t::IPC) &&
-						   (i->second->state.family != event::family_t::FSYS)){
-							// Устанавливаем или снимаем режим алгоритма TCP/CORK
-							if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-								// Если необходимо активировать режим алгоритма TCP/CORK
-								if(mode)
-									// Устанавливаем опцию события
-									i->second->state.options |= event::options::TCPCORK;
-								// Если необходимо деактивировать режим алгоритма TCP/CORK
-								else i->second->state.options ^= event::options::TCPCORK;
-							}
-						}
-					} break;
 					// Если опция передана как IPV6_V6ONLY
 					case event::options::IPV6ONLY: {
 						// Если узел не является файловой системой и не является каналом
@@ -17427,33 +16621,88 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							}
 						}
 					} break;
+					// Если опция передана как TCP_CORK
+					case event::options::TCPCORK: {
+						// Если узел не является файловой системой и не является межпроцессным взаимодействием
+						if((i->second->state.node != event::node_t::IPC) &&
+						   (i->second->state.family != event::family_t::FSYS)){
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (i->second->state.type)){
+								// Для типа сокета STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM): {
+									// Устанавливаем или снимаем режим алгоритма TCP/CORK
+									if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+										// Если необходимо активировать режим алгоритма TCP/CORK
+										if(mode)
+											// Устанавливаем опцию события
+											i->second->state.options |= event::options::TCPCORK;
+										// Если необходимо деактивировать режим алгоритма TCP/CORK
+										else i->second->state.options ^= event::options::TCPCORK;
+									}
+								} break;
+								// Для типа сокета SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									/**
+									 * Для операционной системы FreeBSD
+									 */
+									#if __FreeBSD__
+										// Устанавливаем или снимаем режим алгоритма TCP/CORK
+										if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+											// Если необходимо активировать режим алгоритма TCP/CORK
+											if(mode)
+												// Устанавливаем опцию события
+												i->second->state.options |= event::options::TCPCORK;
+											// Если необходимо деактивировать режим алгоритма TCP/CORK
+											else i->second->state.options ^= event::options::TCPCORK;
+										}
+									#endif
+								} break;
+							}
+						}
+					} break;
 					// Если опция передана как TCP_NODELAY
 					case event::options::TCPNODELAY: {
 						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
-							// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-							if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-								// Если необходимо активировать алгоритм Нейгла для TCP сокета
-								if(mode)
-									// Устанавливаем опцию события
-									i->second->state.options |= event::options::TCPNODELAY;
-								// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-								else i->second->state.options ^= event::options::TCPNODELAY;
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (i->second->state.type)){
+								// Для типа сокета STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM): {
+									// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+									if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+										// Если необходимо активировать алгоритм Нейгла для TCP сокета
+										if(mode)
+											// Устанавливаем опцию события
+											i->second->state.options |= event::options::TCPNODELAY;
+										// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+										else i->second->state.options ^= event::options::TCPNODELAY;
+									}
+								} break;
+								// Для типа сокета SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									/**
+									 * Для операционной системы FreeBSD
+									 */
+									#if __FreeBSD__
+										// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+										if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+											// Если необходимо активировать алгоритм Нейгла для TCP сокета
+											if(mode)
+												// Устанавливаем опцию события
+												i->second->state.options |= event::options::TCPNODELAY;
+											// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+											else i->second->state.options ^= event::options::TCPNODELAY;
+										}
+									#endif
+								} break;
 							}
 						}
 					} break;
-					// Если опция передана как ONSHOT
-					case event::options::ONSHOT: {
-						// Если необходимо активировать режим одиночного использования сокета
-						if(mode)
-							// Устанавливаем флаг одиночного использования сокета включено
-							i->second->state.options |= event::options::ONSHOT;
-						// Если необходимо деактивировать параметры одиночного использования для сокета события
-						else i->second->state.options &= ~event::options::ONSHOT;
-						// Выводим положительный результат
-						return true;
-					}
 					// Если опция передана как KEEPALIVE
 					case event::options::KEEPALIVE: {
 						// Если необходимо активировать режим постоянного поддержания соединения
@@ -18259,257 +17508,112 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					client_t * node = awh_cast <client_t *> (i->second.get());
 					// Если событие подключение к серверу разрешено
 					if(node->transfer.actions & action::CONNECT){
-						// Если установлен флаг однократного использования сокета
-						if(node->state.options & event::options::ONSHOT){
-							// Устанавливаем текст ошибки
-							const string error = "For onshot use of an event, the connect method is not available";
-							// Если установлена функция обратного вызова
-							if(node->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								node->callbacks.error(node->id, event::error_t::CONNECTION_FAIL, error);
-							// Если функция обратного вызова для вывода события установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-								#endif
-							}
-						// Если флаг однократного использования сокета не установлен
-						} else {
-							// Устанавливаем статус события в состояние подключения
-							node->state.status.store(event::status_t::PENDING, std::memory_order_release);
-							// Если нам необходимо выполнить асинхронное подключение
-							if(async){
-								// Если сокет является блокирующим
-								if(!(node->state.options & event::options::NOIOBLOCK) && !(node->state.options & event::options::SMIOBLOCK)){
-									// Устанавливаем неблокирующий режим ввода/вывода
-									if(this->_eth.noblocking(node->transfer.fd, net::socket_mode_t::ENABLED)){
-										// Устанавливаем опция неблокирующего режима события
-										node->state.options |= event::options::NOIOBLOCK;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count += 2;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 2);
-									}
-								}
+						// Устанавливаем статус события в состояние подключения
+						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Если нам необходимо выполнить асинхронное подключение
+						if(async){
 							// Если сокет является блокирующим
-							} else {
-								// Если сокет является неблокирующим
-								if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-									// Устанавливаем блокирующий режим ввода/вывода
-									if(this->_eth.noblocking(node->transfer.fd, net::socket_mode_t::DISABLED)){
-										// Если установлена опция SMIOBLOCK
-										if(node->state.options & event::options::SMIOBLOCK)
-											// Снимаем опция неблокирующего режима события
-											node->state.options ^= event::options::SMIOBLOCK;
-										// Если установлена опция NOIOBLOCK
-										else if(node->state.options & event::options::NOIOBLOCK)
-											// Снимаем опция неблокирующего режима события
-											node->state.options ^= event::options::NOIOBLOCK;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count += 2;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 2);
-									}
+							if(!(node->state.options & event::options::NOIOBLOCK) && !(node->state.options & event::options::SMIOBLOCK)){
+								// Устанавливаем неблокирующий режим ввода/вывода
+								if(this->_eth.noblocking(node->transfer.fd, net::socket_mode_t::ENABLED)){
+									// Устанавливаем опция неблокирующего режима события
+									node->state.options |= event::options::NOIOBLOCK;
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Удаляем событие на чтение
+									EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Устанавливаем событие на чтение но отключаем его
+									EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+									// Создаём объект промежуточного звена
+									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+									// Устанавливаем количество событий
+									ret.first->second.count += 2;
+									// Если событие успешно добавлено
+									if(ret.second)
+										// Устанавливаем индекс текущего элемента
+										ret.first->second.index = (::__awh_change__.size() - 2);
 								}
 							}
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (node->state.type)){
-								// Для типа сокета STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM):
-								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (node->state.family)){
-										// Для семейства UNIX-доменных сокетов
-										case static_cast <uint8_t> (event::family_t::UDS):
-											// Получаем размер объекта сокета
-											node->endpoint.size = (
-												offsetof(struct sockaddr_un, sun_path) +
-												::strlen(reinterpret_cast <struct sockaddr_un *> (&node->endpoint.server)->sun_path)
-											);
-										break;
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Запоминаем размер структуры
-											node->endpoint.size = sizeof(struct sockaddr_in);
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Запоминаем размер структуры
-											node->endpoint.size = sizeof(struct sockaddr_in6);
-										break;
-									}
-									// Если протокол интернета установлен как SCTP
-									if(node->state.protocol == event::protocol_t::SCTP)
-										// Выполняем активацию событий SCTP
-										this->_eth.sctp(node->transfer.fd);
-									// Если размер структуры сервера установлен
-									if(node->endpoint.size > 0){
-										// Если подключение к удаленному серверу не выполнено
-										if((::connect(node->transfer.fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
-											// Если ошибка не является ошибкой в процессе подключения
-											if(errno != EINPROGRESS){
-												// Если установлена функция обратного вызова
-												if(node->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Снимаем флаг ожидания подключения
-												node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-												// Если функция обратного вызова для вывода подключения установлена
-												if(node->callbacks.connect != nullptr)
-													// Вывзываем функцию обратного вызова для подключения
-													node->callbacks.connect(node->id, false);
-												// Завершаем выполнение функции с ошибкой
-												return result;
-											}
-										}
-									// Если размер структуры сервера не установлен
-									} else {
-										// Устанавливаем текст ошибки
-										const string error = "Server address structure size is not set";
-										// Если установлена функция обратного вызова
-										if(node->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
-										}
-										// Снимаем флаг ожидания подключения
-										node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-										// Завершаем выполнение функции с ошибкой
-										return result;
-									}
-								} break;
-								// Для типа сокета DATAGRAM
-								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-									// Если протокол интернета установлен как DTLS
-									if(node->state.protocol == event::protocol_t::DTLS){
-										/**
-										 * Определяем семейство события
-										 */
-										switch(static_cast <uint8_t> (node->state.family)){
-											// Для семейства IPv4
-											case static_cast <uint8_t> (event::family_t::IPV4):
-												// Запоминаем размер структуры
-												node->endpoint.size = sizeof(struct sockaddr_in);
-											break;
-											// Для семейства IPv6
-											case static_cast <uint8_t> (event::family_t::IPV6):
-												// Запоминаем размер структуры
-												node->endpoint.size = sizeof(struct sockaddr_in6);
-											break;
-										}
-										// Если размер структуры сервера установлен
-										if(node->endpoint.size > 0){
-											// Если подключение к удаленному серверу не выполнено
-											if((::connect(node->transfer.fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
-												// Если ошибка не является ошибкой в процессе подключения
-												if(errno != EINPROGRESS){
-													// Если установлена функция обратного вызова
-													if(node->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Снимаем флаг ожидания подключения
-													node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-													// Если функция обратного вызова для вывода подключения установлена
-													if(node->callbacks.connect != nullptr)
-														// Вывзываем функцию обратного вызова для подключения
-														node->callbacks.connect(node->id, false);
-													// Завершаем выполнение функции с ошибкой
-													return result;
-												}
-											}
-										// Если размер структуры сервера не установлен
-										} else {
-											// Устанавливаем текст ошибки
-											const string error = "Server address structure size is not set";
+						// Если сокет является блокирующим
+						} else {
+							// Если сокет является неблокирующим
+							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+								// Устанавливаем блокирующий режим ввода/вывода
+								if(this->_eth.noblocking(node->transfer.fd, net::socket_mode_t::DISABLED)){
+									// Если установлена опция SMIOBLOCK
+									if(node->state.options & event::options::SMIOBLOCK)
+										// Снимаем опция неблокирующего режима события
+										node->state.options ^= event::options::SMIOBLOCK;
+									// Если установлена опция NOIOBLOCK
+									else if(node->state.options & event::options::NOIOBLOCK)
+										// Снимаем опция неблокирующего режима события
+										node->state.options ^= event::options::NOIOBLOCK;
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Удаляем событие на чтение
+									EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+									// Добавляем новое событие в список изменений
+									::__awh_change__.push_back((struct kevent){});
+									// Устанавливаем событие на чтение но отключаем его
+									EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+									// Создаём объект промежуточного звена
+									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+									// Устанавливаем количество событий
+									ret.first->second.count += 2;
+									// Если событие успешно добавлено
+									if(ret.second)
+										// Устанавливаем индекс текущего элемента
+										ret.first->second.index = (::__awh_change__.size() - 2);
+								}
+							}
+						}
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (node->state.type)){
+							// Для типа сокета STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (node->state.family)){
+									// Для семейства UNIX-доменных сокетов
+									case static_cast <uint8_t> (event::family_t::UDS):
+										// Получаем размер объекта сокета
+										node->endpoint.size = (
+											offsetof(struct sockaddr_un, sun_path) +
+											::strlen(reinterpret_cast <struct sockaddr_un *> (&node->endpoint.server)->sun_path)
+										);
+									break;
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Запоминаем размер структуры
+										node->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Запоминаем размер структуры
+										node->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Если протокол интернета установлен как SCTP
+								if(node->state.protocol == event::protocol_t::SCTP)
+									// Выполняем активацию событий SCTP
+									this->_eth.sctp(node->transfer.fd);
+								// Если размер структуры сервера установлен
+								if(node->endpoint.size > 0){
+									// Если подключение к удаленному серверу не выполнено
+									if((::connect(node->transfer.fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
+										// Если ошибка не является ошибкой в процессе подключения
+										if(errno != EINPROGRESS){
 											// Если установлена функция обратного вызова
 											if(node->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												node->callbacks.error(node->id, event::error_t::INVALID_ADDRESS, error);
+												node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -18517,55 +17621,170 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
 											node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											// Если функция обратного вызова для вывода подключения установлена
+											if(node->callbacks.connect != nullptr)
+												// Вывзываем функцию обратного вызова для подключения
+												node->callbacks.connect(node->id, false);
 											// Завершаем выполнение функции с ошибкой
 											return result;
 										}
 									}
-								} break;
-							}
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на запись для клиентского сокета
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
-							// Если необходимо установить таймаут на подключение к серверу
-							auto j = node->timeouts.find(event::action_t::CONNECT);
-							// Если таймаут на подключение найден
-							if((j != node->timeouts.end()) && (j->second > 0)){
-								// Если сокет является неблокирующим
-								if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-									// Активируем таймаут события
-									node->timeout = j->first;
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-									// Увеличиваем количество событий
-									ret.first->second.count++;
-								// Если сокет является блокирующим
-								} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
-							}
-							// Устанавливаем результат выполнения функции
-							result = true;
+								// Если размер структуры сервера не установлен
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "Server address structure size is not set";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+									// Снимаем флаг ожидания подключения
+									node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									// Завершаем выполнение функции с ошибкой
+									return result;
+								}
+							} break;
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (node->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Запоминаем размер структуры
+										node->endpoint.size = sizeof(struct sockaddr_in);
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Запоминаем размер структуры
+										node->endpoint.size = sizeof(struct sockaddr_in6);
+									break;
+								}
+								// Если размер структуры сервера установлен
+								if(node->endpoint.size > 0){
+									// Если подключение к удаленному серверу не выполнено
+									if((::connect(node->transfer.fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), node->endpoint.size) != 0)){
+										// Если ошибка не является ошибкой в процессе подключения
+										if(errno != EINPROGRESS){
+											// Если установлена функция обратного вызова
+											if(node->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											// Если функция обратного вызова для вывода подключения установлена
+											if(node->callbacks.connect != nullptr)
+												// Вывзываем функцию обратного вызова для подключения
+												node->callbacks.connect(node->id, false);
+											// Завершаем выполнение функции с ошибкой
+											return result;
+										}
+									}
+								// Если размер структуры сервера не установлен
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "Server address structure size is not set";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+									// Снимаем флаг ожидания подключения
+									node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									// Завершаем выполнение функции с ошибкой
+									return result;
+								}
+							} break;
 						}
+						// Создаём объект промежуточного звена
+						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count++;
+						// Если событие успешно добавлено
+						if(ret.second)
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::__awh_change__.size() - 1);
+						// Добавляем новое событие в список изменений
+						::__awh_change__.push_back((struct kevent){});
+						// Активируем событие на запись для клиентского сокета
+						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
+						// Если необходимо установить таймаут на подключение к серверу
+						auto j = node->timeouts.find(event::action_t::CONNECT);
+						// Если таймаут на подключение найден
+						if((j != node->timeouts.end()) && (j->second > 0)){
+							// Если сокет является неблокирующим
+							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+								// Активируем таймаут события
+								node->timeout = j->first;
+								// Добавляем новое событие в список изменений
+								::__awh_change__.push_back((struct kevent){});
+								// Устанавливаем таймаут на получение данных
+								EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+							// Если сокет является блокирующим
+							} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
+						}
+						// Устанавливаем результат выполнения функции
+						result = true;
 					}
 				} break;
 				// Для других типов узлов
@@ -20110,18 +19329,99 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									if(client->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
 										if(client->transfer.output.empty()){
-											// Если установлен флаг однократного использования сокета
-											if(client->state.options & event::options::ONSHOT){
-												// Получаем размер буфера данных для записи
-												const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-												// Если мы пытаемся записать в буфер данных больше чем он может принять
-												if(size > bufferSize){
+											// Выполняем отправку данных в TCP/IP сокет
+											const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
+											// Если данные отправлены успешно
+											if((result = (bytes > 0))){
+												// Если данные отправлены не полностью
+												if(static_cast <size_t> (bytes) != size){
+													// Сохраняем оставшиеся данные для последующей отправки
+													client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+													// Увеличиваем смещение передачи данных
+													client->transfer.offset = 0;
+													// Добавляем новое событие в список изменений
+													::__awh_change__.push_back((struct kevent){});
+													// Активируем событие на запись для клиентского сокета
+													EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+													// Создаём объект промежуточного звена
+													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::__awh_change__.size() - 1);
+													// Если таймаут не установлен
+													if(client->timeout == event::action_t::NONE){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::__awh_change__.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														}
+													}
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Если мы отправили не все данные
+											} else if(bytes == -1) {
+												// Если нам нужно повторить попытку позже
+												if((result = (errno == EAGAIN))){
+													// Сохраняем оставшиеся данные для последующей отправки
+													client->transfer.output.push(data, size);
+													// Увеличиваем смещение передачи данных
+													client->transfer.offset = 0;
+													// Добавляем новое событие в список изменений
+													::__awh_change__.push_back((struct kevent){});
+													// Активируем событие на запись для клиентского сокета
+													EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+													// Создаём объект промежуточного звена
+													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::__awh_change__.size() - 1);
+													// Если таймаут не установлен
+													if(client->timeout == event::action_t::NONE){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::__awh_change__.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														}
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вывзываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
+													// Выходим из функции
+													return result;
+												// Если произошла ошибка при отправке данных
+												} else {
 													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -20141,215 +19441,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выходим из функции
 													return result;
 												}
-												// Выполняем отправку данных в UDP сокет
-												const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
-												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data, size);
-														// Увеличиваем смещение передачи данных
-														client->transfer.offset = 0;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-														// Если таймаут не установлен
-														if(client->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-															}
-														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
-															client->callbacks.write(client->id, 0);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return result;
-													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(io::close(client, this->_log))
-														// Выполняем удаление узла
-														io::destroy(client, this->_log);
-													// Выходим из функции
-													return result;
-												}
-											// Если флаг однократного использования сокета не установлен
+											// Если произошёл дисконнект
 											} else {
-												// Выполняем отправку данных в TCP/IP сокет
-												const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
-												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
-													// Если данные отправлены не полностью
-													if(static_cast <size_t> (bytes) != size){
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-														// Увеличиваем смещение передачи данных
-														client->transfer.offset = 0;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-														// Если таймаут не установлен
-														if(client->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-															}
-														}
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data, size);
-														// Увеличиваем смещение передачи данных
-														client->transfer.offset = 0;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-														// Если таймаут не установлен
-														if(client->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-															}
-														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
-															client->callbacks.write(client->id, 0);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return result;
-													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(io::close(client, this->_log))
-														// Выполняем удаление узла
-														io::destroy(client, this->_log);
-													// Выходим из функции
-													return result;
-												}
+												// Выполняем обработку закрытия подключения
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
+												// Выходим из функции
+												return result;
 											}
 										// Если очередь передачи данных не пуста
 										} else {
@@ -20372,43 +19471,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Определяем переменную для хранения количества отправленных байт
-											int32_t bytes = -1;
-											// Если установлен флаг однократного использования сокета
-											if(client->state.options & event::options::ONSHOT){
-												// Получаем размер буфера данных для записи
-												const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-												// Если мы пытаемся записать в буфер данных больше чем он может принять
-												if(size > bufferSize){
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-													// Выходим из функции
-													return result;
-												}
-												// Выполняем отправку данных в UDP сокет
-												bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-											} else bytes = ::send(client->transfer.fd, data, size, 0);
+											const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
 											if(bytes == 0){
 												// Выполняем обработку закрытия подключения
@@ -20461,43 +19525,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if((i != client->timeouts.end()) && (i->second > 0))
 											// Устанавливаем таймаут на отправку данных
 											this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-										// Определяем переменную для хранения количества отправленных байт
-										int32_t bytes = -1;
-										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT){
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
-											// Выполняем отправку данных в UDP сокет
-											bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-										} else bytes = ::send(client->transfer.fd, data, size, 0);
+										const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
@@ -20540,9 +19569,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									}
 								} break;
 								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-								// Для типа сокета DATAGRAM
-								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Получаем размер буфера данных для записи
 									const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
 									// Если мы пытаемся записать в буфер данных больше чем он может принять
@@ -20576,14 +19603,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									if(client->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
 										if(client->transfer.output.empty()){
-											// Определяем переменную для хранения количества отправленных байт
-											int32_t bytes = -1;
-											// Если установлен флаг однократного использования сокета
-											if(client->state.options & event::options::ONSHOT)
-												// Выполняем отправку данных в UDP сокет
-												bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(client->transfer.fd, data, size, 0);
+											const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -20690,13 +19711,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Определяем переменную для хранения количества отправленных байт
-											int32_t bytes = -1;
-											// Если установлен флаг однократного использования сокета
-											if(client->state.options & event::options::ONSHOT)
-												// Выполняем отправку данных в UDP сокет
-												bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
-											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(client->transfer.fd, data, size, 0);
+											const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
 											if(bytes == 0){
 												// Выполняем обработку закрытия подключения
@@ -20749,14 +19764,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if((i != client->timeouts.end()) && (i->second > 0))
 											// Устанавливаем таймаут на отправку данных
 											this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-										// Определяем переменную для хранения количества отправленных байт
-										int32_t bytes = -1;
-										// Если установлен флаг однократного использования сокета
-										if(client->state.options & event::options::ONSHOT)
-											// Выполняем отправку данных в UDP сокет
-											bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(client->transfer.fd, data, size, 0);
+										const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
@@ -20798,6 +19807,844 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										result = (static_cast <size_t> (bytes) == size);
 									}
 								} break;
+								// Для типа сокета RAW
+								case static_cast <uint8_t> (event::type_t::RAW): {
+									// Если клиент только инициализирован и не активен
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+										// Устанавливаем статус события в состояние запущенного
+										client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+										// Создаём объект промежуточного звена
+										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+										// Устанавливаем количество событий
+										ret.first->second.count++;
+										// Если событие успешно добавлено
+										if(ret.second)
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::__awh_change__.size() - 1);
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Активируем событие на чтение для серверного сокета
+										EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+										// Если необходимо установить таймаут на чтение данных
+										auto i = client->timeouts.find(event::action_t::READ);
+										// Если таймаут на подключение найден
+										if((i != client->timeouts.end()) && (i->second > 0)){
+											// Если сокет является неблокирующим
+											if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+												// Активируем таймаут события
+												client->timeout = i->first;
+												// Добавляем новое событие в список изменений
+												::__awh_change__.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+												// Увеличиваем количество событий
+												ret.first->second.count++;
+											// Устанавливаем таймаут на получение данных
+											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+										}
+									}
+									// Если клиент находится в запущенном состоянии
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING){
+										// Получаем размер буфера данных для записи
+										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
+										// Если мы пытаемся записать в буфер данных больше чем он может принять
+										if(size > bufferSize){
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выходим из функции
+											return result;
+										}
+										// Если сокет является неблокирующим
+										if(client->state.options & event::options::NOIOBLOCK){
+											// Если очередь передачи данных пустая
+											if(client->transfer.output.empty()){
+												// Выполняем отправку данных в UDP сокет
+												const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
+												// Если данные отправлены успешно
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вывзываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если мы отправили не все данные
+												} else if(bytes == -1) {
+													// Если нам нужно повторить попытку позже
+													if((result = (errno == EAGAIN))){
+														// Сохраняем оставшиеся данные для последующей отправки
+														client->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														client->transfer.offset = 0;
+														// Добавляем новое событие в список изменений
+														::__awh_change__.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::__awh_change__.size() - 1);
+														// Если таймаут не установлен
+														if(client->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = client->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != client->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																client->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::__awh_change__.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+															}
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вывзываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Выходим из функции
+														return result;
+													// Если произошла ошибка при отправке данных
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return result;
+													}
+												// Если произошёл дисконнект
+												} else {
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												}
+											// Если очередь передачи данных не пуста
+											} else {
+												// Копим данные для дальнейшей отправки
+												client->transfer.output.push(data, size);
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
+												// Выходим из функции
+												return true;
+											}
+										// Если сокет является полублокирующим
+										} else if(client->state.options & event::options::SMIOBLOCK) {
+											// Переводим сокет в блокирующий режим
+											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												// Если необходимо установить таймаут на отправку данных
+												auto i = client->timeouts.find(event::action_t::WRITE);
+												// Если таймаут на подключение найден
+												if((i != client->timeouts.end()) && (i->second > 0))
+													// Устанавливаем таймаут на отправку данных
+													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												// Выполняем отправку данных в UDP сокет
+												const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
+												// Если данные отправлены успешно
+												if(bytes == 0){
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												// Если произошла какая-то ошибка при отправке данных
+												} else if(bytes == -1) {
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выходим из функции
+													return result;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Если необходимо установить таймаут на отправку данных
+											auto i = client->timeouts.find(event::action_t::WRITE);
+											// Если таймаут на подключение найден
+											if((i != client->timeouts.end()) && (i->second > 0))
+												// Устанавливаем таймаут на отправку данных
+												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+											// Выполняем отправку данных в UDP сокет
+											const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
+											// Если данные отправлены успешно
+											if(bytes == 0){
+												// Выполняем обработку закрытия подключения
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
+												// Выходим из функции
+												return result;
+											// Если произошла какая-то ошибка при отправке данных
+											} else if(bytes == -1) {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(client->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Устанавливаем результат выполнения функции
+											result = (static_cast <size_t> (bytes) == size);
+										}
+									// Если клиент ещё не подготовлен для отправки данных
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Client is not yet prepared to send data";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Для типа сокета DATAGRAM
+								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+									// Если клиент только инициализирован и не активен
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+										// Устанавливаем статус события в состояние запущенного
+										client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+										// Создаём объект промежуточного звена
+										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+										// Устанавливаем количество событий
+										ret.first->second.count++;
+										// Если событие успешно добавлено
+										if(ret.second)
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::__awh_change__.size() - 1);
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Активируем событие на чтение для серверного сокета
+										EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+										// Если необходимо установить таймаут на чтение данных
+										auto i = client->timeouts.find(event::action_t::READ);
+										// Если таймаут на подключение найден
+										if((i != client->timeouts.end()) && (i->second > 0)){
+											// Если сокет является неблокирующим
+											if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+												// Активируем таймаут события
+												client->timeout = i->first;
+												// Добавляем новое событие в список изменений
+												::__awh_change__.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+												// Увеличиваем количество событий
+												ret.first->second.count++;
+											// Устанавливаем таймаут на получение данных
+											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+										}
+									}
+									// Если подключение установлено
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+										// Получаем размер буфера данных для записи
+										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
+										// Если мы пытаемся записать в буфер данных больше чем он может принять
+										if(size > bufferSize){
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выходим из функции
+											return result;
+										}
+										// Если сокет является неблокирующим
+										if(client->state.options & event::options::NOIOBLOCK){
+											// Если очередь передачи данных пустая
+											if(client->transfer.output.empty()){
+												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
+												const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
+												// Если данные отправлены успешно
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вывзываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если мы отправили не все данные
+												} else if(bytes == -1) {
+													// Если нам нужно повторить попытку позже
+													if((result = (errno == EAGAIN))){
+														// Сохраняем оставшиеся данные для последующей отправки
+														client->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														client->transfer.offset = 0;
+														// Добавляем новое событие в список изменений
+														::__awh_change__.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::__awh_change__.size() - 1);
+														// Если таймаут не установлен
+														if(client->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = client->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != client->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																client->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::__awh_change__.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+															}
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вывзываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Выходим из функции
+														return result;
+													// Если произошла ошибка при отправке данных
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return result;
+													}
+												// Если произошёл дисконнект
+												} else {
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												}
+											// Если очередь передачи данных не пуста
+											} else {
+												// Копим данные для дальнейшей отправки
+												client->transfer.output.push(data, size);
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
+												// Выходим из функции
+												return true;
+											}
+										// Если сокет является полублокирующим
+										} else if(client->state.options & event::options::SMIOBLOCK) {
+											// Переводим сокет в блокирующий режим
+											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												// Если необходимо установить таймаут на отправку данных
+												auto i = client->timeouts.find(event::action_t::WRITE);
+												// Если таймаут на подключение найден
+												if((i != client->timeouts.end()) && (i->second > 0))
+													// Устанавливаем таймаут на отправку данных
+													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												// Определяем переменную для хранения количества отправленных байт
+												const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
+												// Если данные отправлены успешно
+												if(bytes == 0){
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												// Если произошла какая-то ошибка при отправке данных
+												} else if(bytes == -1) {
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выходим из функции
+													return result;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Если необходимо установить таймаут на отправку данных
+											auto i = client->timeouts.find(event::action_t::WRITE);
+											// Если таймаут на подключение найден
+											if((i != client->timeouts.end()) && (i->second > 0))
+												// Устанавливаем таймаут на отправку данных
+												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
+											const int32_t bytes = ::send(client->transfer.fd, data, size, 0);
+											// Если данные отправлены успешно
+											if(bytes == 0){
+												// Выполняем обработку закрытия подключения
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
+												// Выходим из функции
+												return result;
+											// Если произошла какая-то ошибка при отправке данных
+											} else if(bytes == -1) {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(client->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Устанавливаем результат выполнения функции
+											result = (static_cast <size_t> (bytes) == size);
+										}
+									// Если клиент находится в запущенном состоянии
+									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) {
+										// Получаем размер буфера данных для записи
+										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
+										// Если мы пытаемся записать в буфер данных больше чем он может принять
+										if(size > bufferSize){
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выходим из функции
+											return result;
+										}
+										// Если сокет является неблокирующим
+										if(client->state.options & event::options::NOIOBLOCK){
+											// Если очередь передачи данных пустая
+											if(client->transfer.output.empty()){
+												// Выполняем отправку данных в UDP сокет
+												const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
+												// Если данные отправлены успешно
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вывзываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если мы отправили не все данные
+												} else if(bytes == -1) {
+													// Если нам нужно повторить попытку позже
+													if((result = (errno == EAGAIN))){
+														// Сохраняем оставшиеся данные для последующей отправки
+														client->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														client->transfer.offset = 0;
+														// Добавляем новое событие в список изменений
+														::__awh_change__.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::__awh_change__.size() - 1);
+														// Если таймаут не установлен
+														if(client->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = client->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != client->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																client->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::__awh_change__.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+															}
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вывзываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Выходим из функции
+														return result;
+													// Если произошла ошибка при отправке данных
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return result;
+													}
+												// Если произошёл дисконнект
+												} else {
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												}
+											// Если очередь передачи данных не пуста
+											} else {
+												// Копим данные для дальнейшей отправки
+												client->transfer.output.push(data, size);
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
+												// Выходим из функции
+												return true;
+											}
+										// Если сокет является полублокирующим
+										} else if(client->state.options & event::options::SMIOBLOCK) {
+											// Переводим сокет в блокирующий режим
+											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												// Если необходимо установить таймаут на отправку данных
+												auto i = client->timeouts.find(event::action_t::WRITE);
+												// Если таймаут на подключение найден
+												if((i != client->timeouts.end()) && (i->second > 0))
+													// Устанавливаем таймаут на отправку данных
+													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												// Выполняем отправку данных в UDP сокет
+												const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
+												// Если данные отправлены успешно
+												if(bytes == 0){
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												// Если произошла какая-то ошибка при отправке данных
+												} else if(bytes == -1) {
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выходим из функции
+													return result;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Если необходимо установить таймаут на отправку данных
+											auto i = client->timeouts.find(event::action_t::WRITE);
+											// Если таймаут на подключение найден
+											if((i != client->timeouts.end()) && (i->second > 0))
+												// Устанавливаем таймаут на отправку данных
+												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+											// Выполняем отправку данных в UDP сокет
+											const int32_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
+											// Если данные отправлены успешно
+											if(bytes == 0){
+												// Выполняем обработку закрытия подключения
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
+												// Выходим из функции
+												return result;
+											// Если произошла какая-то ошибка при отправке данных
+											} else if(bytes == -1) {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(client->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Устанавливаем результат выполнения функции
+											result = (static_cast <size_t> (bytes) == size);
+										}
+									// Если клиент ещё не подготовлен для отправки данных
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Client is not yet prepared to send data";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
 							}
 						}
 					} break;
@@ -20811,6 +20658,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							 * Определяем тип сокета
 							 */
 							switch(static_cast <uint8_t> (server->state.type)){
+								// Для типа сокета RAW
+								case static_cast <uint8_t> (event::type_t::RAW):
 								// Для типа сокета DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 									// Получаем размер буфера данных для записи
@@ -20846,14 +20695,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									if(server->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
 										if(server->transfer.output.empty()){
-											// Определяем переменную для хранения количества отправленных байт
-											int32_t bytes = -1;
-											// Если установлен флаг однократного использования сокета
-											if(server->state.options & event::options::ONSHOT)
-												// Выполняем отправку данных в UDP сокет
-												bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
-											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(server->transfer.fd, data, size, 0);
+											// Выполняем отправку данных в UDP сокет
+											const int32_t bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -20943,14 +20786,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != server->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(server->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Определяем переменную для хранения количества отправленных байт
-											int32_t bytes = -1;
-											// Если установлен флаг однократного использования сокета
-											if(server->state.options & event::options::ONSHOT)
-												// Выполняем отправку данных в UDP сокет
-												bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
-											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(server->transfer.fd, data, size, 0);
+											// Выполняем отправку данных в UDP сокет
+											const int32_t bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes == 0){
 												// Выполняем обработку закрытия подключения
@@ -20997,14 +20834,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										}
 									// Если сокет является блокирующим
 									} else {
-										// Определяем переменную для хранения количества отправленных байт
-										int32_t bytes = -1;
-										// Если установлен флаг однократного использования сокета
-										if(server->state.options & event::options::ONSHOT)
-											// Выполняем отправку данных в UDP сокет
-											bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
-										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(server->transfer.fd, data, size, 0);
+										// Выполняем отправку данных в UDP сокет
+										const int32_t bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
@@ -25587,14 +25418,21 @@ bool awh::IO::reinitialize() noexcept {
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
 								ret.first->second.index = (::__awh_change__.size() - 1);
-								// Если событие является однократным
-								if(server->state.options & event::options::ONSHOT){
-									// Устанавливаем количество событий
-									ret.first->second.count++;
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+								/**
+								 * Определяем тип сокета
+								 */
+								switch(static_cast <uint8_t> (server->state.type)){
+									// Для типа сокета RAW
+									case static_cast <uint8_t> (event::type_t::RAW):
+									// Для типа сокета DATAGRAM
+									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+										// Устанавливаем количество событий
+										ret.first->second.count++;
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Устанавливаем событие на запись но отключаем его
+										EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									} break;
 								}
 							} break;
 							// Для семейства IPv6
@@ -25613,14 +25451,21 @@ bool awh::IO::reinitialize() noexcept {
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
 								ret.first->second.index = (::__awh_change__.size() - 1);
-								// Если событие является однократным
-								if(server->state.options & event::options::ONSHOT){
-									// Устанавливаем количество событий
-									ret.first->second.count++;
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+								/**
+								 * Определяем тип сокета
+								 */
+								switch(static_cast <uint8_t> (server->state.type)){
+									// Для типа сокета RAW
+									case static_cast <uint8_t> (event::type_t::RAW):
+									// Для типа сокета DATAGRAM
+									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+										// Устанавливаем количество событий
+										ret.first->second.count++;
+										// Добавляем новое событие в список изменений
+										::__awh_change__.push_back((struct kevent){});
+										// Устанавливаем событие на запись но отключаем его
+										EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									} break;
 								}
 							} break;
 						}
