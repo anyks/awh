@@ -6872,22 +6872,22 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						switch(static_cast <uint8_t> (node->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
-								// Создаём объект подключения для клиента
-								struct sockaddr_un client;
-								// Создаём объект подключения для сервера
-								struct sockaddr_un server;
-								// Зануляем изначальную структуру данных клиента
-								::memset(&client, 0, sizeof(client));
-								// Зануляем изначальную структуру данных сервера
-								::memset(&server, 0, sizeof(server));
-								// Устанавливаем размер объекта подключения
-								node->endpoint.size = sizeof(struct sockaddr_un);
 								// Получаем объект хоста сервера
 								net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (node->host.get());
 								// Получаем адрес сокета сервера
 								const string & unixsocket = awh_cast <net::addr_fs_t *> (host->path.get())->address;
 								// Если адрес сокета сервера не пустой
 								if(!unixsocket.empty()){
+									// Создаём объект подключения для клиента
+									struct sockaddr_un client;
+									// Создаём объект подключения для сервера
+									struct sockaddr_un server;
+									// Зануляем изначальную структуру данных клиента
+									::memset(&client, 0, sizeof(client));
+									// Зануляем изначальную структуру данных сервера
+									::memset(&server, 0, sizeof(server));
+									// Устанавливаем размер объекта подключения
+									node->endpoint.size = sizeof(struct sockaddr_un);
 									/**
 									 * Определяем тип сокета
 									 */
@@ -6896,16 +6896,50 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::type_t::STREAM):
 										// Для типа сокета SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											// Структура статистики файла
+											struct stat info;
+											// Выполняем извлечение данных статистики
+											if(::stat(unixsocket.c_str(), &info) == 0){
+												// Если файл сокета существует и это действительно сокет
+												if(S_ISSOCK(info.st_mode))
+													// Удаляем файл сокета
+													::unlink(unixsocket.c_str());
+											}
 											// Устанавливаем протокол интернета
 											server.sun_family = AF_UNIX;
-											// Удаляем файл сокета
-											::unlink(unixsocket.c_str());
 											// Очищаем всю структуру для сервера
 											::memset(&server.sun_path, 0, sizeof(server.sun_path));
 											// Копируем адрес сокета сервера
 											::strncpy(server.sun_path, unixsocket.c_str(), unixsocket.length());
 											// Выполняем копирование объект подключения сервера в сторейдж
 											::memcpy(&node->endpoint.server, &server, sizeof(server));
+											// Получаем размер объекта сокета
+											const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(server.sun_path));
+											// Выполняем бинд на сокет
+											if(::bind(node->transfer.fd, reinterpret_cast <struct sockaddr *> (&node->endpoint.server), size) < 0){
+												// Если установлена функция обратного вызова
+												if(node->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->transfer.fd, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													#endif
+												}
+												// Выходим из приложения
+												::exit(EXIT_FAILURE);
+											}
 										} break;
 										// Для типа сокета RAW
 										case static_cast <uint8_t> (event::type_t::RAW):
@@ -16118,40 +16152,50 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					switch(static_cast <uint8_t> (i->second->state.type)){
 						// Для типа сокета STREAM
 						case static_cast <uint8_t> (event::type_t::STREAM): {
-							// Если опция передана как TCP_CORK
-							if(event::options::TCPCORK & options){
-								// Активируем алгоритм TCP/CORK
-								if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
-									// Устанавливаем опцию события
-									i->second->state.options |= event::options::TCPCORK;
-							// Если опция не передана как TCP_CORK
-							} else {
-								// Деактивируем алгоритм TCP/CORK
-								if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
-									// Снимаем опцию события
-									i->second->state.options &= ~event::options::TCPCORK;
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (i->second->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4):
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Если опция передана как TCP_CORK
+									if(event::options::TCPCORK & options){
+										// Активируем алгоритм TCP/CORK
+										if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
+											// Устанавливаем опцию события
+											i->second->state.options |= event::options::TCPCORK;
+									// Если опция не передана как TCP_CORK
+									} else {
+										// Деактивируем алгоритм TCP/CORK
+										if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
+											// Снимаем опцию события
+											i->second->state.options &= ~event::options::TCPCORK;
+									}
+									// Если опция не установлена
+									if(!isSetup)
+										// Устанавливаем результат работы функции как ложь
+										result = isSetup;
+									// Если опция передана как TCP_NODELAY
+									if(event::options::TCPNODELAY & options){
+										// Устанавливаем режим отключения алгоритма Нейгла
+										if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
+											// Устанавливаем опцию события
+											i->second->state.options |= event::options::TCPNODELAY;
+									// Если опция не передана как TCP_NODELAY
+									} else {
+										// Снимаем режим отключения алгоритма Нейгла
+										if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
+											// Снимаем опцию события
+											i->second->state.options &= ~event::options::TCPNODELAY;
+									}
+									// Если опция не установлена
+									if(result && !isSetup)
+										// Устанавливаем результат работы функции как ложь
+										result = isSetup;
+								} break;
 							}
-							// Если опция не установлена
-							if(!isSetup)
-								// Устанавливаем результат работы функции как ложь
-								result = isSetup;
-							// Если опция передана как TCP_NODELAY
-							if(event::options::TCPNODELAY & options){
-								// Устанавливаем режим отключения алгоритма Нейгла
-								if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
-									// Устанавливаем опцию события
-									i->second->state.options |= event::options::TCPNODELAY;
-							// Если опция не передана как TCP_NODELAY
-							} else {
-								// Снимаем режим отключения алгоритма Нейгла
-								if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
-									// Снимаем опцию события
-									i->second->state.options &= ~event::options::TCPNODELAY;
-							}
-							// Если опция не установлена
-							if(result && !isSetup)
-								// Устанавливаем результат работы функции как ложь
-								result = isSetup;
 						} break;
 						// Для типа сокета SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
@@ -16627,37 +16671,47 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
 							/**
-							 * Определяем тип сокета
+							 * Определяем семейство события
 							 */
-							switch(static_cast <uint8_t> (i->second->state.type)){
-								// Для типа сокета STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-									// Устанавливаем или снимаем режим алгоритма TCP/CORK
-									if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-										// Если необходимо активировать режим алгоритма TCP/CORK
-										if(mode)
-											// Устанавливаем опцию события
-											i->second->state.options |= event::options::TCPCORK;
-										// Если необходимо деактивировать режим алгоритма TCP/CORK
-										else i->second->state.options ^= event::options::TCPCORK;
-									}
-								} break;
-								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							switch(static_cast <uint8_t> (i->second->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4):
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
 									/**
-									 * Для операционной системы FreeBSD
+									 * Определяем тип сокета
 									 */
-									#if __FreeBSD__
-										// Устанавливаем или снимаем режим алгоритма TCP/CORK
-										if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-											// Если необходимо активировать режим алгоритма TCP/CORK
-											if(mode)
-												// Устанавливаем опцию события
-												i->second->state.options |= event::options::TCPCORK;
-											// Если необходимо деактивировать режим алгоритма TCP/CORK
-											else i->second->state.options ^= event::options::TCPCORK;
-										}
-									#endif
+									switch(static_cast <uint8_t> (i->second->state.type)){
+										// Для типа сокета STREAM
+										case static_cast <uint8_t> (event::type_t::STREAM): {
+											// Устанавливаем или снимаем режим алгоритма TCP/CORK
+											if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+												// Если необходимо активировать режим алгоритма TCP/CORK
+												if(mode)
+													// Устанавливаем опцию события
+													i->second->state.options |= event::options::TCPCORK;
+												// Если необходимо деактивировать режим алгоритма TCP/CORK
+												else i->second->state.options ^= event::options::TCPCORK;
+											}
+										} break;
+										// Для типа сокета SEQPACKET
+										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											/**
+											 * Для операционной системы FreeBSD
+											 */
+											#if __FreeBSD__
+												// Устанавливаем или снимаем режим алгоритма TCP/CORK
+												if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+													// Если необходимо активировать режим алгоритма TCP/CORK
+													if(mode)
+														// Устанавливаем опцию события
+														i->second->state.options |= event::options::TCPCORK;
+													// Если необходимо деактивировать режим алгоритма TCP/CORK
+													else i->second->state.options ^= event::options::TCPCORK;
+												}
+											#endif
+										} break;
+									}
 								} break;
 							}
 						}
@@ -16668,37 +16722,47 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
 							/**
-							 * Определяем тип сокета
+							 * Определяем семейство события
 							 */
-							switch(static_cast <uint8_t> (i->second->state.type)){
-								// Для типа сокета STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-									// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-									if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-										// Если необходимо активировать алгоритм Нейгла для TCP сокета
-										if(mode)
-											// Устанавливаем опцию события
-											i->second->state.options |= event::options::TCPNODELAY;
-										// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-										else i->second->state.options ^= event::options::TCPNODELAY;
-									}
-								} break;
-								// Для типа сокета SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							switch(static_cast <uint8_t> (i->second->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4):
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
 									/**
-									 * Для операционной системы FreeBSD
+									 * Определяем тип сокета
 									 */
-									#if __FreeBSD__
-										// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-										if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-											// Если необходимо активировать алгоритм Нейгла для TCP сокета
-											if(mode)
-												// Устанавливаем опцию события
-												i->second->state.options |= event::options::TCPNODELAY;
-											// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-											else i->second->state.options ^= event::options::TCPNODELAY;
-										}
-									#endif
+									switch(static_cast <uint8_t> (i->second->state.type)){
+										// Для типа сокета STREAM
+										case static_cast <uint8_t> (event::type_t::STREAM): {
+											// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+											if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+												// Если необходимо активировать алгоритм Нейгла для TCP сокета
+												if(mode)
+													// Устанавливаем опцию события
+													i->second->state.options |= event::options::TCPNODELAY;
+												// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+												else i->second->state.options ^= event::options::TCPNODELAY;
+											}
+										} break;
+										// Для типа сокета SEQPACKET
+										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											/**
+											 * Для операционной системы FreeBSD
+											 */
+											#if __FreeBSD__
+												// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+												if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+													// Если необходимо активировать алгоритм Нейгла для TCP сокета
+													if(mode)
+														// Устанавливаем опцию события
+														i->second->state.options |= event::options::TCPNODELAY;
+													// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+													else i->second->state.options ^= event::options::TCPNODELAY;
+												}
+											#endif
+										} break;
+									}
 								} break;
 							}
 						}
@@ -17636,8 +17700,10 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											if(node->callbacks.connect != nullptr)
 												// Вывзываем функцию обратного вызова для подключения
 												node->callbacks.connect(node->id, false);
-											// Завершаем выполнение функции с ошибкой
-											return result;
+											// Если установлен режим постоянного подключения
+											if(!(node->state.options & event::options::KEEPALIVE))
+												// Завершаем выполнение функции с ошибкой
+												return result;
 										}
 									}
 								// Если размер структуры сервера не установлен
@@ -17719,8 +17785,10 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											if(node->callbacks.connect != nullptr)
 												// Вывзываем функцию обратного вызова для подключения
 												node->callbacks.connect(node->id, false);
-											// Завершаем выполнение функции с ошибкой
-											return result;
+											// Если установлен режим постоянного подключения
+											if(!(node->state.options & event::options::KEEPALIVE))
+												// Завершаем выполнение функции с ошибкой
+												return result;
 										}
 									}
 								// Если размер структуры сервера не установлен
