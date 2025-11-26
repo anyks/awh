@@ -11197,48 +11197,62 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								if(server->addr.parse(value, net_addr_t::type_t::IPV4)){
 									// Извлекаем полученный IPv4-адрес
 									const uint32_t addr = server->addr.v4();
-									// Определяем принадлежность сетевого адреса
-									const net_addr_t::own_t own = server->addr.own();
-									// Временный объект для извлечения сетевого интерфейса
-									net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-									// Устанавливаем полученный IP-адрес во временный объект
-									awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
-									// Выполняем извлечение сетевых параметров
-									this->_eth.fillsource(server->state.node, source);
-									// Если MAC-адрес успешно получен
-									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+									// Если адрес равен нулю и узел является сервером
+									if((result = (addr == 0))){
 										// Устанавливаем тип адреса
 										server->state.address = address;
 										// Если объект адреса сервера не инициализирован
-										if(server->host == nullptr)
+										if(server->host == nullptr){
 											// Создаём новый объект адреса сервера
 											server->host = make_unique <net::attr_net_t> ();
-										// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
-									// Если MAC-адрес не получен
+											// Создаём новый объект адреса сервера IPv4
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										}
+									// Если адрес не равен нулю
 									} else {
-										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.c_str());
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+										// Определяем принадлежность сетевого адреса
+										const net_addr_t::own_t own = server->addr.own();
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+										// Выполняем извлечение сетевых параметров
+										this->_eth.fillsource(server->state.node, source);
+										// Если MAC-адрес успешно получен
+										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
+										(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											// Устанавливаем тип адреса
+											server->state.address = address;
+											// Если объект адреса сервера не инициализирован
+											if(server->host == nullptr)
+												// Создаём новый объект адреса сервера
+												server->host = make_unique <net::attr_net_t> ();
+											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+										// Если MAC-адрес не получен
+										} else {
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.c_str());
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									}
 								// Если адрес не соответствует IPv4-адресу
@@ -11450,48 +11464,62 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								if(server->addr.parse(value, net_addr_t::type_t::IPV6)){
 									// Извлекаем полученный IPv6-адрес
 									auto addr = ::move(server->addr.v6());
-									// Определяем принадлежность сетевого адреса
-									const net_addr_t::own_t own = server->addr.own();
-									// Временный объект для извлечения сетевого интерфейса
-									net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-									// Устанавливаем полученный IP-адрес во временный объект
-									awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
-									// Выполняем извлечение сетевых параметров
-									this->_eth.fillsource(server->state.node, source);
-									// Если MAC-адрес успешно получен
-									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+									// Если адрес равен нулю и узел является клиентом
+									if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
 										// Устанавливаем тип адреса
 										server->state.address = address;
 										// Если объект адреса сервера не инициализирован
-										if(server->host == nullptr)
+										if(server->host == nullptr){
 											// Создаём новый объект адреса сервера
 											server->host = make_unique <net::attr_net_t> ();
-										// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
-									// Если MAC-адрес не получен
+											// Создаём новый объект адреса сервера IPv6
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										}
+									// Если адрес не равен нулю
 									} else {
-										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.c_str());
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+										// Определяем принадлежность сетевого адреса
+										const net_addr_t::own_t own = server->addr.own();
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+										// Выполняем извлечение сетевых параметров
+										this->_eth.fillsource(server->state.node, source);
+										// Если MAC-адрес успешно получен
+										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
+										(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											// Устанавливаем тип адреса
+											server->state.address = address;
+											// Если объект адреса сервера не инициализирован
+											if(server->host == nullptr)
+												// Создаём новый объект адреса сервера
+												server->host = make_unique <net::attr_net_t> ();
+											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+										// Если MAC-адрес не получен
+										} else {
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.c_str());
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									}
 								// Если адрес не соответствует IPv6-адресу
@@ -17038,6 +17066,29 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					 * Определяем тип сокета
 					 */
 					switch(static_cast <uint8_t> (i->second->state.type)){
+						// Для типа сокета DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							// Если семейство событий принадлежит к IPv4
+							if(i->second->state.family == event::family_t::IPV4){
+								// Если опция передана как BROADCAST
+								if(event::options::BROADCAST & options){
+									// Устанавливаем режим широковещательной передачи
+									if((isSetup = this->_eth.broadcast(fd, net::socket_mode_t::ENABLED)))
+										// Устанавливаем опцию события
+										i->second->state.options |= event::options::BROADCAST;
+								// Если опция не передана как BROADCAST
+								} else {
+									// Снимаем режим широковещательной передачи
+									if((isSetup = this->_eth.broadcast(fd, net::socket_mode_t::DISABLED)))
+										// Снимаем опцию события
+										i->second->state.options &= ~event::options::BROADCAST;
+								}
+								// Если опция не установлена
+								if(result && !isSetup)
+									// Устанавливаем результат работы функции как ложь
+									result = isSetup;
+							}
+						} break;
 						// Для типа сокета STREAM
 						case static_cast <uint8_t> (event::type_t::STREAM): {
 							/**
@@ -17550,6 +17601,25 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 									i->second->state.options |= event::options::REUSEPORT;
 								// Если необходимо деактивировать режим повторного использования порта сокета
 								else i->second->state.options ^= event::options::REUSEPORT;
+							}
+						}
+					} break;
+					// Если опция передана как BROADCAST
+					case event::options::BROADCAST: {
+						// Если узел не является файловой системой и не является межпроцессным взаимодействием
+						if((i->second->state.node != event::node_t::IPC) &&
+						   (i->second->state.family != event::family_t::FSYS)){
+							// Если семейство событий принадлежит к IPv4 и тип сокета является DATAGRAM
+							if((i->second->state.family == event::family_t::IPV4) && (i->second->state.type == event::type_t::DATAGRAM)){
+								// Устанавливаем или снимаем режим широковещательной передачи для сокета
+								if((result = this->_eth.broadcast(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+									// Если необходимо активировать режим широковещательной передачи для сокета
+									if(mode)
+										// Устанавливаем опцию события
+										i->second->state.options |= event::options::BROADCAST;
+									// Если необходимо деактивировать режим широковещательной передачи для сокета
+									else i->second->state.options ^= event::options::BROADCAST;
+								}	
 							}
 						}
 					} break;

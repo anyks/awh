@@ -1887,6 +1887,46 @@ bool awh::Ethernet::nosigpipe(const net::socket_t sock, const net::socket_mode_t
 	return result;
 }
 /**
+ * @brief Метод разрешения широковещательного адреса
+ *
+ * @param sock сетевой сокет
+ * @param mode режим установки типа сокета
+ * @return     результат работы функции
+ */
+bool awh::Ethernet::broadcast(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
+	// Параметр установки типа сокета
+	int32_t on = 0;
+	/**
+	 * Определяем режим блокировки
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		// Если необходимо активировать широковещательный адрес
+		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
+		// Если необходимо деактивировать широковещательный адрес
+		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
+	}
+	// Результат работы функции
+	bool result = false;
+	// Активируем/деактивируем широковещательный адрес
+	if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on))))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод отключения алгоритма Нейгла
  *
  * @param sock сетевой сокет

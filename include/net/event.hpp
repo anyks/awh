@@ -239,25 +239,29 @@ namespace awh {
 			 */
 			static constexpr uint16_t SMIOBLOCK = 0x40;
 			/**
+			 * Опция широковещательного адреса
+			 */
+			static constexpr uint16_t BROADCAST = 0x80;
+			/**
 			 * Опция повторного использования адреса
 			 */
-			static constexpr uint16_t REUSEADDR = 0x80;
+			static constexpr uint16_t REUSEADDR = 0x100;
 			/**
 			 * Опция повторного использования порта
 			 */
-			static constexpr uint16_t REUSEPORT = 0x100;
+			static constexpr uint16_t REUSEPORT = 0x200;
 			/**
 			 * Опция отключения алгоритма Нейгла
 			 */
-			static constexpr uint16_t TCPNODELAY = 0x200;
+			static constexpr uint16_t TCPNODELAY = 0x400;
 			/**
 			 * Опция включения TCP keepalive
 			 */
-			static constexpr uint16_t KEEPALIVE = 0x400;
+			static constexpr uint16_t KEEPALIVE = 0x800;
 			/**
 			 * Опция закрытия сокета при выполнении exec
 			 */
-			static constexpr uint16_t CLOSEONEXEC = 0x800;
+			static constexpr uint16_t CLOSEONEXEC = 0x1000;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами
