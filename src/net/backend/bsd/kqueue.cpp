@@ -28271,7 +28271,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 			/**
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
-			int32_t count = ::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts);
+			const int32_t count = ::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts);
 			// Если мы получили ошибку при опросе событий
 			if(count < 0){
 				/**
@@ -28322,13 +28322,14 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Если мы детектировали событие изменения директории
 									if(ev.fflags & NOTE_WRITE){
 										// Если событие изменения директории разрешено
-										if(dir->actions & action::CHANGE)
+										if(dir->actions & action::CHANGE){
 											// Вызываем функцию обратного вызова флаг события
 											dir->callbacks.event(dir->id, event::action_t::CHANGE);
-										// Выполняем изменение содержимого в директории
-										if(!io::change(dir, this, this->_fmk, this->_log))
-											// Пропускаем дальнейшую обработку события
-											continue;
+											// Выполняем изменение содержимого в директории
+											if(!io::change(dir, this, this->_fmk, this->_log))
+												// Пропускаем дальнейшую обработку события
+												continue;
+										}
 									// Если мы детектировали событие переименования директории
 									} else if(ev.fflags & NOTE_RENAME) {
 										// Если событие переименования директории разрешено
@@ -28361,10 +28362,38 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(dir->actions & action::HDLINK)
 											// Вызываем функцию обратного вызова флаг события
 											dir->callbacks.event(dir->id, event::action_t::HDLINK);
-										// Выполняем изменение содержимого в директории
-										if(!io::change(dir, this, this->_fmk, this->_log))
-											// Пропускаем дальнейшую обработку события
-											continue;
+										// Если событие изменения директории разрешено
+										if(dir->actions & action::CHANGE){
+											// Выполняем изменение содержимого в директории
+											if(!io::change(dir, this, this->_fmk, this->_log))
+												// Пропускаем дальнейшую обработку события
+												continue;
+										}
+									}
+								// Если функция обратного вызова не установлена
+								} else {
+									// Если мы детектировали событие изменения директории
+									if(ev.fflags & NOTE_WRITE){
+										// Если событие изменения директории разрешено
+										if(dir->actions & action::CHANGE){
+											// Выполняем изменение содержимого в директории
+											if(!io::change(dir, this, this->_fmk, this->_log))
+												// Пропускаем дальнейшую обработку события
+												continue;
+										}
+									// Если мы детектировали событие удаления директории
+									} else if(ev.fflags & NOTE_DELETE)
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
+									// Если мы детектировали событие изменение жёсткой ссылки директории
+									else if(ev.fflags & NOTE_LINK) {
+										// Если событие изменения директории разрешено
+										if(dir->actions & action::CHANGE){
+											// Выполняем изменение содержимого в директории
+											if(!io::change(dir, this, this->_fmk, this->_log))
+												// Пропускаем дальнейшую обработку события
+												continue;
+										}
 									}
 								}
 							} break;
@@ -28407,15 +28436,16 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									// Если мы детектировали событие удаления файла
 									} else if(ev.fflags & NOTE_DELETE) {
 										// Если событие удаления файла разрешено
-										if(fs->actions & action::DELETE)
+										if(fs->actions & action::DELETE){
 											// Вызываем функцию обратного вызова флаг события
 											fs->callbacks.event(fs->id, event::action_t::DELETE);
-										// Если событие изменения файла разрешено
-										if(fs->actions & action::CHANGE){
-											// Если функция обратного вызова для сигнализации изменения файла установлена
-											if(fs->callbacks.change != nullptr)
-												// Вызываем функцию обратного вызова
-												fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+											// Если событие изменения файла разрешено
+											if(fs->actions & action::CHANGE){
+												// Если функция обратного вызова для сигнализации изменения файла установлена
+												if(fs->callbacks.change != nullptr)
+													// Вызываем функцию обратного вызова
+													fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+											}
 										}
 										// Выполняем удаление узла
 										io::destroy(node, this->_log);
@@ -28437,6 +28467,36 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										if(fs->actions & action::HDLINK)
 											// Вызываем функцию обратного вызова флаг события
 											fs->callbacks.event(fs->id, event::action_t::HDLINK);
+									}
+								// Если функция обратного вызова не установлена
+								} else {
+									// Если мы детектировали событие изменения файла
+									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
+										// Если событие изменения файла разрешено
+										if(fs->actions & action::CHANGE){
+											// Если функция обратного вызова для сигнализации изменения файла установлена
+											if(fs->callbacks.change != nullptr)
+												// Вызываем функцию обратного вызова
+												fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+											// Если событие чтения разрешено
+											if(fs->actions & action::READ){
+												// Выполняем чтение данных из файла
+												if(!io::read(node, this, &this->_eth, this->_fmk, this->_log))
+													// Пропускаем дальнейшую обработку события
+													continue;
+											}
+										}
+									// Если мы детектировали событие удаления файла
+									} else if(ev.fflags & NOTE_DELETE) {
+										// Если событие изменения файла разрешено
+										if((fs->actions & action::DELETE) && (fs->actions & action::CHANGE)){
+											// Если функция обратного вызова для сигнализации изменения файла установлена
+											if(fs->callbacks.change != nullptr)
+												// Вызываем функцию обратного вызова
+												fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+										}
+										// Выполняем удаление узла
+										io::destroy(node, this->_log);
 									}
 								}
 							} break;
