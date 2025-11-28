@@ -219,49 +219,53 @@ namespace awh {
 			 */
 			static constexpr uint16_t TCPCORK = 0x02;
 			/**
+			 * Опция ручной установки заголовков IP пакетов
+			 */
+			static constexpr uint16_t HDRINCL = 0x04;
+			/**
 			 * Опция только IPv6 для сокета
 			 */
-			static constexpr uint16_t IPV6ONLY = 0x04;
+			static constexpr uint16_t IPV6ONLY = 0x08;
 			/**
 			 * Опция отключения сигнала SIGILL
 			 */
-			static constexpr uint16_t NOSIGILL = 0x08;
+			static constexpr uint16_t NOSIGILL = 0x10;
 			/**
 			 * Опция отключения сигнала SIGPIPE
 			 */
-			static constexpr uint16_t NOSIGPIPE = 0x10;
+			static constexpr uint16_t NOSIGPIPE = 0x20;
 			/**
 			 * Опция неблокирующего ввода-вывода
 			 */
-			static constexpr uint16_t NOIOBLOCK = 0x20;
+			static constexpr uint16_t NOIOBLOCK = 0x40;
 			/**
 			 * Опция умного неблокирующего ввода-вывода
 			 */
-			static constexpr uint16_t SMIOBLOCK = 0x40;
+			static constexpr uint16_t SMIOBLOCK = 0x80;
 			/**
 			 * Опция широковещательного адреса
 			 */
-			static constexpr uint16_t BROADCAST = 0x80;
+			static constexpr uint16_t BROADCAST = 0x100;
 			/**
 			 * Опция повторного использования адреса
 			 */
-			static constexpr uint16_t REUSEADDR = 0x100;
+			static constexpr uint16_t REUSEADDR = 0x200;
 			/**
 			 * Опция повторного использования порта
 			 */
-			static constexpr uint16_t REUSEPORT = 0x200;
+			static constexpr uint16_t REUSEPORT = 0x400;
 			/**
 			 * Опция отключения алгоритма Нейгла
 			 */
-			static constexpr uint16_t TCPNODELAY = 0x400;
+			static constexpr uint16_t TCPNODELAY = 0x800;
 			/**
 			 * Опция включения TCP keepalive
 			 */
-			static constexpr uint16_t KEEPALIVE = 0x800;
+			static constexpr uint16_t KEEPALIVE = 0x1000;
 			/**
 			 * Опция закрытия сокета при выполнении exec
 			 */
-			static constexpr uint16_t CLOSEONEXEC = 0x1000;
+			static constexpr uint16_t CLOSEONEXEC = 0x2000;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами

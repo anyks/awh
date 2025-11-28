@@ -143,6 +143,7 @@ namespace awh {
 			* @return     код ошибки на сокете если присутствует
 			*/
 			int32_t error(const net::socket_t sock) const noexcept;
+		public:
 			/**
 			 * @brief Метод активации TCP/CORK
 			 *
@@ -225,6 +226,28 @@ namespace awh {
 			 * @return      результат работы функции
 			 */
 			bool keepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
+			/**
+			 * @brief Метод установки включения/отключения заголовков в сокете
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим активации или деактивации
+			 * @return       результат работы функции
+			 */
+			bool hdrinclude(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
+		public:
+			/**
+			 * @brief Метод вычисления контрольной суммы транспортного уровня
+			 *
+			 * @param family    семейство протоколов (IPv4 или IPv6)
+			 * @param protocol  протокол транспортного уровня
+			 * @param src       указатель на источник данных
+			 * @param dst       указатель на приёмник данных
+			 * @param transport указатель на данные транспортного уровня
+			 * @param length    длина данных транспортного уровня
+			 * @return          вычисленная контрольная сумма
+			 */
+			uint16_t checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор

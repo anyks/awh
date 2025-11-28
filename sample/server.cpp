@@ -48,9 +48,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-	// Устанавливаем порт события
-	io.port(eid, 2222);
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
@@ -60,7 +58,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(io.address(eid, event::address_t::UDS, "/tmp/awh.sock")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -370,14 +368,19 @@ int32_t main(int32_t argc, char * argv[]){
 					break;
 				}
 			});
+			// Устанавливаем таймаут события на чтение
+			io.timeout(eid, event::action_t::READ, 5000);
 			// Устанавливаем таймаут события на запись
 			io.timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера
-			if(io.commit(eid))
-				/**
-				 * Запускаем опрос событий
-				 */
-				while(io.poll());
+			if(io.commit(eid)){
+				// Если прослушивание события успешно
+				if(io.listen(eid, 100, true))
+					/**
+					 * Запускаем опрос событий
+					 */
+					while(io.poll());
+			}
 		// Если адрес не установлен
 		} else cout << " Ошибка установки адреса события!" << endl;
 	}

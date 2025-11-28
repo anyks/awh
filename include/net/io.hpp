@@ -226,6 +226,13 @@ namespace awh {
 			bool listen(const event::id_t id, const uint16_t max, const bool async = true) noexcept;
 		public:
 			/**
+			 * @brief Метод приёма данных события
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения приёма
+			 */
+			bool recv(const event::id_t id) noexcept;
+			/**
 			 * @brief Метод отправки данных события
 			 *
 			 * @param id   идентификатор события
