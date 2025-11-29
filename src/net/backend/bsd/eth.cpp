@@ -2337,6 +2337,174 @@ bool awh::Ethernet::hdrinclude(const net::socket_t sock, const event::family_t f
 	return result;
 }
 /**
+ * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+ *
+ * @param sock сетевой сокет
+ * @param ttl  максимальное количество хопов
+ * @return     результат работы функции
+ */
+bool awh::Ethernet::multicast(const net::socket_t sock, const event::multicast_ttl_t ttl) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl))))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод активации/деактивации мультикаст группы 
+ *
+ * @param sock сетевой сокет
+ * @param mode режим активации/деактивации
+ * @param group мультикаст-группа для активации/деактивации
+ * @param addr  адрес сетевого интерфейса с которого исходит запрос
+ * @return      результат работы функции
+ */
+bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_t mode, const unique_ptr <net::addr_net_t> & group, const unique_ptr <net::addr_net_t> & addr) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если тип IP-адресов совпадает
+		if(group->size == addr->size){
+			/**
+			 * Определяем режим блокировки
+			 */
+			switch(static_cast <uint8_t> (mode)){
+				// Если необходимо активировать заголовки в сокете
+				case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
+					/**
+					 * Определяем тип адреса
+					 */
+					switch(group->size){
+						// Если адрес является IPv4
+						case 4: {
+							// Формируем объект multicast request
+							struct ip_mreq mreq;
+							// Устанавливаем адрес сетевого интерфейса
+							mreq.imr_interface.s_addr = awh_cast <net::addr_net_ipv4_t *> (addr.get())->address;
+							// Устанавливаем адрес multicast-группы
+							mreq.imr_multiaddr.s_addr = awh_cast <net::addr_net_ipv4_t *> (group.get())->address;
+							// Добавляем новую multicast-группу к сокету
+							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						} break;
+						// Если адрес является IPv6
+						case 16: {
+							/*
+							// Создаём объект подключения
+							struct sockaddr_in6 addr;
+							// Копируем IP-адрес в структуру подключения
+							::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (group.get())->address[0], sizeof(addr.sin6_addr));
+							*/
+						} break;
+					}
+				} break;
+				// Если необходимо деактивировать заголовки в сокете
+				case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
+					/**
+					 * Определяем тип адреса
+					 */
+					switch(group->size){
+						// Если адрес является IPv4
+						case 4: {
+							// Формируем объект multicast request
+							struct ip_mreq mreq;
+							// Устанавливаем адрес сетевого интерфейса
+							mreq.imr_interface.s_addr = awh_cast <net::addr_net_ipv4_t *> (addr.get())->address;
+							// Устанавливаем адрес multicast-группы
+							mreq.imr_multiaddr.s_addr = awh_cast <net::addr_net_ipv4_t *> (group.get())->address;
+							// Удаляем multicast-группу из сокета
+							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						} break;
+						// Если адрес является IPv6
+						case 16: {
+
+						} break;
+					}
+				} break;
+			}
+		// Если IP-адреса отличаются
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("It is impossible to work with a multicast group because the IP address types are different", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("It is impossible to work with a multicast group because the IP address types are different", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод вычисления контрольной суммы транспортного уровня
  *
  * @param family    семейство протоколов (IPv4 или IPv6)

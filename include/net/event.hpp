@@ -100,6 +100,18 @@ namespace awh {
 			NETWORK = 0x06  // Сетевой адрес
 		};
 		/**
+		 * @brief Типичные значения TTL для multicast
+		 * 
+		 */
+		enum class multicast_ttl_t : uint8_t {
+			LOOPBACK  = 0x00, // Только в хосте (loopback)
+			NETWORK   = 0x01, // Только локальная сеть (подсеть) — самое частое значение для локального multicast
+			COMPANY   = 0x20, // Внутри организации
+			REGION    = 0x40, // Внутри региона
+			CONTINENT = 0x80, // Внутри континента
+			WORLD     = 0xff  // Глобально (максимум)
+		};
+		/**
 		 * @brief Статусы событий
 		 *
 		 */
