@@ -237,18 +237,48 @@ namespace awh {
 			bool hdrinclude(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
 		public:
 			/**
-			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+			 * @brief Метод установки сетевого интерфейса для multicast пакетов
 			 *
-			 * @param sock сетевой сокет
-			 * @param ttl  максимальное количество хопов
-			 * @return     результат работы функции
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param name   имя сетевого интерфейса
+			 * @return       результат работы функции
 			 */
-			bool multicast(const net::socket_t sock, const event::multicast_ttl_t ttl) const noexcept;
+			bool multicastIf(const net::socket_t sock, const event::family_t family, const string & name) const noexcept;
+			/**
+			 * @brief Метод установки режима обратной петли для multicast пакетов
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим активации или деактивации
+			 * @return       результат работы функции
+			 */
+			bool multicastLoop(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет для unicast
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param ttl    максимальное количество хопов
+			 * @return       результат работы функции
+			 */
+			bool unicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept;
+			/**
+			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет для multicast
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param ttl    максимальное количество хопов
+			 * @return       результат работы функции
+			 */
+			bool multicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept;
+		public:
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы 
 			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим активации/деактивации
+			 * @param sock  сетевой сокет
+			 * @param mode  режим активации/деактивации
 			 * @param group мультикаст-группа для активации/деактивации
 			 * @param addr  адрес сетевого интерфейса с которого исходит запрос
 			 * @return      результат работы функции

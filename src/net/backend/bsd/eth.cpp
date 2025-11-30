@@ -2337,30 +2337,260 @@ bool awh::Ethernet::hdrinclude(const net::socket_t sock, const event::family_t f
 	return result;
 }
 /**
- * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+ * @brief Метод установки сетевого интерфейса для multicast пакетов
  *
- * @param sock сетевой сокет
- * @param ttl  максимальное количество хопов
- * @return     результат работы функции
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param name   имя сетевого интерфейса
+ * @return       результат работы функции
  */
-bool awh::Ethernet::multicast(const net::socket_t sock, const event::multicast_ttl_t ttl) const noexcept {
+bool awh::Ethernet::multicastIf(const net::socket_t sock, const event::family_t family, const string & name) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl))))){
+	// Если название сетевого интерфейса не пустое
+	if(!name.empty()){
+		// Получаем индекс сетевого интерфейса по его имени
+		const uint32_t index = ::if_nametoindex(name.c_str());
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Устанавливаем сетевой интерфейс для multicast пакетов
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &index, sizeof(index))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Устанавливаем сетевой интерфейс для multicast пакетов
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &index, sizeof(index))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+	// Если название сетевого интерфейса пустое
+	} else {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("Interface name is empty", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING);
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("Interface name is empty", awh::log_t::flag_t::WARNING);
 		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки режима обратной петли для multicast пакетов
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param mode   режим активации или деактивации
+ * @return       результат работы функции
+ */
+bool awh::Ethernet::multicastLoop(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
+	// Параметр установки типа сокета
+	int32_t on = 0;
+	/**
+	 * Определяем режим блокировки
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		// Если необходимо активировать режим обратной петли для multicast пакетов
+		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
+		// Если необходимо деактивировать режим обратной петли для multicast пакетов
+		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
+	}
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Определяем семейство события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			// Активируем/деактивируем режим обратной петли для multicast пакетов
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &on, sizeof(on))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			// Активируем/деактивируем режим обратной петли для multicast пакетов
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &on, sizeof(on))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки максимального количества хопов, через которые может пройти пакет для unicast
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param ttl    максимальное количество хопов
+ * @return       результат работы функции
+ */
+bool awh::Ethernet::unicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Определяем семейство события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки максимального количества хопов, через которые может пройти пакет для multicast
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param ttl    максимальное количество хопов
+ * @return       результат работы функции
+ */
+bool awh::Ethernet::multicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Определяем семейство события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
 	}
 	// Выводим результат
 	return result;
@@ -2368,8 +2598,8 @@ bool awh::Ethernet::multicast(const net::socket_t sock, const event::multicast_t
 /**
  * @brief Метод активации/деактивации мультикаст группы 
  *
- * @param sock сетевой сокет
- * @param mode режим активации/деактивации
+ * @param sock  сетевой сокет
+ * @param mode  режим активации/деактивации
  * @param group мультикаст-группа для активации/деактивации
  * @param addr  адрес сетевого интерфейса с которого исходит запрос
  * @return      результат работы функции
@@ -2420,12 +2650,28 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 						} break;
 						// Если адрес является IPv6
 						case 16: {
-							/*
-							// Создаём объект подключения
-							struct sockaddr_in6 addr;
-							// Копируем IP-адрес в структуру подключения
-							::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (group.get())->address[0], sizeof(addr.sin6_addr));
-							*/
+							// Формируем объект multicast request
+							struct ipv6_mreq mreq;
+							// Устанавливаем адрес сетевого интерфейса
+							::memcpy(&mreq.ipv6mr_interface, &awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], sizeof(mreq.ipv6mr_interface));
+							// Устанавливаем адрес multicast-группы
+							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <net::addr_net_ipv6_t *> (group.get())->address[0], sizeof(mreq.ipv6mr_multiaddr));
+							// Добавляем новую multicast-группу к сокету
+							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
 						} break;
 					}
 				} break;
@@ -2462,7 +2708,28 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 						} break;
 						// Если адрес является IPv6
 						case 16: {
-
+							// Формируем объект multicast request
+							struct ipv6_mreq mreq;
+							// Устанавливаем адрес сетевого интерфейса
+							::memcpy(&mreq.ipv6mr_interface, &awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], sizeof(mreq.ipv6mr_interface));
+							// Устанавливаем адрес multicast-группы
+							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <net::addr_net_ipv6_t *> (group.get())->address[0], sizeof(mreq.ipv6mr_multiaddr));
+							// Удаляем multicast-группу из сокета
+							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
 						} break;
 					}
 				} break;
