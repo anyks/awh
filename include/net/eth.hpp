@@ -256,23 +256,15 @@ namespace awh {
 			bool multicastLoop(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
 		public:
 			/**
-			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет для unicast
+			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 			 *
 			 * @param sock   сетевой сокет
 			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param ttl    максимальное количество хопов
+			 * @param cast   режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @param hops   максимальное количество хопов
 			 * @return       результат работы функции
 			 */
-			bool unicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept;
-			/**
-			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет для multicast
-			 *
-			 * @param sock   сетевой сокет
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param ttl    максимальное количество хопов
-			 * @return       результат работы функции
-			 */
-			bool multicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept;
+			bool hops(const net::socket_t sock, const event::family_t family, const event::cast_t cast, const event::hops_t hops) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы 

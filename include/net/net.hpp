@@ -289,6 +289,7 @@ namespace awh {
 		typedef struct State {
 			uint16_t options;                     // Флаги опций события
 			event::node_t node;                   // Флаг узла события
+			event::hops_t hops;                   // Флаг хопов события
 			event::type_t type;                   // Флаг типа события
 			event::family_t family;               // Флаг семейства события
 			event::address_t address;             // Флаг адреса события
@@ -308,6 +309,7 @@ namespace awh {
 					 */
 					this->options  = state.options;
 					this->node     = state.node;
+					this->hops     = state.hops;
 					this->type     = state.type;
 					this->family   = state.family;
 					this->address  = state.address;
@@ -324,6 +326,7 @@ namespace awh {
 			explicit State() noexcept :
 			 options(event::options::NONE),
 			 node(event::node_t::NONE),
+			 hops(event::hops_t::WORLD),
 			 type(event::type_t::NONE),
 			 family(event::family_t::NONE),
 			 address(event::address_t::NONE),

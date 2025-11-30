@@ -2482,14 +2482,15 @@ bool awh::Ethernet::multicastLoop(const net::socket_t sock, const event::family_
 	return result;
 }
 /**
- * @brief Метод установки максимального количества хопов, через которые может пройти пакет для unicast
+ * @brief Метод установки максимального количества хопов, через которые может пройти пакет
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
- * @param ttl    максимальное количество хопов
+ * @param cast   режим трансляции пакетов (unicast, multicast, broadcast)
+ * @param hops   максимальное количество хопов
  * @return       результат работы функции
  */
-bool awh::Ethernet::unicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept {
+bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family, const event::cast_t cast, const event::hops_t hops) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2498,97 +2499,98 @@ bool awh::Ethernet::unicastHops(const net::socket_t sock, const event::family_t 
 	switch(static_cast <uint8_t> (family)){
 		// Для семейства IPv4
 		case static_cast <uint8_t> (event::family_t::IPV4): {
-			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
+			/**
+			 * Определяем режим трансляции пакетов
+			 */
+			switch(static_cast <uint8_t> (cast)){
+				// Если необходимо установить максимальное количество хопов для unicast пакетов
+				case static_cast <uint8_t> (event::cast_t::UNICAST):
+				// Если необходимо установить максимальное количество хопов для broadcast пакетов
+				case static_cast <uint8_t> (event::cast_t::BROADCAST): {
+					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &hops, sizeof(hops))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
+				// Если необходимо установить максимальное количество хопов для multicast пакетов
+				case static_cast <uint8_t> (event::cast_t::MULTICAST): {
+					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &hops, sizeof(hops))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
 			}
 		} break;
 		// Для семейства IPv6
 		case static_cast <uint8_t> (event::family_t::IPV6): {
-			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки максимального количества хопов, через которые может пройти пакет для multicast
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param ttl    максимальное количество хопов
- * @return       результат работы функции
- */
-bool awh::Ethernet::multicastHops(const net::socket_t sock, const event::family_t family, const event::multicast_ttl_t ttl) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Определяем семейство события
-	 */
-	switch(static_cast <uint8_t> (family)){
-		// Для семейства IPv4
-		case static_cast <uint8_t> (event::family_t::IPV4): {
-			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
-		// Для семейства IPv6
-		case static_cast <uint8_t> (event::family_t::IPV6): {
-			// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (ttl)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
+			/**
+			 * Определяем режим трансляции пакетов
+			 */
+			switch(static_cast <uint8_t> (cast)){
+				// Если необходимо установить максимальное количество хопов для unicast пакетов
+				case static_cast <uint8_t> (event::cast_t::UNICAST):
+				// Если необходимо установить максимальное количество хопов для broadcast пакетов
+				case static_cast <uint8_t> (event::cast_t::BROADCAST): {
+					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hops, sizeof(hops))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
+				// Если необходимо установить максимальное количество хопов для multicast пакетов
+				case static_cast <uint8_t> (event::cast_t::MULTICAST): {
+					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops, sizeof(hops))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
 			}
 		} break;
 	}
