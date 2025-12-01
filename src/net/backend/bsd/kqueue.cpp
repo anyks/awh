@@ -25000,6 +25000,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										}
 									// Если сокет является блокирующим
 									} else {
+										// Если необходимо установить таймаут на отправку данных
+										auto i = server->timeouts.find(event::action_t::WRITE);
+										// Если таймаут на подключение найден
+										if((i != server->timeouts.end()) && (i->second > 0))
+											// Устанавливаем таймаут на отправку данных
+											this->_eth.timeout(server->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 										// Выполняем отправку данных в UDP сокет
 										const ssize_t bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 										// Если данные отправлены успешно
@@ -25217,6 +25223,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										}
 									// Если сокет является блокирующим
 									} else {
+										// Если необходимо установить таймаут на отправку данных
+										auto i = server->timeouts.find(event::action_t::WRITE);
+										// Если таймаут на подключение найден
+										if((i != server->timeouts.end()) && (i->second > 0))
+											// Устанавливаем таймаут на отправку данных
+											this->_eth.timeout(server->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 										// Выполняем отправку данных в UDP сокет
 										const ssize_t bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 										// Если данные отправлены успешно
