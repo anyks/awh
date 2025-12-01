@@ -2344,7 +2344,7 @@ bool awh::Ethernet::hdrinclude(const net::socket_t sock, const event::family_t f
  * @param name   имя сетевого интерфейса
  * @return       результат работы функции
  */
-bool awh::Ethernet::multicastIf(const net::socket_t sock, const event::family_t family, const string & name) const noexcept {
+bool awh::Ethernet::multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
@@ -2606,7 +2606,7 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
  * @param addr  адрес сетевого интерфейса с которого исходит запрос
  * @return      результат работы функции
  */
-bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_t mode, const unique_ptr <net::addr_net_t> & group, const unique_ptr <net::addr_net_t> & addr) const noexcept {
+bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2630,9 +2630,9 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 							// Формируем объект multicast request
 							struct ip_mreq mreq;
 							// Устанавливаем адрес сетевого интерфейса
-							mreq.imr_interface.s_addr = awh_cast <net::addr_net_ipv4_t *> (addr.get())->address;
+							mreq.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
 							// Устанавливаем адрес multicast-группы
-							mreq.imr_multiaddr.s_addr = awh_cast <net::addr_net_ipv4_t *> (group.get())->address;
+							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))))){
 								/**
@@ -2655,9 +2655,9 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 							// Формируем объект multicast request
 							struct ipv6_mreq mreq;
 							// Устанавливаем адрес сетевого интерфейса
-							::memcpy(&mreq.ipv6mr_interface, &awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], sizeof(mreq.ipv6mr_interface));
+							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(mreq.ipv6mr_interface));
 							// Устанавливаем адрес multicast-группы
-							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <net::addr_net_ipv6_t *> (group.get())->address[0], sizeof(mreq.ipv6mr_multiaddr));
+							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -2688,9 +2688,9 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 							// Формируем объект multicast request
 							struct ip_mreq mreq;
 							// Устанавливаем адрес сетевого интерфейса
-							mreq.imr_interface.s_addr = awh_cast <net::addr_net_ipv4_t *> (addr.get())->address;
+							mreq.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
 							// Устанавливаем адрес multicast-группы
-							mreq.imr_multiaddr.s_addr = awh_cast <net::addr_net_ipv4_t *> (group.get())->address;
+							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq))))){
 								/**
@@ -2713,9 +2713,9 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 							// Формируем объект multicast request
 							struct ipv6_mreq mreq;
 							// Устанавливаем адрес сетевого интерфейса
-							::memcpy(&mreq.ipv6mr_interface, &awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], sizeof(mreq.ipv6mr_interface));
+							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(mreq.ipv6mr_interface));
 							// Устанавливаем адрес multicast-группы
-							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <net::addr_net_ipv6_t *> (group.get())->address[0], sizeof(mreq.ipv6mr_multiaddr));
+							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))))){
 								/**

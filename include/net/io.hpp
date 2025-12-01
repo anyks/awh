@@ -305,6 +305,16 @@ namespace awh {
 			const std::unordered_map <string, event::address_t> & whitelist(const event::id_t id) const noexcept;
 		public:
 			/**
+			 * @brief Метод активации/деактивации мультикаст группы 
+			 *
+			 * @param id    идентификатор события
+			 * @param mode  режим активации/деактивации
+			 * @param group мультикаст-группа для активации/деактивации
+			 * @return      результат выполнения установки
+			 */
+			bool membership(const event::id_t id, const event::mode_t mode, const string & group) noexcept;
+		public:
+			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события
 			 *
 			 * @param id       идентификатор события
@@ -330,6 +340,39 @@ namespace awh {
 			 * @return       результат выполнения установки
 			 */
 			bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод получения режима трансляции пакетов для события
+			 *
+			 * @param id идентификатор события
+			 * @return   режим трансляции пакетов (unicast, multicast, broadcast)
+			 */
+			event::cast_t cast(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки режима трансляции пакетов для события
+			 *
+			 * @param id   идентификатор события
+			 * @param cast режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @return     результат выполнения установки
+			 */
+			bool cast(const event::id_t id, const event::cast_t cast) noexcept;
+		public:
+			/**
+			 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param id идентификатор события
+			 * @return   максимальное количество хопов
+			 */
+			event::hops_t hops(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param hops   максимальное количество хопов
+			 * @return       результат работы функции
+			 */
+			bool hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
 		public:
 			/**
 			 * @brief Метод получения таймаута события

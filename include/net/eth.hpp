@@ -244,7 +244,7 @@ namespace awh {
 			 * @param name   имя сетевого интерфейса
 			 * @return       результат работы функции
 			 */
-			bool multicastIf(const net::socket_t sock, const event::family_t family, const string & name) const noexcept;
+			bool multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept;
 			/**
 			 * @brief Метод установки режима обратной петли для multicast пакетов
 			 *
@@ -275,7 +275,7 @@ namespace awh {
 			 * @param addr  адрес сетевого интерфейса с которого исходит запрос
 			 * @return      результат работы функции
 			 */
-			bool membership(const net::socket_t sock, const net::socket_mode_t mode, const unique_ptr <net::addr_net_t> & group, const unique_ptr <net::addr_net_t> & addr) const noexcept;
+			bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * addr) const noexcept;
 		public:
 			/**
 			 * @brief Метод вычисления контрольной суммы транспортного уровня

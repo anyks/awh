@@ -289,6 +289,10 @@ namespace awh {
 			 * Опция закрытия сокета при выполнении exec
 			 */
 			static constexpr uint16_t CLOSEONEXEC = 0x2000;
+			/**
+			 * Опция включения мультикастовой петли
+			 */
+			static constexpr uint16_t MULTICASTLOOP = 0x4000;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами
