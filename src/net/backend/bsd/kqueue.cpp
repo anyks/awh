@@ -66,6 +66,7 @@
  */
 #include <sys/os.hpp>
 #include <sys/queue.hpp>
+#include <sys/locker.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -370,6 +371,52 @@ namespace {
 		explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
 		 addr(fmk, log), transfer(fmk, log) {}
 	} server_t;
+};
+
+/**
+ * Инкапсулируем статические объекты в пространство имён
+ */
+namespace {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * Мьютекс для синхронизации потоков
+	 */
+	lock_state_t <mutex> __awh_mtx__;
+	/**
+	 * Идентификатор текущего процесса
+	 */
+	const pid_t __awh_pid__ = ::getpid();
+	/**
+	 * Сокет связи с ядром операционной системы
+	 */
+	net::socket_t __awh_kq__ = net::invalid_socket_t;
+	/**
+	 * Глобальный массив активных событий kqueue
+	 */
+	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
+	/**
+	 * Глобальная переменная списка обработанных событий
+	 */
+	unordered_set <event::id_t> __awh_processed__;
+	/**
+	 * Глобальная переменная списка узлов событий
+	 */
+	unordered_map <event::id_t, unique_ptr <net::node_t>> __awh_nodes__;
+};
+
+/**
+ * Инкапсулируем статические объекты в пространство имён временных переменных
+ */
+namespace tmp {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Структура промежуточного звена
 	 *
@@ -385,45 +432,19 @@ namespace {
 		 */
 		explicit Intermediate() noexcept : index(0), count(0) {}
 	} intmd_t;
-};
-
-/**
- * Инкапсулируем статические объекты в пространство имён
- */
-namespace {
-	/**
-	 * Подписываемся на пространство имён AWH
-	 */
-	using namespace awh;
 
 	/**
-	 * Идентификатор текущего процесса
+	 * Мьютекс для синхронизации потоков
 	 */
-	const pid_t __awh_pid__ = ::getpid();
-	/**
-	 * Сокет связи с ядром операционной системы
-	 */
-	net::socket_t __awh_kq__ = net::invalid_socket_t;
+	static lock_state_t <mutex> mtx;
 	/**
 	 * Глобальный массив временных событий ожидающих активации
 	 */
-	vector <struct kevent> __awh_change__;
-	/**
-	 * Глобальный массив активных событий kqueue
-	 */
-	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
-	/**
-	 * Глобальная переменная списка обработанных событий
-	 */
-	unordered_set <event::id_t> __awh_processed__;
+	static vector <struct kevent> change;
 	/**
 	 * Глобальная переменная списка промежуточных звеньев
 	 */
-	unordered_map <event::id_t, intmd_t> __awh_inters__;
-	/**
-	 * Глобальная переменная списка узлов событий
-	 */
-	unordered_map <event::id_t, unique_ptr <net::node_t>> __awh_nodes__;
+	static unordered_map <event::id_t, intmd_t> inters;
 };
 
 /**
@@ -442,7 +463,7 @@ namespace fs {
 	 * @param log   объект работы с логами
 	 * @return      полная строка пути
 	 */
-	string fullpath(const string_view input, const log_t * log) noexcept {
+	static string fullpath(const string_view input, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -583,7 +604,7 @@ namespace eth {
 	 * 
 	 * @return случайный порт
 	 */
-	uint16_t port() noexcept {
+	static uint16_t port() noexcept {
 		/**
 		 * Инициализация генератора случайных чисел
 		 */
@@ -600,7 +621,7 @@ namespace eth {
 	 * @param length длина данных
 	 * @return       вычисленная контрольная сумма
 	 */
-	uint16_t checksum(const void * data, size_t length) noexcept {
+	static uint16_t checksum(const void * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
 		const uint16_t * buffer = (const uint16_t *) reinterpret_cast <const uint16_t *> (data);
 		// Инициализируем сумму
@@ -942,18 +963,22 @@ namespace io {
 										client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
 										// Активируем таймаут события
 										client->timeout = event::action_t::RECONNECT;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 1);
-										// Увеличиваем количество событий
-										ret.first->second.count++;
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на получение данных
+											EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+											// Если событие успешно добавлено
+											if(ret.second)
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::tmp::change.size() - 1);
+											// Увеличиваем количество событий
+											ret.first->second.count++;
+										}
 									}
 								}
 							} break;
@@ -1977,35 +2002,40 @@ namespace io {
 						// Вызываем функцию обратного вызова при уничтожении события
 						server->callbacks.status(server->id, event::status_t::DESTROYED);
 				} break;
-			}
-			// Если в списке промежуточного взаимодействия присутствует запись для данного события
-			auto i = ::__awh_inters__.find(node->id);
-			// Если запись найдена
-			if(i != ::__awh_inters__.end()){
-				// Количество записей в списке изменений
-				size_t count = 0;
-				// Получаем итератор на начало списка изменений
-				auto j = ::__awh_change__.begin();
-				// Получаем нужный нам итератор
-				std::advance(j, i->second.index);
-				// Проходим по всем изменениям промежуточного взаимодействия
-				for(; j != ::__awh_change__.end();){
-					// Если идентификатор события совпадает с идентификатором в записи списка изменений
-					if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
-						// Удаляем запись из списка изменений
-						j = ::__awh_change__.erase(j);
-						// Увеличиваем счётчик удалённых записей
-						count++;
-						// Если записи удалены
-						if(count == i->second.count)
-							// Завершаем цикл
-							break;
-					// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-					} else ++j;
+			}{
+				// Выполняем блокировку потоков
+				const locker_t lock(::tmp::mtx);
+				// Если в списке промежуточного взаимодействия присутствует запись для данного события
+				auto i = ::tmp::inters.find(node->id);
+				// Если запись найдена
+				if(i != ::tmp::inters.end()){
+					// Количество записей в списке изменений
+					size_t count = 0;
+					// Получаем итератор на начало списка изменений
+					auto j = ::tmp::change.begin();
+					// Получаем нужный нам итератор
+					std::advance(j, i->second.index);
+					// Проходим по всем изменениям промежуточного взаимодействия
+					for(; j != ::tmp::change.end();){
+						// Если идентификатор события совпадает с идентификатором в записи списка изменений
+						if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+							// Удаляем запись из списка изменений
+							j = ::tmp::change.erase(j);
+							// Увеличиваем счётчик удалённых записей
+							count++;
+							// Если записи удалены
+							if(count == i->second.count)
+								// Завершаем цикл
+								break;
+						// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+						} else ++j;
+					}
 				}
+				// Производим удаление списка подготовленных событий
+				::tmp::inters.erase(node->id);
 			}
-			// Производим удаление списка подготовленных событий
-			::__awh_inters__.erase(node->id);
+			// Выполняем блокировку потоков
+			const locker_t lock(::__awh_mtx__);
 			// Производим удаление узла
 			::__awh_nodes__.erase(node->id);
 			// Выводим результат выполнения функции
@@ -2968,6 +2998,8 @@ namespace io {
 						peer->transfer.actions |= action::CLOSE;
 						// Устанавливаем флаг разрешающий выполнять отключение от сервера
 						peer->transfer.actions |= action::DISCONNECT;
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), ::move(peer));
 						// Если установлена функция обратного вызова
@@ -2982,72 +3014,81 @@ namespace io {
 							peer->id = ret.first->first;
 							// Устанавливаем статус события в состояние ожидания
 							peer->state.status.store(event::status_t::PENDING, std::memory_order_release);
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
-							// Если событие успешно добавлено
-							if(ret.second){
-								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
-								// Если сокет является неблокирующим
-								if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
-									// Устанавливаем событие на чтение и активируем его
-									EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
-								// Устанавливаем событие на чтение и активируем его
-								else EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
-								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
-								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
-								// Устанавливаем количество событий
-								ret.first->second.count = 2;
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 2);
-								// Если необходимо установить таймаут на получение данных
-								auto i = peer->timeouts.find(event::action_t::READ);
-								// Если таймаут на получение данных найден
-								if((i != peer->timeouts.end()) && (i->second > 0)){
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+								// Если событие успешно добавлено
+								if(ret.second){
+									// Добавляем новое событие в список изменений
+									::tmp::change.push_back((struct kevent){});
 									// Если сокет является неблокирующим
-									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
-										// Активируем таймаут события
-										peer->timeout = i->first;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
-										// Увеличиваем количество событий
-										ret.first->second.count++;
-									// Если сокет является блокирующим
-									} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
-								}
-							// Событие не может быть зафиксированно повторно
-							} else {
-								// Устанавливаем текст ошибки
-								const string error = "An event for a peer event cannot be commit because it is already registered";
-								// Если установлена функция обратного вызова
-								if(node->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-								// Если функция обратного вызова для вывода события установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
+									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
+										// Устанавливаем событие на чтение и активируем его
+										EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
+									// Устанавливаем событие на чтение и активируем его
+									else EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+									// Добавляем новое событие в список изменений
+									::tmp::change.push_back((struct kevent){});
+									// Устанавливаем событие на запись но отключаем его
+									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+									// Устанавливаем количество событий
+									ret.first->second.count = 2;
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 2);
+									// Если необходимо установить таймаут на получение данных
+									auto i = peer->timeouts.find(event::action_t::READ);
+									// Если таймаут на получение данных найден
+									if((i != peer->timeouts.end()) && (i->second > 0)){
+										// Если сокет является неблокирующим
+										if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+											// Активируем таймаут события
+											peer->timeout = i->first;
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на получение данных
+											EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+											// Увеличиваем количество событий
+											ret.first->second.count++;
+										// Если сокет является блокирующим
+										} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+									}
+								// Событие не может быть зафиксированно повторно
+								} else {
+									// Устанавливаем текст ошибки
+									const string error = "An event for a peer event cannot be commit because it is already registered";
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
 								}
 							}
 							// Выводим положительный результат
 							return true;
-						// Удаляем только что добавленный узел
-						} else ::__awh_nodes__.erase(ret.first);
+						// Если событие нужно уничтожить
+						} else {
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Удаляем только что добавленный узел
+							::__awh_nodes__.erase(ret.first);
+						}
 					}
 				}
 			}
@@ -3101,36 +3142,40 @@ namespace io {
 				if(node->callbacks.event != nullptr)
 					// Вызываем функцию обратного вызова флаг события
 					node->callbacks.event(node->id, event::action_t::CONNECT);
-				// Добавляем новое событие в список изменений
-				::__awh_change__.push_back((struct kevent){});
-				// Активируем событие на чтение данных
-				EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-				// Добавляем новое событие в список изменений
-				::__awh_change__.push_back((struct kevent){});
-				// Деактивируем событие на запись данных
-				EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
-				// Создаём объект промежуточного звена
-				auto ret = ::__awh_inters__.emplace(node->id, intmd_t{});
-				// Устанавливаем количество событий
-				ret.first->second.count += 2;
-				// Если событие успешно добавлено
-				if(ret.second)
-					// Устанавливаем индекс текущего элемента
-					ret.first->second.index = (::__awh_change__.size() - 2);
-				// Если сокет является неблокирующим
-				if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-					// Выполняем проверку на наличие таймаута для подключения к серверу
-					auto i = node->timeouts.find(node->timeout);
-					// Если нужный нам таймаут найден
-					if((i != node->timeouts.end()) && (i->second > 0)){
-						// Деактивируем таймаут события
-						node->timeout = event::action_t::NONE;
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Снимаем таймаут на получение данных
-						EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
-						// Увеличиваем количество событий
-						ret.first->second.count++;
+				{
+					// Выполняем блокировку потоков
+					const locker_t lock(::tmp::mtx);
+					// Добавляем новое событие в список изменений
+					::tmp::change.push_back((struct kevent){});
+					// Активируем событие на чтение данных
+					EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+					// Добавляем новое событие в список изменений
+					::tmp::change.push_back((struct kevent){});
+					// Деактивируем событие на запись данных
+					EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+					// Создаём объект промежуточного звена
+					auto ret = ::tmp::inters.emplace(node->id, tmp::intmd_t{});
+					// Устанавливаем количество событий
+					ret.first->second.count += 2;
+					// Если событие успешно добавлено
+					if(ret.second)
+						// Устанавливаем индекс текущего элемента
+						ret.first->second.index = (::tmp::change.size() - 2);
+					// Если сокет является неблокирующим
+					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+						// Выполняем проверку на наличие таймаута для подключения к серверу
+						auto i = node->timeouts.find(node->timeout);
+						// Если нужный нам таймаут найден
+						if((i != node->timeouts.end()) && (i->second > 0)){
+							// Деактивируем таймаут события
+							node->timeout = event::action_t::NONE;
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Снимаем таймаут на получение данных
+							EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+						}
 					}
 				}
 				// Если функция обратного вызова для вывода подключения установлена
@@ -3145,12 +3190,14 @@ namespace io {
 					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
 						// Активируем таймаут события
 						node->timeout = i->first;
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Устанавливаем таймаут на получение данных
-						EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
+						EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
 						// Увеличиваем количество событий
-						ret.first->second.count++;
+						::tmp::inters.emplace(node->id, tmp::intmd_t{}).first->second.count++;
 					// Устанавливаем таймаут на получение данных
 					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 				}
@@ -4048,16 +4095,18 @@ namespace io {
 						if((i != peer->timeouts.end()) && (i->second > 0)){
 							// Активируем таймаут события
 							peer->timeout = i->first;
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							// Устанавливаем таймаут на получение данных
-							EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+							EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+							auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
@@ -4764,16 +4813,18 @@ namespace io {
 						if((i != client->timeouts.end()) && (i->second > 0)){
 							// Активируем таймаут события
 							client->timeout = i->first;
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							// Устанавливаем таймаут на получение данных
-							EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+							EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+							auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
@@ -5474,18 +5525,20 @@ namespace io {
 						}
 						// Если в очереди данных больше не осталось данных для отправки
 						if(ipc->transfer.output.empty()){
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
+							EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(ipc->id, intmd_t{});
+							auto ret = ::tmp::inters.emplace(ipc->id, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count++;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 						}
 						// Формируем положительный результат
 						return true;
@@ -5525,20 +5578,22 @@ namespace io {
 												auto i = peer->timeouts.find(event::action_t::WRITE);
 												// Если нужный нам таймаут найден
 												if((i != peer->timeouts.end()) && (i->second > 0)){
+													// Выполняем блокировку потоков
+													const locker_t lock(::tmp::mtx);
 													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+													auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
 													// Устанавливаем количество событий
 													ret.first->second.count++;
 													// Если событие успешно добавлено
 													if(ret.second)
 														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
+														ret.first->second.index = (::tmp::change.size() - 1);
 													// Активируем таймаут события
 													peer->timeout = i->first;
 													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
+													::tmp::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+													EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 												}
 											}
 											// Формируем положительный результат
@@ -5656,26 +5711,28 @@ namespace io {
 						}
 						// Если в очереди данных больше не осталось данных для отправки
 						if(peer->transfer.output.empty()){
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
+							EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+							auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count++;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 							// Выполняем проверку на наличие таймаута для действия
 							if(peer->timeout == event::action_t::WRITE){
 								// Деактивируем таймаут события
 								peer->timeout = event::action_t::NONE;
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Снимаем таймаут на получение данных
-								EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
+								EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 							}
@@ -5726,20 +5783,22 @@ namespace io {
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если нужный нам таймаут найден
 													if((i != client->timeouts.end()) && (i->second > 0)){
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
 														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+														auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
+															ret.first->second.index = (::tmp::change.size() - 1);
 														// Активируем таймаут события
 														client->timeout = i->first;
 														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
+														::tmp::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 													}
 												}
 												// Формируем положительный результат
@@ -5979,26 +6038,28 @@ namespace io {
 							}
 							// Если в очереди данных больше не осталось данных для отправки
 							if(client->transfer.output.empty()){
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Деактивируем событие на запись данных
-								EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
+								auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::__awh_change__.size() - 1);
+									ret.first->second.index = (::tmp::change.size() - 1);
 								// Выполняем проверку на наличие таймаута для действия
 								if(client->timeout == event::action_t::WRITE){
 									// Деактивируем таймаут события
 									client->timeout = event::action_t::NONE;
 									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
+									::tmp::change.push_back((struct kevent){});
 									// Снимаем таймаут на получение данных
-									EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
 									// Увеличиваем количество событий
 									ret.first->second.count++;
 								}
@@ -6085,18 +6146,20 @@ namespace io {
 								}
 								// Если в очереди данных больше не осталось данных для отправки
 								if(server->transfer.output.empty()){
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
+									::tmp::change.push_back((struct kevent){});
 									// Деактивируем событие на запись данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(server->id, intmd_t{});
+									auto ret = ::tmp::inters.emplace(server->id, tmp::intmd_t{});
 									// Устанавливаем количество событий
 									ret.first->second.count++;
 									// Если событие успешно добавлено
 									if(ret.second)
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::__awh_change__.size() - 1);
+										ret.first->second.index = (::tmp::change.size() - 1);
 								}
 								// Формируем положительный результат
 								return true;
@@ -6182,41 +6245,45 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						user_t * node = awh_cast <user_t *> (i->second.get());
 						// Устанавливаем статус события в состояние ожидания
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Если событие успешно добавлено
-						if((result = ret.second)){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем пользовательское событие
-							EV_SET(&::__awh_change__.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
-							// Устанавливаем количество событий
-							ret.first->second.count = 1;
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
-						// Событие не может быть зафиксированно повторно
-						} else {
-							// Устанавливаем текст ошибки
-							const string error = "An event for a user event cannot be commit because it is already registered";
-							// Если установлена функция обратного вызова
-							if(node->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-							// Если функция обратного вызова вывода ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-								#endif
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Если событие успешно добавлено
+							if((result = ret.second)){
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем пользовательское событие
+								EV_SET(&::tmp::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
+								// Устанавливаем количество событий
+								ret.first->second.count = 1;
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
+							// Событие не может быть зафиксированно повторно
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = "An event for a user event cannot be commit because it is already registered";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					} break;
@@ -6226,41 +6293,45 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						timer_t * node = awh_cast <timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние ожидания
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Если событие успешно добавлено
-						if((result = (ret.second && (node->delay > 0)))){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
-							// Устанавливаем количество событий
-							ret.first->second.count = 1;
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
-						// Событие не может быть зафиксированно повторно
-						} else {
-							// Устанавливаем текст ошибки
-							const string error = "An event for an timeout cannot be commit because it is already registered";
-							// Если установлена функция обратного вызова
-							if(node->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-							// Если функция обратного вызова вывода ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-								#endif
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Если событие успешно добавлено
+							if((result = (ret.second && (node->delay > 0)))){
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем событие таймаута на указанное количество миллисекунд
+								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
+								// Устанавливаем количество событий
+								ret.first->second.count = 1;
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
+							// Событие не может быть зафиксированно повторно
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = "An event for an timeout cannot be commit because it is already registered";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					} break;
@@ -6270,41 +6341,45 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						timer_t * node = awh_cast <timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние ожидания
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Если событие успешно добавлено
-						if((result = (ret.second && (node->delay > 0)))){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
-							// Устанавливаем количество событий
-							ret.first->second.count = 1;
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
-						// Событие не может быть зафиксированно повторно
-						} else {
-							// Устанавливаем текст ошибки
-							const string error = "An event for an interval cannot be commit because it is already registered";
-							// Если установлена функция обратного вызова
-							if(node->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-							// Если функция обратного вызова вывода ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-								#endif
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Если событие успешно добавлено
+							if((result = (ret.second && (node->delay > 0)))){
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
+								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
+								// Устанавливаем количество событий
+								ret.first->second.count = 1;
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
+							// Событие не может быть зафиксированно повторно
+							} else {
+								// Устанавливаем текст ошибки
+								const string error = "An event for an interval cannot be commit because it is already registered";
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					} break;
@@ -6354,46 +6429,49 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										node->fd = net::invalid_socket_t;
 										// Выходим из функции с ошибкой
 										return result;
-									}
-									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-									// Если событие успешно добавлено
-									if((result = ret.second)){
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на отслеживание изменения каталога
-										EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
-										// Устанавливаем количество событий
-										ret.first->second.count = 1;
-										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::__awh_change__.size() - 1);
-										// Устанавливаем флаги разрешающие получать события
-										node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE);
-										// Выполняем изменение содержимого в директории
-										io::change(node, this, this->_fmk, this->_log);
-									// Событие не может быть зафиксированно повторно
-									} else {
-										// Устанавливаем текст ошибки
-										const string error = "An event for a directory event cannot be commit because it is already registered";
-										// Если установлена функция обратного вызова
-										if(node->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-										// Если функция обратного вызова вывода ошибки не установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+									}{
+										// Выполняем блокировку потоков
+										const locker_t lock(::tmp::mtx);
+										// Создаём объект промежуточного звена
+										auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+										// Если событие успешно добавлено
+										if((result = ret.second)){
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем событие на отслеживание изменения каталога
+											EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+											// Устанавливаем количество событий
+											ret.first->second.count = 1;
+											// Устанавливаем индекс текущего элемента
+											ret.first->second.index = (::tmp::change.size() - 1);
+											// Устанавливаем флаги разрешающие получать события
+											node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE);
+											// Выполняем изменение содержимого в директории
+											io::change(node, this, this->_fmk, this->_log);
+										// Событие не может быть зафиксированно повторно
+										} else {
+											// Устанавливаем текст ошибки
+											const string error = "An event for a directory event cannot be commit because it is already registered";
+											// Если установлена функция обратного вызова
+											if(node->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+											// Если функция обратного вызова вывода ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
 										}
 									}
 								// Если файловый дескриптор каталога не существует
@@ -6500,18 +6578,20 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								node->fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0644);
 								// Если файловый дескриптор файла существует
 								if(node->fd != net::invalid_socket_t){
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+									auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
+										::tmp::change.push_back((struct kevent){});
 										// Устанавливаем событие на отслеживание изменения файла
-										EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+										EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::__awh_change__.size() - 1);
+										ret.first->second.index = (::tmp::change.size() - 1);
 										// Устанавливаем флаги разрешающие получать события
 										node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE | action::READ | action::WRITE);
 										// Если файл открыт удачно
@@ -6665,26 +6745,28 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 								// Для типа сокета DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Создаём объект промежуточного звена
-									auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+									auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
+										::tmp::change.push_back((struct kevent){});
 										// Если сокет является неблокирующим
 										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 											// Устанавливаем событие на чтение и активируем его
-											EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 										// Устанавливаем событие на чтение и активируем его
-										else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+										else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
+										::tmp::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+										EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 										// Устанавливаем количество событий
 										ret.first->second.count = 2;
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::__awh_change__.size() - 2);
+										ret.first->second.index = (::tmp::change.size() - 2);
 										// Устанавливаем флаг разрешающий выполнять чтение из сокета
 										node->transfer.actions |= action::READ;
 										// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -6852,52 +6934,55 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													node->state.status.store(event::status_t::NONE, std::memory_order_release);
 													// Выходим из функции с ошибкой
 													return result;
-												}
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-												// Если событие успешно добавлено
-												if((result = ret.second)){
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Если сокет является неблокирующим
-													if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+												}{
+													// Выполняем блокировку потоков
+													const locker_t lock(::tmp::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													// Если событие успешно добавлено
+													if((result = ret.second)){
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Если сокет является неблокирующим
+														if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+															// Устанавливаем событие на чтение но отключаем его
+															EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-													// Устанавливаем событие на чтение но отключаем его
-													else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
-													// Устанавливаем количество событий
-													ret.first->second.count = 1;
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-													// Устанавливаем флаг разрешающий выполнять чтение из сокета
-													node->transfer.actions |= action::READ;
-													// Устанавливаем флаг разрешающий выполнять запись в сокет
-													node->transfer.actions |= action::WRITE;
-													// Устанавливаем флаг разрешающий закрытие сокета
-													node->transfer.actions |= action::CLOSE;
-												// Событие не может быть зафиксированно повторно
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "An event for a IPv4-event cannot be commit because it is already registered";
-													// Если установлена функция обратного вызова
-													if(node->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+														else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+														// Устанавливаем количество событий
+														ret.first->second.count = 1;
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::tmp::change.size() - 1);
+														// Устанавливаем флаг разрешающий выполнять чтение из сокета
+														node->transfer.actions |= action::READ;
+														// Устанавливаем флаг разрешающий выполнять запись в сокет
+														node->transfer.actions |= action::WRITE;
+														// Устанавливаем флаг разрешающий закрытие сокета
+														node->transfer.actions |= action::CLOSE;
+													// Событие не может быть зафиксированно повторно
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = "An event for a IPv4-event cannot be commit because it is already registered";
+														// Если установлена функция обратного вызова
+														if(node->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+														// Если функция обратного вызова вывода ошибки не установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
 													}
 												}
 											// Если адрес целевой машины не указан
@@ -6984,52 +7069,55 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													node->state.status.store(event::status_t::NONE, std::memory_order_release);
 													// Выходим из функции с ошибкой
 													return result;
-												}
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-												// Если событие успешно добавлено
-												if((result = ret.second)){
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Если сокет является неблокирующим
-													if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+												}{
+													// Выполняем блокировку потоков
+													const locker_t lock(::tmp::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													// Если событие успешно добавлено
+													if((result = ret.second)){
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Если сокет является неблокирующим
+														if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+															// Устанавливаем событие на чтение но отключаем его
+															EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-													// Устанавливаем событие на чтение но отключаем его
-													else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
-													// Устанавливаем количество событий
-													ret.first->second.count = 1;
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
-													// Устанавливаем флаг разрешающий выполнять чтение из сокета
-													node->transfer.actions |= action::READ;
-													// Устанавливаем флаг разрешающий выполнять запись в сокет
-													node->transfer.actions |= action::WRITE;
-													// Устанавливаем флаг разрешающий закрытие сокета
-													node->transfer.actions |= action::CLOSE;
-												// Событие не может быть зафиксированно повторно
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = "An event for a IPv6-event cannot be commit because it is already registered";
-													// Если установлена функция обратного вызова
-													if(node->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+														else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+														// Устанавливаем количество событий
+														ret.first->second.count = 1;
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::tmp::change.size() - 1);
+														// Устанавливаем флаг разрешающий выполнять чтение из сокета
+														node->transfer.actions |= action::READ;
+														// Устанавливаем флаг разрешающий выполнять запись в сокет
+														node->transfer.actions |= action::WRITE;
+														// Устанавливаем флаг разрешающий закрытие сокета
+														node->transfer.actions |= action::CLOSE;
+													// Событие не может быть зафиксированно повторно
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = "An event for a IPv6-event cannot be commit because it is already registered";
+														// Если установлена функция обратного вызова
+														if(node->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+														// Если функция обратного вызова вывода ошибки не установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
 													}
 												}
 											// Если адрес целевой машины не указан
@@ -7238,62 +7326,65 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														node->state.status.store(event::status_t::NONE, std::memory_order_release);
 														// Выходим из функции с ошибкой
 														return result;
-													}
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Если событие успешно добавлено
-													if((result = ret.second)){
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Если сокет является неблокирующим
-														if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+													}{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Если событие успешно добавлено
+														if((result = ret.second)){
+															// Добавляем новое событие в список изменений
+															::tmp::change.push_back((struct kevent){});
+															// Если сокет является неблокирующим
+															if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Устанавливаем событие на запись но отключаем его
-														EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-														// Устанавливаем количество событий
-														ret.first->second.count = 2;
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 2);
-														// Устанавливаем флаг разрешающий выполнять чтение из сокета
-														node->transfer.actions |= action::READ;
-														// Устанавливаем флаг разрешающий выполнять запись в сокет
-														node->transfer.actions |= action::WRITE;
-														// Устанавливаем флаг разрешающий закрытие сокета
-														node->transfer.actions |= action::CLOSE;
-														// Устанавливаем флаг разрешающий выполнять подключение к серверу
-														node->transfer.actions |= action::CONNECT;
-														// Устанавливаем флаг разрешающий выполнять переподключение к серверу
-														node->transfer.actions |= action::RECONNECT;
-														// Устанавливаем флаг разрешающий выполнять отключение от сервера
-														node->transfer.actions |= action::DISCONNECT;
-													// Событие не может быть зафиксированно повторно
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "An event for a Unix event cannot be commit because it is already registered";
-														// Если установлена функция обратного вызова
-														if(node->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-														// Если функция обратного вызова вывода ошибки не установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+															else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+															// Добавляем новое событие в список изменений
+															::tmp::change.push_back((struct kevent){});
+															// Устанавливаем событие на запись но отключаем его
+															EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+															// Устанавливаем количество событий
+															ret.first->second.count = 2;
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 2);
+															// Устанавливаем флаг разрешающий выполнять чтение из сокета
+															node->transfer.actions |= action::READ;
+															// Устанавливаем флаг разрешающий выполнять запись в сокет
+															node->transfer.actions |= action::WRITE;
+															// Устанавливаем флаг разрешающий закрытие сокета
+															node->transfer.actions |= action::CLOSE;
+															// Устанавливаем флаг разрешающий выполнять подключение к серверу
+															node->transfer.actions |= action::CONNECT;
+															// Устанавливаем флаг разрешающий выполнять переподключение к серверу
+															node->transfer.actions |= action::RECONNECT;
+															// Устанавливаем флаг разрешающий выполнять отключение от сервера
+															node->transfer.actions |= action::DISCONNECT;
+														// Событие не может быть зафиксированно повторно
+														} else {
+															// Устанавливаем текст ошибки
+															const string error = "An event for a Unix event cannot be commit because it is already registered";
+															// Если установлена функция обратного вызова
+															if(node->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+															// Если функция обратного вызова вывода ошибки не установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																#endif
+															}
 														}
 													}
 												} break;
@@ -7400,62 +7491,65 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															node->state.status.store(event::status_t::NONE, std::memory_order_release);
 															// Выходим из функции с ошибкой
 															return result;
-														}
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Если событие успешно добавлено
-														if((result = ret.second)){
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Если сокет является неблокирующим
-															if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+														}{
+															// Выполняем блокировку потоков
+															const locker_t lock(::tmp::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															// Если событие успешно добавлено
+															if((result = ret.second)){
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Если сокет является неблокирующим
+																if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																	// Устанавливаем событие на чтение но отключаем его
+																	EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем событие на запись но отключаем его
-															EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-															// Устанавливаем количество событий
-															ret.first->second.count = 2;
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 2);
-															// Устанавливаем флаг разрешающий выполнять чтение из сокета
-															node->transfer.actions |= action::READ;
-															// Устанавливаем флаг разрешающий выполнять запись в сокет
-															node->transfer.actions |= action::WRITE;
-															// Устанавливаем флаг разрешающий закрытие сокета
-															node->transfer.actions |= action::CLOSE;
-															// Устанавливаем флаг разрешающий выполнять подключение к серверу
-															node->transfer.actions |= action::CONNECT;
-															// Устанавливаем флаг разрешающий выполнять переподключение к серверу
-															node->transfer.actions |= action::RECONNECT;
-															// Устанавливаем флаг разрешающий выполнять отключение от сервера
-															node->transfer.actions |= action::DISCONNECT;
-														// Событие не может быть зафиксированно повторно
-														} else {
-															// Устанавливаем текст ошибки
-															const string error = "An event for a IPv4-event cannot be commit because it is already registered";
-															// Если установлена функция обратного вызова
-															if(node->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-															// Если функция обратного вызова вывода ошибки не установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																#endif
+																else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем событие на запись но отключаем его
+																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																// Устанавливаем количество событий
+																ret.first->second.count = 2;
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::tmp::change.size() - 2);
+																// Устанавливаем флаг разрешающий выполнять чтение из сокета
+																node->transfer.actions |= action::READ;
+																// Устанавливаем флаг разрешающий выполнять запись в сокет
+																node->transfer.actions |= action::WRITE;
+																// Устанавливаем флаг разрешающий закрытие сокета
+																node->transfer.actions |= action::CLOSE;
+																// Устанавливаем флаг разрешающий выполнять подключение к серверу
+																node->transfer.actions |= action::CONNECT;
+																// Устанавливаем флаг разрешающий выполнять переподключение к серверу
+																node->transfer.actions |= action::RECONNECT;
+																// Устанавливаем флаг разрешающий выполнять отключение от сервера
+																node->transfer.actions |= action::DISCONNECT;
+															// Событие не может быть зафиксированно повторно
+															} else {
+																// Устанавливаем текст ошибки
+																const string error = "An event for a IPv4-event cannot be commit because it is already registered";
+																// Если установлена функция обратного вызова
+																if(node->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+																// Если функция обратного вызова вывода ошибки не установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	#endif
+																}
 															}
 														}
 													} break;
@@ -7911,62 +8005,65 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															node->state.status.store(event::status_t::NONE, std::memory_order_release);
 															// Выходим из функции с ошибкой
 															return result;
-														}
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Если событие успешно добавлено
-														if((result = ret.second)){
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Если сокет является неблокирующим
-															if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+														}{
+															// Выполняем блокировку потоков
+															const locker_t lock(::tmp::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															// Если событие успешно добавлено
+															if((result = ret.second)){
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Если сокет является неблокирующим
+																if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																	// Устанавливаем событие на чтение но отключаем его
+																	EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем событие на запись но отключаем его
-															EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-															// Устанавливаем количество событий
-															ret.first->second.count = 2;
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 2);
-															// Устанавливаем флаг разрешающий выполнять чтение из сокета
-															node->transfer.actions |= action::READ;
-															// Устанавливаем флаг разрешающий выполнять запись в сокет
-															node->transfer.actions |= action::WRITE;
-															// Устанавливаем флаг разрешающий закрытие сокета
-															node->transfer.actions |= action::CLOSE;
-															// Устанавливаем флаг разрешающий выполнять подключение к серверу
-															node->transfer.actions |= action::CONNECT;
-															// Устанавливаем флаг разрешающий выполнять переподключение к серверу
-															node->transfer.actions |= action::RECONNECT;
-															// Устанавливаем флаг разрешающий выполнять отключение от сервера
-															node->transfer.actions |= action::DISCONNECT;
-														// Событие не может быть зафиксированно повторно
-														} else {
-															// Устанавливаем текст ошибки
-															const string error = "An event for a IPv6-event cannot be commit because it is already registered";
-															// Если установлена функция обратного вызова
-															if(node->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-															// Если функция обратного вызова вывода ошибки не установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																#endif
+																else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем событие на запись но отключаем его
+																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																// Устанавливаем количество событий
+																ret.first->second.count = 2;
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::tmp::change.size() - 2);
+																// Устанавливаем флаг разрешающий выполнять чтение из сокета
+																node->transfer.actions |= action::READ;
+																// Устанавливаем флаг разрешающий выполнять запись в сокет
+																node->transfer.actions |= action::WRITE;
+																// Устанавливаем флаг разрешающий закрытие сокета
+																node->transfer.actions |= action::CLOSE;
+																// Устанавливаем флаг разрешающий выполнять подключение к серверу
+																node->transfer.actions |= action::CONNECT;
+																// Устанавливаем флаг разрешающий выполнять переподключение к серверу
+																node->transfer.actions |= action::RECONNECT;
+																// Устанавливаем флаг разрешающий выполнять отключение от сервера
+																node->transfer.actions |= action::DISCONNECT;
+															// Событие не может быть зафиксированно повторно
+															} else {
+																// Устанавливаем текст ошибки
+																const string error = "An event for a IPv6-event cannot be commit because it is already registered";
+																// Если установлена функция обратного вызова
+																if(node->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+																// Если функция обратного вызова вывода ошибки не установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	#endif
+																}
 															}
 														}
 													} break;
@@ -8753,84 +8850,87 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														node->state.status.store(event::status_t::NONE, std::memory_order_release);
 														// Выходим из функции с ошибкой
 														return result;
-													}
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Если событие успешно добавлено
-													if((result = ret.second)){
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (node->state.type)){
-															// Для типа сокета STREAM
-															case static_cast <uint8_t> (event::type_t::STREAM):
-															// Для типа сокета SEQPACKET
-															case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																// Если сокет является неблокирующим
-																if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-																	// Устанавливаем событие на чтение но отключаем его
-																	EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-																// Устанавливаем событие на чтение но отключаем его
-																else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-															} break;
-															// Для типа сокета DATAGRAM
-															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																// Устанавливаем статус события в состояние подключения
-																node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-																// Если сокет является неблокирующим
-																if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-																	// Устанавливаем событие на чтение но отключаем его
-																	EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-																// Устанавливаем событие на чтение но отключаем его
-																else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
-															} break;
-														}
-														// Устанавливаем количество событий
-														ret.first->second.count = 1;
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-														// Если событие является UDP-подключением
-														if(node->state.type == event::type_t::DATAGRAM){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
+													}{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Если событие успешно добавлено
+														if((result = ret.second)){
 															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем событие на запись но отключаем его
-															EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-														}
-														// Устанавливаем флаг разрешающий выполнять чтение из сокета
-														node->transfer.actions |= action::READ;
-														// Устанавливаем флаг разрешающий выполнять запись в сокет
-														node->transfer.actions |= action::WRITE;
-														// Устанавливаем флаг разрешающий закрытие сокета
-														node->transfer.actions |= action::CLOSE;
-														// Устанавливаем флаг разрешающий выполнять принятие подключений
-														node->transfer.actions |= action::ACCEPT;
-													// Событие не может быть зафиксированно повторно
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "An event for a Unix event cannot be commit because it is already registered";
-														// Если установлена функция обратного вызова
-														if(node->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-														// Если функция обратного вызова вывода ошибки не установлена
-														else {
+															::tmp::change.push_back((struct kevent){});
 															/**
-															 * Если включён режим отладки
+															 * Определяем тип сокета
 															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+															switch(static_cast <uint8_t> (node->state.type)){
+																// Для типа сокета STREAM
+																case static_cast <uint8_t> (event::type_t::STREAM):
+																// Для типа сокета SEQPACKET
+																case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+																	// Если сокет является неблокирующим
+																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																		// Устанавливаем событие на чтение но отключаем его
+																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																	// Устанавливаем событие на чтение но отключаем его
+																	else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																} break;
+																// Для типа сокета DATAGRAM
+																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+																	// Устанавливаем статус события в состояние подключения
+																	node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+																	// Если сокет является неблокирующим
+																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																		// Устанавливаем событие на чтение но отключаем его
+																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+																	// Устанавливаем событие на чтение но отключаем его
+																	else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+																} break;
+															}
+															// Устанавливаем количество событий
+															ret.first->second.count = 1;
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+															// Если событие является UDP-подключением
+															if(node->state.type == event::type_t::DATAGRAM){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем событие на запись но отключаем его
+																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+															}
+															// Устанавливаем флаг разрешающий выполнять чтение из сокета
+															node->transfer.actions |= action::READ;
+															// Устанавливаем флаг разрешающий выполнять запись в сокет
+															node->transfer.actions |= action::WRITE;
+															// Устанавливаем флаг разрешающий закрытие сокета
+															node->transfer.actions |= action::CLOSE;
+															// Устанавливаем флаг разрешающий выполнять принятие подключений
+															node->transfer.actions |= action::ACCEPT;
+														// Событие не может быть зафиксированно повторно
+														} else {
+															// Устанавливаем текст ошибки
+															const string error = "An event for a Unix event cannot be commit because it is already registered";
+															// Если установлена функция обратного вызова
+															if(node->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+															// Если функция обратного вызова вывода ошибки не установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																#endif
+															}
 														}
 													}
 												} break;
@@ -8942,89 +9042,92 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																	node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
 																}
 															} break;
-														}
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Если событие успешно добавлено
-														if((result = ret.second)){
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															/**
-															 * Определяем тип сокета
-															 */
-															switch(static_cast <uint8_t> (node->state.type)){
-																// Для типа сокета STREAM
-																case static_cast <uint8_t> (event::type_t::STREAM):
-																// Для типа сокета SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																	// Если сокет является неблокирующим
-																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-																} break;
-																// Для типа сокета DATAGRAM
-																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																	// Устанавливаем статус события в состояние подключения
-																	node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-																	// Если сокет является неблокирующим
-																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
-																} break;
-															}
-															// Устанавливаем количество событий
-															ret.first->second.count = 1;
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-															/**
-															 * Определяем тип сокета
-															 */
-															switch(static_cast <uint8_t> (node->state.type)){
-																// Для типа сокета DATAGRAM
-																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																	// Устанавливаем количество событий
-																	ret.first->second.count++;
-																	// Добавляем новое событие в список изменений
-																	::__awh_change__.push_back((struct kevent){});
-																	// Устанавливаем событие на запись но отключаем его
-																	EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-																} break;
-															}
-															// Устанавливаем флаг разрешающий выполнять чтение из сокета
-															node->transfer.actions |= action::READ;
-															// Устанавливаем флаг разрешающий выполнять запись в сокет
-															node->transfer.actions |= action::WRITE;
-															// Устанавливаем флаг разрешающий закрытие сокета
-															node->transfer.actions |= action::CLOSE;
-															// Устанавливаем флаг разрешающий выполнять принятие подключений
-															node->transfer.actions |= action::ACCEPT;
-														// Событие не может быть зафиксированно повторно
-														} else {
-															// Устанавливаем текст ошибки
-															const string error = "An event for a IPv4-event cannot be commit because it is already registered";
-															// Если установлена функция обратного вызова
-															if(node->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-															// Если функция обратного вызова вывода ошибки не установлена
-															else {
+														}{
+															// Выполняем блокировку потоков
+															const locker_t lock(::tmp::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															// Если событие успешно добавлено
+															if((result = ret.second)){
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
 																/**
-																 * Если включён режим отладки
+																 * Определяем тип сокета
 																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																switch(static_cast <uint8_t> (node->state.type)){
+																	// Для типа сокета STREAM
+																	case static_cast <uint8_t> (event::type_t::STREAM):
+																	// Для типа сокета SEQPACKET
+																	case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+																		// Если сокет является неблокирующим
+																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																			// Устанавливаем событие на чтение но отключаем его
+																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																		// Устанавливаем событие на чтение но отключаем его
+																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																	} break;
+																	// Для типа сокета DATAGRAM
+																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+																		// Устанавливаем статус события в состояние подключения
+																		node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+																		// Если сокет является неблокирующим
+																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																			// Устанавливаем событие на чтение но отключаем его
+																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+																		// Устанавливаем событие на чтение но отключаем его
+																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+																	} break;
+																}
+																// Устанавливаем количество событий
+																ret.first->second.count = 1;
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::tmp::change.size() - 1);
 																/**
-																 * Если режим отладки не включён
+																 * Определяем тип сокета
 																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																#endif
+																switch(static_cast <uint8_t> (node->state.type)){
+																	// Для типа сокета DATAGRAM
+																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+																		// Устанавливаем количество событий
+																		ret.first->second.count++;
+																		// Добавляем новое событие в список изменений
+																		::tmp::change.push_back((struct kevent){});
+																		// Устанавливаем событие на запись но отключаем его
+																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																	} break;
+																}
+																// Устанавливаем флаг разрешающий выполнять чтение из сокета
+																node->transfer.actions |= action::READ;
+																// Устанавливаем флаг разрешающий выполнять запись в сокет
+																node->transfer.actions |= action::WRITE;
+																// Устанавливаем флаг разрешающий закрытие сокета
+																node->transfer.actions |= action::CLOSE;
+																// Устанавливаем флаг разрешающий выполнять принятие подключений
+																node->transfer.actions |= action::ACCEPT;
+															// Событие не может быть зафиксированно повторно
+															} else {
+																// Устанавливаем текст ошибки
+																const string error = "An event for a IPv4-event cannot be commit because it is already registered";
+																// Если установлена функция обратного вызова
+																if(node->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+																// Если функция обратного вызова вывода ошибки не установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	#endif
+																}
 															}
 														}
 													} break;
@@ -9163,89 +9266,92 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																	node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
 																}
 															} break;
-														}
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Если событие успешно добавлено
-														if((result = ret.second)){
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															/**
-															 * Определяем тип сокета
-															 */
-															switch(static_cast <uint8_t> (node->state.type)){
-																// Для типа сокета STREAM
-																case static_cast <uint8_t> (event::type_t::STREAM):
-																// Для типа сокета SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																	// Если сокет является неблокирующим
-																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-																} break;
-																// Для типа сокета DATAGRAM
-																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																	// Устанавливаем статус события в состояние подключения
-																	node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-																	// Если сокет является неблокирующим
-																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
-																} break;
-															}
-															// Устанавливаем количество событий
-															ret.first->second.count = 1;
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-															/**
-															 * Определяем тип сокета
-															 */
-															switch(static_cast <uint8_t> (node->state.type)){
-																// Для типа сокета DATAGRAM
-																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																	// Устанавливаем количество событий
-																	ret.first->second.count++;
-																	// Добавляем новое событие в список изменений
-																	::__awh_change__.push_back((struct kevent){});
-																	// Устанавливаем событие на запись но отключаем его
-																	EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-																} break;
-															}
-															// Устанавливаем флаг разрешающий выполнять чтение из сокета
-															node->transfer.actions |= action::READ;
-															// Устанавливаем флаг разрешающий выполнять запись в сокет
-															node->transfer.actions |= action::WRITE;
-															// Устанавливаем флаг разрешающий закрытие сокета
-															node->transfer.actions |= action::CLOSE;
-															// Устанавливаем флаг разрешающий выполнять принятие подключений
-															node->transfer.actions |= action::ACCEPT;
-														// Событие не может быть зафиксированно повторно
-														} else {
-															// Устанавливаем текст ошибки
-															const string error = "An event for a IPv6-event cannot be commit because it is already registered";
-															// Если установлена функция обратного вызова
-															if(node->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-															// Если функция обратного вызова вывода ошибки не установлена
-															else {
+														}{
+															// Выполняем блокировку потоков
+															const locker_t lock(::tmp::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															// Если событие успешно добавлено
+															if((result = ret.second)){
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
 																/**
-																 * Если включён режим отладки
+																 * Определяем тип сокета
 																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																switch(static_cast <uint8_t> (node->state.type)){
+																	// Для типа сокета STREAM
+																	case static_cast <uint8_t> (event::type_t::STREAM):
+																	// Для типа сокета SEQPACKET
+																	case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+																		// Если сокет является неблокирующим
+																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																			// Устанавливаем событие на чтение но отключаем его
+																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																		// Устанавливаем событие на чтение но отключаем его
+																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																	} break;
+																	// Для типа сокета DATAGRAM
+																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+																		// Устанавливаем статус события в состояние подключения
+																		node->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+																		// Если сокет является неблокирующим
+																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+																			// Устанавливаем событие на чтение но отключаем его
+																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+																		// Устанавливаем событие на чтение но отключаем его
+																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+																	} break;
+																}
+																// Устанавливаем количество событий
+																ret.first->second.count = 1;
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::tmp::change.size() - 1);
 																/**
-																 * Если режим отладки не включён
+																 * Определяем тип сокета
 																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																#endif
+																switch(static_cast <uint8_t> (node->state.type)){
+																	// Для типа сокета DATAGRAM
+																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+																		// Устанавливаем количество событий
+																		ret.first->second.count++;
+																		// Добавляем новое событие в список изменений
+																		::tmp::change.push_back((struct kevent){});
+																		// Устанавливаем событие на запись но отключаем его
+																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																	} break;
+																}
+																// Устанавливаем флаг разрешающий выполнять чтение из сокета
+																node->transfer.actions |= action::READ;
+																// Устанавливаем флаг разрешающий выполнять запись в сокет
+																node->transfer.actions |= action::WRITE;
+																// Устанавливаем флаг разрешающий закрытие сокета
+																node->transfer.actions |= action::CLOSE;
+																// Устанавливаем флаг разрешающий выполнять принятие подключений
+																node->transfer.actions |= action::ACCEPT;
+															// Событие не может быть зафиксированно повторно
+															} else {
+																// Устанавливаем текст ошибки
+																const string error = "An event for a IPv6-event cannot be commit because it is already registered";
+																// Если установлена функция обратного вызова
+																if(node->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+																// Если функция обратного вызова вывода ошибки не установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	#endif
+																}
 															}
 														}
 													} break;
@@ -14026,30 +14132,34 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							::close(node->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							node->transfer.fd = net::invalid_socket_t;
-							// Если в списке промежуточного взаимодействия присутствует запись для данного события
-							auto i = ::__awh_inters__.find(node->id);
-							// Если запись найдена
-							if(i != ::__awh_inters__.end()){
-								// Количество записей в списке изменений
-								size_t count = 0;
-								// Получаем итератор на начало списка изменений
-								auto j = ::__awh_change__.begin();
-								// Получаем нужный нам итератор
-								std::advance(j, i->second.index);
-								// Проходим по всем изменениям промежуточного взаимодействия
-								for(; j != ::__awh_change__.end();){
-									// Если идентификатор события совпадает с идентификатором в записи списка изменений
-									if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
-										// Удаляем запись из списка изменений
-										j = ::__awh_change__.erase(j);
-										// Увеличиваем счётчик удалённых записей
-										count++;
-										// Если записи удалены
-										if(count == i->second.count)
-											// Завершаем цикл
-											break;
-									// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-									} else ++j;
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Если в списке промежуточного взаимодействия присутствует запись для данного события
+								auto i = ::tmp::inters.find(node->id);
+								// Если запись найдена
+								if(i != ::tmp::inters.end()){
+									// Количество записей в списке изменений
+									size_t count = 0;
+									// Получаем итератор на начало списка изменений
+									auto j = ::tmp::change.begin();
+									// Получаем нужный нам итератор
+									std::advance(j, i->second.index);
+									// Проходим по всем изменениям промежуточного взаимодействия
+									for(; j != ::tmp::change.end();){
+										// Если идентификатор события совпадает с идентификатором в записи списка изменений
+										if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+											// Удаляем запись из списка изменений
+											j = ::tmp::change.erase(j);
+											// Увеличиваем счётчик удалённых записей
+											count++;
+											// Если записи удалены
+											if(count == i->second.count)
+												// Завершаем цикл
+												break;
+										// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+										} else ++j;
+									}
 								}
 							}
 							// Выходим из условия
@@ -14075,30 +14185,34 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							::close(node->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							node->transfer.fd = net::invalid_socket_t;
-							// Если в списке промежуточного взаимодействия присутствует запись для данного события
-							auto i = ::__awh_inters__.find(node->id);
-							// Если запись найдена
-							if(i != ::__awh_inters__.end()){
-								// Количество записей в списке изменений
-								size_t count = 0;
-								// Получаем итератор на начало списка изменений
-								auto j = ::__awh_change__.begin();
-								// Получаем нужный нам итератор
-								std::advance(j, i->second.index);
-								// Проходим по всем изменениям промежуточного взаимодействия
-								for(; j != ::__awh_change__.end();){
-									// Если идентификатор события совпадает с идентификатором в записи списка изменений
-									if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
-										// Удаляем запись из списка изменений
-										j = ::__awh_change__.erase(j);
-										// Увеличиваем счётчик удалённых записей
-										count++;
-										// Если записи удалены
-										if(count == i->second.count)
-											// Завершаем цикл
-											break;
-									// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-									} else ++j;
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Если в списке промежуточного взаимодействия присутствует запись для данного события
+								auto i = ::tmp::inters.find(node->id);
+								// Если запись найдена
+								if(i != ::tmp::inters.end()){
+									// Количество записей в списке изменений
+									size_t count = 0;
+									// Получаем итератор на начало списка изменений
+									auto j = ::tmp::change.begin();
+									// Получаем нужный нам итератор
+									std::advance(j, i->second.index);
+									// Проходим по всем изменениям промежуточного взаимодействия
+									for(; j != ::tmp::change.end();){
+										// Если идентификатор события совпадает с идентификатором в записи списка изменений
+										if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+											// Удаляем запись из списка изменений
+											j = ::tmp::change.erase(j);
+											// Увеличиваем счётчик удалённых записей
+											count++;
+											// Если записи удалены
+											if(count == i->second.count)
+												// Завершаем цикл
+												break;
+										// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+										} else ++j;
+									}
 								}
 							}
 							// Выходим из условия
@@ -14205,6 +14319,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства пользовательских событий
 							case static_cast <uint8_t> (event::family_t::USER): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <user_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -14253,6 +14369,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства таймеров
 							case static_cast <uint8_t> (event::family_t::TIMER): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <timer_t> ());
 								// Устанавливаем идентификатор события
@@ -14299,6 +14417,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства директорий
 							case static_cast <uint8_t> (event::family_t::FSYS): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -14347,6 +14467,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства директорий
 							case static_cast <uint8_t> (event::family_t::FSYS): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -14401,6 +14523,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								switch(static_cast <uint8_t> (i->second->state.node)){
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Выполняем блокировку потоков
+										const locker_t lock(::__awh_mtx__);
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Выполняем создание события
@@ -14532,6 +14656,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								switch(static_cast <uint8_t> (i->second->state.node)){
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Выполняем блокировку потоков
+										const locker_t lock(::__awh_mtx__);
 										// Получаем текущее значение объекта сервера
 										server_t * first = awh_cast <server_t *> (i->second.get());
 										// Выполняем создание события
@@ -14904,8 +15030,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 											return ret.first->first;
 										// Если всё прошло не успешно
 										else {
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
 											// Производим удаление списка подготовленных событий
-											::__awh_inters__.erase(ret.first->first);
+											::tmp::inters.erase(ret.first->first);
 											// Удаляем созданное событие
 											::__awh_nodes__.erase(ret.first);
 										}
@@ -14968,6 +15096,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -15178,6 +15308,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 							case static_cast <uint8_t> (event::family_t::IPV4):
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -15964,8 +16096,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 									return ret.first->first;
 								// Если всё прошло не успешно
 								} else {
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
+									::tmp::inters.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								}
@@ -16003,6 +16137,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -16205,6 +16341,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 							case static_cast <uint8_t> (event::family_t::IPV4):
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -16960,8 +17098,10 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 									return ret.first->first;
 								// Если всё прошло не успешно
 								else {
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
+									::tmp::inters.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								}
@@ -17089,6 +17229,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства пользовательских событий
 					case static_cast <uint8_t> (event::family_t::USER): {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <user_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
@@ -17140,6 +17282,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства таймеров
 					case static_cast <uint8_t> (event::family_t::TIMER): {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <timer_t> ());
 						// Устанавливаем идентификатор события
@@ -17189,6 +17333,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства директорий
 					case static_cast <uint8_t> (event::family_t::FSYS): {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
@@ -17240,6 +17386,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства директорий
 					case static_cast <uint8_t> (event::family_t::FSYS): {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <file_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
@@ -17303,6 +17451,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -17325,8 +17475,10 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								target->path = make_unique <net::addr_fs_t> ();
 								// Выполняем создание сокета
 								if(!io::socket(client, this->_log)){
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
+									::tmp::inters.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -17374,6 +17526,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -17407,8 +17561,10 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								}
 								// Выполняем создание сокета
 								if(!io::socket(client, this->_log)){
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
+									::tmp::inters.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Если сокет не создан
@@ -17512,6 +17668,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -17534,8 +17692,10 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								host->path = make_unique <net::addr_fs_t> ();
 								// Выполняем создание сокета
 								if(!io::socket(server, this->_log)){
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
+									::tmp::inters.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -17583,6 +17743,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::__awh_mtx__);
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
@@ -17616,8 +17778,10 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								}
 								// Выполняем создание сокета
 								if(!io::socket(server, this->_log)){
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
 									// Производим удаление списка подготовленных событий
-									::__awh_inters__.erase(ret.first->first);
+									::tmp::inters.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -18248,6 +18412,8 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 					case static_cast <uint8_t> (event::family_t::PIPE):
 					// Для семейства UNIX-доменных сокетов
 					case static_cast <uint8_t> (event::family_t::UDS): {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <ipc_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
@@ -18267,6 +18433,8 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 					} break;
 					// Длля других семейств сокетов
 					default: {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
@@ -18708,62 +18876,45 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									case static_cast <uint8_t> (event::node_t::CLIENT):
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Если событие находится в состоянии паузы
-										if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
-											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
-											// Устанавливаем количество событий
-											ret.first->second.count += 2;
-											// Если событие успешно добавлено
-											if(ret.second)
-												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::__awh_change__.size() - 2);
-										// Если событие находится в активном состоянии
-										} else {
-											// Устанавливаем событие на чтение
-											EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
-											// Устанавливаем количество событий
-											ret.first->second.count += 2;
-											// Если событие успешно добавлено
-											if(ret.second)
-												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::__awh_change__.size() - 2);
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если узел является одноранговым узлом
-												case static_cast <uint8_t> (event::node_t::PEER): {
-													// Получаем текущее значение объекта однорангового узла
-													peer_t * node = awh_cast <peer_t *> (i->second.get());
-													// Если необходимо установить таймаут на чтение данных
-													auto j = node->timeouts.find(event::action_t::READ);
-													// Если таймаут на подключение найден
-													if((j != node->timeouts.end()) && (j->second > 0)){
-														// Активируем таймаут события
-														node->timeout = j->first;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-														// Увеличиваем количество событий
-														ret.first->second.count++;
-													}
-												} break;
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT): {
-													// Получаем текущее значение объекта клиента
-													client_t * node = awh_cast <client_t *> (i->second.get());
-													// Если таймаут уже был активирован
-													if(node->timeout != event::action_t::RECONNECT){
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Если событие находится в состоянии паузы
+											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
+												// Устанавливаем количество событий
+												ret.first->second.count += 2;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::tmp::change.size() - 2);
+											// Если событие находится в активном состоянии
+											} else {
+												// Устанавливаем событие на чтение
+												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
+												// Устанавливаем количество событий
+												ret.first->second.count += 2;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::tmp::change.size() - 2);
+												/**
+												 * Определяем чем является текущий узел
+												 */
+												switch(static_cast <uint8_t> (i->second->state.node)){
+													// Если узел является одноранговым узлом
+													case static_cast <uint8_t> (event::node_t::PEER): {
+														// Получаем текущее значение объекта однорангового узла
+														peer_t * node = awh_cast <peer_t *> (i->second.get());
 														// Если необходимо установить таймаут на чтение данных
 														auto j = node->timeouts.find(event::action_t::READ);
 														// Если таймаут на подключение найден
@@ -18771,14 +18922,35 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Активируем таймаут события
 															node->timeout = j->first;
 															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
+															::tmp::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+															EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 															// Увеличиваем количество событий
 															ret.first->second.count++;
 														}
-													}
-												} break;
+													} break;
+													// Если узел является клиентом
+													case static_cast <uint8_t> (event::node_t::CLIENT): {
+														// Получаем текущее значение объекта клиента
+														client_t * node = awh_cast <client_t *> (i->second.get());
+														// Если таймаут уже был активирован
+														if(node->timeout != event::action_t::RECONNECT){
+															// Если необходимо установить таймаут на чтение данных
+															auto j = node->timeouts.find(event::action_t::READ);
+															// Если таймаут на подключение найден
+															if((j != node->timeouts.end()) && (j->second > 0)){
+																// Активируем таймаут события
+																node->timeout = j->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+																// Увеличиваем количество событий
+																ret.first->second.count++;
+															}
+														}
+													} break;
+												}
 											}
 										}
 										// Выполняем "пинок" для применения изменений
@@ -18816,85 +18988,89 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									case static_cast <uint8_t> (event::node_t::CLIENT):
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Если событие находится в состоянии паузы
-										if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
-											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
-											// Устанавливаем количество событий
-											ret.first->second.count += 2;
-											// Если событие успешно добавлено
-											if(ret.second)
-												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::__awh_change__.size() - 2);
-										// Если событие находится в активном состоянии
-										} else {
-											// Устанавливаем событие на чтение
-											EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
-											// Устанавливаем количество событий
-											ret.first->second.count += 2;
-											// Если событие успешно добавлено
-											if(ret.second)
-												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::__awh_change__.size() - 2);
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если узел является одноранговым узлом
-												case static_cast <uint8_t> (event::node_t::PEER): {
-													// Получаем текущее значение объекта однорангового узла
-													peer_t * node = awh_cast <peer_t *> (i->second.get());
-													// Если таймаут уже был активирован
-													if(node->timeout != event::action_t::NONE){
-														// Деактивируем таймаут события
-														node->timeout = event::action_t::NONE;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Удаляем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-													}
-													// Если необходимо установить таймаут на чтение данных
-													auto j = node->timeouts.find(event::action_t::READ);
-													// Если таймаут на подключение найден
-													if((j != node->timeouts.end()) && (j->second > 0))
-														// Устанавливаем таймаут на получение данных
-														this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
-												} break;
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT): {
-													// Получаем текущее значение объекта клиента
-													client_t * node = awh_cast <client_t *> (i->second.get());
-													// Если таймаут уже был активирован
-													if((node->timeout != event::action_t::NONE) && (node->timeout != event::action_t::RECONNECT)){
-														// Деактивируем таймаут события
-														node->timeout = event::action_t::NONE;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Удаляем таймаут на получение данных
-														EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-													}
-													// Если таймаут не является таймаутом на переподключение
-													if(node->timeout != event::action_t::RECONNECT){
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Если событие находится в состоянии паузы
+											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
+												// Устанавливаем количество событий
+												ret.first->second.count += 2;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::tmp::change.size() - 2);
+											// Если событие находится в активном состоянии
+											} else {
+												// Устанавливаем событие на чтение
+												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
+												// Устанавливаем количество событий
+												ret.first->second.count += 2;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::tmp::change.size() - 2);
+												/**
+												 * Определяем чем является текущий узел
+												 */
+												switch(static_cast <uint8_t> (i->second->state.node)){
+													// Если узел является одноранговым узлом
+													case static_cast <uint8_t> (event::node_t::PEER): {
+														// Получаем текущее значение объекта однорангового узла
+														peer_t * node = awh_cast <peer_t *> (i->second.get());
+														// Если таймаут уже был активирован
+														if(node->timeout != event::action_t::NONE){
+															// Деактивируем таймаут события
+															node->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::tmp::change.push_back((struct kevent){});
+															// Удаляем таймаут на получение данных
+															EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+														}
 														// Если необходимо установить таймаут на чтение данных
 														auto j = node->timeouts.find(event::action_t::READ);
 														// Если таймаут на подключение найден
 														if((j != node->timeouts.end()) && (j->second > 0))
 															// Устанавливаем таймаут на получение данных
 															this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
-													}
-												} break;
+													} break;
+													// Если узел является клиентом
+													case static_cast <uint8_t> (event::node_t::CLIENT): {
+														// Получаем текущее значение объекта клиента
+														client_t * node = awh_cast <client_t *> (i->second.get());
+														// Если таймаут уже был активирован
+														if((node->timeout != event::action_t::NONE) && (node->timeout != event::action_t::RECONNECT)){
+															// Деактивируем таймаут события
+															node->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::tmp::change.push_back((struct kevent){});
+															// Удаляем таймаут на получение данных
+															EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+														}
+														// Если таймаут не является таймаутом на переподключение
+														if(node->timeout != event::action_t::RECONNECT){
+															// Если необходимо установить таймаут на чтение данных
+															auto j = node->timeouts.find(event::action_t::READ);
+															// Если таймаут на подключение найден
+															if((j != node->timeouts.end()) && (j->second > 0))
+																// Устанавливаем таймаут на получение данных
+																this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+														}
+													} break;
+												}
 											}
 										}
 										// Выполняем "пинок" для применения изменений
@@ -19312,62 +19488,45 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											case static_cast <uint8_t> (event::node_t::CLIENT):
 											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Удаляем событие на чтение
-												EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Если событие находится в состоянии паузы
-												if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
-													// Устанавливаем количество событий
-													ret.first->second.count += 2;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 2);
-												// Если событие находится в активном состоянии
-												} else {
-													// Устанавливаем событие на чтение
-													EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
-													// Устанавливаем количество событий
-													ret.first->second.count += 2;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 2);
-													/**
-													 * Определяем чем является текущий узел
-													 */
-													switch(static_cast <uint8_t> (i->second->state.node)){
-														// Если узел является одноранговым узлом
-														case static_cast <uint8_t> (event::node_t::PEER): {
-															// Получаем текущее значение объекта однорангового узла
-															peer_t * node = awh_cast <peer_t *> (i->second.get());
-															// Если необходимо установить таймаут на чтение данных
-															auto j = node->timeouts.find(event::action_t::READ);
-															// Если таймаут на подключение найден
-															if((j != node->timeouts.end()) && (j->second > 0)){
-																// Активируем таймаут события
-																node->timeout = j->first;
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-																// Увеличиваем количество событий
-																ret.first->second.count++;
-															}
-														} break;
-														// Если узел является клиентом
-														case static_cast <uint8_t> (event::node_t::CLIENT): {
-															// Получаем текущее значение объекта клиента
-															client_t * node = awh_cast <client_t *> (i->second.get());
-															// Если таймаут уже был активирован
-															if(node->timeout != event::action_t::RECONNECT){
+												{
+													// Выполняем блокировку потоков
+													const locker_t lock(::tmp::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													// Добавляем новое событие в список изменений
+													::tmp::change.push_back((struct kevent){});
+													// Удаляем событие на чтение
+													EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+													// Добавляем новое событие в список изменений
+													::tmp::change.push_back((struct kevent){});
+													// Если событие находится в состоянии паузы
+													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
+														// Устанавливаем количество событий
+														ret.first->second.count += 2;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 2);
+													// Если событие находится в активном состоянии
+													} else {
+														// Устанавливаем событие на чтение
+														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
+														// Устанавливаем количество событий
+														ret.first->second.count += 2;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 2);
+														/**
+														 * Определяем чем является текущий узел
+														 */
+														switch(static_cast <uint8_t> (i->second->state.node)){
+															// Если узел является одноранговым узлом
+															case static_cast <uint8_t> (event::node_t::PEER): {
+																// Получаем текущее значение объекта однорангового узла
+																peer_t * node = awh_cast <peer_t *> (i->second.get());
 																// Если необходимо установить таймаут на чтение данных
 																auto j = node->timeouts.find(event::action_t::READ);
 																// Если таймаут на подключение найден
@@ -19375,14 +19534,35 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Активируем таймаут события
 																	node->timeout = j->first;
 																	// Добавляем новое событие в список изменений
-																	::__awh_change__.push_back((struct kevent){});
+																	::tmp::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+																	EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 																	// Увеличиваем количество событий
 																	ret.first->second.count++;
 																}
-															}
-														} break;
+															} break;
+															// Если узел является клиентом
+															case static_cast <uint8_t> (event::node_t::CLIENT): {
+																// Получаем текущее значение объекта клиента
+																client_t * node = awh_cast <client_t *> (i->second.get());
+																// Если таймаут уже был активирован
+																if(node->timeout != event::action_t::RECONNECT){
+																	// Если необходимо установить таймаут на чтение данных
+																	auto j = node->timeouts.find(event::action_t::READ);
+																	// Если таймаут на подключение найден
+																	if((j != node->timeouts.end()) && (j->second > 0)){
+																		// Активируем таймаут события
+																		node->timeout = j->first;
+																		// Добавляем новое событие в список изменений
+																		::tmp::change.push_back((struct kevent){});
+																		// Устанавливаем таймаут на получение данных
+																		EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+																		// Увеличиваем количество событий
+																		ret.first->second.count++;
+																	}
+																}
+															} break;
+														}
 													}
 												}
 												// Выполняем "пинок" для применения изменений
@@ -19420,81 +19600,85 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											case static_cast <uint8_t> (event::node_t::CLIENT):
 											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Удаляем событие на чтение
-												EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Если событие находится в состоянии паузы
-												if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
-													// Устанавливаем количество событий
-													ret.first->second.count += 2;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 2);
-												// Если событие находится в активном состоянии
-												} else {
-													// Устанавливаем событие на чтение
-													EV_SET(&::__awh_change__.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
-													// Устанавливаем количество событий
-													ret.first->second.count += 2;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 2);
-													/**
-													 * Определяем чем является текущий узел
-													 */
-													switch(static_cast <uint8_t> (i->second->state.node)){
-														// Если узел является одноранговым узлом
-														case static_cast <uint8_t> (event::node_t::PEER): {
-															// Получаем текущее значение объекта однорангового узла
-															peer_t * node = awh_cast <peer_t *> (i->second.get());
-															// Если таймаут уже был активирован
-															if(node->timeout != event::action_t::NONE){
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Удаляем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-															}
-															// Если необходимо установить таймаут на чтение данных
-															auto j = node->timeouts.find(event::action_t::READ);
-															// Если таймаут на подключение найден
-															if((j != node->timeouts.end()) && (j->second > 0))
-																// Устанавливаем таймаут на получение данных
-																this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
-														} break;
-														// Если узел является клиентом
-														case static_cast <uint8_t> (event::node_t::CLIENT): {
-															// Получаем текущее значение объекта клиента
-															client_t * node = awh_cast <client_t *> (i->second.get());
-															// Если таймаут уже был активирован и не является таймаутом на переподключение
-															if((node->timeout != event::action_t::NONE) && (node->timeout != event::action_t::RECONNECT)){
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Удаляем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-															}
-															// Если таймаут не является таймаутом на переподключение
-															if(node->timeout != event::action_t::RECONNECT){
+												{
+													// Выполняем блокировку потоков
+													const locker_t lock(::tmp::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													// Добавляем новое событие в список изменений
+													::tmp::change.push_back((struct kevent){});
+													// Удаляем событие на чтение
+													EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+													// Добавляем новое событие в список изменений
+													::tmp::change.push_back((struct kevent){});
+													// Если событие находится в состоянии паузы
+													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
+														// Устанавливаем количество событий
+														ret.first->second.count += 2;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 2);
+													// Если событие находится в активном состоянии
+													} else {
+														// Устанавливаем событие на чтение
+														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
+														// Устанавливаем количество событий
+														ret.first->second.count += 2;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 2);
+														/**
+														 * Определяем чем является текущий узел
+														 */
+														switch(static_cast <uint8_t> (i->second->state.node)){
+															// Если узел является одноранговым узлом
+															case static_cast <uint8_t> (event::node_t::PEER): {
+																// Получаем текущее значение объекта однорангового узла
+																peer_t * node = awh_cast <peer_t *> (i->second.get());
+																// Если таймаут уже был активирован
+																if(node->timeout != event::action_t::NONE){
+																	// Добавляем новое событие в список изменений
+																	::tmp::change.push_back((struct kevent){});
+																	// Удаляем таймаут на получение данных
+																	EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+																	// Устанавливаем количество событий
+																	ret.first->second.count++;
+																}
 																// Если необходимо установить таймаут на чтение данных
 																auto j = node->timeouts.find(event::action_t::READ);
 																// Если таймаут на подключение найден
 																if((j != node->timeouts.end()) && (j->second > 0))
 																	// Устанавливаем таймаут на получение данных
 																	this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
-															}
-														} break;
+															} break;
+															// Если узел является клиентом
+															case static_cast <uint8_t> (event::node_t::CLIENT): {
+																// Получаем текущее значение объекта клиента
+																client_t * node = awh_cast <client_t *> (i->second.get());
+																// Если таймаут уже был активирован и не является таймаутом на переподключение
+																if((node->timeout != event::action_t::NONE) && (node->timeout != event::action_t::RECONNECT)){
+																	// Добавляем новое событие в список изменений
+																	::tmp::change.push_back((struct kevent){});
+																	// Удаляем таймаут на получение данных
+																	EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+																	// Устанавливаем количество событий
+																	ret.first->second.count++;
+																}
+																// Если таймаут не является таймаутом на переподключение
+																if(node->timeout != event::action_t::RECONNECT){
+																	// Если необходимо установить таймаут на чтение данных
+																	auto j = node->timeouts.find(event::action_t::READ);
+																	// Если таймаут на подключение найден
+																	if((j != node->timeouts.end()) && (j->second > 0))
+																		// Устанавливаем таймаут на получение данных
+																		this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+																}
+															} break;
+														}
 													}
 												}
 												// Выполняем "пинок" для применения изменений
@@ -20395,30 +20579,34 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Устанавливаем статус события в состояние отмены
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
-					// Если в списке промежуточного взаимодействия присутствует запись для данного события
-					auto j = ::__awh_inters__.find(i->first);
-					// Если запись найдена
-					if(j != ::__awh_inters__.end()){
-						// Количество записей в списке изменений
-						size_t count = 0;
-						// Получаем итератор на начало списка изменений
-						auto k = ::__awh_change__.begin();
-						// Получаем нужный нам итератор
-						std::advance(k, j->second.index);
-						// Проходим по всем изменениям промежуточного взаимодействия
-						for(; k != ::__awh_change__.end();){
-							// Если идентификатор события совпадает с идентификатором в записи списка изменений
-							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-								// Удаляем запись из списка изменений
-								k = ::__awh_change__.erase(k);
-								// Увеличиваем счётчик удалённых записей
-								count++;
-								// Если записи удалены
-								if(count == j->second.count)
-									// Завершаем цикл
-									break;
-							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-							} else ++k;
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::tmp::inters.find(i->first);
+						// Если запись найдена
+						if(j != ::tmp::inters.end()){
+							// Количество записей в списке изменений
+							size_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::tmp::change.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::tmp::change.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::tmp::change.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
 						}
 					}
 					// Получаем текущее значение объекта однорангового узла
@@ -20435,30 +20623,34 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем статус события в состояние отмены
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
-					// Если в списке промежуточного взаимодействия присутствует запись для данного события
-					auto j = ::__awh_inters__.find(i->first);
-					// Если запись найдена
-					if(j != ::__awh_inters__.end()){
-						// Количество записей в списке изменений
-						size_t count = 0;
-						// Получаем итератор на начало списка изменений
-						auto k = ::__awh_change__.begin();
-						// Получаем нужный нам итератор
-						std::advance(k, j->second.index);
-						// Проходим по всем изменениям промежуточного взаимодействия
-						for(; k != ::__awh_change__.end();){
-							// Если идентификатор события совпадает с идентификатором в записи списка изменений
-							if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
-								// Удаляем запись из списка изменений
-								k = ::__awh_change__.erase(k);
-								// Увеличиваем счётчик удалённых записей
-								count++;
-								// Если записи удалены
-								if(count == j->second.count)
-									// Завершаем цикл
-									break;
-							// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-							} else ++k;
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
+						// Если в списке промежуточного взаимодействия присутствует запись для данного события
+						auto j = ::tmp::inters.find(i->first);
+						// Если запись найдена
+						if(j != ::tmp::inters.end()){
+							// Количество записей в списке изменений
+							size_t count = 0;
+							// Получаем итератор на начало списка изменений
+							auto k = ::tmp::change.begin();
+							// Получаем нужный нам итератор
+							std::advance(k, j->second.index);
+							// Проходим по всем изменениям промежуточного взаимодействия
+							for(; k != ::tmp::change.end();){
+								// Если идентификатор события совпадает с идентификатором в записи списка изменений
+								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
+									// Удаляем запись из списка изменений
+									k = ::tmp::change.erase(k);
+									// Увеличиваем счётчик удалённых записей
+									count++;
+									// Если записи удалены
+									if(count == j->second.count)
+										// Завершаем цикл
+										break;
+								// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+								} else ++k;
+							}
 						}
 					}
 					// Получаем текущее значение объекта клиента
@@ -20534,22 +20726,26 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 									if(this->_eth.noblocking(node->transfer.fd, net::socket_mode_t::ENABLED)){
 										// Устанавливаем опция неблокирующего режима события
 										node->state.options |= event::options::NOIOBLOCK;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count += 2;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 2);
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Устанавливаем количество событий
+											ret.first->second.count += 2;
+											// Если событие успешно добавлено
+											if(ret.second)
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::tmp::change.size() - 2);
+										}
 									}
 								}
 							// Если сокет является блокирующим
@@ -20566,22 +20762,26 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										else if(node->state.options & event::options::NOIOBLOCK)
 											// Снимаем опция неблокирующего режима события
 											node->state.options ^= event::options::NOIOBLOCK;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count += 2;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 2);
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Устанавливаем количество событий
+											ret.first->second.count += 2;
+											// Если событие успешно добавлено
+											if(ret.second)
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::tmp::change.size() - 2);
+										}
 									}
 								}
 							}
@@ -20773,38 +20973,41 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										return result;
 									}
 								} break;
+							}{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 1);
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Активируем событие на запись для клиентского сокета
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
+								// Если необходимо установить таймаут на подключение к серверу
+								auto j = node->timeouts.find(event::action_t::CONNECT);
+								// Если таймаут на подключение найден
+								if((j != node->timeouts.end()) && (j->second > 0)){
+									// Если сокет является неблокирующим
+									if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+										// Активируем таймаут события
+										node->timeout = j->first;
+										// Добавляем новое событие в список изменений
+										::tmp::change.push_back((struct kevent){});
+										// Устанавливаем таймаут на получение данных
+										EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+										// Увеличиваем количество событий
+										ret.first->second.count++;
+									// Если сокет является блокирующим
+									} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
+								}
+								// Устанавливаем результат выполнения функции
+								result = true;
 							}
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на запись для клиентского сокета
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
-							// Если необходимо установить таймаут на подключение к серверу
-							auto j = node->timeouts.find(event::action_t::CONNECT);
-							// Если таймаут на подключение найден
-							if((j != node->timeouts.end()) && (j->second > 0)){
-								// Если сокет является неблокирующим
-								if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-									// Активируем таймаут события
-									node->timeout = j->first;
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-									// Увеличиваем количество событий
-									ret.first->second.count++;
-								// Если сокет является блокирующим
-								} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
-							}
-							// Устанавливаем результат выполнения функции
-							result = true;
 						}
 					} break;
 					// Для других типов узлов
@@ -21085,69 +21288,72 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											// Завершаем выполнение функции с ошибкой
 											return result;
 									}
-								}
-								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-								// Если событие успешно добавлено
-								if((result = ret.second)){
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Если сокет является неблокирующим
-									if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
-									// Устанавливаем событие на чтение но отключаем его
-									else EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-									// Устанавливаем количество событий
-									ret.first->second.count = 2;
-									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::__awh_change__.size() - 2);
-									// Если необходимо установить таймаут на чтение данных
-									auto j = node->timeouts.find(event::action_t::READ);
-									// Если таймаут на подключение найден
-									if((j != node->timeouts.end()) && (j->second > 0)){
+								}{
+									// Выполняем блокировку потоков
+									const locker_t lock(::tmp::mtx);
+									// Создаём объект промежуточного звена
+									auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+									// Если событие успешно добавлено
+									if((result = ret.second)){
+										// Добавляем новое событие в список изменений
+										::tmp::change.push_back((struct kevent){});
 										// Если сокет является неблокирующим
-										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-											// Активируем таймаут события
-											node->timeout = j->first;
-											// Добавляем новое событие в список изменений
-											::__awh_change__.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-											// Увеличиваем количество событий
-											ret.first->second.count++;
-										// Если сокет является блокирующим
-										} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
-									}
-									// Устанавливаем результат выполнения функции
-									result = true;
-								// Событие не может быть зафиксированно повторно
-								} else {
-									// Устанавливаем текст ошибки
-									const string error = "Client cannot connect to server because it is already registered";
-									// Если установлена функция обратного вызова
-									if(node->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-									// Если функция обратного вызова вывода ошибки не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-										#endif
+										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+										// Устанавливаем событие на чтение но отключаем его
+										else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+										// Добавляем новое событие в список изменений
+										::tmp::change.push_back((struct kevent){});
+										// Устанавливаем событие на запись но отключаем его
+										EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+										// Устанавливаем количество событий
+										ret.first->second.count = 2;
+										// Устанавливаем индекс текущего элемента
+										ret.first->second.index = (::tmp::change.size() - 2);
+										// Если необходимо установить таймаут на чтение данных
+										auto j = node->timeouts.find(event::action_t::READ);
+										// Если таймаут на подключение найден
+										if((j != node->timeouts.end()) && (j->second > 0)){
+											// Если сокет является неблокирующим
+											if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+												// Активируем таймаут события
+												node->timeout = j->first;
+												// Добавляем новое событие в список изменений
+												::tmp::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+												// Увеличиваем количество событий
+												ret.first->second.count++;
+											// Если сокет является блокирующим
+											} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+										}
+										// Устанавливаем результат выполнения функции
+										result = true;
+									// Событие не может быть зафиксированно повторно
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Client cannot connect to server because it is already registered";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
 									}
 								}
 							// Если размер структуры сервера не установлен
@@ -21670,22 +21876,26 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									if(this->_eth.noblocking(node->transfer.fd, net::socket_mode_t::ENABLED)){
 										// Устанавливаем опция неблокирующего режима события
 										node->state.options |= event::options::NOIOBLOCK;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count += 2;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 2);
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Устанавливаем количество событий
+											ret.first->second.count += 2;
+											// Если событие успешно добавлено
+											if(ret.second)
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::tmp::change.size() - 2);
+										}
 									}
 								}
 							// Если сокет является блокирующим
@@ -21702,22 +21912,26 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										else if(node->state.options & event::options::NOIOBLOCK)
 											// Снимаем опция неблокирующего режима события
 											node->state.options ^= event::options::NOIOBLOCK;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count += 2;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 2);
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Устанавливаем количество событий
+											ret.first->second.count += 2;
+											// Если событие успешно добавлено
+											if(ret.second)
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::tmp::change.size() - 2);
+										}
 									}
 								}
 							}
@@ -21784,19 +21998,22 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									// Завершаем выполнение функции с ошибкой
 									return result;
 								}
+							}{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 1);
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Активируем событие на чтение для серверного сокета
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 							}
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на чтение для серверного сокета
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
 						}
@@ -22437,18 +22654,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 															// Увеличиваем смещение передачи данных
 															ipc->transfer.offset = 0;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Активируем событие на запись для клиентского сокета
-															EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
-															// Создаём объект промежуточного звена
-															auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Если событие успешно добавлено
-															if(ret.second)
-																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::__awh_change__.size() - 1);
+															{
+																// Выполняем блокировку потоков
+																const locker_t lock(::tmp::mtx);
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Активируем событие на запись для клиентского сокета
+																EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+																// Создаём объект промежуточного звена
+																auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Если событие успешно добавлено
+																if(ret.second)
+																	// Устанавливаем индекс текущего элемента
+																	ret.first->second.index = (::tmp::change.size() - 1);
+															}
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
@@ -22462,18 +22683,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															ipc->transfer.output.push(data, size);
 															// Увеличиваем смещение передачи данных
 															ipc->transfer.offset = 0;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Активируем событие на запись для клиентского сокета
-															EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
-															// Создаём объект промежуточного звена
-															auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Если событие успешно добавлено
-															if(ret.second)
-																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::__awh_change__.size() - 1);
+															{
+																// Выполняем блокировку потоков
+																const locker_t lock(::tmp::mtx);
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Активируем событие на запись для клиентского сокета
+																EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+																// Создаём объект промежуточного звена
+																auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Если событие успешно добавлено
+																if(ret.second)
+																	// Устанавливаем индекс текущего элемента
+																	ret.first->second.index = (::tmp::change.size() - 1);
+															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(ipc->callbacks.write != nullptr)
 																// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -22665,18 +22890,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 													// Увеличиваем смещение передачи данных
 													ipc->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+													}
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
@@ -22690,18 +22919,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													ipc->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													ipc->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
 														// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -22903,18 +23136,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													ipc->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													ipc->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
 														// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -23092,32 +23329,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													peer->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 													// Увеличиваем смещение передачи данных
 													peer->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-													// Если таймаут не установлен
-													if(peer->timeout == event::action_t::NONE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = peer->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != peer->timeouts.end()) && (i->second > 0)){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Активируем таймаут события
-															peer->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+														// Если таймаут не установлен
+														if(peer->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = peer->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != peer->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																peer->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+															}
 														}
 													}
 												}
@@ -23133,32 +23374,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													peer->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													peer->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-													// Если таймаут не установлен
-													if(peer->timeout == event::action_t::NONE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = peer->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != peer->timeouts.end()) && (i->second > 0)){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Активируем таймаут события
-															peer->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+														// Если таймаут не установлен
+														if(peer->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = peer->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != peer->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																peer->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+															}
 														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -23372,32 +23617,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													peer->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													peer->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-													// Если таймаут не установлен
-													if(peer->timeout == event::action_t::NONE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = peer->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != peer->timeouts.end()) && (i->second > 0)){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Активируем таймаут события
-															peer->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+														// Если таймаут не установлен
+														if(peer->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = peer->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != peer->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																peer->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+															}
 														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -23589,32 +23838,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
 													// Увеличиваем смещение передачи данных
 													client->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-													// Если таймаут не установлен
-													if(client->timeout == event::action_t::NONE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = client->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != client->timeouts.end()) && (i->second > 0)){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Активируем таймаут события
-															client->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+														// Если таймаут не установлен
+														if(client->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = client->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != client->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																client->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+															}
 														}
 													}
 												}
@@ -23630,32 +23883,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													client->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													client->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-													// Если таймаут не установлен
-													if(client->timeout == event::action_t::NONE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = client->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != client->timeouts.end()) && (i->second > 0)){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Активируем таймаут события
-															client->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+														// Если таймаут не установлен
+														if(client->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = client->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != client->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																client->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+															}
 														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -23869,32 +24126,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													client->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													client->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
-													// Если таймаут не установлен
-													if(client->timeout == event::action_t::NONE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = client->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != client->timeouts.end()) && (i->second > 0)){
-															// Устанавливаем количество событий
-															ret.first->second.count++;
-															// Активируем таймаут события
-															client->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::__awh_change__.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+														// Если таймаут не установлен
+														if(client->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = client->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != client->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																client->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::tmp::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+															}
 														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -24096,18 +24357,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if((i != client->timeouts.end()) && (i->second > 0)){
 											// Активируем таймаут события
 											client->timeout = i->first;
-											// Добавляем новое событие в список изменений
-											::__awh_change__.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-											// Создаём объект промежуточного звена
-											auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
-											// Устанавливаем количество событий
-											ret.first->second.count++;
-											// Если событие успешно добавлено
-											if(ret.second)
-												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::__awh_change__.size() - 1);
+											{
+												// Выполняем блокировку потоков
+												const locker_t lock(::tmp::mtx);
+												// Добавляем новое событие в список изменений
+												::tmp::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+												// Создаём объект промежуточного звена
+												auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+												// Устанавливаем количество событий
+												ret.first->second.count++;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::tmp::change.size() - 1);
+											}
 										}
 										// Если таймаут не установлен
 										if(client->timeout == event::action_t::NONE){
@@ -24117,18 +24382,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != client->timeouts.end()) && (i->second > 0)){
 												// Активируем таймаут события
 												client->timeout = i->first;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-												// Создаём объект промежуточного звена
-												auto ret = ::__awh_inters__.emplace(client->id, intmd_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::__awh_change__.size() - 1);
+												{
+													// Выполняем блокировку потоков
+													const locker_t lock(::tmp::mtx);
+													// Добавляем новое событие в список изменений
+													::tmp::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													// Создаём объект промежуточного звена
+													auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::tmp::change.size() - 1);
+												}
 											}
 										}
 										// Выполняем отправку данных в UDP сокет
@@ -24310,34 +24579,38 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									if(client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 										// Устанавливаем статус события в состояние запущенного
 										client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-										// Создаём объект промежуточного звена
-										auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-										// Устанавливаем количество событий
-										ret.first->second.count++;
-										// Если событие успешно добавлено
-										if(ret.second)
-											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::__awh_change__.size() - 1);
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Активируем событие на чтение для серверного сокета
-										EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
-										// Если необходимо установить таймаут на чтение данных
-										auto i = client->timeouts.find(event::action_t::READ);
-										// Если таймаут на подключение найден
-										if((i != client->timeouts.end()) && (i->second > 0)){
-											// Если сокет является неблокирующим
-											if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
-												// Активируем таймаут события
-												client->timeout = i->first;
-												// Добавляем новое событие в список изменений
-												::__awh_change__.push_back((struct kevent){});
+										{
+											// Выполняем блокировку потоков
+											const locker_t lock(::tmp::mtx);
+											// Создаём объект промежуточного звена
+											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											// Устанавливаем количество событий
+											ret.first->second.count++;
+											// Если событие успешно добавлено
+											if(ret.second)
+												// Устанавливаем индекс текущего элемента
+												ret.first->second.index = (::tmp::change.size() - 1);
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Активируем событие на чтение для серверного сокета
+											EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+											// Если необходимо установить таймаут на чтение данных
+											auto i = client->timeouts.find(event::action_t::READ);
+											// Если таймаут на подключение найден
+											if((i != client->timeouts.end()) && (i->second > 0)){
+												// Если сокет является неблокирующим
+												if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+													// Активируем таймаут события
+													client->timeout = i->first;
+													// Добавляем новое событие в список изменений
+													::tmp::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													// Увеличиваем количество событий
+													ret.first->second.count++;
 												// Устанавливаем таймаут на получение данных
-												EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-												// Увеличиваем количество событий
-												ret.first->second.count++;
-											// Устанавливаем таймаут на получение данных
-											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+												} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+											}
 										}
 									}
 									// Если подключение установлено
@@ -24391,32 +24664,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														client->transfer.output.push(data, size);
 														// Увеличиваем смещение передачи данных
 														client->transfer.offset = 0;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-														// Если таймаут не установлен
-														if(client->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														{
+															// Выполняем блокировку потоков
+															const locker_t lock(::tmp::mtx);
+															// Добавляем новое событие в список изменений
+															::tmp::change.push_back((struct kevent){});
+															// Активируем событие на запись для клиентского сокета
+															EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+															// Создаём объект промежуточного звена
+															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::tmp::change.size() - 1);
+															// Если таймаут не установлен
+															if(client->timeout == event::action_t::NONE){
+																// Выполняем проверку на наличие таймаута для события записи
+																auto i = client->timeouts.find(event::action_t::WRITE);
+																// Если нужный нам таймаут найден
+																if((i != client->timeouts.end()) && (i->second > 0)){
+																	// Устанавливаем количество событий
+																	ret.first->second.count++;
+																	// Активируем таймаут события
+																	client->timeout = i->first;
+																	// Добавляем новое событие в список изменений
+																	::tmp::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на получение данных
+																	EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																}
 															}
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
@@ -24629,32 +24906,36 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														client->transfer.output.push(data, size);
 														// Увеличиваем смещение передачи данных
 														client->transfer.offset = 0;
-														// Добавляем новое событие в список изменений
-														::__awh_change__.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-														// Создаём объект промежуточного звена
-														auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::__awh_change__.size() - 1);
-														// Если таймаут не установлен
-														if(client->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::__awh_change__.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::__awh_change__.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														{
+															// Выполняем блокировку потоков
+															const locker_t lock(::tmp::mtx);
+															// Добавляем новое событие в список изменений
+															::tmp::change.push_back((struct kevent){});
+															// Активируем событие на запись для клиентского сокета
+															EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+															// Создаём объект промежуточного звена
+															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::tmp::change.size() - 1);
+															// Если таймаут не установлен
+															if(client->timeout == event::action_t::NONE){
+																// Выполняем проверку на наличие таймаута для события записи
+																auto i = client->timeouts.find(event::action_t::WRITE);
+																// Если нужный нам таймаут найден
+																if((i != client->timeouts.end()) && (i->second > 0)){
+																	// Устанавливаем количество событий
+																	ret.first->second.count++;
+																	// Активируем таймаут события
+																	client->timeout = i->first;
+																	// Добавляем новое событие в список изменений
+																	::tmp::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на получение данных
+																	EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																}
 															}
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
@@ -25100,18 +25381,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													server->transfer.output.push(data, size);
 													// Увеличиваем смещение передачи данных
 													server->transfer.offset = 0;
-													// Добавляем новое событие в список изменений
-													::__awh_change__.push_back((struct kevent){});
-													// Активируем событие на запись для клиентского сокета
-													EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
-													// Создаём объект промежуточного звена
-													auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-													// Устанавливаем количество событий
-													ret.first->second.count++;
-													// Если событие успешно добавлено
-													if(ret.second)
-														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::__awh_change__.size() - 1);
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::tmp::mtx);
+														// Добавляем новое событие в список изменений
+														::tmp::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
+														// Создаём объект промежуточного звена
+														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::tmp::change.size() - 1);
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
 														// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -27292,26 +27577,30 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
 					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Останавливаем активный таймаут
-						EV_SET(&::__awh_change__.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
-						// Увеличиваем количество событий
-						ret.first->second.count++;
-						// Если таймаут необходимо запустить
-						if(timeout > 0){
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);	
+							::tmp::change.push_back((struct kevent){});
+							// Останавливаем активный таймаут
+							EV_SET(&::tmp::change.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
+							// Если таймаут необходимо запустить
+							if(timeout > 0){
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем событие таймаута на указанное количество миллисекунд
+								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);	
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+							}
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -27325,26 +27614,30 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
 					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Останавливаем активный таймаут
-						EV_SET(&::__awh_change__.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
-						// Увеличиваем количество событий
-						ret.first->second.count++;
-						// Если таймаут необходимо запустить
-						if(timeout > 0){
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&::__awh_change__.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+							::tmp::change.push_back((struct kevent){});
+							// Останавливаем активный таймаут
+							EV_SET(&::tmp::change.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
+							// Если таймаут необходимо запустить
+							if(timeout > 0){
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
+								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+							}
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -28101,24 +28394,28 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					if(dir->actions & action::HDLINK)
 						// Добавляем флаг изменения счётчика жёстких ссылок на каталог
 						flags |= NOTE_LINK;
-					// Создаём объект промежуточного звена
-					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-					// Устанавливаем количество событий
-					ret.first->second.count = 1;
-					// Устанавливаем индекс текущего элемента
-					ret.first->second.index = (::__awh_change__.size() - 1);
-					// Добавляем новое событие в список изменений
-					::__awh_change__.push_back((struct kevent){});
-					// Удаляем предыдущее события из списка изменений
-					EV_SET(&::__awh_change__.back(), dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, dir);
-					// Если флаги установлены
-					if(flags > 0){
-						// Увеличиваем количество событий
-						ret.first->second.count++;
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
+						// Создаём объект промежуточного звена
+						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count = 1;
+						// Устанавливаем индекс текущего элемента
+						ret.first->second.index = (::tmp::change.size() - 1);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на отслеживание изменения каталога
-						EV_SET(&::__awh_change__.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, dir);
+						::tmp::change.push_back((struct kevent){});
+						// Удаляем предыдущее события из списка изменений
+						EV_SET(&::tmp::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, dir);
+						// Если флаги установлены
+						if(flags > 0){
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Устанавливаем событие на отслеживание изменения каталога
+							EV_SET(&::tmp::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, dir);
+						}
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -28306,24 +28603,28 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					if(fs->actions & action::HDLINK)
 						// Добавляем флаг изменения счётчика жёстких ссылок на каталог
 						flags |= NOTE_LINK;
-					// Создаём объект промежуточного звена
-					auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-					// Устанавливаем количество событий
-					ret.first->second.count = 1;
-					// Устанавливаем индекс текущего элемента
-					ret.first->second.index = (::__awh_change__.size() - 1);
-					// Добавляем новое событие в список изменений
-					::__awh_change__.push_back((struct kevent){});
-					// Удаляем предыдущее событие из списка изменений
-					EV_SET(&::__awh_change__.back(), fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, fs);
-					// Если флаги установлены
-					if(flags > 0){
-						// Увеличиваем количество событий
-						ret.first->second.count++;
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
+						// Создаём объект промежуточного звена
+						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+						// Устанавливаем количество событий
+						ret.first->second.count = 1;
+						// Устанавливаем индекс текущего элемента
+						ret.first->second.index = (::tmp::change.size() - 1);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Устанавливаем событие на отслеживание изменения каталога
-						EV_SET(&::__awh_change__.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, fs);
+						::tmp::change.push_back((struct kevent){});
+						// Удаляем предыдущее событие из списка изменений
+						EV_SET(&::tmp::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, fs);
+						// Если флаги установлены
+						if(flags > 0){
+							// Увеличиваем количество событий
+							ret.first->second.count++;
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Устанавливаем событие на отслеживание изменения каталога
+							EV_SET(&::tmp::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, fs);
+						}
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -28338,8 +28639,10 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28349,27 +28652,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, ipc);
+									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, ipc);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, ipc);
+									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, ipc);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28379,22 +28684,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
+									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -28430,8 +28735,10 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28441,27 +28748,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, peer);
+									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, peer);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, peer);
+									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, peer);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28471,22 +28780,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
+									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -28542,8 +28851,10 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28553,27 +28864,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, client);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28583,22 +28896,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -28622,8 +28935,10 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						}
 						// Если действие является подключением к серверу
 						case static_cast <uint8_t> (event::action_t::CONNECT): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28633,22 +28948,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= action::CONNECT;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~action::CONNECT;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является переподключением к серверу
 						case static_cast <uint8_t> (event::action_t::RECONNECT): {
@@ -28704,8 +29019,10 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28715,27 +29032,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28745,22 +29064,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -28784,8 +29103,10 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						}
 						// Если действие является принятием входящего соединения
 						case static_cast <uint8_t> (event::action_t::ACCEPT): {
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
+							::tmp::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -28795,22 +29116,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->transfer.actions |= action::ACCEPT;
 									// Активируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->transfer.actions &= ~action::ACCEPT;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+							ret.first->second.index = (::tmp::change.size() - 1);
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
@@ -28943,22 +29264,26 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
 						// Устанавливаем статус события в состояние паузы
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на чтение данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на запись данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count += 2;
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 2);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на чтение данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на запись данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count += 2;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 2);
+						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -28971,18 +29296,22 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						dir_t * node = awh_cast <dir_t *> (i->second.get());
 						// Устанавливаем статус события в состояние паузы
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count += 1;
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Удаляем предыдущее события из списка изменений
+							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count += 1;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
+						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -28995,18 +29324,22 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						file_t * node = awh_cast <file_t *> (i->second.get());
 						// Устанавливаем статус события в состояние паузы
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count += 1;
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Удаляем предыдущее события из списка изменений
+							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count += 1;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
+						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -29019,56 +29352,60 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						peer_t * node = awh_cast <peer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние паузы
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на чтение данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на запись данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count += 2;
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 2);
-						// Если сокет является неблокирующим
-						if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-							// Событие для получения таймаутов
-							event::action_t action = event::action_t::NONE;
-							// Выполняем проверку на доступные таймауты
-							for(uint8_t j = 0; j < 2; j++){
-								// Выполняем проверку на наличие таймаута для действия
-								if(node->timeout != event::action_t::NONE){
-									/**
-									 * Определяем тип действия события
-									 */
-									switch(j){
-										// Если действие является чтением
-										case 0: action = event::action_t::READ; break;
-										// Если действие является записью
-										case 1: action = event::action_t::WRITE; break;
-									}
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на чтение данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на запись данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count += 2;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 2);
+							// Если сокет является неблокирующим
+							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+								// Событие для получения таймаутов
+								event::action_t action = event::action_t::NONE;
+								// Выполняем проверку на доступные таймауты
+								for(uint8_t j = 0; j < 2; j++){
 									// Выполняем проверку на наличие таймаута для действия
-									auto k = node->timeouts.find(action);
-									// Если нужный нам таймаут найден
-									if((k != node->timeouts.end()) && (k->second > 0)){
-										// Деактивируем таймаут события
-										node->timeout = event::action_t::NONE;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Снимаем таймаут на получение данных
-										EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
-										// Увеличиваем количество событий
-										ret.first->second.count++;
-										// Выходим из цикла
-										break;
-									}
-								// Если таймаут уже отключён, выходим из цикла
-								} else break;
+									if(node->timeout != event::action_t::NONE){
+										/**
+										 * Определяем тип действия события
+										 */
+										switch(j){
+											// Если действие является чтением
+											case 0: action = event::action_t::READ; break;
+											// Если действие является записью
+											case 1: action = event::action_t::WRITE; break;
+										}
+										// Выполняем проверку на наличие таймаута для действия
+										auto k = node->timeouts.find(action);
+										// Если нужный нам таймаут найден
+										if((k != node->timeouts.end()) && (k->second > 0)){
+											// Деактивируем таймаут события
+											node->timeout = event::action_t::NONE;
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Снимаем таймаут на получение данных
+											EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+											// Увеличиваем количество событий
+											ret.first->second.count++;
+											// Выходим из цикла
+											break;
+										}
+									// Если таймаут уже отключён, выходим из цикла
+									} else break;
+								}
 							}
 						}
 						// Выполняем "пинок" для применения изменений
@@ -29083,53 +29420,57 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						client_t * node = awh_cast <client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние паузы
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на чтение данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на запись данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count += 2;
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 2);
-						// Если сокет является неблокирующим
-						if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-							// Событие для получения таймаутов
-							event::action_t action = event::action_t::NONE;
-							// Выполняем проверку на доступные таймауты
-							for(uint8_t j = 0; j < 2; j++){
-								// Выполняем проверку на наличие таймаута для действия
-								if(node->timeout != event::action_t::NONE){
-									/**
-									 * Определяем тип действия события
-									 */
-									switch(j){
-										// Если действие является чтением
-										case 0: action = event::action_t::READ; break;
-										// Если действие является записью
-										case 1: action = event::action_t::WRITE; break;
-									}
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на чтение данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на запись данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count += 2;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 2);
+							// Если сокет является неблокирующим
+							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+								// Событие для получения таймаутов
+								event::action_t action = event::action_t::NONE;
+								// Выполняем проверку на доступные таймауты
+								for(uint8_t j = 0; j < 2; j++){
 									// Выполняем проверку на наличие таймаута для действия
-									auto k = node->timeouts.find(action);
-									// Если нужный нам таймаут найден
-									if((k != node->timeouts.end()) && (k->second > 0)){
-										// Деактивируем таймаут события
-										node->timeout = event::action_t::NONE;
-										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
-										// Снимаем таймаут на получение данных
-										EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
-										// Увеличиваем количество событий
-										ret.first->second.count++;
-										// Выходим из цикла
-										break;
+									if(node->timeout != event::action_t::NONE){
+										/**
+										 * Определяем тип действия события
+										 */
+										switch(j){
+											// Если действие является чтением
+											case 0: action = event::action_t::READ; break;
+											// Если действие является записью
+											case 1: action = event::action_t::WRITE; break;
+										}
+										// Выполняем проверку на наличие таймаута для действия
+										auto k = node->timeouts.find(action);
+										// Если нужный нам таймаут найден
+										if((k != node->timeouts.end()) && (k->second > 0)){
+											// Деактивируем таймаут события
+											node->timeout = event::action_t::NONE;
+											// Добавляем новое событие в список изменений
+											::tmp::change.push_back((struct kevent){});
+											// Снимаем таймаут на получение данных
+											EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+											// Увеличиваем количество событий
+											ret.first->second.count++;
+											// Выходим из цикла
+											break;
+										}
 									}
 								}
 							}
@@ -29146,26 +29487,30 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						server_t * node = awh_cast <server_t *> (i->second.get());
 						// Устанавливаем статус события в состояние паузы
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Деактивируем событие на чтение данных
-						EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count++;
-						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::__awh_change__.size() - 1);
-						// Если событие является датаграммой
-						if(node->state.type == event::type_t::DATAGRAM){
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Добавляем новое событие в список изменений
+							::tmp::change.push_back((struct kevent){});
+							// Деактивируем событие на чтение данных
+							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count++;
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Деактивируем событие на запись данных
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::tmp::change.size() - 1);
+							// Если событие является датаграммой
+							if(node->state.type == event::type_t::DATAGRAM){
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Деактивируем событие на запись данных
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							}
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -29225,18 +29570,22 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
 						if(node->transfer.actions & action::READ){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на чтение данных
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Активируем событие на чтение данных
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 1);
+							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
 						}
@@ -29273,24 +29622,28 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						if(node->actions & action::HDLINK)
 							// Добавляем флаг изменения счётчика жёстких ссылок на каталог
 							flags |= NOTE_LINK;
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count = 1;
-						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::__awh_change__.size() - 1);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
-						// Если флаги установлены
-						if(flags > 0){
-							// Увеличиваем количество событий
-							ret.first->second.count++;
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count = 1;
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::tmp::change.size() - 1);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
+							::tmp::change.push_back((struct kevent){});
+							// Удаляем предыдущее события из списка изменений
+							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							// Если флаги установлены
+							if(flags > 0){
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем событие на отслеживание изменения каталога
+								EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
+							}
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -29327,24 +29680,28 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						if(node->actions & action::HDLINK)
 							// Добавляем флаг изменения счётчика жёстких ссылок на каталог
 							flags |= NOTE_LINK;
-						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count = 1;
-						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::__awh_change__.size() - 1);
-						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
-						// Удаляем предыдущее событие из списка изменений
-						EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
-						// Если флаги установлены
-						if(flags > 0){
-							// Увеличиваем количество событий
-							ret.first->second.count++;
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::tmp::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count = 1;
+							// Устанавливаем индекс текущего элемента
+							ret.first->second.index = (::tmp::change.size() - 1);
 							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET(&::__awh_change__.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
+							::tmp::change.push_back((struct kevent){});
+							// Удаляем предыдущее событие из списка изменений
+							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							// Если флаги установлены
+							if(flags > 0){
+								// Увеличиваем количество событий
+								ret.first->second.count++;
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Устанавливаем событие на отслеживание изменения каталога
+								EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
+							}
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -29357,34 +29714,38 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
 						if(node->transfer.actions & action::READ){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на чтение данных
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
-							// Выполняем проверку на наличие таймаута для действия
-							auto j = node->timeouts.find(event::action_t::READ);
-							// Если нужный нам таймаут найден
-							if((j != node->timeouts.end()) && (j->second > 0)){
-								// Если сокет является неблокирующим
-								if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-									// Активируем таймаут события
-									node->timeout = j->first;
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-									// Увеличиваем количество событий
-									ret.first->second.count++;
-								// Если сокет является блокирующим
-								} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Активируем событие на чтение данных
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 1);
+								// Выполняем проверку на наличие таймаута для действия
+								auto j = node->timeouts.find(event::action_t::READ);
+								// Если нужный нам таймаут найден
+								if((j != node->timeouts.end()) && (j->second > 0)){
+									// Если сокет является неблокирующим
+									if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+										// Активируем таймаут события
+										node->timeout = j->first;
+										// Добавляем новое событие в список изменений
+										::tmp::change.push_back((struct kevent){});
+										// Устанавливаем таймаут на получение данных
+										EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+										// Увеличиваем количество событий
+										ret.first->second.count++;
+									// Если сокет является блокирующим
+									} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+								}
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -29398,34 +29759,38 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
 						if(node->transfer.actions & action::READ){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на чтение данных
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
-							// Выполняем проверку на наличие таймаута для действия
-							auto j = node->timeouts.find(event::action_t::READ);
-							// Если нужный нам таймаут найден
-							if((j != node->timeouts.end()) && (j->second > 0)){
-								// Если сокет является неблокирующим
-								if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
-									// Активируем таймаут события
-									node->timeout = j->first;
-									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::__awh_change__.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
-									// Увеличиваем количество событий
-									ret.first->second.count++;
-								// Если сокет является блокирующим
-								} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Активируем событие на чтение данных
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 1);
+								// Выполняем проверку на наличие таймаута для действия
+								auto j = node->timeouts.find(event::action_t::READ);
+								// Если нужный нам таймаут найден
+								if((j != node->timeouts.end()) && (j->second > 0)){
+									// Если сокет является неблокирующим
+									if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+										// Активируем таймаут события
+										node->timeout = j->first;
+										// Добавляем новое событие в список изменений
+										::tmp::change.push_back((struct kevent){});
+										// Устанавливаем таймаут на получение данных
+										EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+										// Увеличиваем количество событий
+										ret.first->second.count++;
+									// Если сокет является блокирующим
+									} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+								}
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -29439,18 +29804,22 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
 						if(node->transfer.actions & action::READ){
-							// Добавляем новое событие в список изменений
-							::__awh_change__.push_back((struct kevent){});
-							// Активируем событие на чтение данных
-							EV_SET(&::__awh_change__.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
-							// Создаём объект промежуточного звена
-							auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
-							// Устанавливаем количество событий
-							ret.first->second.count++;
-							// Если событие успешно добавлено
-							if(ret.second)
-								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+							{
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
+								// Добавляем новое событие в список изменений
+								::tmp::change.push_back((struct kevent){});
+								// Активируем событие на чтение данных
+								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								// Создаём объект промежуточного звена
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::tmp::change.size() - 1);
+							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
 						}
@@ -29576,10 +29945,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является таймаутом
 					case static_cast <uint8_t> (event::node_t::TIMEOUT):
@@ -29597,10 +29972,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
@@ -29624,10 +30005,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
@@ -29647,10 +30034,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
@@ -29672,10 +30065,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
@@ -29708,10 +30107,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -29744,10 +30149,16 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -29769,25 +30180,43 @@ void awh::IO::clear() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Для других типов узлов
 					default: {
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					}
 				}
 			// Если узел не находится в рабочем состоянии уничтожаем её сразу
 			} else {
+				// Выполняем блокировку потоков
+				const locker_t lock(::tmp::mtx);
 				// Производим удаление списка подготовленных событий
-				::__awh_inters__.erase(i->first);
-				// Производим удаление узла
-				i = ::__awh_nodes__.erase(i);
+				::tmp::inters.erase(i->first);
+				{
+					// Выполняем блокировку потоков
+					const locker_t lock(::__awh_mtx__);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				}
 			}
 		}
 	}
@@ -29895,9 +30324,9 @@ bool awh::IO::reinitialize() noexcept {
 			// Выполняем пинок Kqueue для разблокировки ожидания событий
 			this->kick();
 		// Если события для обработки подготовлены
-		if(!::__awh_change__.empty())
+		if(!::tmp::change.empty())
 			// Выполняем очистку списка подготовленных изменений
-			::__awh_change__.clear();
+			::tmp::change.clear();
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Выполняем инициализацию Kqueue
@@ -29920,14 +30349,22 @@ bool awh::IO::reinitialize() noexcept {
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
-		// Добавляем новое событие в список изменений
-		::__awh_change__.push_back((struct kevent){});
-		// Устанавливаем пользовательское событие
-		EV_SET(&::__awh_change__.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
+		{
+			// Выполняем блокировку потоков
+			const locker_t lock(::tmp::mtx);
+			// Добавляем новое событие в список изменений
+			::tmp::change.push_back((struct kevent){});
+			// Устанавливаем пользовательское событие
+			EV_SET(&::tmp::change.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
+		}
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
-			// Производим удаление списка подготовленных событий
-			::__awh_inters__.erase(i->first);
+			{
+				// Выполняем блокировку потоков
+				const locker_t lock(::tmp::mtx);
+				// Производим удаление списка подготовленных событий
+				::tmp::inters.erase(i->first);
+			}
 			// Если узел ещё не находится в рабочем состоянии
 			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
 				// Увеличиваем значение итератора
@@ -29953,8 +30390,13 @@ bool awh::IO::reinitialize() noexcept {
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Удаляем ненужный нам узел
-					} else i = ::__awh_nodes__.erase(i);
+					// Если необходимо выполнить удаление события
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Удаляем ненужный нам узел
+						i = ::__awh_nodes__.erase(i);
+					}
 				} break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -29977,8 +30419,13 @@ bool awh::IO::reinitialize() noexcept {
 							this->pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Удаляем ненужный нам узел
-					} else i = ::__awh_nodes__.erase(i);
+					// Если необходимо выполнить удаление события
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Удаляем ненужный нам узел
+						i = ::__awh_nodes__.erase(i);
+					}
 				} break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
@@ -30011,8 +30458,13 @@ bool awh::IO::reinitialize() noexcept {
 							this->pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Удаляем ненужный нам узел
-					} else i = ::__awh_nodes__.erase(i);
+					// Если необходимо выполнить удаление события
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Удаляем ненужный нам узел
+						i = ::__awh_nodes__.erase(i);
+					}
 				} break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -30041,8 +30493,13 @@ bool awh::IO::reinitialize() noexcept {
 							this->pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Удаляем ненужный нам узел
-					} else i = ::__awh_nodes__.erase(i);
+					// Если необходимо выполнить удаление события
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Удаляем ненужный нам узел
+						i = ::__awh_nodes__.erase(i);
+					}
 				} break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
@@ -30051,24 +30508,26 @@ bool awh::IO::reinitialize() noexcept {
 					// Если событие находится в состоянии инициализации
 					if((peer->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) ||
 					   (peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 							// Устанавливаем событие на чтение и активируем его
-							EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
+							EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
 						// Устанавливаем событие на чтение и активируем его
-						else EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+						else EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Устанавливаем событие на запись но отключаем его
-						EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+						EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+						auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count = 2;
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::__awh_change__.size() - 2);
+						ret.first->second.index = (::tmp::change.size() - 2);
 						// Если необходимо установить таймаут на получение данных
 						auto j = peer->timeouts.find(event::action_t::READ);
 						// Если таймаут на получение данных найден
@@ -30078,9 +30537,9 @@ bool awh::IO::reinitialize() noexcept {
 								// Активируем таймаут события
 								peer->timeout = j->first;
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET(&::__awh_change__.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
+								EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 							// Если сокет является блокирующим
@@ -30090,28 +30549,35 @@ bool awh::IO::reinitialize() noexcept {
 						++i;
 					// Если событие поставленно на паузу
 					} else if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+							EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 						// Устанавливаем событие на чтение но отключаем его
-						else EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
+						else EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Устанавливаем событие на запись но отключаем его
-						EV_SET(&::__awh_change__.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+						EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(peer->id, intmd_t{});
+						auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count = 2;
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::__awh_change__.size() - 2);
+						ret.first->second.index = (::tmp::change.size() - 2);
 						// Увеличиваем значение итератора
 						++i;
-					// Удаляем ненужный нам узел
-					} else i = ::__awh_nodes__.erase(i);
+					// Если необходимо выполнить удаление события
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Удаляем ненужный нам узел
+						i = ::__awh_nodes__.erase(i);
+					}
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30128,70 +30594,78 @@ bool awh::IO::reinitialize() noexcept {
 						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+								else EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 2;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 2);
+								ret.first->second.index = (::tmp::change.size() - 2);
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+								else EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 2;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 2);
+								ret.first->second.index = (::tmp::change.size() - 2);
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+								else EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::__awh_change__.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 2;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 2);
+								ret.first->second.index = (::tmp::change.size() - 2);
 							} break;
 						}
 					// Если событие находится в состоянии остановки
 					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Удаляем ненужный нам узел
 						i = ::__awh_nodes__.erase(i);
 						// Выходим из текущей итерации цикла
@@ -30200,14 +30674,16 @@ bool awh::IO::reinitialize() noexcept {
 					// Если событие находится в подключённом состоянии
 					if((client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count++;
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Активируем событие на чтение для серверного сокета
-						EV_SET(&::__awh_change__.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, client);
+						EV_SET(&::tmp::change.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, client);
 					}
 					// Увеличиваем значение итератора
 					++i;
@@ -30227,51 +30703,55 @@ bool awh::IO::reinitialize() noexcept {
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
 									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
+									::tmp::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								// Если сокет является блокирующим
 								} else {
 									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
+									::tmp::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 								}
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 								// Если событие является UDP-подключением
 								if(server->state.type == event::type_t::DATAGRAM){
 									// Устанавливаем количество событий
 									ret.first->second.count++;
 									// Добавляем новое событие в список изменений
-									::__awh_change__.push_back((struct kevent){});
+									::tmp::change.push_back((struct kevent){});
 									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								}
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+								else EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 								/**
 								 * Определяем тип сокета
 								 */
@@ -30281,28 +30761,30 @@ bool awh::IO::reinitialize() noexcept {
 										// Устанавливаем количество событий
 										ret.first->second.count++;
 										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
+										::tmp::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+										EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 									} break;
 								}
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::tmp::mtx);
 								// Добавляем новое событие в список изменений
-								::__awh_change__.push_back((struct kevent){});
+								::tmp::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+								else EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 								// Создаём объект промежуточного звена
-								auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::__awh_change__.size() - 1);
+								ret.first->second.index = (::tmp::change.size() - 1);
 								/**
 								 * Определяем тип сокета
 								 */
@@ -30312,15 +30794,17 @@ bool awh::IO::reinitialize() noexcept {
 										// Устанавливаем количество событий
 										ret.first->second.count++;
 										// Добавляем новое событие в список изменений
-										::__awh_change__.push_back((struct kevent){});
+										::tmp::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::__awh_change__.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+										EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 									} break;
 								}
 							} break;
 						}
 					// Если событие находится в состоянии остановки
 					} else {
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
 						// Удаляем ненужный нам узел
 						i = ::__awh_nodes__.erase(i);
 						// Выходим из текущей итерации цикла
@@ -30329,14 +30813,16 @@ bool awh::IO::reinitialize() noexcept {
 					// Если событие находится в запущенном состоянии
 					if((server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) ||
 					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Создаём объект промежуточного звена
-						auto ret = ::__awh_inters__.emplace(i->first, intmd_t{});
+						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count++;
 						// Добавляем новое событие в список изменений
-						::__awh_change__.push_back((struct kevent){});
+						::tmp::change.push_back((struct kevent){});
 						// Активируем событие на чтение для серверного сокета
-						EV_SET(&::__awh_change__.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, server);
+						EV_SET(&::tmp::change.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, server);
 					}
 					// Увеличиваем значение итератора
 					++i;
@@ -30373,10 +30859,16 @@ bool awh::IO::deinitialize() noexcept {
 					case static_cast <uint8_t> (event::node_t::TIMEOUT):
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
@@ -30394,10 +30886,16 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
@@ -30411,10 +30909,16 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
@@ -30428,10 +30932,16 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
@@ -30445,10 +30955,16 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30462,10 +30978,16 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+						}
 					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -30479,25 +31001,43 @@ bool awh::IO::deinitialize() noexcept {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					} break;
 					// Для других типов узлов
 					default: {
+						// Выполняем блокировку потоков
+						const locker_t lock(::tmp::mtx);
 						// Производим удаление списка подготовленных событий
-						::__awh_inters__.erase(i->first);
-						// Производим удаление узла
-						i = ::__awh_nodes__.erase(i);
+						::tmp::inters.erase(i->first);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::__awh_mtx__);
+							// Производим удаление узла
+							i = ::__awh_nodes__.erase(i);
+						}
 					}
 				}
 			// Если узел не находится в рабочем состоянии уничтожаем её сразу
 			} else {
+				// Выполняем блокировку потоков
+				const locker_t lock(::tmp::mtx);
 				// Производим удаление списка подготовленных событий
-				::__awh_inters__.erase(i->first);
-				// Производим удаление узла
-				i = ::__awh_nodes__.erase(i);
+				::tmp::inters.erase(i->first);
+				{
+					// Выполняем блокировку потоков
+					const locker_t lock(::__awh_mtx__);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				}
 			}
 		}
 		// Выполняем закрытие Kqueue
@@ -30796,9 +31336,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 		 */
 		try {
 			// Если есть события для добавления в Kqueue
-			if(!::__awh_change__.empty()){
+			if(!::tmp::change.empty()){
 				// Выполняем изменение параметров события
-				if(::kevent(::__awh_kq__, &::__awh_change__[0], ::__awh_change__.size(), nullptr, 0, nullptr) == net::invalid_socket_t){
+				if(::kevent(::__awh_kq__, &::tmp::change[0], ::tmp::change.size(), nullptr, 0, nullptr) == net::invalid_socket_t){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -30813,10 +31353,12 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
+				// Выполняем блокировку потоков
+				const locker_t lock(::tmp::mtx);
 				// Значение узла для обработки изменений
 				net::node_t * node = nullptr;
 				// Выполняем переход по всему объекту изменений
-				for(auto i = ::__awh_change__.begin(); i != ::__awh_change__.end();){
+				for(auto i = ::tmp::change.begin(); i != ::tmp::change.end();){
 					// Получаем текущее значение узла
 					node = reinterpret_cast <net::node_t *> (i->udata);
 					// Если узел определена и существует
@@ -30940,10 +31482,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						}
 					}
 					// Удаляем текущий элемент из списка изменений
-					i = ::__awh_change__.erase(i);
+					i = ::tmp::change.erase(i);
 				}
 				// Очищаем список промежуточных звеньев
-				::__awh_inters__.clear();
+				::tmp::inters.clear();
 				// Очищаем список обработанных событий
 				::__awh_processed__.clear();
 			}
@@ -31255,30 +31797,34 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 										client->state.status.store(event::status_t::NONE, std::memory_order_release);
 										// Обрабатываем событие сокета
 										if(io::socket(client, this->_log)){
-											// Если в списке промежуточного взаимодействия присутствует запись для данного события
-											auto i = ::__awh_inters__.find(client->id);
-											// Если запись найдена
-											if(i != ::__awh_inters__.end()){
-												// Количество записей в списке изменений
-												size_t count = 0;
-												// Получаем итератор на начало списка изменений
-												auto j = ::__awh_change__.begin();
-												// Получаем нужный нам итератор
-												std::advance(j, i->second.index);
-												// Проходим по всем изменениям промежуточного взаимодействия
-												for(; j != ::__awh_change__.end();){
-													// Если идентификатор события совпадает с идентификатором в записи списка изменений
-													if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
-														// Удаляем запись из списка изменений
-														j = ::__awh_change__.erase(j);
-														// Увеличиваем счётчик удалённых записей
-														count++;
-														// Если записи удалены
-														if(count == i->second.count)
-															// Завершаем цикл
-															break;
-													// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-													} else ++j;
+											{
+												// Выполняем блокировку потоков
+												const locker_t lock(::tmp::mtx);
+												// Если в списке промежуточного взаимодействия присутствует запись для данного события
+												auto i = ::tmp::inters.find(client->id);
+												// Если запись найдена
+												if(i != ::tmp::inters.end()){
+													// Количество записей в списке изменений
+													size_t count = 0;
+													// Получаем итератор на начало списка изменений
+													auto j = ::tmp::change.begin();
+													// Получаем нужный нам итератор
+													std::advance(j, i->second.index);
+													// Проходим по всем изменениям промежуточного взаимодействия
+													for(; j != ::tmp::change.end();){
+														// Если идентификатор события совпадает с идентификатором в записи списка изменений
+														if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+															// Удаляем запись из списка изменений
+															j = ::tmp::change.erase(j);
+															// Увеличиваем счётчик удалённых записей
+															count++;
+															// Если записи удалены
+															if(count == i->second.count)
+																// Завершаем цикл
+																break;
+														// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+														} else ++j;
+													}
 												}
 											}
 											// Запоминаем текущие опции события
