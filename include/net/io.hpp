@@ -305,7 +305,7 @@ namespace awh {
 			const std::unordered_map <string, event::address_t> & whitelist(const event::id_t id) const noexcept;
 		public:
 			/**
-			 * @brief Метод активации/деактивации мультикаст группы 
+			 * @brief Метод активации/деактивации мультикаст группы события
 			 *
 			 * @param id    идентификатор события
 			 * @param mode  режим активации/деактивации

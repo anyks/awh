@@ -62,7 +62,7 @@
 #include <net/addr.hpp>
 
 /**
- * Подключаем наши заголовочные файлы
+ * Подключаем системные заголовочные файлы
  */
 #include <sys/os.hpp>
 #include <sys/queue.hpp>
@@ -298,7 +298,7 @@ namespace {
 	 * @brief Структура межпроцессного взаимодействия
 	 *
 	 */
-	typedef struct InterProcessCommunication : public net::ipc_t {
+	typedef struct IPC : public net::ipc_t {
 		// Объект передачи данных
 		transfer_t transfer;
 		/**
@@ -307,7 +307,8 @@ namespace {
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept : transfer(fmk, log) {}
+		explicit IPC(const fmk_t * fmk, const log_t * log) noexcept :
+		 transfer(fmk, log) {}
 	} ipc_t;
 	/**
 	 * @brief Структура подключённого клиента
@@ -353,7 +354,8 @@ namespace {
 		 * @param log объект работы с логами
 		 */
 		explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
-		 addr(fmk, log), transfer(fmk, log), timeout(event::action_t::NONE) {}
+		 addr(fmk, log), transfer(fmk, log),
+		 timeout(event::action_t::NONE) {}
 	} client_t;
 	/**
 	 * @brief Структура сервера
@@ -419,17 +421,17 @@ namespace {
 /**
  * Инкапсулируем статические объекты в пространство имён временных переменных
  */
-namespace tmp {
+namespace local {
 	/**
 	 * Подписываемся на пространство имён AWH
 	 */
 	using namespace awh;
 
 	/**
-	 * @brief Структура промежуточного звена
+	 * @brief Структура аккумулятора событий
 	 *
 	 */
-	typedef struct Intermediate {
+	typedef struct EventAccumulator {
 		// Индекс текущего элемента
 		size_t index;
 		// Общее количество элементов
@@ -438,8 +440,8 @@ namespace tmp {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Intermediate() noexcept : index(0), count(0) {}
-	} intmd_t;
+		explicit EventAccumulator() noexcept : index(0), count(0) {}
+	} evacc_t;
 
 	/**
 	 * Мьютекс для синхронизации потоков
@@ -452,13 +454,7 @@ namespace tmp {
 	/**
 	 * Глобальная переменная списка промежуточных звеньев
 	 */
-	static unordered_map <event::id_t, intmd_t> inters;
-};
-
-/**
- * Инкапсулируем статические объекты в пространство имён потоков
- */
-namespace thread {
+	static unordered_map <event::id_t, evacc_t> evaccs;
 	/**
 	 * Режим работы пула потоков
 	 */
@@ -623,14 +619,14 @@ namespace fs {
 namespace eth {
 	/**
 	 * @brief Генерация случайного порта в диапазоне 49152-65535
-	 * 
+	 *
 	 * @return случайный порт
 	 */
 	static uint16_t port() noexcept {
 		/**
 		 * Инициализация генератора случайных чисел
 		 */
-		::srandom(time(nullptr) ^ ::getpid());
+		::srandom(::time(nullptr) ^ ::getpid());
 		/**
 		 * Возвращаем случайный порт из диапазона 49152-65535
 		 */
@@ -645,10 +641,12 @@ namespace eth {
 	 */
 	static uint16_t checksum(const void * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
-		const uint16_t * buffer = (const uint16_t *) reinterpret_cast <const uint16_t *> (data);
+		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
 		// Инициализируем сумму
 		uint32_t sum = 0;
-		// Пока есть данные для обработки
+		/**
+		 * Пока есть данные для обработки
+		 */
 		while(length > 1){
 			// Добавляем к сумме очередные два байта данных
 			sum += (* buffer++);
@@ -659,7 +657,9 @@ namespace eth {
 		if(length == 1)
 			// Добавляем к сумме последний байт данных
 			sum += (* reinterpret_cast <const uint8_t *> (buffer));
-		// Складываем старшие 16 бит суммы с младшими 16 битами суммы
+		/**
+		 * Складываем старшие 16 бит суммы с младшими 16 битами суммы
+		 */
 		while(sum >> 16)
 			// Складываем старшие 16 бит суммы с младшими 16 битами суммы
 			sum = ((sum & 0xFFFF) + (sum >> 16));
@@ -694,7 +694,7 @@ namespace io {
 	 */
 	static bool close(net::node_t *, const log_t *) noexcept;
 	/**
-	 * @brief Функция создания сокета события
+	 * @brief Прототип функции создания сокета события
 	 *
 	 * @param  узел для которого создаётся сокет
 	 * @param  объект работы с логами
@@ -998,17 +998,17 @@ namespace io {
 										client->timeout = event::action_t::RECONNECT;
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем таймаут на получение данных
-											EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
+											EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, delay, client);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
 											// Если событие успешно добавлено
 											if(ret.second)
 												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::tmp::change.size() - 1);
+												ret.first->second.index = (::local::change.size() - 1);
 											// Увеличиваем количество событий
 											ret.first->second.count++;
 										}
@@ -2037,23 +2037,23 @@ namespace io {
 				} break;
 			}{
 				// Выполняем блокировку потоков
-				const locker_t lock(::tmp::mtx);
+				const locker_t lock(::local::mtx);
 				// Если в списке промежуточного взаимодействия присутствует запись для данного события
-				auto i = ::tmp::inters.find(node->id);
+				auto i = ::local::evaccs.find(node->id);
 				// Если запись найдена
-				if(i != ::tmp::inters.end()){
+				if(i != ::local::evaccs.end()){
 					// Количество записей в списке изменений
 					size_t count = 0;
 					// Получаем итератор на начало списка изменений
-					auto j = ::tmp::change.begin();
+					auto j = ::local::change.begin();
 					// Получаем нужный нам итератор
 					std::advance(j, i->second.index);
 					// Проходим по всем изменениям промежуточного взаимодействия
-					for(; j != ::tmp::change.end();){
+					for(; j != ::local::change.end();){
 						// Если идентификатор события совпадает с идентификатором в записи списка изменений
 						if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
 							// Удаляем запись из списка изменений
-							j = ::tmp::change.erase(j);
+							j = ::local::change.erase(j);
 							// Увеличиваем счётчик удалённых записей
 							count++;
 							// Если записи удалены
@@ -2065,7 +2065,7 @@ namespace io {
 					}
 				}
 				// Производим удаление списка подготовленных событий
-				::tmp::inters.erase(node->id);
+				::local::evaccs.erase(node->id);
 			}
 			// Выполняем блокировку потоков
 			const locker_t lock(::__awh_mtx__);
@@ -3048,32 +3048,32 @@ namespace io {
 							// Устанавливаем идентификатор объекта однорангового узла
 							peer->id = ret.first->first;
 							// Активируем или деактивируем работу мютексов для передачи данных
-							peer->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+							peer->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 							// Устанавливаем статус события в состояние ожидания
 							peer->state.status.store(event::status_t::PENDING, std::memory_order_release);
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
 								// Если событие успешно добавлено
 								if(ret.second){
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Если сокет является неблокирующим
 									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 										// Устанавливаем событие на чтение и активируем его
-										EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
+										EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
 									// Устанавливаем событие на чтение и активируем его
-									else EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+									else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 									// Устанавливаем количество событий
 									ret.first->second.count = 2;
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 2);
+									ret.first->second.index = (::local::change.size() - 2);
 									// Если необходимо установить таймаут на получение данных
 									auto i = peer->timeouts.find(event::action_t::READ);
 									// Если таймаут на получение данных найден
@@ -3083,9 +3083,9 @@ namespace io {
 											// Активируем таймаут события
 											peer->timeout = i->first;
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем таймаут на получение данных
-											EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+											EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 											// Увеличиваем количество событий
 											ret.first->second.count++;
 										// Если сокет является блокирующим
@@ -3181,23 +3181,23 @@ namespace io {
 					node->callbacks.event(node->id, event::action_t::CONNECT);
 				{
 					// Выполняем блокировку потоков
-					const locker_t lock(::tmp::mtx);
+					const locker_t lock(::local::mtx);
 					// Добавляем новое событие в список изменений
-					::tmp::change.push_back((struct kevent){});
+					::local::change.push_back((struct kevent){});
 					// Активируем событие на чтение данных
-					EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+					EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 					// Добавляем новое событие в список изменений
-					::tmp::change.push_back((struct kevent){});
+					::local::change.push_back((struct kevent){});
 					// Деактивируем событие на запись данных
-					EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+					EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 					// Создаём объект промежуточного звена
-					auto ret = ::tmp::inters.emplace(node->id, tmp::intmd_t{});
+					auto ret = ::local::evaccs.emplace(node->id, ::local::evacc_t{});
 					// Устанавливаем количество событий
 					ret.first->second.count += 2;
 					// Если событие успешно добавлено
 					if(ret.second)
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::tmp::change.size() - 2);
+						ret.first->second.index = (::local::change.size() - 2);
 					// Если сокет является неблокирующим
 					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
 						// Выполняем проверку на наличие таймаута для подключения к серверу
@@ -3207,9 +3207,9 @@ namespace io {
 							// Деактивируем таймаут события
 							node->timeout = event::action_t::NONE;
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Снимаем таймаут на получение данных
-							EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
@@ -3228,13 +3228,13 @@ namespace io {
 						// Активируем таймаут события
 						node->timeout = i->first;
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем таймаут на получение данных
-						EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
+						EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
 						// Увеличиваем количество событий
-						::tmp::inters.emplace(node->id, tmp::intmd_t{}).first->second.count++;
+						::local::evaccs.emplace(node->id, ::local::evacc_t{}).first->second.count++;
 					// Устанавливаем таймаут на получение данных
 					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 				}
@@ -4133,17 +4133,17 @@ namespace io {
 							// Активируем таймаут события
 							peer->timeout = i->first;
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем таймаут на получение данных
-							EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+							EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
@@ -4851,17 +4851,17 @@ namespace io {
 							// Активируем таймаут события
 							client->timeout = i->first;
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем таймаут на получение данных
-							EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+							EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 						}
@@ -5565,19 +5565,19 @@ namespace io {
 						// Если в очереди данных больше не осталось данных для отправки
 						if(ipc->transfer.output.empty()){
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
+							EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(ipc->id, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(ipc->id, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count++;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 						}
 						// Формируем положительный результат
 						return true;
@@ -5618,21 +5618,21 @@ namespace io {
 												// Если нужный нам таймаут найден
 												if((i != peer->timeouts.end()) && (i->second > 0)){
 													// Выполняем блокировку потоков
-													const locker_t lock(::tmp::mtx);
+													const locker_t lock(::local::mtx);
 													// Создаём объект промежуточного звена
-													auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+													auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
 													// Устанавливаем количество событий
 													ret.first->second.count++;
 													// Если событие успешно добавлено
 													if(ret.second)
 														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::tmp::change.size() - 1);
+														ret.first->second.index = (::local::change.size() - 1);
 													// Активируем таймаут события
 													peer->timeout = i->first;
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+													EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 												}
 											}
 											// Формируем положительный результат
@@ -5753,27 +5753,27 @@ namespace io {
 						// Если в очереди данных больше не осталось данных для отправки
 						if(peer->transfer.output.empty()){
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
+							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count++;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Выполняем проверку на наличие таймаута для действия
 							if(peer->timeout == event::action_t::WRITE){
 								// Деактивируем таймаут события
 								peer->timeout = event::action_t::NONE;
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Снимаем таймаут на получение данных
-								EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
+								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 							}
@@ -5825,21 +5825,21 @@ namespace io {
 													// Если нужный нам таймаут найден
 													if((i != client->timeouts.end()) && (i->second > 0)){
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Активируем таймаут события
 														client->timeout = i->first;
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 													}
 												}
 												// Формируем положительный результат
@@ -6082,27 +6082,27 @@ namespace io {
 							// Если в очереди данных больше не осталось данных для отправки
 							if(client->transfer.output.empty()){
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Деактивируем событие на запись данных
-								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 								// Выполняем проверку на наличие таймаута для действия
 								if(client->timeout == event::action_t::WRITE){
 									// Деактивируем таймаут события
 									client->timeout = event::action_t::NONE;
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Снимаем таймаут на получение данных
-									EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
 									// Увеличиваем количество событий
 									ret.first->second.count++;
 								}
@@ -6192,19 +6192,19 @@ namespace io {
 								// Если в очереди данных больше не осталось данных для отправки
 								if(server->transfer.output.empty()){
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Деактивируем событие на запись данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
 									// Создаём объект промежуточного звена
-									auto ret = ::tmp::inters.emplace(server->id, tmp::intmd_t{});
+									auto ret = ::local::evaccs.emplace(server->id, ::local::evacc_t{});
 									// Устанавливаем количество событий
 									ret.first->second.count++;
 									// Если событие успешно добавлено
 									if(ret.second)
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::tmp::change.size() - 1);
+										ret.first->second.index = (::local::change.size() - 1);
 								}
 								// Формируем положительный результат
 								return true;
@@ -6533,23 +6533,23 @@ namespace io {
 								if(io::socket(client, log)){
 									{
 										// Выполняем блокировку потоков
-										const locker_t lock(::tmp::mtx);
+										const locker_t lock(::local::mtx);
 										// Если в списке промежуточного взаимодействия присутствует запись для данного события
-										auto i = ::tmp::inters.find(client->id);
+										auto i = ::local::evaccs.find(client->id);
 										// Если запись найдена
-										if(i != ::tmp::inters.end()){
+										if(i != ::local::evaccs.end()){
 											// Количество записей в списке изменений
 											size_t count = 0;
 											// Получаем итератор на начало списка изменений
-											auto j = ::tmp::change.begin();
+											auto j = ::local::change.begin();
 											// Получаем нужный нам итератор
 											std::advance(j, i->second.index);
 											// Проходим по всем изменениям промежуточного взаимодействия
-											for(; j != ::tmp::change.end();){
+											for(; j != ::local::change.end();){
 												// Если идентификатор события совпадает с идентификатором в записи списка изменений
 												if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
 													// Удаляем запись из списка изменений
-													j = ::tmp::change.erase(j);
+													j = ::local::change.erase(j);
 													// Увеличиваем счётчик удалённых записей
 													count++;
 													// Если записи удалены
@@ -6702,19 +6702,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if((result = ret.second)){
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем пользовательское событие
-								EV_SET(&::tmp::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
+								EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Событие не может быть зафиксированно повторно
 							} else {
 								// Устанавливаем текст ошибки
@@ -6750,19 +6750,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if((result = (ret.second && (node->delay > 0)))){
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Событие не может быть зафиксированно повторно
 							} else {
 								// Устанавливаем текст ошибки
@@ -6798,19 +6798,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if((result = (ret.second && (node->delay > 0)))){
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (node->delay) * 1000, node);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Событие не может быть зафиксированно повторно
 							} else {
 								// Устанавливаем текст ошибки
@@ -6886,19 +6886,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										return result;
 									}{
 										// Выполняем блокировку потоков
-										const locker_t lock(::tmp::mtx);
+										const locker_t lock(::local::mtx);
 										// Создаём объект промежуточного звена
-										auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+										auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 										// Если событие успешно добавлено
 										if((result = ret.second)){
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на отслеживание изменения каталога
-											EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+											EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
 											// Устанавливаем количество событий
 											ret.first->second.count = 1;
 											// Устанавливаем индекс текущего элемента
-											ret.first->second.index = (::tmp::change.size() - 1);
+											ret.first->second.index = (::local::change.size() - 1);
 											// Устанавливаем флаги разрешающие получать события
 											node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE);
 											// Выполняем изменение содержимого в директории
@@ -7034,19 +7034,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Если файловый дескриптор файла существует
 								if(node->fd != net::invalid_socket_t){
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Создаём объект промежуточного звена
-									auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+									auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на отслеживание изменения файла
-										EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
+										EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, node);
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::tmp::change.size() - 1);
+										ret.first->second.index = (::local::change.size() - 1);
 										// Устанавливаем флаги разрешающие получать события
 										node->actions |= (action::CHANGE | action::DELETE | action::RENAME | action::ATTRIB | action::REVOKE | action::HDLINK | action::CLOSE | action::READ | action::WRITE);
 										// Если файл открыт удачно
@@ -7201,27 +7201,27 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Для типа сокета DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Создаём объект промежуточного звена
-									auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+									auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Если сокет является неблокирующим
 										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 											// Устанавливаем событие на чтение и активируем его
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 										// Устанавливаем событие на чтение и активируем его
-										else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+										else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+										EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 										// Устанавливаем количество событий
 										ret.first->second.count = 2;
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::tmp::change.size() - 2);
+										ret.first->second.index = (::local::change.size() - 2);
 										// Устанавливаем флаг разрешающий выполнять чтение из сокета
 										node->transfer.actions |= action::READ;
 										// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -7391,23 +7391,23 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													return result;
 												}{
 													// Выполняем блокировку потоков
-													const locker_t lock(::tmp::mtx);
+													const locker_t lock(::local::mtx);
 													// Создаём объект промежуточного звена
-													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 													// Если событие успешно добавлено
 													if((result = ret.second)){
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Если сокет является неблокирующим
 														if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+															EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+														else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 														// Устанавливаем количество событий
 														ret.first->second.count = 1;
 														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::tmp::change.size() - 1);
+														ret.first->second.index = (::local::change.size() - 1);
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
 														node->transfer.actions |= action::READ;
 														// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -7526,23 +7526,23 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													return result;
 												}{
 													// Выполняем блокировку потоков
-													const locker_t lock(::tmp::mtx);
+													const locker_t lock(::local::mtx);
 													// Создаём объект промежуточного звена
-													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 													// Если событие успешно добавлено
 													if((result = ret.second)){
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Если сокет является неблокирующим
 														if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+															EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+														else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 														// Устанавливаем количество событий
 														ret.first->second.count = 1;
 														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::tmp::change.size() - 1);
+														ret.first->second.index = (::local::change.size() - 1);
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
 														node->transfer.actions |= action::READ;
 														// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -7783,27 +7783,27 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														return result;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Если событие успешно добавлено
 														if((result = ret.second)){
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
 															if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+															else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем событие на запись но отключаем его
-															EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+															EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 															// Устанавливаем количество событий
 															ret.first->second.count = 2;
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 2);
+															ret.first->second.index = (::local::change.size() - 2);
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															node->transfer.actions |= action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -7948,27 +7948,27 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															return result;
 														}{
 															// Выполняем блокировку потоков
-															const locker_t lock(::tmp::mtx);
+															const locker_t lock(::local::mtx);
 															// Создаём объект промежуточного звена
-															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 															// Если событие успешно добавлено
 															if((result = ret.second)){
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Если сокет является неблокирующим
 																if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																	// Устанавливаем событие на чтение но отключаем его
-																	EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																	EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																// Устанавливаем событие на чтение но отключаем его
-																else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем событие на запись но отключаем его
-																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																// Устанавливаем количество событий
 																ret.first->second.count = 2;
 																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::tmp::change.size() - 2);
+																ret.first->second.index = (::local::change.size() - 2);
 																// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																node->transfer.actions |= action::READ;
 																// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -8462,27 +8462,27 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															return result;
 														}{
 															// Выполняем блокировку потоков
-															const locker_t lock(::tmp::mtx);
+															const locker_t lock(::local::mtx);
 															// Создаём объект промежуточного звена
-															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 															// Если событие успешно добавлено
 															if((result = ret.second)){
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Если сокет является неблокирующим
 																if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																	// Устанавливаем событие на чтение но отключаем его
-																	EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																	EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																// Устанавливаем событие на чтение но отключаем его
-																else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем событие на запись но отключаем его
-																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																// Устанавливаем количество событий
 																ret.first->second.count = 2;
 																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::tmp::change.size() - 2);
+																ret.first->second.index = (::local::change.size() - 2);
 																// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																node->transfer.actions |= action::READ;
 																// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -9307,13 +9307,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														return result;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Если событие успешно добавлено
 														if((result = ret.second)){
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															/**
 															 * Определяем тип сокета
 															 */
@@ -9325,9 +9325,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																	// Если сокет является неблокирующим
 																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																		EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																	else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 																} break;
 																// Для типа сокета DATAGRAM
 																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
@@ -9336,23 +9336,23 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																	// Если сокет является неблокирующим
 																	if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+																		EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+																	else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 																} break;
 															}
 															// Устанавливаем количество событий
 															ret.first->second.count = 1;
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 															// Если событие является UDP-подключением
 															if(node->state.type == event::type_t::DATAGRAM){
 																// Устанавливаем количество событий
 																ret.first->second.count++;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем событие на запись но отключаем его
-																EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 															}
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															node->transfer.actions |= action::READ;
@@ -9499,13 +9499,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															} break;
 														}{
 															// Выполняем блокировку потоков
-															const locker_t lock(::tmp::mtx);
+															const locker_t lock(::local::mtx);
 															// Создаём объект промежуточного звена
-															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 															// Если событие успешно добавлено
 															if((result = ret.second)){
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																/**
 																 * Определяем тип сокета
 																 */
@@ -9517,9 +9517,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Если сокет является неблокирующим
 																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																			EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																		else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 																	} break;
 																	// Для типа сокета DATAGRAM
 																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
@@ -9528,15 +9528,15 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Если сокет является неблокирующим
 																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+																			EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+																		else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 																	} break;
 																}
 																// Устанавливаем количество событий
 																ret.first->second.count = 1;
 																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::tmp::change.size() - 1);
+																ret.first->second.index = (::local::change.size() - 1);
 																/**
 																 * Определяем тип сокета
 																 */
@@ -9546,9 +9546,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Устанавливаем количество событий
 																		ret.first->second.count++;
 																		// Добавляем новое событие в список изменений
-																		::tmp::change.push_back((struct kevent){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем событие на запись но отключаем его
-																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																		EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																	} break;
 																}
 																// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -9723,13 +9723,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															} break;
 														}{
 															// Выполняем блокировку потоков
-															const locker_t lock(::tmp::mtx);
+															const locker_t lock(::local::mtx);
 															// Создаём объект промежуточного звена
-															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 															// Если событие успешно добавлено
 															if((result = ret.second)){
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																/**
 																 * Определяем тип сокета
 																 */
@@ -9741,9 +9741,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Если сокет является неблокирующим
 																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																			EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+																		else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 																	} break;
 																	// Для типа сокета DATAGRAM
 																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
@@ -9752,15 +9752,15 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Если сокет является неблокирующим
 																		if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+																			EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+																		else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 																	} break;
 																}
 																// Устанавливаем количество событий
 																ret.first->second.count = 1;
 																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::tmp::change.size() - 1);
+																ret.first->second.index = (::local::change.size() - 1);
 																/**
 																 * Определяем тип сокета
 																 */
@@ -9770,9 +9770,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Устанавливаем количество событий
 																		ret.first->second.count++;
 																		// Добавляем новое событие в список изменений
-																		::tmp::change.push_back((struct kevent){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем событие на запись но отключаем его
-																		EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																		EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 																	} break;
 																}
 																// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -14589,23 +14589,23 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->transfer.fd = net::invalid_socket_t;
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Если в списке промежуточного взаимодействия присутствует запись для данного события
-								auto i = ::tmp::inters.find(node->id);
+								auto i = ::local::evaccs.find(node->id);
 								// Если запись найдена
-								if(i != ::tmp::inters.end()){
+								if(i != ::local::evaccs.end()){
 									// Количество записей в списке изменений
 									size_t count = 0;
 									// Получаем итератор на начало списка изменений
-									auto j = ::tmp::change.begin();
+									auto j = ::local::change.begin();
 									// Получаем нужный нам итератор
 									std::advance(j, i->second.index);
 									// Проходим по всем изменениям промежуточного взаимодействия
-									for(; j != ::tmp::change.end();){
+									for(; j != ::local::change.end();){
 										// Если идентификатор события совпадает с идентификатором в записи списка изменений
 										if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
 											// Удаляем запись из списка изменений
-											j = ::tmp::change.erase(j);
+											j = ::local::change.erase(j);
 											// Увеличиваем счётчик удалённых записей
 											count++;
 											// Если записи удалены
@@ -14642,23 +14642,23 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 							node->transfer.fd = net::invalid_socket_t;
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Если в списке промежуточного взаимодействия присутствует запись для данного события
-								auto i = ::tmp::inters.find(node->id);
+								auto i = ::local::evaccs.find(node->id);
 								// Если запись найдена
-								if(i != ::tmp::inters.end()){
+								if(i != ::local::evaccs.end()){
 									// Количество записей в списке изменений
 									size_t count = 0;
 									// Получаем итератор на начало списка изменений
-									auto j = ::tmp::change.begin();
+									auto j = ::local::change.begin();
 									// Получаем нужный нам итератор
 									std::advance(j, i->second.index);
 									// Проходим по всем изменениям промежуточного взаимодействия
-									for(; j != ::tmp::change.end();){
+									for(; j != ::local::change.end();){
 										// Если идентификатор события совпадает с идентификатором в записи списка изменений
 										if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
 											// Удаляем запись из списка изменений
-											j = ::tmp::change.erase(j);
+											j = ::local::change.erase(j);
 											// Увеличиваем счётчик удалённых записей
 											count++;
 											// Если записи удалены
@@ -14791,7 +14791,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
-								awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Возвращаем идентификатор созданного события
 								return ret.first->first;
 							}
@@ -15017,7 +15017,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										// Устанавливаем адрес файловой системы
 										awh_cast <net::addr_fs_t *> (remote->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
 										// Активируем или деактивируем работу мютексов для передачи данных
-										second->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+										second->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 										/**
 										 * Определяем тип сокета
 										 */
@@ -15148,7 +15148,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										// Выполняем инициализацию объекта хоста однорангового узла
 										second->remote = make_unique <net::attr_net_t> ();
 										// Активируем или деактивируем работу мютексов для передачи данных
-										second->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+										second->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 										/**
 										 * Определяем тип подключения
 										 */
@@ -15492,9 +15492,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										// Если всё прошло не успешно
 										else {
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Производим удаление списка подготовленных событий
-											::tmp::inters.erase(ret.first->first);
+											::local::evaccs.erase(ret.first->first);
 											// Удаляем созданное событие
 											::__awh_nodes__.erase(ret.first);
 										}
@@ -15574,7 +15574,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
-								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -15788,7 +15788,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
-								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Результат создания события
 								bool result = true;
 								/**
@@ -16562,9 +16562,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Если всё прошло не успешно
 								} else {
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Производим удаление списка подготовленных событий
-									::tmp::inters.erase(ret.first->first);
+									::local::evaccs.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								}
@@ -16619,7 +16619,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
-								awh_cast <server_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								awh_cast <server_t *> (ret.first->second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -16825,7 +16825,7 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
-								awh_cast <server_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								awh_cast <server_t *> (ret.first->second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Результат создания события
 								bool result = true;
 								/**
@@ -17568,9 +17568,9 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								// Если всё прошло не успешно
 								else {
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Производим удаление списка подготовленных событий
-									::tmp::inters.erase(ret.first->first);
+									::local::evaccs.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								}
@@ -17713,7 +17713,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Активируем или деактивируем работу мютексов для передачи данных
-						awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						// Возвращаем идентификатор созданного события
 						return ret.first->first;
 					}
@@ -17945,13 +17945,13 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем инициализацию объекта адреса файловой системы
 								target->path = make_unique <net::addr_fs_t> ();
 								// Активируем или деактивируем работу мютексов для передачи данных
-								client->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Выполняем создание сокета
 								if(!io::socket(client, this->_log)){
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Производим удаление списка подготовленных событий
-									::tmp::inters.erase(ret.first->first);
+									::local::evaccs.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -18018,7 +18018,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем инициализацию объекта хоста клиента
 								client->target = make_unique <net::attr_net_t> ();
 								// Активируем или деактивируем работу мютексов для передачи данных
-								client->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем тип подключения
 								 */
@@ -18037,9 +18037,9 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем создание сокета
 								if(!io::socket(client, this->_log)){
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Производим удаление списка подготовленных событий
-									::tmp::inters.erase(ret.first->first);
+									::local::evaccs.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Если сокет не создан
@@ -18166,13 +18166,13 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем инициализацию объекта адреса файловой системы
 								host->path = make_unique <net::addr_fs_t> ();
 								// Активируем или деактивируем работу мютексов для передачи данных
-								server->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								server->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Выполняем создание сокета
 								if(!io::socket(server, this->_log)){
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Производим удаление списка подготовленных событий
-									::tmp::inters.erase(ret.first->first);
+									::local::evaccs.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -18239,7 +18239,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем инициализацию объекта хоста сервера
 								server->host = make_unique <net::attr_net_t> ();
 								// Активируем или деактивируем работу мютексов для передачи данных
-								server->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+								server->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем тип подключения
 								 */
@@ -18258,9 +18258,9 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем создание сокета
 								if(!io::socket(server, this->_log)){
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Производим удаление списка подготовленных событий
-									::tmp::inters.erase(ret.first->first);
+									::local::evaccs.erase(ret.first->first);
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -18910,7 +18910,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						// Создаём сокет подключения
 						ipc->transfer.fd = fds[i];
 						// Активируем или деактивируем работу мютексов для передачи данных
-						ipc->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						ipc->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						// Возвращаем идентификатор созданного события
 						result[i] = ret.first->first;
 					} break;
@@ -18933,7 +18933,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						// Получаем объект клиента
 						client_t * client = awh_cast <client_t *> (ret.first->second.get());
 						// Активируем или деактивируем работу мютексов для передачи данных
-						client->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						/**
 						 * Определяем семейство события
 						 */
@@ -19313,7 +19313,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Устанавливаем результат работы функции как ложь
 					result = isSetup;
 				// Если узел не является файловой системой и не является каналом
-				if((i->second->state.family != event::family_t::FSYS) && 
+				if((i->second->state.family != event::family_t::FSYS) &&
 				   (i->second->state.family != event::family_t::PIPE)){
 					// Если опция передана как NO_SIGPIPE
 					if(event::options::NOSIGPIPE & options){
@@ -19363,35 +19363,35 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Если событие находится в состоянии паузы
 											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
 												// Устанавливаем количество событий
 												ret.first->second.count += 2;
 												// Если событие успешно добавлено
 												if(ret.second)
 													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::tmp::change.size() - 2);
+													ret.first->second.index = (::local::change.size() - 2);
 											// Если событие находится в активном состоянии
 											} else {
 												// Устанавливаем событие на чтение
-												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
 												// Устанавливаем количество событий
 												ret.first->second.count += 2;
 												// Если событие успешно добавлено
 												if(ret.second)
 													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::tmp::change.size() - 2);
+													ret.first->second.index = (::local::change.size() - 2);
 												/**
 												 * Определяем чем является текущий узел
 												 */
@@ -19407,9 +19407,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Активируем таймаут события
 															node->timeout = j->first;
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+															EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 															// Увеличиваем количество событий
 															ret.first->second.count++;
 														}
@@ -19427,9 +19427,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 																// Активируем таймаут события
 																node->timeout = j->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+																EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 																// Увеличиваем количество событий
 																ret.first->second.count++;
 															}
@@ -19475,35 +19475,35 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Если событие находится в состоянии паузы
 											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
 												// Устанавливаем количество событий
 												ret.first->second.count += 2;
 												// Если событие успешно добавлено
 												if(ret.second)
 													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::tmp::change.size() - 2);
+													ret.first->second.index = (::local::change.size() - 2);
 											// Если событие находится в активном состоянии
 											} else {
 												// Устанавливаем событие на чтение
-												EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
 												// Устанавливаем количество событий
 												ret.first->second.count += 2;
 												// Если событие успешно добавлено
 												if(ret.second)
 													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::tmp::change.size() - 2);
+													ret.first->second.index = (::local::change.size() - 2);
 												/**
 												 * Определяем чем является текущий узел
 												 */
@@ -19517,9 +19517,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Деактивируем таймаут события
 															node->timeout = event::action_t::NONE;
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+															EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
 															// Устанавливаем количество событий
 															ret.first->second.count++;
 														}
@@ -19539,9 +19539,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Деактивируем таймаут события
 															node->timeout = event::action_t::NONE;
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+															EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
 															// Устанавливаем количество событий
 															ret.first->second.count++;
 														}
@@ -19892,7 +19892,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					// Если опция передана как IPV6_V6ONLY
 					case event::options::IPV6ONLY: {
 						// Если узел не является файловой системой и не является каналом
-						if((i->second->state.family != event::family_t::FSYS) && 
+						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							/**
 							 * Определяем семейство события
@@ -19928,7 +19928,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					// Если опция передана как NO_SIGPIPE
 					case event::options::NOSIGPIPE: {
 						// Если узел не является файловой системой и не является каналом
-						if((i->second->state.family != event::family_t::FSYS) && 
+						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
 							if((result = this->_eth.nosigpipe(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
@@ -19975,35 +19975,35 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												{
 													// Выполняем блокировку потоков
-													const locker_t lock(::tmp::mtx);
+													const locker_t lock(::local::mtx);
 													// Создаём объект промежуточного звена
-													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Удаляем событие на чтение
-													EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Если событие находится в состоянии паузы
 													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, i->second.get());
 														// Устанавливаем количество событий
 														ret.first->second.count += 2;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 2);
+															ret.first->second.index = (::local::change.size() - 2);
 													// Если событие находится в активном состоянии
 													} else {
 														// Устанавливаем событие на чтение
-														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, i->second.get());
 														// Устанавливаем количество событий
 														ret.first->second.count += 2;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 2);
+															ret.first->second.index = (::local::change.size() - 2);
 														/**
 														 * Определяем чем является текущий узел
 														 */
@@ -20019,9 +20019,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Активируем таймаут события
 																	node->timeout = j->first;
 																	// Добавляем новое событие в список изменений
-																	::tmp::change.push_back((struct kevent){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+																	EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 																	// Увеличиваем количество событий
 																	ret.first->second.count++;
 																}
@@ -20039,9 +20039,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																		// Активируем таймаут события
 																		node->timeout = j->first;
 																		// Добавляем новое событие в список изменений
-																		::tmp::change.push_back((struct kevent){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+																		EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 																		// Увеличиваем количество событий
 																		ret.first->second.count++;
 																	}
@@ -20087,35 +20087,35 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											case static_cast <uint8_t> (event::node_t::SERVER): {
 												{
 													// Выполняем блокировку потоков
-													const locker_t lock(::tmp::mtx);
+													const locker_t lock(::local::mtx);
 													// Создаём объект промежуточного звена
-													auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+													auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Удаляем событие на чтение
-													EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE, 0, 0, i->second.get());
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Если событие находится в состоянии паузы
 													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, i->second.get());
 														// Устанавливаем количество событий
 														ret.first->second.count += 2;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 2);
+															ret.first->second.index = (::local::change.size() - 2);
 													// Если событие находится в активном состоянии
 													} else {
 														// Устанавливаем событие на чтение
-														EV_SET(&::tmp::change.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD, 0, 0, i->second.get());
 														// Устанавливаем количество событий
 														ret.first->second.count += 2;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 2);
+															ret.first->second.index = (::local::change.size() - 2);
 														/**
 														 * Определяем чем является текущий узел
 														 */
@@ -20127,9 +20127,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																// Если таймаут уже был активирован
 																if(node->timeout != event::action_t::NONE){
 																	// Добавляем новое событие в список изменений
-																	::tmp::change.push_back((struct kevent){});
+																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+																	EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
 																	// Устанавливаем количество событий
 																	ret.first->second.count++;
 																}
@@ -20147,9 +20147,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																// Если таймаут уже был активирован и не является таймаутом на переподключение
 																if((node->timeout != event::action_t::NONE) && (node->timeout != event::action_t::RECONNECT)){
 																	// Добавляем новое событие в список изменений
-																	::tmp::change.push_back((struct kevent){});
+																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
+																	EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, node);
 																	// Устанавливаем количество событий
 																	ret.first->second.count++;
 																}
@@ -20178,7 +20178,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					// Если опция передана как REUSEADDR
 					case event::options::REUSEADDR: {
 						// Если узел не является файловой системой и не является каналом
-						if((i->second->state.family != event::family_t::FSYS) && 
+						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Устанавливаем или снимаем режим повторного использования адреса сокета
 							if((result = this->_eth.reuseaddr(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
@@ -20194,7 +20194,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					// Если опция передана как REUSEPORT
 					case event::options::REUSEPORT: {
 						// Если узел не является файловой системой и не является каналом
-						if((i->second->state.family != event::family_t::FSYS) && 
+						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Устанавливаем или снимаем режим повторного использования порта сокета
 							if((result = this->_eth.reuseport(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
@@ -20280,7 +20280,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 										i->second->state.options |= event::options::BROADCAST;
 									// Если необходимо деактивировать режим широковещательной передачи для сокета
 									else i->second->state.options ^= event::options::BROADCAST;
-								}	
+								}
 							}
 						}
 					} break;
@@ -21050,7 +21050,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if(
-			(i != ::__awh_nodes__.end()) && 
+			(i != ::__awh_nodes__.end()) &&
 			(
 				(i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED) ||
 				(i->second->state.status.load(std::memory_order_acquire) != event::status_t::CANCELLED)
@@ -21066,23 +21066,23 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
 					{
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Если в списке промежуточного взаимодействия присутствует запись для данного события
-						auto j = ::tmp::inters.find(i->first);
+						auto j = ::local::evaccs.find(i->first);
 						// Если запись найдена
-						if(j != ::tmp::inters.end()){
+						if(j != ::local::evaccs.end()){
 							// Количество записей в списке изменений
 							size_t count = 0;
 							// Получаем итератор на начало списка изменений
-							auto k = ::tmp::change.begin();
+							auto k = ::local::change.begin();
 							// Получаем нужный нам итератор
 							std::advance(k, j->second.index);
 							// Проходим по всем изменениям промежуточного взаимодействия
-							for(; k != ::tmp::change.end();){
+							for(; k != ::local::change.end();){
 								// Если идентификатор события совпадает с идентификатором в записи списка изменений
 								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
 									// Удаляем запись из списка изменений
-									k = ::tmp::change.erase(k);
+									k = ::local::change.erase(k);
 									// Увеличиваем счётчик удалённых записей
 									count++;
 									// Если записи удалены
@@ -21110,23 +21110,23 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
 					{
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Если в списке промежуточного взаимодействия присутствует запись для данного события
-						auto j = ::tmp::inters.find(i->first);
+						auto j = ::local::evaccs.find(i->first);
 						// Если запись найдена
-						if(j != ::tmp::inters.end()){
+						if(j != ::local::evaccs.end()){
 							// Количество записей в списке изменений
 							size_t count = 0;
 							// Получаем итератор на начало списка изменений
-							auto k = ::tmp::change.begin();
+							auto k = ::local::change.begin();
 							// Получаем нужный нам итератор
 							std::advance(k, j->second.index);
 							// Проходим по всем изменениям промежуточного взаимодействия
-							for(; k != ::tmp::change.end();){
+							for(; k != ::local::change.end();){
 								// Если идентификатор события совпадает с идентификатором в записи списка изменений
 								if(reinterpret_cast <server_t *> (k->udata)->id == i->first){
 									// Удаляем запись из списка изменений
-									k = ::tmp::change.erase(k);
+									k = ::local::change.erase(k);
 									// Увеличиваем счётчик удалённых записей
 									count++;
 									// Если записи удалены
@@ -21213,23 +21213,23 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										node->state.options |= event::options::NOIOBLOCK;
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Устанавливаем количество событий
 											ret.first->second.count += 2;
 											// Если событие успешно добавлено
 											if(ret.second)
 												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::tmp::change.size() - 2);
+												ret.first->second.index = (::local::change.size() - 2);
 										}
 									}
 								}
@@ -21249,23 +21249,23 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											node->state.options ^= event::options::NOIOBLOCK;
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Устанавливаем количество событий
 											ret.first->second.count += 2;
 											// Если событие успешно добавлено
 											if(ret.second)
 												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::tmp::change.size() - 2);
+												ret.first->second.index = (::local::change.size() - 2);
 										}
 									}
 								}
@@ -21460,19 +21460,19 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 								} break;
 							}{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Активируем событие на запись для клиентского сокета
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, node);
 								// Если необходимо установить таймаут на подключение к серверу
 								auto j = node->timeouts.find(event::action_t::CONNECT);
 								// Если таймаут на подключение найден
@@ -21482,9 +21482,9 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										// Активируем таймаут события
 										node->timeout = j->first;
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+										EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 										// Увеличиваем количество событий
 										ret.first->second.count++;
 									// Если сокет является блокирующим
@@ -21775,27 +21775,27 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 									}
 								}{
 									// Выполняем блокировку потоков
-									const locker_t lock(::tmp::mtx);
+									const locker_t lock(::local::mtx);
 									// Создаём объект промежуточного звена
-									auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+									auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 									// Если событие успешно добавлено
 									if((result = ret.second)){
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Если сокет является неблокирующим
 										if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
 											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, node);
 										// Устанавливаем событие на чтение но отключаем его
-										else EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
+										else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, node);
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+										EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 										// Устанавливаем количество событий
 										ret.first->second.count = 2;
 										// Устанавливаем индекс текущего элемента
-										ret.first->second.index = (::tmp::change.size() - 2);
+										ret.first->second.index = (::local::change.size() - 2);
 										// Если необходимо установить таймаут на чтение данных
 										auto j = node->timeouts.find(event::action_t::READ);
 										// Если таймаут на подключение найден
@@ -21805,9 +21805,9 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 												// Активируем таймаут события
 												node->timeout = j->first;
 												// Добавляем новое событие в список изменений
-												::tmp::change.push_back((struct kevent){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+												EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 												// Увеличиваем количество событий
 												ret.first->second.count++;
 											// Если сокет является блокирующим
@@ -22363,23 +22363,23 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										node->state.options |= event::options::NOIOBLOCK;
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Устанавливаем количество событий
 											ret.first->second.count += 2;
 											// Если событие успешно добавлено
 											if(ret.second)
 												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::tmp::change.size() - 2);
+												ret.first->second.index = (::local::change.size() - 2);
 										}
 									}
 								}
@@ -22399,23 +22399,23 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 											node->state.options ^= event::options::NOIOBLOCK;
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, node);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на чтение но отключаем его
-											EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Устанавливаем количество событий
 											ret.first->second.count += 2;
 											// Если событие успешно добавлено
 											if(ret.second)
 												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::tmp::change.size() - 2);
+												ret.first->second.index = (::local::change.size() - 2);
 										}
 									}
 								}
@@ -22485,19 +22485,19 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 								}
 							}{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Активируем событие на чтение для серверного сокета
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -23146,19 +23146,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																ipc->transfer.offset = 0;
 															}{
 																// Выполняем блокировку потоков
-																const locker_t lock(::tmp::mtx);
+																const locker_t lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+																EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 																// Создаём объект промежуточного звена
-																auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+																auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 																// Устанавливаем количество событий
 																ret.first->second.count++;
 																// Если событие успешно добавлено
 																if(ret.second)
 																	// Устанавливаем индекс текущего элемента
-																	ret.first->second.index = (::tmp::change.size() - 1);
+																	ret.first->second.index = (::local::change.size() - 1);
 															}
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
@@ -23178,19 +23178,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																ipc->transfer.offset = 0;
 															}{
 																// Выполняем блокировку потоков
-																const locker_t lock(::tmp::mtx);
+																const locker_t lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+																EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 																// Создаём объект промежуточного звена
-																auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+																auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 																// Устанавливаем количество событий
 																ret.first->second.count++;
 																// Если событие успешно добавлено
 																if(ret.second)
 																	// Устанавливаем индекс текущего элемента
-																	ret.first->second.index = (::tmp::change.size() - 1);
+																	ret.first->second.index = (::local::change.size() - 1);
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(ipc->callbacks.write != nullptr)
@@ -23392,19 +23392,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														ipc->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+														EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 													}
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -23424,19 +23424,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														ipc->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+														EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
@@ -23648,19 +23648,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														ipc->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+														EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
@@ -23848,19 +23848,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														peer->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Если таймаут не установлен
 														if(peer->timeout == event::action_t::NONE){
 															// Выполняем проверку на наличие таймаута для события записи
@@ -23872,9 +23872,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Активируем таймаут события
 																peer->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+																EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 															}
 														}
 													}
@@ -23896,19 +23896,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														peer->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Если таймаут не установлен
 														if(peer->timeout == event::action_t::NONE){
 															// Выполняем проверку на наличие таймаута для события записи
@@ -23920,9 +23920,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Активируем таймаут события
 																peer->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+																EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 															}
 														}
 													}
@@ -24146,19 +24146,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														peer->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Если таймаут не установлен
 														if(peer->timeout == event::action_t::NONE){
 															// Выполняем проверку на наличие таймаута для события записи
@@ -24170,9 +24170,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Активируем таймаут события
 																peer->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+																EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 															}
 														}
 													}
@@ -24374,19 +24374,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														client->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Если таймаут не установлен
 														if(client->timeout == event::action_t::NONE){
 															// Выполняем проверку на наличие таймаута для события записи
@@ -24398,9 +24398,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															}
 														}
 													}
@@ -24422,19 +24422,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														client->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Если таймаут не установлен
 														if(client->timeout == event::action_t::NONE){
 															// Выполняем проверку на наличие таймаута для события записи
@@ -24446,9 +24446,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															}
 														}
 													}
@@ -24672,19 +24672,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														client->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 														// Если таймаут не установлен
 														if(client->timeout == event::action_t::NONE){
 															// Выполняем проверку на наличие таймаута для события записи
@@ -24696,9 +24696,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::tmp::change.push_back((struct kevent){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															}
 														}
 													}
@@ -24907,19 +24907,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											client->timeout = i->first;
 											{
 												// Выполняем блокировку потоков
-												const locker_t lock(::tmp::mtx);
+												const locker_t lock(::local::mtx);
 												// Добавляем новое событие в список изменений
-												::tmp::change.push_back((struct kevent){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 												// Создаём объект промежуточного звена
-												auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+												auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
 												// Устанавливаем количество событий
 												ret.first->second.count++;
 												// Если событие успешно добавлено
 												if(ret.second)
 													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::tmp::change.size() - 1);
+													ret.first->second.index = (::local::change.size() - 1);
 											}
 										}
 										// Если таймаут не установлен
@@ -24932,19 +24932,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												client->timeout = i->first;
 												{
 													// Выполняем блокировку потоков
-													const locker_t lock(::tmp::mtx);
+													const locker_t lock(::local::mtx);
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 													// Создаём объект промежуточного звена
-													auto ret = ::tmp::inters.emplace(client->id, tmp::intmd_t{});
+													auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
 													// Устанавливаем количество событий
 													ret.first->second.count++;
 													// Если событие успешно добавлено
 													if(ret.second)
 														// Устанавливаем индекс текущего элемента
-														ret.first->second.index = (::tmp::change.size() - 1);
+														ret.first->second.index = (::local::change.size() - 1);
 												}
 											}
 										}
@@ -25129,19 +25129,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 										{
 											// Выполняем блокировку потоков
-											const locker_t lock(::tmp::mtx);
+											const locker_t lock(::local::mtx);
 											// Создаём объект промежуточного звена
-											auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 											// Устанавливаем количество событий
 											ret.first->second.count++;
 											// Если событие успешно добавлено
 											if(ret.second)
 												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::tmp::change.size() - 1);
+												ret.first->second.index = (::local::change.size() - 1);
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Активируем событие на чтение для серверного сокета
-											EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
 											// Если необходимо установить таймаут на чтение данных
 											auto i = client->timeouts.find(event::action_t::READ);
 											// Если таймаут на подключение найден
@@ -25151,9 +25151,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Активируем таймаут события
 													client->timeout = i->first;
 													// Добавляем новое событие в список изменений
-													::tmp::change.push_back((struct kevent){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 													// Увеличиваем количество событий
 													ret.first->second.count++;
 												// Устанавливаем таймаут на получение данных
@@ -25217,19 +25217,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															client->transfer.offset = 0;
 														}{
 															// Выполняем блокировку потоков
-															const locker_t lock(::tmp::mtx);
+															const locker_t lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 															// Создаём объект промежуточного звена
-															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 															// Устанавливаем количество событий
 															ret.first->second.count++;
 															// Если событие успешно добавлено
 															if(ret.second)
 																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::tmp::change.size() - 1);
+																ret.first->second.index = (::local::change.size() - 1);
 															// Если таймаут не установлен
 															if(client->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -25241,9 +25241,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	client->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::tmp::change.push_back((struct kevent){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																}
 															}
 														}
@@ -25466,19 +25466,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															client->transfer.offset = 0;
 														}{
 															// Выполняем блокировку потоков
-															const locker_t lock(::tmp::mtx);
+															const locker_t lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::tmp::change.push_back((struct kevent){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 															// Создаём объект промежуточного звена
-															auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 															// Устанавливаем количество событий
 															ret.first->second.count++;
 															// Если событие успешно добавлено
 															if(ret.second)
 																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::tmp::change.size() - 1);
+																ret.first->second.index = (::local::change.size() - 1);
 															// Если таймаут не установлен
 															if(client->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -25490,9 +25490,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	client->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::tmp::change.push_back((struct kevent){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::tmp::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																}
 															}
 														}
@@ -25948,19 +25948,19 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														server->transfer.offset = 0;
 													}{
 														// Выполняем блокировку потоков
-														const locker_t lock(::tmp::mtx);
+														const locker_t lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::tmp::change.push_back((struct kevent){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
+														EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
 														// Создаём объект промежуточного звена
-														auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 														// Устанавливаем количество событий
 														ret.first->second.count++;
 														// Если событие успешно добавлено
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::tmp::change.size() - 1);
+															ret.first->second.index = (::local::change.size() - 1);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
@@ -26903,7 +26903,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(co
 	return result;
 }
 /**
- * @brief Метод активации/деактивации мультикаст группы 
+ * @brief Метод активации/деактивации мультикаст группы события
  *
  * @param id    идентификатор события
  * @param mode  режим активации/деактивации
@@ -28148,25 +28148,25 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Останавливаем активный таймаут
-							EV_SET(&::tmp::change.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
+							EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 							// Если таймаут необходимо запустить
 							if(timeout > 0){
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);	
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 							}
@@ -28185,25 +28185,25 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Останавливаем активный таймаут
-							EV_SET(&::tmp::change.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
+							EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE, NOTE_USECONDS, 0, timer);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 							// Если таймаут необходимо запустить
 							if(timeout > 0){
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-								EV_SET(&::tmp::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 							}
@@ -28760,7 +28760,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 		}
 	/**
 	 * Если возникает ошибка
-	 */	
+	 */
 	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
@@ -28965,25 +28965,25 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						flags |= NOTE_LINK;
 					{
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Создаём объект промежуточного звена
-						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+						auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count = 1;
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::tmp::change.size() - 1);
+						ret.first->second.index = (::local::change.size() - 1);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::tmp::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, dir);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, dir);
 						// Если флаги установлены
 						if(flags > 0){
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET(&::tmp::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, dir);
+							EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, dir);
 						}
 					}
 					// Выполняем "пинок" для применения изменений
@@ -29174,25 +29174,25 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						flags |= NOTE_LINK;
 					{
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Создаём объект промежуточного звена
-						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+						auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count = 1;
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::tmp::change.size() - 1);
+						ret.first->second.index = (::local::change.size() - 1);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее событие из списка изменений
-						EV_SET(&::tmp::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, fs);
+						EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, fs);
 						// Если флаги установлены
 						if(flags > 0){
 							// Увеличиваем количество событий
 							ret.first->second.count++;
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET(&::tmp::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, fs);
+							EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, fs);
 						}
 					}
 					// Выполняем "пинок" для применения изменений
@@ -29209,9 +29209,9 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29221,29 +29221,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, ipc);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, ipc);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, ipc);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, ipc);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29253,22 +29253,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, ipc);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ipc);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -29305,9 +29305,9 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29317,29 +29317,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, peer);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, peer);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, peer);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, peer);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29349,22 +29349,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, peer);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, peer);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -29421,9 +29421,9 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29433,29 +29433,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, client);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29465,22 +29465,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -29505,9 +29505,9 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						// Если действие является подключением к серверу
 						case static_cast <uint8_t> (event::action_t::CONNECT): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29517,22 +29517,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= action::CONNECT;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~action::CONNECT;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является переподключением к серверу
 						case static_cast <uint8_t> (event::action_t::RECONNECT): {
@@ -29589,9 +29589,9 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						// Если действие является чтением данных из сокета
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29601,29 +29601,29 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->transfer.actions |= action::READ;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->transfer.actions &= ~action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29633,22 +29633,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->transfer.actions |= action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->transfer.actions &= ~action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, server);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
@@ -29673,9 +29673,9 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						// Если действие является принятием входящего соединения
 						case static_cast <uint8_t> (event::action_t::ACCEPT): {
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -29685,22 +29685,22 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->transfer.actions |= action::ACCEPT;
 									// Активируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->transfer.actions &= ~action::ACCEPT;
 									// Деактивируем событие на чтение данных
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, server);
 								} break;
 							}
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
@@ -29835,23 +29835,23 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на чтение данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count += 2;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 2);
+								ret.first->second.index = (::local::change.size() - 2);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -29867,19 +29867,19 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Удаляем предыдущее события из списка изменений
-							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count += 1;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -29895,19 +29895,19 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Удаляем предыдущее события из списка изменений
-							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count += 1;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -29923,23 +29923,23 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на чтение данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count += 2;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 2);
+								ret.first->second.index = (::local::change.size() - 2);
 							// Если сокет является неблокирующим
 							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
 								// Событие для получения таймаутов
@@ -29964,9 +29964,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 											// Деактивируем таймаут события
 											node->timeout = event::action_t::NONE;
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Снимаем таймаут на получение данных
-											EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
 											// Увеличиваем количество событий
 											ret.first->second.count++;
 											// Выходим из цикла
@@ -29991,23 +29991,23 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на чтение данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count += 2;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 2);
+								ret.first->second.index = (::local::change.size() - 2);
 							// Если сокет является неблокирующим
 							if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
 								// Событие для получения таймаутов
@@ -30032,9 +30032,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 											// Деактивируем таймаут события
 											node->timeout = event::action_t::NONE;
 											// Добавляем новое событие в список изменений
-											::tmp::change.push_back((struct kevent){});
+											::local::change.push_back((struct kevent){});
 											// Снимаем таймаут на получение данных
-											EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
+											EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE, 0, 0, node);
 											// Увеличиваем количество событий
 											ret.first->second.count++;
 											// Выходим из цикла
@@ -30058,27 +30058,27 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на чтение данных
-							EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_DISABLE, 0, 0, node);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count++;
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 							// Если событие является датаграммой
 							if(node->state.type == event::type_t::DATAGRAM){
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Деактивируем событие на запись данных
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE, 0, 0, node);
 							}
 						}
 						// Выполняем "пинок" для применения изменений
@@ -30141,19 +30141,19 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						if(node->transfer.actions & action::READ){
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Активируем событие на чтение данных
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -30193,25 +30193,25 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							flags |= NOTE_LINK;
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Удаляем предыдущее события из списка изменений
-							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 							// Если флаги установлены
 							if(flags > 0){
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на отслеживание изменения каталога
-								EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
+								EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
 							}
 						}
 						// Выполняем "пинок" для применения изменений
@@ -30251,25 +30251,25 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							flags |= NOTE_LINK;
 						{
 							// Выполняем блокировку потоков
-							const locker_t lock(::tmp::mtx);
+							const locker_t lock(::local::mtx);
 							// Создаём объект промежуточного звена
-							auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 							// Устанавливаем количество событий
 							ret.first->second.count = 1;
 							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::tmp::change.size() - 1);
+							ret.first->second.index = (::local::change.size() - 1);
 							// Добавляем новое событие в список изменений
-							::tmp::change.push_back((struct kevent){});
+							::local::change.push_back((struct kevent){});
 							// Удаляем предыдущее событие из списка изменений
-							EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
+							EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_DELETE, 0, 0, node);
 							// Если флаги установлены
 							if(flags > 0){
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на отслеживание изменения каталога
-								EV_SET(&::tmp::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
+								EV_SET(&::local::change.back(), node->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, node);
 							}
 						}
 						// Выполняем "пинок" для применения изменений
@@ -30285,19 +30285,19 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						if(node->transfer.actions & action::READ){
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Активируем событие на чтение данных
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 								// Выполняем проверку на наличие таймаута для действия
 								auto j = node->timeouts.find(event::action_t::READ);
 								// Если нужный нам таймаут найден
@@ -30307,9 +30307,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 										// Активируем таймаут события
 										node->timeout = j->first;
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+										EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 										// Увеличиваем количество событий
 										ret.first->second.count++;
 									// Если сокет является блокирующим
@@ -30330,19 +30330,19 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						if(node->transfer.actions & action::READ){
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Активируем событие на чтение данных
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 								// Выполняем проверку на наличие таймаута для действия
 								auto j = node->timeouts.find(event::action_t::READ);
 								// Если нужный нам таймаут найден
@@ -30352,9 +30352,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 										// Активируем таймаут события
 										node->timeout = j->first;
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET(&::tmp::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
+										EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, node);
 										// Увеличиваем количество событий
 										ret.first->second.count++;
 									// Если сокет является блокирующим
@@ -30375,19 +30375,19 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						if(node->transfer.actions & action::READ){
 							{
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Активируем событие на чтение данных
-								EV_SET(&::tmp::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, node);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count++;
 								// Если событие успешно добавлено
 								if(ret.second)
 									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::tmp::change.size() - 1);
+									ret.first->second.index = (::local::change.size() - 1);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -30515,9 +30515,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30542,9 +30542,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30575,9 +30575,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30604,9 +30604,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30635,9 +30635,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30677,9 +30677,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30719,9 +30719,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30750,9 +30750,9 @@ void awh::IO::clear() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30763,9 +30763,9 @@ void awh::IO::clear() noexcept {
 					// Для других типов узлов
 					default: {
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -30777,9 +30777,9 @@ void awh::IO::clear() noexcept {
 			// Если узел не находится в рабочем состоянии уничтожаем её сразу
 			} else {
 				// Выполняем блокировку потоков
-				const locker_t lock(::tmp::mtx);
+				const locker_t lock(::local::mtx);
 				// Производим удаление списка подготовленных событий
-				::tmp::inters.erase(i->first);
+				::local::evaccs.erase(i->first);
 				{
 					// Выполняем блокировку потоков
 					const locker_t lock(::__awh_mtx__);
@@ -30855,9 +30855,9 @@ bool awh::IO::initialize() noexcept {
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
 		// Активируем или деактивируем работу мютексов для временных структур
-		::tmp::mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		::local::mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 		// Активируем или деактивируем работу мютексов для основного потока
-		::__awh_mtx__.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		::__awh_mtx__.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 		// Создаём пользовательское событие
 		struct kevent event{};
 		// Устанавливаем пользовательское событие
@@ -30897,9 +30897,9 @@ bool awh::IO::reinitialize() noexcept {
 			// Выполняем пинок Kqueue для разблокировки ожидания событий
 			this->kick();
 		// Если события для обработки подготовлены
-		if(!::tmp::change.empty())
+		if(!::local::change.empty())
 			// Выполняем очистку списка подготовленных изменений
-			::tmp::change.clear();
+			::local::change.clear();
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Выполняем инициализацию Kqueue
@@ -30924,19 +30924,19 @@ bool awh::IO::reinitialize() noexcept {
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
 		{
 			// Выполняем блокировку потоков
-			const locker_t lock(::tmp::mtx);
+			const locker_t lock(::local::mtx);
 			// Добавляем новое событие в список изменений
-			::tmp::change.push_back((struct kevent){});
+			::local::change.push_back((struct kevent){});
 			// Устанавливаем пользовательское событие
-			EV_SET(&::tmp::change.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
+			EV_SET(&::local::change.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
 		}
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			{
 				// Выполняем блокировку потоков
-				const locker_t lock(::tmp::mtx);
+				const locker_t lock(::local::mtx);
 				// Производим удаление списка подготовленных событий
-				::tmp::inters.erase(i->first);
+				::local::evaccs.erase(i->first);
 			}
 			// Если узел ещё не находится в рабочем состоянии
 			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
@@ -31082,25 +31082,25 @@ bool awh::IO::reinitialize() noexcept {
 					if((peer->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) ||
 					   (peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 							// Устанавливаем событие на чтение и активируем его
-							EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
+							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
 						// Устанавливаем событие на чтение и активируем его
-						else EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+						else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на запись но отключаем его
-						EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 						// Создаём объект промежуточного звена
-						auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+						auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count = 2;
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::tmp::change.size() - 2);
+						ret.first->second.index = (::local::change.size() - 2);
 						// Если необходимо установить таймаут на получение данных
 						auto j = peer->timeouts.find(event::action_t::READ);
 						// Если таймаут на получение данных найден
@@ -31110,9 +31110,9 @@ bool awh::IO::reinitialize() noexcept {
 								// Активируем таймаут события
 								peer->timeout = j->first;
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET(&::tmp::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
+								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
 								// Увеличиваем количество событий
 								ret.first->second.count++;
 							// Если сокет является блокирующим
@@ -31123,25 +31123,25 @@ bool awh::IO::reinitialize() noexcept {
 					// Если событие поставленно на паузу
 					} else if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 						// Устанавливаем событие на чтение но отключаем его
-						else EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
+						else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на запись но отключаем его
-						EV_SET(&::tmp::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
 						// Создаём объект промежуточного звена
-						auto ret = ::tmp::inters.emplace(peer->id, tmp::intmd_t{});
+						auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count = 2;
 						// Устанавливаем индекс текущего элемента
-						ret.first->second.index = (::tmp::change.size() - 2);
+						ret.first->second.index = (::local::change.size() - 2);
 						// Увеличиваем значение итератора
 						++i;
 					// Если необходимо выполнить удаление события
@@ -31168,71 +31168,71 @@ bool awh::IO::reinitialize() noexcept {
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+								else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 2;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 2);
+								ret.first->second.index = (::local::change.size() - 2);
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+								else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 2;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 2);
+								ret.first->second.index = (::local::change.size() - 2);
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+								else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET(&::tmp::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 2;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 2);
+								ret.first->second.index = (::local::change.size() - 2);
 							} break;
 						}
 					// Если событие находится в состоянии остановки
@@ -31248,15 +31248,15 @@ bool awh::IO::reinitialize() noexcept {
 					if((client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Создаём объект промежуточного звена
-						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+						auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count++;
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Активируем событие на чтение для серверного сокета
-						EV_SET(&::tmp::change.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, client);
+						EV_SET(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, client);
 					}
 					// Увеличиваем значение итератора
 					++i;
@@ -31277,54 +31277,54 @@ bool awh::IO::reinitialize() noexcept {
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								// Если сокет является блокирующим
 								} else {
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 								}
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 								// Если событие является UDP-подключением
 								if(server->state.type == event::type_t::DATAGRAM){
 									// Устанавливаем количество событий
 									ret.first->second.count++;
 									// Добавляем новое событие в список изменений
-									::tmp::change.push_back((struct kevent){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								}
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+								else EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 								/**
 								 * Определяем тип сокета
 								 */
@@ -31334,30 +31334,30 @@ bool awh::IO::reinitialize() noexcept {
 										// Устанавливаем количество событий
 										ret.first->second.count++;
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+										EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 									} break;
 								}
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем блокировку потоков
-								const locker_t lock(::tmp::mtx);
+								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::tmp::change.push_back((struct kevent){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+									EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+								else EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 								// Создаём объект промежуточного звена
-								auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
-								ret.first->second.index = (::tmp::change.size() - 1);
+								ret.first->second.index = (::local::change.size() - 1);
 								/**
 								 * Определяем тип сокета
 								 */
@@ -31367,9 +31367,9 @@ bool awh::IO::reinitialize() noexcept {
 										// Устанавливаем количество событий
 										ret.first->second.count++;
 										// Добавляем новое событие в список изменений
-										::tmp::change.push_back((struct kevent){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET(&::tmp::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+										EV_SET(&::local::change.back(), server->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
 									} break;
 								}
 							} break;
@@ -31387,15 +31387,15 @@ bool awh::IO::reinitialize() noexcept {
 					if((server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) ||
 					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Создаём объект промежуточного звена
-						auto ret = ::tmp::inters.emplace(i->first, tmp::intmd_t{});
+						auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
 						// Устанавливаем количество событий
 						ret.first->second.count++;
 						// Добавляем новое событие в список изменений
-						::tmp::change.push_back((struct kevent){});
+						::local::change.push_back((struct kevent){});
 						// Активируем событие на чтение для серверного сокета
-						EV_SET(&::tmp::change.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, server);
+						EV_SET(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE, 0, 0, server);
 					}
 					// Увеличиваем значение итератора
 					++i;
@@ -31433,9 +31433,9 @@ bool awh::IO::deinitialize() noexcept {
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31460,9 +31460,9 @@ bool awh::IO::deinitialize() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31483,9 +31483,9 @@ bool awh::IO::deinitialize() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31506,9 +31506,9 @@ bool awh::IO::deinitialize() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31529,9 +31529,9 @@ bool awh::IO::deinitialize() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31552,9 +31552,9 @@ bool awh::IO::deinitialize() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Производим удаление узла
 							i = ::__awh_nodes__.erase(i);
@@ -31575,9 +31575,9 @@ bool awh::IO::deinitialize() noexcept {
 							// Вызываем функцию обратного вызова при уничтожении события
 							node->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31588,9 +31588,9 @@ bool awh::IO::deinitialize() noexcept {
 					// Для других типов узлов
 					default: {
 						// Выполняем блокировку потоков
-						const locker_t lock(::tmp::mtx);
+						const locker_t lock(::local::mtx);
 						// Производим удаление списка подготовленных событий
-						::tmp::inters.erase(i->first);
+						::local::evaccs.erase(i->first);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
@@ -31602,9 +31602,9 @@ bool awh::IO::deinitialize() noexcept {
 			// Если узел не находится в рабочем состоянии уничтожаем её сразу
 			} else {
 				// Выполняем блокировку потоков
-				const locker_t lock(::tmp::mtx);
+				const locker_t lock(::local::mtx);
 				// Производим удаление списка подготовленных событий
-				::tmp::inters.erase(i->first);
+				::local::evaccs.erase(i->first);
 				{
 					// Выполняем блокировку потоков
 					const locker_t lock(::__awh_mtx__);
@@ -31641,15 +31641,15 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 	 */
 	try {
 		// Если активирован пул потоков
-		if(::thread::threadPool == event::mode_t::ENABLED)
+		if(::local::threadPool == event::mode_t::ENABLED)
 			// Устанавливаем принудительный режим безопасности потоков
-			::thread::threadSafety = event::mode_t::ENABLED;
+			::local::threadSafety = event::mode_t::ENABLED;
 		// Устанавливаем режим безопасности работы потоков
-		else ::thread::threadSafety = mode;
+		else ::local::threadSafety = mode;
 		// Активируем или деактивируем работу мютексов для временных структур
-		::tmp::mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		::local::mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 		// Активируем или деактивируем работу мютексов для основного потока
-		::__awh_mtx__.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		::__awh_mtx__.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 		// Выполняем перебор всех активных узлов
 		for(auto & node : ::__awh_nodes__){
 			// Если узел уже находится в рабочем состоянии
@@ -31661,27 +31661,27 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY):
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <user_t *> (node.second.get())->mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						awh_cast <user_t *> (node.second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 					break;
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC):
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <ipc_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						awh_cast <ipc_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 					break;
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <peer_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						awh_cast <peer_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 					break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <client_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						awh_cast <client_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 					break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER):
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <server_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+						awh_cast <server_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 					break;
 				}
 			}
@@ -31717,9 +31717,9 @@ void awh::IO::threadPool(const event::mode_t mode, const uint16_t size) noexcept
 	 */
 	try {
 		// Устанавливаем режим работы пула потоков
-		::thread::threadPool = mode;
+		::local::threadPool = mode;
 		// Если активирован пул потоков
-		if(::thread::threadPool == event::mode_t::ENABLED){
+		if(::local::threadPool == event::mode_t::ENABLED){
 			// Устанавливаем принудительный режим безопасности потоков
 			this->threadSafety(event::mode_t::ENABLED);
 			// Инициализируем пул потоков
@@ -32024,9 +32024,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 		 */
 		try {
 			// Если есть события для добавления в Kqueue
-			if(!::tmp::change.empty()){
+			if(!::local::change.empty()){
 				// Выполняем изменение параметров события
-				if(::kevent(::__awh_kq__, &::tmp::change[0], ::tmp::change.size(), nullptr, 0, nullptr) == net::invalid_socket_t){
+				if(::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), nullptr, 0, nullptr) == net::invalid_socket_t){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -32042,11 +32042,11 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 					#endif
 				}
 				// Выполняем блокировку потоков
-				const locker_t lock(::tmp::mtx);
+				const locker_t lock(::local::mtx);
 				// Значение узла для обработки изменений
 				net::node_t * node = nullptr;
 				// Выполняем переход по всему объекту изменений
-				for(auto i = ::tmp::change.begin(); i != ::tmp::change.end();){
+				for(auto i = ::local::change.begin(); i != ::local::change.end();){
 					// Получаем текущее значение узла
 					node = reinterpret_cast <net::node_t *> (i->udata);
 					// Если узел определена и существует
@@ -32170,10 +32170,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						}
 					}
 					// Удаляем текущий элемент из списка изменений
-					i = ::tmp::change.erase(i);
+					i = ::local::change.erase(i);
 				}
 				// Очищаем список промежуточных звеньев
-				::tmp::inters.clear();
+				::local::evaccs.clear();
 				// Очищаем список обработанных событий
 				::__awh_processed__.clear();
 			}
@@ -32228,7 +32228,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						// Пропускаем событие
 						continue;
 					// Если активирован пул потоков
-					if(::thread::threadPool == event::mode_t::ENABLED)
+					if(::local::threadPool == event::mode_t::ENABLED)
 						// Инициализируем пул потоков
 						::__awh_thr__.push(&io::processing, ev, this, &this->_eth, this->_fmk, this->_log);
 					// Если пул потоков не активирован, выполняем обработку события в основном потоке

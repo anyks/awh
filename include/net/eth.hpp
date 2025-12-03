@@ -267,7 +267,7 @@ namespace awh {
 			bool hops(const net::socket_t sock, const event::family_t family, const event::cast_t cast, const event::hops_t hops) const noexcept;
 		public:
 			/**
-			 * @brief Метод активации/деактивации мультикаст группы 
+			 * @brief Метод активации/деактивации мультикаст группы события
 			 *
 			 * @param sock  сетевой сокет
 			 * @param mode  режим активации/деактивации

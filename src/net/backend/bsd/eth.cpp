@@ -111,10 +111,12 @@ namespace {
 	 */
 	uint16_t checksum(const void * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
-		const uint16_t * buffer = (const uint16_t *) reinterpret_cast <const uint16_t *> (data);
+		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
 		// Инициализируем сумму
 		uint32_t sum = 0;
-		// Пока есть данные для обработки
+		/**
+		 * Пока есть данные для обработки
+		 */
 		while(length > 1){
 			// Добавляем к сумме очередные два байта данных
 			sum += (* buffer++);
@@ -125,14 +127,16 @@ namespace {
 		if(length == 1)
 			// Добавляем к сумме последний байт данных
 			sum += (* reinterpret_cast <const uint8_t *> (buffer));
-		// Складываем старшие 16 бит суммы с младшими 16 битами суммы
+		/**
+		 * Складываем старшие 16 бит суммы с младшими 16 битами суммы
+		 */
 		while(sum >> 16)
 			// Складываем старшие 16 бит суммы с младшими 16 битами суммы
 			sum = ((sum & 0xFFFF) + (sum >> 16));
 		// Возвращаем инвертированную сумму
 		return static_cast <uint16_t> (~sum);
 	}
-}
+};
 
 /**
  * @brief Метод применения сетевой оптимизации операционной системы
@@ -2598,7 +2602,7 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
 	return result;
 }
 /**
- * @brief Метод активации/деактивации мультикаст группы 
+ * @brief Метод активации/деактивации мультикаст группы события
  *
  * @param sock  сетевой сокет
  * @param mode  режим активации/деактивации
@@ -2846,7 +2850,7 @@ uint16_t awh::Ethernet::checksum(const event::family_t family, const event::prot
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				/**
 				 * @brief Структура псевдозаголовка IPv4
-				 * 
+				 *
 				 */
 				struct {
 					uint32_t src;    // IP-адрес источника

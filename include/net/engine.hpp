@@ -322,7 +322,7 @@ namespace awh {
 			virtual const std::unordered_map <string, event::address_t> & whitelist(const event::id_t id) const noexcept = 0;
 		public:
 			/**
-			 * @brief Метод активации/деактивации мультикаст группы 
+			 * @brief Метод активации/деактивации мультикаст группы cобытия
 			 *
 			 * @param id    идентификатор события
 			 * @param mode  режим активации/деактивации
