@@ -210,11 +210,11 @@ namespace awh {
 			/**
 			 * @brief Метод перемещения данных между событиями
 			 *
-			 * @param id идентификатор события-источника
-			 * @param to идентификатор события-приёмника
-			 * @return   результат выполнения перемещения
+			 * @param eid идентификатор события-источника
+			 * @param dst идентификатор события-приёмника
+			 * @return    результат выполнения перемещения
 			 */
-			virtual bool splice(const event::id_t id, const event::id_t to) noexcept = 0;
+			virtual bool splice(const event::id_t eid, const event::id_t dst) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод отключения события
@@ -497,6 +497,20 @@ namespace awh {
 			 * @return состояние инициализации
 			 */
 			virtual bool isInitialized() const noexcept = 0;
+		public:
+			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode режим безопасности потоков
+			 */
+			virtual void threadSafety(const event::mode_t mode) noexcept = 0;
+			/**
+			 * @brief Метод установки параметров пула потоков
+			 *
+			 * @param mode режим работы пула потоков
+			 * @param size количество потоков в пуле
+			 */
+			virtual void threadPool(const event::mode_t mode, const uint16_t size) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения количества событий в основном движке фреймворка

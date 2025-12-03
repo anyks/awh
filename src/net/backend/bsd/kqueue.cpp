@@ -67,6 +67,7 @@
 #include <sys/os.hpp>
 #include <sys/queue.hpp>
 #include <sys/locker.hpp>
+#include <sys/threadpool.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -181,12 +182,13 @@ namespace {
 	 *
 	 */
 	typedef struct Transfer {
-		event::id_t to;   // Идентификатор события принимающей стороны
-		net::socket_t fd; // Файловый дескриптор сервиса
-		uint16_t actions; // Флаги активированных событий файла
-		size_t offset;    // Смещение передачи данных
-		buffer_t input;   // Буфер получения данных
-		queue_t output;   // Очередь отправки данных
+		event::id_t dst;          // Идентификатор события принимающей стороны
+		net::socket_t fd;         // Файловый дескриптор сервиса
+		uint16_t actions;         // Флаги активированных событий файла
+		size_t offset;            // Смещение передачи данных
+		buffer_t input;           // Буфер получения данных
+		queue_t output;           // Очередь отправки данных
+		lock_state_t <mutex> mtx; // Мьютекс для синхронизации потоков
 		/**
 		 * @brief Конструктор
 		 *
@@ -194,7 +196,7 @@ namespace {
 		 * @param log объект работы с логами
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
-		 to(0), fd(net::invalid_socket_t),
+		 dst(0), fd(net::invalid_socket_t),
 		 actions(action::NONE), offset(0), output(fmk, log) {}
 	} transfer_t;
 	/**
@@ -219,9 +221,11 @@ namespace {
 	 */
 	typedef struct User : public net::user_t {
 		// Идентификатор события принимающей стороны
-		event::id_t to;
+		event::id_t dst;
 		// Очередь пользовательских событий
 		queue_t events;
+		// Мьютекс для синхронизации потоков
+		lock_state_t <mutex> mtx;
 		/**
 		 * @brief Конструктор
 		 *
@@ -229,7 +233,7 @@ namespace {
 		 * @param log объект работы с логами
 		 */
 		explicit User(const fmk_t * fmk, const log_t * log) noexcept :
-		 to(0), events(fmk, log) {}
+		 dst(0), events(fmk, log) {}
 	} user_t;
 	/**
 	 * @brief Структура события файла
@@ -245,7 +249,7 @@ namespace {
 		// Флаги активированных событий файла
 		uint16_t actions;
 		// Идентификатор события принимающей стороны
-		event::id_t to;
+		event::id_t dst;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Структура статистики файла
@@ -260,7 +264,7 @@ namespace {
 		 */
 		explicit Filename(const fmk_t * fmk, const log_t * log) noexcept :
 		 bytes(::getpagesize()), mtime(0),
-		 offset(0), actions(action::NONE), to(0),
+		 offset(0), actions(action::NONE), dst(0),
 		 fd(net::invalid_socket_t), addr(fmk, log) {}
 	} file_t;
 	/**
@@ -383,6 +387,10 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * Объект пула потоков
+	 */
+	thr_t __awh_thr__;
+	/**
 	 * Мьютекс для синхронизации потоков
 	 */
 	lock_state_t <mutex> __awh_mtx__;
@@ -445,6 +453,20 @@ namespace tmp {
 	 * Глобальная переменная списка промежуточных звеньев
 	 */
 	static unordered_map <event::id_t, intmd_t> inters;
+};
+
+/**
+ * Инкапсулируем статические объекты в пространство имён потоков
+ */
+namespace thread {
+	/**
+	 * Режим работы пула потоков
+	 */
+	static event::mode_t threadPool = event::mode_t::DISABLED;
+	/**
+	 * Режим безопасности работы потоков
+	 */
+	static event::mode_t threadSafety = event::mode_t::DISABLED;
 };
 
 /**
@@ -757,6 +779,17 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool write(net::node_t *, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события
+	 *
+	 * @param  объект события kqueue
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 */
+	static bool processing(struct kevent &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 
 	/**
 	 * @brief Функция генерации уникального идентификатора
@@ -2081,11 +2114,13 @@ namespace io {
 				// Есши в очереди есть данные для чтения
 				if((result = !node->events.empty())){
 					// Если идентификатор события для передачи данных не установлен
-					if(node->to == 0)
+					if(node->dst == 0)
 						// Выполняем извлечение данных из очереди
 						node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
 					// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-					else const_cast <io_t *> (io)->send(node->to, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
+					else const_cast <io_t *> (io)->send(node->dst, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
+					// Выполняем блокировку уникальным мютексом
+					const locker_t lock(node->mtx);
 					// Очищаем очередь от прочитанных данных
 					node->events.pop();
 				}
@@ -3012,6 +3047,8 @@ namespace io {
 							peer_t * peer = awh_cast <peer_t *> (ret.first->second.get());
 							// Устанавливаем идентификатор объекта однорангового узла
 							peer->id = ret.first->first;
+							// Активируем или деактивируем работу мютексов для передачи данных
+							peer->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 							// Устанавливаем статус события в состояние ожидания
 							peer->state.status.store(event::status_t::PENDING, std::memory_order_release);
 							{
@@ -3258,7 +3295,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(fs->actions & action::READ){
 						// Если функция обратного вызова для вывода прочитанных данных установлена
-						if((fs->callbacks.read != nullptr) || (fs->to > 0)){
+						if((fs->callbacks.read != nullptr) || (fs->dst > 0)){
 							// Если не установлен флаг постоянного отслеживания файла
 							if(!(fs->state.options & event::options::KEEPALIVE)){
 								// Сбрасываем время последней модификации файла
@@ -3297,11 +3334,11 @@ namespace io {
 											// Формируем смещение в буфере, согласно только порции новым данных
 											else offset = (fs->offset - offset);
 											// Если идентификатор события для передачи данных не установлен
-											if(fs->to == 0)
+											if(fs->dst == 0)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											else const_cast <io_t *> (io)->send(fs->to, buffer + offset, size);
+											else const_cast <io_t *> (io)->send(fs->dst, buffer + offset, size);
 											// Отвязываем текущий маппинг
 											::munmap(buffer, fs->bytes);
 											// Устанавливаем новое смещение в файле
@@ -3444,13 +3481,13 @@ namespace io {
 														// Вызываем функцию обратного вызова флаг события
 														ipc->callbacks.event(ipc->id, event::action_t::READ);
 													// Если идентификатор события для передачи данных не установлен
-													if(ipc->transfer.to == 0){
+													if(ipc->transfer.dst == 0){
 														// Если функция обратного вызова для вывода прочитанных данных установлена
 														if(ipc->callbacks.read != nullptr)
 															// Вывзываем функцию обратного вызова для вывода полученных данных
 															ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(ipc->transfer.to, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+													} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 												// Если произошёл дисконнект
 												} else {
 													// Выполняем обработку закрытия подключения
@@ -3504,13 +3541,13 @@ namespace io {
 													// Вызываем функцию обратного вызова флаг события
 													ipc->callbacks.event(ipc->id, event::action_t::READ);
 												// Если идентификатор события для передачи данных не установлен
-												if(ipc->transfer.to == 0){
+												if(ipc->transfer.dst == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(ipc->callbacks.read != nullptr)
 														// Вывзываем функцию обратного вызова для вывода полученных данных
 														ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(ipc->transfer.to, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 												// Формируем положительный результат
 												return true;
 											// Если произошёл дисконнект
@@ -3607,13 +3644,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												ipc->callbacks.event(ipc->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(ipc->transfer.to == 0){
+											if(ipc->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(ipc->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(ipc->transfer.to, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -3667,13 +3704,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											ipc->callbacks.event(ipc->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(ipc->transfer.to == 0){
+										if(ipc->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(ipc->transfer.to, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -3739,13 +3776,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											ipc->callbacks.event(ipc->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(ipc->transfer.to == 0){
+										if(ipc->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(ipc->transfer.to, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -3798,13 +3835,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											ipc->callbacks.event(ipc->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(ipc->transfer.to == 0){
+										if(ipc->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(ipc->transfer.to, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -3887,13 +3924,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												peer->callbacks.event(peer->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(peer->transfer.to == 0){
+											if(peer->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(peer->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(peer->transfer.to, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -3945,13 +3982,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											peer->callbacks.event(peer->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(peer->transfer.to == 0){
+										if(peer->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(peer->transfer.to, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4013,13 +4050,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											peer->callbacks.event(peer->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(peer->transfer.to == 0){
+										if(peer->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(peer->transfer.to, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4070,13 +4107,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											peer->callbacks.event(peer->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(peer->transfer.to == 0){
+										if(peer->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(peer->transfer.to, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4180,13 +4217,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												client->callbacks.event(client->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(client->transfer.to == 0){
+											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4238,13 +4275,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											client->callbacks.event(client->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.to == 0){
+										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4306,13 +4343,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											client->callbacks.event(client->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.to == 0){
+										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4363,13 +4400,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											client->callbacks.event(client->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.to == 0){
+										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4437,13 +4474,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											client->callbacks.event(client->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.to == 0){
+										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Выполняем обработку закрытия подключения
 										if(io::close(node, log))
 											// Выполняем удаление узла
@@ -4506,13 +4543,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											client->callbacks.event(client->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.to == 0){
+										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Выполняем обработку закрытия подключения
 										if(io::close(node, log))
 											// Выполняем удаление узла
@@ -4582,13 +4619,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												client->callbacks.event(client->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(client->transfer.to == 0){
+											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4639,13 +4676,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												client->callbacks.event(client->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(client->transfer.to == 0){
+											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4712,13 +4749,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												client->callbacks.event(client->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(client->transfer.to == 0){
+											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Выполняем обработку закрытия подключения
 											if(io::close(node, log))
 												// Выполняем удаление узла
@@ -4781,13 +4818,13 @@ namespace io {
 												// Вызываем функцию обратного вызова флаг события
 												client->callbacks.event(client->id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
-											if(client->transfer.to == 0){
+											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.to, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Выполняем обработку закрытия подключения
 											if(io::close(node, log))
 												// Выполняем удаление узла
@@ -5172,13 +5209,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											server->callbacks.event(server->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(server->transfer.to == 0){
+										if(server->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(server->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(server->transfer.to, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(server->transfer.dst, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Заполняем структуру клиента нулями после того как извлекли данные
 										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 									}
@@ -5223,13 +5260,13 @@ namespace io {
 											// Вызываем функцию обратного вызова флаг события
 											server->callbacks.event(server->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
-										if(server->transfer.to == 0){
+										if(server->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(server->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(server->transfer.to, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(server->transfer.dst, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Заполняем структуру клиента нулями после того как извлекли данные
 										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 									}
@@ -5518,6 +5555,8 @@ namespace io {
 									}
 								} break;
 							}
+							// Выполняем блокировку уникальным мютексом
+							const locker_t lock(ipc->transfer.mtx);
 							// Сбрасываем смещение передачи данных
 							ipc->transfer.offset = 0;
 							// Удаляем запись из очереди отправленных данных
@@ -5704,6 +5743,8 @@ namespace io {
 									}
 								} break;
 							}
+							// Выполняем блокировку уникальным мютексом
+							const locker_t lock(peer->transfer.mtx);
 							// Сбрасываем смещение передачи данных
 							peer->transfer.offset = 0;
 							// Удаляем запись из очереди отправленных данных
@@ -6031,6 +6072,8 @@ namespace io {
 										}
 									} break;
 								}
+								// Выполняем блокировку уникальным мютексом
+								const locker_t lock(client->transfer.mtx);
 								// Сбрасываем смещение передачи данных
 								client->transfer.offset = 0;
 								// Удаляем запись из очереди отправленных данных
@@ -6139,6 +6182,8 @@ namespace io {
 										// Формируем отрицательный результат
 										return false;
 									}
+									// Выполняем блокировку уникальным мютексом
+									const locker_t lock(server->transfer.mtx);
 									// Сбрасываем смещение передачи данных
 									server->transfer.offset = 0;
 									// Удаляем запись из очереди отправленных данных
@@ -6213,6 +6258,416 @@ namespace io {
 		}
 		// Выводим результат по умолчанию
 		return false;
+	}
+	/**
+	 * @brief Функция обработки события
+	 *
+	 * @param ev  объект события kqueue
+	 * @param io  объект работы с асинхронными событиями
+	 * @param eth объект работы с сетевыми интерфейсами
+	 * @param fmk объект фреймворка
+	 * @param log объект работы с логами
+	 * @return    результат выполнения обработки
+	 */
+	static bool processing(struct kevent & ev, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+		// Значение узла для обработки изменений
+		net::node_t * node = reinterpret_cast <net::node_t *> (ev.udata);
+		/**
+		 * Определяем чем является текущее событие
+		 */
+		switch(ev.filter){
+			// Если мы получили событие файловой системы
+			case EVFILT_VNODE: {
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (node->state.node)){
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * dir = awh_cast <dir_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR){
+							// Выполняем обработку ошибки
+							if(io::error(node, ev.data, log))
+								// Выполняем удаление узла
+								io::destroy(node, log);
+						// Если установлена функция обратного вызова
+						} else if(dir->callbacks.event != nullptr) {
+							// Если мы детектировали событие изменения директории
+							if(ev.fflags & NOTE_WRITE){
+								// Если событие изменения директории разрешено
+								if(dir->actions & action::CHANGE){
+									// Вызываем функцию обратного вызова флаг события
+									dir->callbacks.event(dir->id, event::action_t::CHANGE);
+									// Выполняем изменение содержимого в директории
+									if(!io::change(dir, io, fmk, log))
+										// Пропускаем дальнейшую обработку события
+										return false;
+								}
+							// Если мы детектировали событие переименования директории
+							} else if(ev.fflags & NOTE_RENAME) {
+								// Если событие переименования директории разрешено
+								if(dir->actions & action::RENAME)
+									// Вызываем функцию обратного вызова флаг события
+									dir->callbacks.event(dir->id, event::action_t::RENAME);
+							// Если мы детектировали событие удаления директории
+							} else if(ev.fflags & NOTE_DELETE) {
+								// Если событие удаления директории разрешено
+								if(dir->actions & action::DELETE)
+									// Вызываем функцию обратного вызова флаг события
+									dir->callbacks.event(dir->id, event::action_t::DELETE);
+								// Выполняем удаление узла
+								io::destroy(node, log);
+							// Если мы детектировали событие изменения атрибутов директории
+							} else if(ev.fflags & NOTE_ATTRIB) {
+								// Если событие изменения атрибутов директории разрешено
+								if(dir->actions & action::ATTRIB)
+									// Вызываем функцию обратного вызова флаг события
+									dir->callbacks.event(dir->id, event::action_t::ATTRIB);
+							// Если мы детектировали событие отзыва директории
+							} else if(ev.fflags & NOTE_REVOKE) {
+								// Если событие отзыва директории разрешено
+								if(dir->actions & action::REVOKE)
+									// Вызываем функцию обратного вызова флаг события
+									dir->callbacks.event(dir->id, event::action_t::REVOKE);
+							// Если мы детектировали событие изменение жёсткой ссылки директории
+							} else if(ev.fflags & NOTE_LINK) {
+								// Если событие изменение жёсткой ссылки директории разрешено
+								if(dir->actions & action::HDLINK)
+									// Вызываем функцию обратного вызова флаг события
+									dir->callbacks.event(dir->id, event::action_t::HDLINK);
+								// Если событие изменения директории разрешено
+								if(dir->actions & action::CHANGE){
+									// Выполняем изменение содержимого в директории
+									if(!io::change(dir, io, fmk, log))
+										// Пропускаем дальнейшую обработку события
+										return false;
+								}
+							}
+						// Если функция обратного вызова не установлена
+						} else {
+							// Если мы детектировали событие изменения директории
+							if(ev.fflags & NOTE_WRITE){
+								// Если событие изменения директории разрешено
+								if(dir->actions & action::CHANGE){
+									// Выполняем изменение содержимого в директории
+									if(!io::change(dir, io, fmk, log))
+										// Пропускаем дальнейшую обработку события
+										return false;
+								}
+							// Если мы детектировали событие удаления директории
+							} else if(ev.fflags & NOTE_DELETE)
+								// Выполняем удаление узла
+								io::destroy(node, log);
+							// Если мы детектировали событие изменение жёсткой ссылки директории
+							else if(ev.fflags & NOTE_LINK) {
+								// Если событие изменения директории разрешено
+								if(dir->actions & action::CHANGE){
+									// Выполняем изменение содержимого в директории
+									if(!io::change(dir, io, fmk, log))
+										// Пропускаем дальнейшую обработку события
+										return false;
+								}
+							}
+						}
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * fs = awh_cast <file_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR){
+							// Выполняем обработку ошибки
+							if(io::error(node, ev.data, log))
+								// Выполняем удаление узла
+								io::destroy(node, log);
+						// Если установлена функция обратного вызова
+						} else if(fs->callbacks.event != nullptr) {
+							// Если мы детектировали событие изменения файла
+							if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
+								// Если событие изменения файла разрешено
+								if(fs->actions & action::CHANGE){
+									// Вызываем функцию обратного вызова флаг события
+									fs->callbacks.event(fs->id, event::action_t::CHANGE);
+									// Если функция обратного вызова для сигнализации изменения файла установлена
+									if(fs->callbacks.change != nullptr)
+										// Вызываем функцию обратного вызова
+										fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+									// Если событие чтения разрешено
+									if(fs->actions & action::READ){
+										// Выполняем чтение данных из файла
+										if(!io::read(node, io, eth, fmk, log))
+											// Пропускаем дальнейшую обработку события
+											return false;
+									}
+								}
+							// Если мы детектировали событие переименования файла
+							} else if(ev.fflags & NOTE_RENAME) {
+								// Если событие переименования файла разрешено
+								if(fs->actions & action::RENAME)
+									// Вызываем функцию обратного вызова флаг события
+									fs->callbacks.event(fs->id, event::action_t::RENAME);
+							// Если мы детектировали событие удаления файла
+							} else if(ev.fflags & NOTE_DELETE) {
+								// Если событие удаления файла разрешено
+								if(fs->actions & action::DELETE){
+									// Вызываем функцию обратного вызова флаг события
+									fs->callbacks.event(fs->id, event::action_t::DELETE);
+									// Если событие изменения файла разрешено
+									if(fs->actions & action::CHANGE){
+										// Если функция обратного вызова для сигнализации изменения файла установлена
+										if(fs->callbacks.change != nullptr)
+											// Вызываем функцию обратного вызова
+											fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+									}
+								}
+								// Выполняем удаление узла
+								io::destroy(node, log);
+							// Если мы детектировали событие изменения атрибутов файла
+							} else if(ev.fflags & NOTE_ATTRIB) {
+								// Если событие изменения атрибутов файла разрешено
+								if(fs->actions & action::ATTRIB)
+									// Вызываем функцию обратного вызова флаг события
+									fs->callbacks.event(fs->id, event::action_t::ATTRIB);
+							// Если мы детектировали событие отзыва файла
+							} else if(ev.fflags & NOTE_REVOKE) {
+								// Если событие отзыва файла разрешено
+								if(fs->actions & action::REVOKE)
+									// Вызываем функцию обратного вызова флаг события
+									fs->callbacks.event(fs->id, event::action_t::REVOKE);
+							// Если мы детектировали событие изменение жёсткой ссылки файла
+							} else if(ev.fflags & NOTE_LINK) {
+								// Если событие изменение жёсткой ссылки файла разрешено
+								if(fs->actions & action::HDLINK)
+									// Вызываем функцию обратного вызова флаг события
+									fs->callbacks.event(fs->id, event::action_t::HDLINK);
+							}
+						// Если функция обратного вызова не установлена
+						} else {
+							// Если мы детектировали событие изменения файла
+							if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
+								// Если событие изменения файла разрешено
+								if(fs->actions & action::CHANGE){
+									// Если функция обратного вызова для сигнализации изменения файла установлена
+									if(fs->callbacks.change != nullptr)
+										// Вызываем функцию обратного вызова
+										fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+									// Если событие чтения разрешено
+									if(fs->actions & action::READ){
+										// Выполняем чтение данных из файла
+										if(!io::read(node, io, eth, fmk, log))
+											// Пропускаем дальнейшую обработку события
+											return false;
+									}
+								}
+							// Если мы детектировали событие удаления файла
+							} else if(ev.fflags & NOTE_DELETE) {
+								// Если событие изменения файла разрешено
+								if((fs->actions & action::DELETE) && (fs->actions & action::CHANGE)){
+									// Если функция обратного вызова для сигнализации изменения файла установлена
+									if(fs->callbacks.change != nullptr)
+										// Вызываем функцию обратного вызова
+										fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+								}
+								// Выполняем удаление узла
+								io::destroy(node, log);
+							}
+						}
+					} break;
+				}
+			} break;
+			// Если мы получили событие таймера
+			case EVFILT_TIMER: {
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (node->state.node)){
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
+						// Выполняем извлечение текущего значения объекта таймера
+						timer_t * timer = awh_cast <timer_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR){
+							// Выполняем обработку ошибки
+							if(io::error(node, ev.data, log))
+								// Выполняем удаление узла
+								io::destroy(node, log);
+						// Обрабатываем событие таймера
+						} else if(io::timer(node, log))
+							// Пропускаем дальнейшую обработку события
+							return false;
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						peer_t * peer = awh_cast <peer_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR)
+							// Выполняем обработку ошибки
+							io::error(node, ev.data, log);
+						// Обрабатываем событие таймаута
+						if(io::timer(node, log))
+							// Пропускаем дальнейшую обработку события
+							return false;
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * client = awh_cast <client_t *> (node);
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR)
+							// Выполняем обработку ошибки
+							io::error(node, ev.data, log);
+						// Если статус события восстановление соединения
+						if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
+							// Если переподключение разрешено
+							if(client->transfer.actions & action::RECONNECT){
+								// Деактивируем таймаут события
+								client->timeout = event::action_t::NONE;
+								// Устанавливаем статус события в состояние инициализировано
+								client->state.status.store(event::status_t::NONE, std::memory_order_release);
+								// Обрабатываем событие сокета
+								if(io::socket(client, log)){
+									{
+										// Выполняем блокировку потоков
+										const locker_t lock(::tmp::mtx);
+										// Если в списке промежуточного взаимодействия присутствует запись для данного события
+										auto i = ::tmp::inters.find(client->id);
+										// Если запись найдена
+										if(i != ::tmp::inters.end()){
+											// Количество записей в списке изменений
+											size_t count = 0;
+											// Получаем итератор на начало списка изменений
+											auto j = ::tmp::change.begin();
+											// Получаем нужный нам итератор
+											std::advance(j, i->second.index);
+											// Проходим по всем изменениям промежуточного взаимодействия
+											for(; j != ::tmp::change.end();){
+												// Если идентификатор события совпадает с идентификатором в записи списка изменений
+												if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
+													// Удаляем запись из списка изменений
+													j = ::tmp::change.erase(j);
+													// Увеличиваем счётчик удалённых записей
+													count++;
+													// Если записи удалены
+													if(count == i->second.count)
+														// Завершаем цикл
+														break;
+												// Если идентификатор события не совпадает с идентификатором в записи списка изменений
+												} else ++j;
+											}
+										}
+									}
+									// Запоминаем текущие опции события
+									const uint16_t options = client->state.options;
+									// Сбрасываем опции события
+									client->state.options = event::options::NONE;
+									// Получаем объект работы с асинхронными событиями
+									io_t * self = const_cast <io_t *> (io);
+									// Выполняем установку опций события и фиксацию изменений
+									if(self->options(client->id, options) && self->commit(client->id)){
+										// Выполняем повторное подключение клиента
+										if(self->connect(client->id, static_cast <bool> (
+											(client->state.options & event::options::NOIOBLOCK) ||
+											(client->state.options & event::options::SMIOBLOCK)
+										))) break;
+									} break;
+								}
+							}
+						// Если статус события подключение в ожидании
+						} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) {
+							// Если подключение к серверу разрешено
+							if(client->transfer.actions & action::READ){
+								// Если функция обратного вызова для вывода подключения установлена
+								if(client->callbacks.connect != nullptr)
+									// Вывзываем функцию обратного вызова для подключения
+									client->callbacks.connect(client->id, false);
+							}
+						}
+						// Обрабатываем событие таймаута
+						if(io::timer(node, log))
+							// Пропускаем дальнейшую обработку события
+							return false;
+					} break;
+				}
+			} break;
+			// Если мы получили событие пользовательского события
+			case EVFILT_USER: {
+				// Выполняем извлечение текущего значения объекта пользовательского события
+				user_t * user = awh_cast <user_t *> (node);
+				// Если мы детектировали наличие ошибки
+				if(ev.flags & EV_ERROR){
+					// Выполняем обработку ошибки
+					if(io::error(node, ev.data, log))
+						// Выполняем удаление узла
+						io::destroy(node, log);
+				// Если событие пользовательского события сработало корректно
+				} else if(io::user(user, io, log))
+					// Пропускаем дальнейшую обработку события
+					return false;
+			} break;
+			// Если мы детектировали событие готовности сокета на чтение данных
+			case EVFILT_READ: {
+				// Если мы детектировали событие закрытия подключения или ошибку
+				if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
+					// Если мы детектировали наличие ошибки
+					if(ev.flags & EV_ERROR)
+						// Выполняем обработку ошибки
+						io::error(node, ev.data, log);
+					// Если мы детектировали закрытие подключения
+					if(ev.flags & EV_EOF)
+						// Выполняем обработку события закрытия
+						io::close(node, log);
+					// Выполняем удаление узла
+					io::destroy(node, log);
+					// Пропускаем дальнейшую обработку события
+					return false;
+				// Обрабатываем событие доступности сокета на чтение
+				} else if(!io::read(node, io, eth, fmk, log))
+					// Пропускаем дальнейшую обработку события
+					return false;
+			} break;
+			// Если мы детектировали событие готовности сокета на запись данных
+			case EVFILT_WRITE: {
+				// Если мы детектировали событие закрытия подключения или ошибку
+				if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
+					// Если мы детектировали наличие ошибки
+					if(ev.flags & EV_ERROR)
+						// Выполняем обработку ошибки
+						io::error(node, ev.data, log);
+					// Если мы детектировали закрытие подключения
+					if(ev.flags & EV_EOF)
+						// Выполняем обработку события закрытия
+						io::close(node, log);
+					// Выполняем удаление узла
+					io::destroy(node, log);
+					// Пропускаем дальнейшую обработку события
+					return false;
+				// Если в сокете нет ошибок
+				} else {
+					// Если в сокете нет ошибок
+					if(eth->error(ev.ident) == 0){
+						// Обрабатываем событие доступности сокета на запись
+						if(!io::write(node, io, eth, fmk, log))
+							// Пропускаем дальнейшую обработку события
+							return false;
+					// Если мы поймали шум
+					} else {
+						// Выполняем обработку события закрытия
+						if(io::close(node, log))
+							// Выполняем удаление узла
+							io::destroy(node, log);
+						// Пропускаем дальнейшую обработку события
+						return false;
+					}
+				}
+			} break;
+		}
+		// Выводим результат
+		return true;
 	}
 };
 /**
@@ -14335,6 +14790,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.family = i->second->state.family;
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Активируем или деактивируем работу мютексов для передачи данных
+								awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								// Возвращаем идентификатор созданного события
 								return ret.first->first;
 							}
@@ -14559,6 +15016,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										remote->path = make_unique <net::addr_fs_t> ();
 										// Устанавливаем адрес файловой системы
 										awh_cast <net::addr_fs_t *> (remote->path.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (first->host.get())->path.get())->address;
+										// Активируем или деактивируем работу мютексов для передачи данных
+										second->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 										/**
 										 * Определяем тип сокета
 										 */
@@ -14688,6 +15147,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										second->transfer.actions |= action::DISCONNECT;
 										// Выполняем инициализацию объекта хоста однорангового узла
 										second->remote = make_unique <net::attr_net_t> ();
+										// Активируем или деактивируем работу мютексов для передачи данных
+										second->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 										/**
 										 * Определяем тип подключения
 										 */
@@ -15112,6 +15573,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.family = i->second->state.family;
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Активируем или деактивируем работу мютексов для передачи данных
+								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -15324,6 +15787,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.family = i->second->state.family;
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Активируем или деактивируем работу мютексов для передачи данных
+								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								// Результат создания события
 								bool result = true;
 								/**
@@ -16153,6 +16618,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.family = i->second->state.family;
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Активируем или деактивируем работу мютексов для передачи данных
+								awh_cast <server_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -16357,6 +16824,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.family = i->second->state.family;
 								// Устанавливаем статус события в состояние ожидания
 								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Активируем или деактивируем работу мютексов для передачи данных
+								awh_cast <server_t *> (ret.first->second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								// Результат создания события
 								bool result = true;
 								/**
@@ -17243,6 +17712,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						ret.first->second->state.family = family;
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
+						// Активируем или деактивируем работу мютексов для передачи данных
+						awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 						// Возвращаем идентификатор созданного события
 						return ret.first->first;
 					}
@@ -17473,6 +17944,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
 								// Выполняем инициализацию объекта адреса файловой системы
 								target->path = make_unique <net::addr_fs_t> ();
+								// Активируем или деактивируем работу мютексов для передачи данных
+								client->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								// Выполняем создание сокета
 								if(!io::socket(client, this->_log)){
 									// Выполняем блокировку потоков
@@ -17544,6 +18017,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								client_t * client = awh_cast <client_t *> (ret.first->second.get());
 								// Выполняем инициализацию объекта хоста клиента
 								client->target = make_unique <net::attr_net_t> ();
+								// Активируем или деактивируем работу мютексов для передачи данных
+								client->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем тип подключения
 								 */
@@ -17690,6 +18165,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
 								// Выполняем инициализацию объекта адреса файловой системы
 								host->path = make_unique <net::addr_fs_t> ();
+								// Активируем или деактивируем работу мютексов для передачи данных
+								server->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								// Выполняем создание сокета
 								if(!io::socket(server, this->_log)){
 									// Выполняем блокировку потоков
@@ -17761,6 +18238,8 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								server_t * server = awh_cast <server_t *> (ret.first->second.get());
 								// Выполняем инициализацию объекта хоста сервера
 								server->host = make_unique <net::attr_net_t> ();
+								// Активируем или деактивируем работу мютексов для передачи данных
+								server->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 								/**
 								 * Определяем тип подключения
 								 */
@@ -18426,8 +18905,12 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						ret.first->second->state.protocol = protocol;
 						// Устанавливаем тип узла события
 						ret.first->second->state.node = event::node_t::IPC;
+						// Получаем объект IPC-соединения
+						ipc_t * ipc = awh_cast <ipc_t *> (ret.first->second.get());
 						// Создаём сокет подключения
-						awh_cast <ipc_t *> (ret.first->second.get())->transfer.fd = fds[i];
+						ipc->transfer.fd = fds[i];
+						// Активируем или деактивируем работу мютексов для передачи данных
+						ipc->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 						// Возвращаем идентификатор созданного события
 						result[i] = ret.first->first;
 					} break;
@@ -18449,6 +18932,8 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						ret.first->second->state.node = event::node_t::CLIENT;
 						// Получаем объект клиента
 						client_t * client = awh_cast <client_t *> (ret.first->second.get());
+						// Активируем или деактивируем работу мютексов для передачи данных
+						client->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 						/**
 						 * Определяем семейство события
 						 */
@@ -19951,21 +20436,21 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 /**
  * @brief Метод перемещения данных между событиями
  *
- * @param id идентификатор события-источника
- * @param to идентификатор события-приёмника
- * @return   результат выполнения перемещения
+ * @param eid идентификатор события-источника
+ * @param dst идентификатор события-приёмника
+ * @return    результат выполнения перемещения
  */
-bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
+bool awh::IO::splice(const event::id_t eid, const event::id_t dst) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
+		auto i = ::__awh_nodes__.find(eid);
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 			// Выполняем поиск идентификатора события
-			auto j = ::__awh_nodes__.find(to);
+			auto j = ::__awh_nodes__.find(dst);
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((j != ::__awh_nodes__.end()) && (j->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
 				/**
@@ -19997,7 +20482,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20026,7 +20511,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20049,7 +20534,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте пользовательского события
-								user->to = to;
+								user->dst = dst;
 								// Выводим положительный результат
 								return true;
 							}
@@ -20072,7 +20557,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -20107,7 +20592,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20136,7 +20621,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20159,7 +20644,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте файловой системы
-								fs->to = to;
+								fs->dst = dst;
 								// Выводим положительный результат
 								return true;
 							}
@@ -20184,7 +20669,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -20219,7 +20704,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20248,7 +20733,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20271,7 +20756,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте межпроцессного взаимодействия
-								ipc->transfer.to = to;
+								ipc->transfer.dst = dst;
 								// Выводим положительный результат
 								return true;
 							}
@@ -20302,7 +20787,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20331,7 +20816,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20354,7 +20839,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
-								peer->transfer.to = to;
+								peer->transfer.dst = dst;
 								// Выводим положительный результат
 								return true;
 							}
@@ -20385,7 +20870,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20414,7 +20899,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20437,7 +20922,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте клиента
-								client->transfer.to = to;
+								client->transfer.dst = dst;
 								// Выводим положительный результат
 								return true;
 							}
@@ -20468,7 +20953,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20497,7 +20982,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -20520,7 +21005,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте сервера
-								server->transfer.to = to;
+								server->transfer.dst = dst;
 								// Выводим положительный результат
 								return true;
 							}
@@ -20538,7 +21023,7 @@ bool awh::IO::splice(const event::id_t id, const event::id_t to) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, to), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dst), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -22582,7 +23067,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							// Обрезаем файл до нужных нам размеров
 							::ftruncate(fs->fd, actual);
 							// Если чтение из файла не предполагается
-							if(!(fs->actions & action::READ) || ((fs->callbacks.read == nullptr) && (fs->to == 0)))
+							if(!(fs->actions & action::READ) || ((fs->callbacks.read == nullptr) && (fs->dst == 0)))
 								// Увеличиваем смещение в файле
 								fs->offset += size;
 							// Устанавливаем время последней модификации файла
@@ -22599,6 +23084,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
 						user_t * user = awh_cast <user_t *> (i->second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(user->mtx);
 						// Добавляем данные в очередь событий пользователя
 						user->events.push(data, size);
 						// Создаём событие триггера
@@ -22650,11 +23137,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if((result = (bytes > 0))){
 														// Если данные отправлены не полностью
 														if(static_cast <size_t> (bytes) != size){
-															// Сохраняем оставшиеся данные для последующей отправки
-															ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-															// Увеличиваем смещение передачи данных
-															ipc->transfer.offset = 0;
 															{
+																// Выполняем блокировку уникальным мютексом
+																const locker_t lock(ipc->transfer.mtx);
+																// Сохраняем оставшиеся данные для последующей отправки
+																ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+																// Увеличиваем смещение передачи данных
+																ipc->transfer.offset = 0;
+															}{
 																// Выполняем блокировку потоков
 																const locker_t lock(::tmp::mtx);
 																// Добавляем новое событие в список изменений
@@ -22679,11 +23169,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													} else if(bytes == -1) {
 														// Если нам нужно повторить попытку позже
 														if((result = (errno == EAGAIN))){
-															// Сохраняем оставшиеся данные для последующей отправки
-															ipc->transfer.output.push(data, size);
-															// Увеличиваем смещение передачи данных
-															ipc->transfer.offset = 0;
 															{
+																// Выполняем блокировку уникальным мютексом
+																const locker_t lock(ipc->transfer.mtx);
+																// Сохраняем оставшиеся данные для последующей отправки
+																ipc->transfer.output.push(data, size);
+																// Увеличиваем смещение передачи данных
+																ipc->transfer.offset = 0;
+															}{
 																// Выполняем блокировку потоков
 																const locker_t lock(::tmp::mtx);
 																// Добавляем новое событие в список изменений
@@ -22743,8 +23236,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 												// Если очередь передачи данных не пуста
 												} else {
-													// Копим данные для дальнейшей отправки
-													ipc->transfer.output.push(data, size);
+													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(ipc->transfer.mtx);
+														// Копим данные для дальнейшей отправки
+														ipc->transfer.output.push(data, size);
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
 														// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -22886,11 +23383,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если данные отправлены не полностью
 												if(static_cast <size_t> (bytes) != size){
-													// Сохраняем оставшиеся данные для последующей отправки
-													ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-													// Увеличиваем смещение передачи данных
-													ipc->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(ipc->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+														// Увеличиваем смещение передачи данных
+														ipc->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -22915,11 +23415,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													ipc->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													ipc->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(ipc->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														ipc->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														ipc->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -22979,8 +23482,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											ipc->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(ipc->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												ipc->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -23132,11 +23639,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													ipc->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													ipc->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(ipc->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														ipc->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														ipc->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -23196,8 +23706,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											ipc->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(ipc->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												ipc->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -23325,11 +23839,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если данные отправлены не полностью
 												if(static_cast <size_t> (bytes) != size){
-													// Сохраняем оставшиеся данные для последующей отправки
-													peer->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-													// Увеличиваем смещение передачи данных
-													peer->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(peer->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														peer->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+														// Увеличиваем смещение передачи данных
+														peer->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -23370,11 +23887,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													peer->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													peer->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(peer->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														peer->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														peer->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -23450,8 +23970,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											peer->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(peer->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												peer->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -23613,11 +24137,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													peer->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													peer->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(peer->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														peer->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														peer->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -23693,8 +24220,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											peer->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(peer->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												peer->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -23834,11 +24365,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если данные отправлены не полностью
 												if(static_cast <size_t> (bytes) != size){
-													// Сохраняем оставшиеся данные для последующей отправки
-													client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
-													// Увеличиваем смещение передачи данных
-													client->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(client->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+														// Увеличиваем смещение передачи данных
+														client->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -23879,11 +24413,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													client->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													client->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(client->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														client->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														client->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -23959,8 +24496,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											client->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(client->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												client->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -24122,11 +24663,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													client->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													client->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(client->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														client->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														client->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -24202,8 +24746,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											client->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(client->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												client->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -24660,11 +25208,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
 													if((result = (errno == EAGAIN))){
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data, size);
-														// Увеличиваем смещение передачи данных
-														client->transfer.offset = 0;
 														{
+															// Выполняем блокировку уникальным мютексом
+															const locker_t lock(client->transfer.mtx);
+															// Сохраняем оставшиеся данные для последующей отправки
+															client->transfer.output.push(data, size);
+															// Увеличиваем смещение передачи данных
+															client->transfer.offset = 0;
+														}{
 															// Выполняем блокировку потоков
 															const locker_t lock(::tmp::mtx);
 															// Добавляем новое событие в список изменений
@@ -24740,8 +25291,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 											// Если очередь передачи данных не пуста
 											} else {
-												// Копим данные для дальнейшей отправки
-												client->transfer.output.push(data, size);
+												{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t lock(client->transfer.mtx);
+													// Копим данные для дальнейшей отправки
+													client->transfer.output.push(data, size);
+												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -24902,11 +25457,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
 													if((result = (errno == EAGAIN))){
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data, size);
-														// Увеличиваем смещение передачи данных
-														client->transfer.offset = 0;
 														{
+															// Выполняем блокировку уникальным мютексом
+															const locker_t lock(client->transfer.mtx);
+															// Сохраняем оставшиеся данные для последующей отправки
+															client->transfer.output.push(data, size);
+															// Увеличиваем смещение передачи данных
+															client->transfer.offset = 0;
+														}{
 															// Выполняем блокировку потоков
 															const locker_t lock(::tmp::mtx);
 															// Добавляем новое событие в список изменений
@@ -24982,8 +25540,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 											// Если очередь передачи данных не пуста
 											} else {
-												// Копим данные для дальнейшей отправки
-												client->transfer.output.push(data, size);
+												{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t lock(client->transfer.mtx);
+													// Копим данные для дальнейшей отправки
+													client->transfer.output.push(data, size);
+												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -25377,11 +25939,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
 												if((result = (errno == EAGAIN))){
-													// Сохраняем оставшиеся данные для последующей отправки
-													server->transfer.output.push(data, size);
-													// Увеличиваем смещение передачи данных
-													server->transfer.offset = 0;
 													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(server->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														server->transfer.output.push(data, size);
+														// Увеличиваем смещение передачи данных
+														server->transfer.offset = 0;
+													}{
 														// Выполняем блокировку потоков
 														const locker_t lock(::tmp::mtx);
 														// Добавляем новое событие в список изменений
@@ -25441,8 +26006,12 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 										// Если очередь передачи данных не пуста
 										} else {
-											// Копим данные для дальнейшей отправки
-											server->transfer.output.push(data, size);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(server->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												server->transfer.output.push(data, size);
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(server->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
@@ -30285,6 +30854,10 @@ bool awh::IO::initialize() noexcept {
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
+		// Активируем или деактивируем работу мютексов для временных структур
+		::tmp::mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		// Активируем или деактивируем работу мютексов для основного потока
+		::__awh_mtx__.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
 		// Создаём пользовательское событие
 		struct kevent event{};
 		// Устанавливаем пользовательское событие
@@ -31058,6 +31631,121 @@ bool awh::IO::isInitialized() const noexcept {
 	return (::__awh_kq__ != net::invalid_socket_t);
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode режим безопасности потоков
+ */
+void awh::IO::threadSafety(const event::mode_t mode) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если активирован пул потоков
+		if(::thread::threadPool == event::mode_t::ENABLED)
+			// Устанавливаем принудительный режим безопасности потоков
+			::thread::threadSafety = event::mode_t::ENABLED;
+		// Устанавливаем режим безопасности работы потоков
+		else ::thread::threadSafety = mode;
+		// Активируем или деактивируем работу мютексов для временных структур
+		::tmp::mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		// Активируем или деактивируем работу мютексов для основного потока
+		::__awh_mtx__.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+		// Выполняем перебор всех активных узлов
+		for(auto & node : ::__awh_nodes__){
+			// Если узел уже находится в рабочем состоянии
+			if(node.second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (node.second->state.node)){
+					// Если узел является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::NOTIFY):
+						// Активируем или деактивируем мютекс передачи данных
+						awh_cast <user_t *> (node.second.get())->mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+					break;
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC):
+						// Активируем или деактивируем мютекс передачи данных
+						awh_cast <ipc_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+					break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Активируем или деактивируем мютекс передачи данных
+						awh_cast <peer_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+					break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Активируем или деактивируем мютекс передачи данных
+						awh_cast <client_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+					break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Активируем или деактивируем мютекс передачи данных
+						awh_cast <server_t *> (node.second.get())->transfer.mtx.enabled = (::thread::threadSafety == event::mode_t::ENABLED);
+					break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки параметров пула потоков
+ *
+ * @param mode режим работы пула потоков
+ * @param size количество потоков в пуле
+ */
+void awh::IO::threadPool(const event::mode_t mode, const uint16_t size) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Устанавливаем режим работы пула потоков
+		::thread::threadPool = mode;
+		// Если активирован пул потоков
+		if(::thread::threadPool == event::mode_t::ENABLED){
+			// Устанавливаем принудительный режим безопасности потоков
+			this->threadSafety(event::mode_t::ENABLED);
+			// Инициализируем пул потоков
+			::__awh_thr__.init(size);
+		// Если пул потоков деактивирован, останавливаем его
+		} else ::__awh_thr__.stop();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode), size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод получения количества событий в основном движке фреймворка
  *
  * @return количество событий
@@ -31513,7 +32201,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 			/**
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
-			const int32_t events = ::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts);
+			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**
@@ -31531,387 +32219,22 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				#endif
 			// Если есть события для обработки
 			} else if((result = (events > 0))) {
-				// Значение узла для обработки изменений
-				net::node_t * node = nullptr;
 				// Выполняем перебор всех полученных событий
-				for(int32_t i = 0; i < events; i++){
+				for(ssize_t i = 0; i < events; i++){
 					// Получаем текущее значение события
 					struct kevent & ev = ::__awh_events__[i];
-					// Выполняем получение узла к которой относится событие
-					node = reinterpret_cast <net::node_t *> (ev.udata);
 					// Если узел события не получена, значит узел уже удалён
-					if(node == nullptr)
+					if(reinterpret_cast <net::node_t *> (ev.udata) == nullptr)
 						// Пропускаем событие
 						continue;
-					// Если мы получили событие файловой системы
-					if(ev.filter == EVFILT_VNODE){
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является директорией
-							case static_cast <uint8_t> (event::node_t::DIR): {
-								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (node);
-								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR){
-									// Выполняем обработку ошибки
-									if(io::error(node, ev.data, this->_log))
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-								// Если установлена функция обратного вызова
-								} else if(dir->callbacks.event != nullptr) {
-									// Если мы детектировали событие изменения директории
-									if(ev.fflags & NOTE_WRITE){
-										// Если событие изменения директории разрешено
-										if(dir->actions & action::CHANGE){
-											// Вызываем функцию обратного вызова флаг события
-											dir->callbacks.event(dir->id, event::action_t::CHANGE);
-											// Выполняем изменение содержимого в директории
-											if(!io::change(dir, this, this->_fmk, this->_log))
-												// Пропускаем дальнейшую обработку события
-												continue;
-										}
-									// Если мы детектировали событие переименования директории
-									} else if(ev.fflags & NOTE_RENAME) {
-										// Если событие переименования директории разрешено
-										if(dir->actions & action::RENAME)
-											// Вызываем функцию обратного вызова флаг события
-											dir->callbacks.event(dir->id, event::action_t::RENAME);
-									// Если мы детектировали событие удаления директории
-									} else if(ev.fflags & NOTE_DELETE) {
-										// Если событие удаления директории разрешено
-										if(dir->actions & action::DELETE)
-											// Вызываем функцию обратного вызова флаг события
-											dir->callbacks.event(dir->id, event::action_t::DELETE);
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-									// Если мы детектировали событие изменения атрибутов директории
-									} else if(ev.fflags & NOTE_ATTRIB) {
-										// Если событие изменения атрибутов директории разрешено
-										if(dir->actions & action::ATTRIB)
-											// Вызываем функцию обратного вызова флаг события
-											dir->callbacks.event(dir->id, event::action_t::ATTRIB);
-									// Если мы детектировали событие отзыва директории
-									} else if(ev.fflags & NOTE_REVOKE) {
-										// Если событие отзыва директории разрешено
-										if(dir->actions & action::REVOKE)
-											// Вызываем функцию обратного вызова флаг события
-											dir->callbacks.event(dir->id, event::action_t::REVOKE);
-									// Если мы детектировали событие изменение жёсткой ссылки директории
-									} else if(ev.fflags & NOTE_LINK) {
-										// Если событие изменение жёсткой ссылки директории разрешено
-										if(dir->actions & action::HDLINK)
-											// Вызываем функцию обратного вызова флаг события
-											dir->callbacks.event(dir->id, event::action_t::HDLINK);
-										// Если событие изменения директории разрешено
-										if(dir->actions & action::CHANGE){
-											// Выполняем изменение содержимого в директории
-											if(!io::change(dir, this, this->_fmk, this->_log))
-												// Пропускаем дальнейшую обработку события
-												continue;
-										}
-									}
-								// Если функция обратного вызова не установлена
-								} else {
-									// Если мы детектировали событие изменения директории
-									if(ev.fflags & NOTE_WRITE){
-										// Если событие изменения директории разрешено
-										if(dir->actions & action::CHANGE){
-											// Выполняем изменение содержимого в директории
-											if(!io::change(dir, this, this->_fmk, this->_log))
-												// Пропускаем дальнейшую обработку события
-												continue;
-										}
-									// Если мы детектировали событие удаления директории
-									} else if(ev.fflags & NOTE_DELETE)
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-									// Если мы детектировали событие изменение жёсткой ссылки директории
-									else if(ev.fflags & NOTE_LINK) {
-										// Если событие изменения директории разрешено
-										if(dir->actions & action::CHANGE){
-											// Выполняем изменение содержимого в директории
-											if(!io::change(dir, this, this->_fmk, this->_log))
-												// Пропускаем дальнейшую обработку события
-												continue;
-										}
-									}
-								}
-							} break;
-							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE): {
-								// Получаем текущее значение объекта файловой системы
-								file_t * fs = awh_cast <file_t *> (node);
-								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR){
-									// Выполняем обработку ошибки
-									if(io::error(node, ev.data, this->_log))
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-								// Если установлена функция обратного вызова
-								} else if(fs->callbacks.event != nullptr) {
-									// Если мы детектировали событие изменения файла
-									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
-										// Если событие изменения файла разрешено
-										if(fs->actions & action::CHANGE){
-											// Вызываем функцию обратного вызова флаг события
-											fs->callbacks.event(fs->id, event::action_t::CHANGE);
-											// Если функция обратного вызова для сигнализации изменения файла установлена
-											if(fs->callbacks.change != nullptr)
-												// Вызываем функцию обратного вызова
-												fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-											// Если событие чтения разрешено
-											if(fs->actions & action::READ){
-												// Выполняем чтение данных из файла
-												if(!io::read(node, this, &this->_eth, this->_fmk, this->_log))
-													// Пропускаем дальнейшую обработку события
-													continue;
-											}
-										}
-									// Если мы детектировали событие переименования файла
-									} else if(ev.fflags & NOTE_RENAME) {
-										// Если событие переименования файла разрешено
-										if(fs->actions & action::RENAME)
-											// Вызываем функцию обратного вызова флаг события
-											fs->callbacks.event(fs->id, event::action_t::RENAME);
-									// Если мы детектировали событие удаления файла
-									} else if(ev.fflags & NOTE_DELETE) {
-										// Если событие удаления файла разрешено
-										if(fs->actions & action::DELETE){
-											// Вызываем функцию обратного вызова флаг события
-											fs->callbacks.event(fs->id, event::action_t::DELETE);
-											// Если событие изменения файла разрешено
-											if(fs->actions & action::CHANGE){
-												// Если функция обратного вызова для сигнализации изменения файла установлена
-												if(fs->callbacks.change != nullptr)
-													// Вызываем функцию обратного вызова
-													fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-											}
-										}
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-									// Если мы детектировали событие изменения атрибутов файла
-									} else if(ev.fflags & NOTE_ATTRIB) {
-										// Если событие изменения атрибутов файла разрешено
-										if(fs->actions & action::ATTRIB)
-											// Вызываем функцию обратного вызова флаг события
-											fs->callbacks.event(fs->id, event::action_t::ATTRIB);
-									// Если мы детектировали событие отзыва файла
-									} else if(ev.fflags & NOTE_REVOKE) {
-										// Если событие отзыва файла разрешено
-										if(fs->actions & action::REVOKE)
-											// Вызываем функцию обратного вызова флаг события
-											fs->callbacks.event(fs->id, event::action_t::REVOKE);
-									// Если мы детектировали событие изменение жёсткой ссылки файла
-									} else if(ev.fflags & NOTE_LINK) {
-										// Если событие изменение жёсткой ссылки файла разрешено
-										if(fs->actions & action::HDLINK)
-											// Вызываем функцию обратного вызова флаг события
-											fs->callbacks.event(fs->id, event::action_t::HDLINK);
-									}
-								// Если функция обратного вызова не установлена
-								} else {
-									// Если мы детектировали событие изменения файла
-									if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
-										// Если событие изменения файла разрешено
-										if(fs->actions & action::CHANGE){
-											// Если функция обратного вызова для сигнализации изменения файла установлена
-											if(fs->callbacks.change != nullptr)
-												// Вызываем функцию обратного вызова
-												fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-											// Если событие чтения разрешено
-											if(fs->actions & action::READ){
-												// Выполняем чтение данных из файла
-												if(!io::read(node, this, &this->_eth, this->_fmk, this->_log))
-													// Пропускаем дальнейшую обработку события
-													continue;
-											}
-										}
-									// Если мы детектировали событие удаления файла
-									} else if(ev.fflags & NOTE_DELETE) {
-										// Если событие изменения файла разрешено
-										if((fs->actions & action::DELETE) && (fs->actions & action::CHANGE)){
-											// Если функция обратного вызова для сигнализации изменения файла установлена
-											if(fs->callbacks.change != nullptr)
-												// Вызываем функцию обратного вызова
-												fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-										}
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-									}
-								}
-							} break;
-						}
-					// Если мы получили событие таймера
-					} else if(ev.filter == EVFILT_TIMER) {
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMEOUT):
-							// Если узел является интервалом
-							case static_cast <uint8_t> (event::node_t::INTERVAL): {
-								// Выполняем извлечение текущего значения объекта таймера
-								timer_t * timer = awh_cast <timer_t *> (node);
-								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR){
-									// Выполняем обработку ошибки
-									if(io::error(node, ev.data, this->_log))
-										// Выполняем удаление узла
-										io::destroy(node, this->_log);
-								// Обрабатываем событие таймера
-								} else if(io::timer(node, this->_log))
-									// Пропускаем дальнейшую обработку события
-									continue;
-							} break;
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Получаем текущее значение объекта однорангового узла
-								peer_t * peer = awh_cast <peer_t *> (node);
-								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR)
-									// Выполняем обработку ошибки
-									io::error(node, ev.data, this->_log);
-								// Обрабатываем событие таймаута
-								if(io::timer(node, this->_log))
-									// Пропускаем дальнейшую обработку события
-									continue;
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								client_t * client = awh_cast <client_t *> (node);
-								// Если мы детектировали наличие ошибки
-								if(ev.flags & EV_ERROR)
-									// Выполняем обработку ошибки
-									io::error(node, ev.data, this->_log);
-								// Если статус события восстановление соединения
-								if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
-									// Если переподключение разрешено
-									if(client->transfer.actions & action::RECONNECT){
-										// Деактивируем таймаут события
-										client->timeout = event::action_t::NONE;
-										// Устанавливаем статус события в состояние инициализировано
-										client->state.status.store(event::status_t::NONE, std::memory_order_release);
-										// Обрабатываем событие сокета
-										if(io::socket(client, this->_log)){
-											{
-												// Выполняем блокировку потоков
-												const locker_t lock(::tmp::mtx);
-												// Если в списке промежуточного взаимодействия присутствует запись для данного события
-												auto i = ::tmp::inters.find(client->id);
-												// Если запись найдена
-												if(i != ::tmp::inters.end()){
-													// Количество записей в списке изменений
-													size_t count = 0;
-													// Получаем итератор на начало списка изменений
-													auto j = ::tmp::change.begin();
-													// Получаем нужный нам итератор
-													std::advance(j, i->second.index);
-													// Проходим по всем изменениям промежуточного взаимодействия
-													for(; j != ::tmp::change.end();){
-														// Если идентификатор события совпадает с идентификатором в записи списка изменений
-														if(reinterpret_cast <server_t *> (j->udata)->id == node->id){
-															// Удаляем запись из списка изменений
-															j = ::tmp::change.erase(j);
-															// Увеличиваем счётчик удалённых записей
-															count++;
-															// Если записи удалены
-															if(count == i->second.count)
-																// Завершаем цикл
-																break;
-														// Если идентификатор события не совпадает с идентификатором в записи списка изменений
-														} else ++j;
-													}
-												}
-											}
-											// Запоминаем текущие опции события
-											const uint16_t options = client->state.options;
-											// Сбрасываем опции события
-											client->state.options = event::options::NONE;
-											// Выполняем установку опций события и фиксацию изменений
-											if(this->options(client->id, options) && this->commit(client->id)){
-												// Выполняем повторное подключение клиента
-												if(this->connect(client->id, static_cast <bool> (
-													(client->state.options & event::options::NOIOBLOCK) ||
-													(client->state.options & event::options::SMIOBLOCK)
-												))) break;
-											} break;
-										}
-									}
-								// Если статус события подключение в ожидании
-								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) {
-									// Если подключение к серверу разрешено
-									if(client->transfer.actions & action::READ){
-										// Если функция обратного вызова для вывода подключения установлена
-										if(client->callbacks.connect != nullptr)
-											// Вывзываем функцию обратного вызова для подключения
-											client->callbacks.connect(client->id, false);
-									}
-								}
-								// Обрабатываем событие таймаута
-								if(io::timer(node, this->_log))
-									// Пропускаем дальнейшую обработку события
-									continue;
-							} break;
-						}
-					// Если мы получили событие пользовательского события
-					} else if(ev.filter == EVFILT_USER) {
-						// Выполняем извлечение текущего значения объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (node);
-						// Если мы детектировали наличие ошибки
-						if(ev.flags & EV_ERROR){
-							// Выполняем обработку ошибки
-							if(io::error(node, ev.data, this->_log))
-								// Выполняем удаление узла
-								io::destroy(node, this->_log);
-						// Если событие пользовательского события сработало корректно
-						} else if(io::user(user, this, this->_log))
-							// Пропускаем дальнейшую обработку события
-							continue;
-					// Если мы получили событие сокета
-					} else {
-						// Если мы детектировали событие готовности сокета на чтение данных
-						if(ev.filter == EVFILT_READ){
-							// Обрабатываем событие доступности сокета на чтение
-							if(!io::read(node, this, &this->_eth, this->_fmk, this->_log))
-								// Пропускаем дальнейшую обработку события
-								continue;
-						}
-						// Если мы детектировали событие готовности сокета на запись данных
-						if(ev.filter == EVFILT_WRITE){
-							// Если в сокете нет ошибок
-							if(this->_eth.error(ev.ident) == 0){
-								// Обрабатываем событие доступности сокета на запись
-								if(!io::write(node, this, &this->_eth, this->_fmk, this->_log))
-									// Пропускаем дальнейшую обработку события
-									continue;
-							// Если мы поймали шум
-							} else {
-								// Выполняем обработку события закрытия
-								if(io::close(node, this->_log))
-									// Выполняем удаление узла
-									io::destroy(node, this->_log);
-								// Пропускаем дальнейшую обработку события
-								continue;
-							}
-						}
-						// Если мы детектировали событие закрытия подключения или ошибку
-						if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
-							// Если мы детектировали наличие ошибки
-							if(ev.flags & EV_ERROR)
-								// Выполняем обработку ошибки
-								io::error(node, ev.data, this->_log);
-							// Если мы детектировали закрытие подключения
-							if(ev.flags & EV_EOF)
-								// Выполняем обработку события закрытия
-								io::close(node, this->_log);
-							// Выполняем удаление узла
-							io::destroy(node, this->_log);
-						}
-					}
+					// Если активирован пул потоков
+					if(::thread::threadPool == event::mode_t::ENABLED)
+						// Инициализируем пул потоков
+						::__awh_thr__.push(&io::processing, ev, this, &this->_eth, this->_fmk, this->_log);
+					// Если пул потоков не активирован, выполняем обработку события в основном потоке
+					else if(!io::processing(ev, this, &this->_eth, this->_fmk, this->_log))
+						// Пропускаем событие
+						continue;
 				}
 			}
 		/**

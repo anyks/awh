@@ -1381,6 +1381,8 @@ int32_t main(int32_t argc, char * argv[]){
 	*/
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
+	// Настраиваем пул потоков асинхронного движка ввода-вывода
+	io.threadPool(event::mode_t::ENABLED, 4);
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события

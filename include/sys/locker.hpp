@@ -56,6 +56,9 @@ namespace awh {
 			 *
 			 */
 			friend class Locker;
+		public:
+			// Флаг активации режима работы
+			std::atomic_bool enabled;
 		private:
 			// Идентификатор процесса
 			std::atomic <pid_t> _pid;
@@ -89,6 +92,7 @@ namespace awh {
 			 *
 			 */
 			explicit LockState() noexcept :
+			 enabled(true),
 			 _pid(::getpid()),
 			 _mtx(std::make_unique <MutexType> ()) {}
 	};
@@ -114,6 +118,9 @@ namespace awh {
 	 */
 	class Locker {
 		private:
+			// Флаг захвата мютексом потока
+			bool _locked;
+		private:
 			// Сохраняем временно объект состояния блокировок
 			LockState <MutexType> & _state;
 		public:
@@ -134,7 +141,7 @@ namespace awh {
 			*
 			* @param state объект состояния блокировок
 			*/
-			explicit Locker(LockState <MutexType> & state) noexcept : _state(state) {
+			explicit Locker(LockState <MutexType> & state) noexcept : _locked(false), _state(state) {
 				// Если идентификатор процесса не совпадает
 				if(this->_state._pid.load(std::memory_order_acquire) != ::getpid()){
 					// Устанавливаем идентификатор процесса
@@ -146,6 +153,12 @@ namespace awh {
 				if(this->_state._mtx == nullptr)
 					// Пересоздаём мютекс
 					this->_state._mtx = std::make_unique <MutexType> ();
+				// Если захватывать доступ к памяти нам не нужно
+				if(!this->_state.enabled.load(std::memory_order_acquire))
+					// Выходим из конструктора
+					return;
+				// Активируем флаг захвата мютексом потока
+				this->_locked = !this->_locked;
 				// Выполняем блокировку потока
 				this->_state._mtx->lock();
 			}
@@ -155,8 +168,8 @@ namespace awh {
 			*
 			*/
 			~Locker() noexcept {
-				// Если мютекс не пустой
-				if(this->_state._mtx != nullptr)
+				// Если мютекс не пустой и захвачен
+				if((this->_state._mtx != nullptr) && this->_locked)
 					// Выполняем разблокировку потока
 					this->_state._mtx->unlock();
 			}
