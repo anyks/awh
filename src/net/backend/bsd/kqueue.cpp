@@ -3037,94 +3037,105 @@ namespace io {
 						const locker_t lock(::__awh_mtx__);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(io::identifier(), ::move(peer));
+						// Получаем идентификатор только что добавленного узла
+						const event::id_t id = ret.first->first;
 						// Если установлена функция обратного вызова
 						if(node->callbacks.accept != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							node->callbacks.accept(node->id, ret.first->first);
-						// Если дескриптор сокета инициализирован и событие не было уничтожено
-						if((::__awh_kq__ != net::invalid_socket_t) && (ret.first->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-							// Получаем текущее значение объекта однорангового узла
-							peer_t * peer = awh_cast <peer_t *> (ret.first->second.get());
-							// Устанавливаем идентификатор объекта однорангового узла
-							peer->id = ret.first->first;
-							// Активируем или деактивируем работу мютексов для передачи данных
-							peer->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-							// Устанавливаем статус события в состояние ожидания
-							peer->state.status.store(event::status_t::PENDING, std::memory_order_release);
-							{
-								// Выполняем блокировку потоков
-								const locker_t lock(::local::mtx);
-								// Создаём объект промежуточного звена
-								auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
-								// Если событие успешно добавлено
-								if(ret.second){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Если сокет является неблокирующим
-									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
-										// Устанавливаем событие на чтение и активируем его
-										EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
-									// Устанавливаем событие на чтение и активируем его
-									else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем событие на запись но отключаем его
-									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
-									// Устанавливаем количество событий
-									ret.first->second.count = 2;
-									// Устанавливаем индекс текущего элемента
-									ret.first->second.index = (::local::change.size() - 2);
-									// Если необходимо установить таймаут на получение данных
-									auto i = peer->timeouts.find(event::action_t::READ);
-									// Если таймаут на получение данных найден
-									if((i != peer->timeouts.end()) && (i->second > 0)){
+							node->callbacks.accept(node->id, id);
+						// Если дескриптор сокета инициализирован
+						if(::__awh_kq__ != net::invalid_socket_t){
+							// Выполняем поиск идентификатора события
+							auto i = ::__awh_nodes__.find(id);
+							// Если идентификатор события найден и событие не подлежит уничтожению
+							if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+								// Получаем текущее значение объекта однорангового узла
+								peer_t * peer = awh_cast <peer_t *> (i->second.get());
+								// Устанавливаем идентификатор объекта однорангового узла
+								peer->id = id;
+								// Активируем или деактивируем работу мютексов для передачи данных
+								peer->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+								// Устанавливаем статус события в состояние ожидания
+								peer->state.status.store(event::status_t::PENDING, std::memory_order_release);
+								{
+									// Выполняем блокировку потоков
+									const locker_t lock(::local::mtx);
+									// Создаём объект промежуточного звена
+									auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
+									// Если событие успешно добавлено
+									if(ret.second){
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
 										// Если сокет является неблокирующим
-										if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
-											// Активируем таймаут события
-											peer->timeout = i->first;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
-											// Увеличиваем количество событий
-											ret.first->second.count++;
-										// Если сокет является блокирующим
-										} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
-									}
-								// Событие не может быть зафиксированно повторно
-								} else {
-									// Устанавливаем текст ошибки
-									const string error = "An event for a peer event cannot be commit because it is already registered";
-									// Если установлена функция обратного вызова
-									if(node->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
-									// Если функция обратного вызова для вывода события установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
+										if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
+											// Устанавливаем событие на чтение и активируем его
+											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, peer);
+										// Устанавливаем событие на чтение и активируем его
+										else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Устанавливаем событие на запись но отключаем его
+										EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, peer);
+										// Устанавливаем количество событий
+										ret.first->second.count = 2;
+										// Устанавливаем индекс текущего элемента
+										ret.first->second.index = (::local::change.size() - 2);
+										// Если необходимо установить таймаут на получение данных
+										auto i = peer->timeouts.find(event::action_t::READ);
+										// Если таймаут на получение данных найден
+										if((i != peer->timeouts.end()) && (i->second > 0)){
+											// Если сокет является неблокирующим
+											if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+												// Активируем таймаут события
+												peer->timeout = i->first;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+												// Увеличиваем количество событий
+												ret.first->second.count++;
+											// Если сокет является блокирующим
+											} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+										}
+									// Событие не может быть зафиксированно повторно
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "An event for a peer event cannot be commit because it is already registered";
+										// Если установлена функция обратного вызова
+										if(node->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
 									}
 								}
+								// Выводим положительный результат
+								return true;
 							}
-							// Выводим положительный результат
-							return true;
 						// Если событие нужно уничтожить
 						} else {
 							// Выполняем блокировку потоков
 							const locker_t lock(::__awh_mtx__);
-							// Удаляем только что добавленный узел
-							::__awh_nodes__.erase(ret.first);
+							// Выполняем поиск идентификатора события
+							auto i = ::__awh_nodes__.find(id);
+							// Если идентификатор события найден
+							if(i != ::__awh_nodes__.end())
+								// Удаляем только что добавленный узел
+								::__awh_nodes__.erase(i);
 						}
 					}
 				}
@@ -6665,6 +6676,24 @@ namespace io {
 					}
 				}
 			} break;
+			// Для остальных типов событий
+			default: {
+				// Если мы детектировали событие закрытия подключения или ошибку
+				if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
+					// Если мы детектировали наличие ошибки
+					if(ev.flags & EV_ERROR)
+						// Выполняем обработку ошибки
+						io::error(node, ev.data, log);
+					// Если мы детектировали закрытие подключения
+					if(ev.flags & EV_EOF)
+						// Выполняем обработку события закрытия
+						io::close(node, log);
+					// Выполняем удаление узла
+					io::destroy(node, log);
+					// Пропускаем дальнейшую обработку события
+					return false;
+				}
+			}
 		}
 		// Выводим результат
 		return true;
@@ -18563,45 +18592,45 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET, SOCK_RAW, 0);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET, SOCK_RAW, 0);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET, SOCK_RAW, 0);
 									} break;
 									// Если протокол определён как RAW
 									case static_cast <uint8_t> (event::protocol_t::RAW): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 									} break;
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 									} break;
 								}
 							} break;
@@ -18613,24 +18642,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET6, SOCK_RAW, 0);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET6, SOCK_RAW, 0);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET6, SOCK_RAW, 0);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Создаём первый сокет для сырого подключения
-										fds[0] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-										// Создаём второй сокет для сырого подключения
-										fds[1] = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+										// Создаём нужное количество сокетов для сырого подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для сырого подключения
+											fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 									} break;
 								}
 							} break;
@@ -18650,31 +18679,31 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET, SOCK_DGRAM, 0);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET, SOCK_DGRAM, 0);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
 									} break;
 								}
 							} break;
@@ -18686,24 +18715,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, 0);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, 0);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
 									} break;
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 									} break;
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP): {
-										// Создаём первый сокет для дейтграмного подключения
-										fds[0] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-										// Создаём второй сокет для дейтграмного подключения
-										fds[1] = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+										// Создаём нужное количество сокетов для дейтграмного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для дейтграмного подключения
+											fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 									} break;
 								}
 							} break;
@@ -18723,24 +18752,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Создаём первый сокет для потокового подключения
-										fds[0] = ::socket(AF_INET, SOCK_STREAM, 0);
-										// Создаём второй сокет для потокового подключения
-										fds[1] = ::socket(AF_INET, SOCK_STREAM, 0);
+										// Создаём нужное количество сокетов для потокового подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для потокового подключения
+											fd = ::socket(AF_INET, SOCK_STREAM, 0);
 									} break;
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
-										// Создаём первый сокет для потокового подключения
-										fds[0] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-										// Создаём второй сокет для потокового подключения
-										fds[1] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+										// Создаём нужное количество сокетов для потокового подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для потокового подключения
+											fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 									} break;
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Создаём первый сокет для потокового подключения
-										fds[0] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-										// Создаём второй сокет для потокового подключения
-										fds[1] = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+										// Создаём нужное количество сокетов для потокового подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для потокового подключения
+											fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 									} break;
 								}
 							} break;
@@ -18752,24 +18781,24 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE): {
-										// Создаём первый сокет для потокового подключения
-										fds[0] = ::socket(AF_INET6, SOCK_STREAM, 0);
-										// Создаём второй сокет для потокового подключения
-										fds[1] = ::socket(AF_INET6, SOCK_STREAM, 0);
+										// Создаём нужное количество сокетов для потокового подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для потокового подключения
+											fd = ::socket(AF_INET6, SOCK_STREAM, 0);
 									} break;
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
-										// Создаём первый сокет для потокового подключения
-										fds[0] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-										// Создаём второй сокет для потокового подключения
-										fds[1] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+										// Создаём нужное количество сокетов для потокового подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для потокового подключения
+											fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 									} break;
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Создаём первый сокет для потокового подключения
-										fds[0] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
-										// Создаём второй сокет для потокового подключения
-										fds[1] = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+										// Создаём нужное количество сокетов для потокового подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для потокового подключения
+											fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 									} break;
 								}
 							} break;
@@ -18789,10 +18818,10 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Создаём первый сокет для пакетного подключения
-										fds[0] = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-										// Создаём второй сокет для пакетного подключения
-										fds[1] = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+										// Создаём нужное количество сокетов для пакетного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для пакетного подключения
+											fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
 									} break;
 									// Если установлен другой протокол
 									default: {
@@ -18800,18 +18829,18 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Создаём первый сокет для пакетного подключения
-											fds[0] = ::socket(AF_INET, SOCK_DGRAM, 0);
-											// Создаём второй сокет для пакетного подключения
-											fds[1] = ::socket(AF_INET, SOCK_DGRAM, 0);
+											// Создаём нужное количество сокетов для пакетного подключения
+											for(auto & fd : fds)
+												// Создаём первый сокет для пакетного подключения
+												fd = ::socket(AF_INET, SOCK_DGRAM, 0);
 										/**
 										 * Для остальных операционных систем
 										 */
 										#else
-											// Создаём первый сокет для пакетного подключения
-											fds[0] = ::socket(AF_INET, SOCK_SEQPACKET, 0);
-											// Создаём второй сокет для пакетного подключения
-											fds[1] = ::socket(AF_INET, SOCK_SEQPACKET, 0);
+											// Создаём нужное количество сокетов для пакетного подключения
+											for(auto & fd : fds)
+												// Создаём первый сокет для пакетного подключения
+												fd = ::socket(AF_INET, SOCK_SEQPACKET, 0);
 										#endif
 									}
 								}
@@ -18824,10 +18853,10 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								switch(static_cast <uint8_t> (protocol)){
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
-										// Создаём первый сокет для пакетного подключения
-										fds[0] = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
-										// Создаём второй сокет для пакетного подключения
-										fds[1] = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+										// Создаём нужное количество сокетов для пакетного подключения
+										for(auto & fd : fds)
+											// Создаём первый сокет для пакетного подключения
+											fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
 									} break;
 									// Если установлен другой протокол
 									default: {
@@ -18835,18 +18864,18 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Создаём первый сокет для пакетного подключения
-											fds[0] = ::socket(AF_INET6, SOCK_DGRAM, 0);
-											// Создаём второй сокет для пакетного подключения
-											fds[1] = ::socket(AF_INET6, SOCK_DGRAM, 0);
+											// Создаём нужное количество сокетов для пакетного подключения
+											for(auto & fd : fds)
+												// Создаём первый сокет для пакетного подключения
+												fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
 										/**
 										 * Для остальных операционных систем
 										 */
 										#else
-											// Создаём первый сокет для пакетного подключения
-											fds[0] = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
-											// Создаём второй сокет для пакетного подключения
-											fds[1] = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
+											// Создаём нужное количество сокетов для пакетного подключения
+											for(auto & fd : fds)
+												// Создаём первый сокет для пакетного подключения
+												fd = ::socket(AF_INET6, SOCK_SEQPACKET, 0);
 										#endif
 									}
 								}
@@ -21813,8 +21842,6 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											// Если сокет является блокирующим
 											} else this->_eth.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 										}
-										// Устанавливаем результат выполнения функции
-										result = true;
 									// Событие не может быть зафиксированно повторно
 									} else {
 										// Устанавливаем текст ошибки
