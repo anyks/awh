@@ -95,7 +95,7 @@ $ ./generate.sh example.com
 $ ./sh/build_third_party.sh
 ```
 
-### Build on MacOS X, Linux, FreeBSD or Solaris
+### Build on MacOS X, Linux, FreeBSD or Solaris without Unit-tests
 
 ```bash
 $ mkdir ./build
@@ -108,6 +108,42 @@ $ cmake \
  ..
 
 $ make
+```
+
+### Build on MacOS X, Linux, FreeBSD or Solaris with Unit-tests
+
+```bash
+$ mkdir ./build
+$ cd ./build
+
+$ cmake \
+ -DCMAKE_BUILD_IDN=YES \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_TYPE=Release \
+ ..
+
+$ make
+```
+
+#### Running unittest, benchmark and coverage statistic on Linux
+```bash
+# Assume we in build folder
+$ lcov --capture --initial --directory . --output-file awh_base.info
+
+# Running unit tests
+$ test/awh_UNITTEST
+
+# Running benchmark
+#$ benchmark/awh_BENCHMARK
+
+# Collect coverage statistic, should be executed after UNITTEST
+$ gcovr -r ../ -e ../test/ -e ../contrib/ -e ../sample/ -e ../submodules/ -e ../third_party/ -e ../benchmark/ -e ../experience/ -e /usr/include/
+
+# Create html report with lcov 
+$ lcov --capture --directory . --output-file awh_test.info
+$ lcov --add-tracefile awh_base.info --add-tracefile awh_test.info -o awh.info
+$ lcov --remove awh.info '*/test/*' '/usr/include/*' '*/contrib/*' '*/benchmark/*' '*/sample/*' '*/submodules/*' '*/third_party/*' '*/experience/*' -o awh_filtered.info
+$ genhtml -o report awh_filtered.info
 ```
 
 ### Build on Windows [MSYS2 MinGW]
