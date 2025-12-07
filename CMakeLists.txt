@@ -318,6 +318,19 @@ else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
 endif (TcMalloc_FOUND)
 
+# Если необходимо собрать тесты
+if (CMAKE_BUILD_TESTS)
+    # Выполняем поиск библиотеки OpenSSL
+    find_package(OpenSSL REQUIRED)
+
+    # Провекра OpenSSL
+    if (OpenSSL_FOUND)
+        message(STATUS "OpenSSL lib found: " ${OPENSSL_LIBRARY} " " ${OPENSSL_CRYPTO_LIBRARY})
+    else (OpenSSL_FOUND)
+        message(FATAL_ERROR "OpenSSL not found")
+    endif (OpenSSL_FOUND)
+endif (CMAKE_BUILD_TESTS)
+
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
 include_directories(BEFORE ${TCMALLOC_INCLUDE_DIR})
@@ -360,6 +373,12 @@ SET(CLIENT_APP_NAME client)
 SET(SERVER_APP_NAME server)
 SET(AWH_LIB_NAME ${PROJECT_NAME})
 
+# Если необходимо собрать тесты
+if (CMAKE_BUILD_TESTS)
+    # Задаем имя библиотеки для сбора статистики покрытия кода
+    SET(AWH_LIB_GCOV_NAME ${PROJECT_NAME}_gcov)
+endif (CMAKE_BUILD_TESTS)
+
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
     # Добавляем динамическую библиотеку
@@ -373,6 +392,14 @@ else (CMAKE_SHARED_BUILD_LIB)
     # Добавляем статическу библиотеку
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
 endif (CMAKE_SHARED_BUILD_LIB)
+
+# Если необходимо собрать тесты
+if (CMAKE_BUILD_TESTS)
+    # Собираем библиотеку с флагами gcov для сбора статистики покрытия тестами
+    add_library(${AWH_LIB_GCOV_NAME} STATIC ${SOURCE_FILES})
+    # Включаем флаги компиляции для сбора статистики покрытия кода
+    target_compile_options(${AWH_LIB_GCOV_NAME} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+endif (CMAKE_BUILD_TESTS)
 
 # Если операционной системой является Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -851,6 +878,28 @@ if (NOT CMAKE_SHARED_BUILD_LIB)
         install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     endif()
 endif()
+
+# Если необходимо собрать тесты
+if (CMAKE_BUILD_TESTS)
+    # Устанавливаем библиотеку
+    if (NOT CMAKE_SHARED_BUILD_LIB)
+        # Если режим отладки не активирован
+        if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
+            # Выполняем запуск скрипта объединения библиотек
+            add_custom_command(TARGET "${AWH_LIB_GCOV_NAME}" POST_BUILD
+                COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_GCOV_NAME}>"
+            VERBATIM)
+        # Если режим отладки активирован
+        else()
+            # Выполняем установку библиотеки зависимостей
+            install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        endif()
+    endif()
+
+    # СБорка тестов и бенчмарков
+    add_subdirectory(tests)
+    # add_subdirectory(benchmark)
+endif (CMAKE_BUILD_TESTS)
 
 # Если операционной системой является Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
