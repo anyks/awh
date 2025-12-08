@@ -129,3 +129,22 @@ TEST_F(FmkFixture, IconFmkTest){
 	// Тестируем иконки
 	ASSERT_TRUE(!this->_fmk->icon().empty());
 }
+
+/**
+ * @brief Метод тестирования идентификаторов
+ *
+ */
+TEST_F(FmkFixture, IdentifierFmkTest){
+	// Если объект фреймворка уже создан
+	ASSERT_TRUE(this->_fmk != nullptr);
+	// Создаём объект фреймворка
+	this->_fmk = std::make_unique <awh::fmk_t> ();
+	// Проверяем что объект фреймворка создан
+	ASSERT_TRUE(this->_fmk != nullptr);
+	// Тестируем идентификаторы
+	ASSERT_EQ(this->_fmk->identifier(), 1);
+	ASSERT_EQ(this->_fmk->identifier(), 2);
+	ASSERT_EQ(this->_fmk->identifier(), 3);
+	ASSERT_EQ(this->_fmk->identifier(), 4);
+	ASSERT_EQ(this->_fmk->identifier(), 5);
+}

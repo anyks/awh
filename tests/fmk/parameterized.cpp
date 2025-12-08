@@ -17,27 +17,45 @@
  */
 #include "fmk.hpp"
 
-/*
+/**
+ * @brief Структура параметров тестирования метода поиска в отображении
+ *
+ */
 struct FmkFindInMapTestParameter {
+	// Ожидаемый ключ найденного элемента
 	uint32_t key = 0;
+	// Искомое значение
 	uint32_t val = 0;
+	// Отображение для поиска
 	std::map <uint32_t, uint32_t> map = {{1,15},{22,45},{32,88},{84,95}};
 };
 
+/**
+ * @brief Класс параметризованного теста для метода поиска в отображении
+ *
+ */
 class FmkFindInMapParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkFindInMapTestParameter> {
 	public:
 		FmkFindInMapTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода поиска в отображении
+ *
+ */
 TEST_P(FmkFindInMapParameterizedFixture, FmkFindInMapTest){
-
+	// Выполняем поиск значения в отображении
 	auto i = this->_fmk->findInMap(this->_parameter.val, this->_parameter.map);
-
+	// Проверяем что значение найдено
 	ASSERT_TRUE(i != this->_parameter.map.end());
-	
+	// Проверяем что ключ и значение совпадают с ожидаемыми
 	ASSERT_EQ(this->_parameter.key, i->first);
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода поиска в отображении
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFindInMapParameterizedFixture,
 	::testing::Values(
 		FmkFindInMapTestParameter({1,15}),
@@ -47,61 +65,111 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFindInMapParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода проверки символов и строк
+ *
+ */
 struct FmkIsTestParameter {
+	// Символ для проверки в однобайтовой кодировке
 	char letter1 = 0;
+	// Символ для проверки в многобайтовой кодировке
 	wchar_t letter2 = 0;
+	// Строка для проверки в однобайтовой кодировке
 	std::string text1 = "";
+	// Строка для проверки в многобайтовой кодировке
 	std::wstring text2 = L"";
+	// Флаг проверки
 	awh::fmk_t::check_t flag = awh::fmk_t::check_t::NONE;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода проверки символов и строк
+ *
+ */
 class FmkIsParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkIsTestParameter> {
 	public:
 		FmkIsTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода проверки символов и строк
+ *
+ */
 TEST_P(FmkIsParameterizedFixture, FmkIsLetter1Test){
+	/**
+	 * Выполняем проверку символа в зависимости от флага
+	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
+		// Особый случай для URL-адресов
 		case static_cast <uint8_t> (awh::fmk_t::check_t::URL):
 			ASSERT_TRUE(true);
 		break;
+		// Особый случай для чисел с плавающей точкой и псевдо-чисел
 		case static_cast <uint8_t> (awh::fmk_t::check_t::DECIMAL):
+		// Особый случай для чисел с плавающей точкой и псевдо-чисел
 		case static_cast <uint8_t> (awh::fmk_t::check_t::PSEUDO_NUMBER):
 			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter1, awh::fmk_t::check_t::NUMBER));
 		break;
+		// Особый случай для проверки наличия латинских символов в строке
 		case static_cast <uint8_t> (awh::fmk_t::check_t::PRESENCE_LATIAN):
 			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter1, awh::fmk_t::check_t::LATIAN));
 		break;
+		// Общий случай для всех остальных флагов
 		default:
 			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter1, this->_parameter.flag));
 	}
 }
 
+/**
+ * @brief Метод тестирования метода проверки символов и строк
+ *
+ */
 TEST_P(FmkIsParameterizedFixture, FmkIsLetter2Test){
+	/**
+	 * Выполняем проверку символа в зависимости от флага
+	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
+		// Особый случай для URL-адресов
 		case static_cast <uint8_t> (awh::fmk_t::check_t::URL):
 			ASSERT_TRUE(true);
 		break;
+		// Особый случай для чисел с плавающей точкой и псевдо-чисел
 		case static_cast <uint8_t> (awh::fmk_t::check_t::DECIMAL):
 		case static_cast <uint8_t> (awh::fmk_t::check_t::PSEUDO_NUMBER):
 			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter2, awh::fmk_t::check_t::NUMBER));
 		break;
+		// Особый случай для проверки наличия латинских символов в строке
 		case static_cast <uint8_t> (awh::fmk_t::check_t::PRESENCE_LATIAN):
 			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter2, awh::fmk_t::check_t::LATIAN));
 		break;
+		// Общий случай для всех остальных флагов
 		default:
 			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter2, this->_parameter.flag));
 	}
 }
 
+/**
+ * @brief Метод тестирования метода проверки символов и строк
+ *
+ */
 TEST_P(FmkIsParameterizedFixture, FmkIsText1Test){
+	// Тестируем проверку строки
 	ASSERT_TRUE(this->_fmk->is(this->_parameter.text1, this->_parameter.flag));
 }
 
+/**
+ * @brief Метод тестирования метода проверки символов и строк
+ *
+ */
 TEST_P(FmkIsParameterizedFixture, FmkIsText2Test){
+	// Тестируем проверку строки
 	ASSERT_TRUE(this->_fmk->is(this->_parameter.text2, this->_parameter.flag));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода проверки символов и строк
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkIsParameterizedFixture,
 	::testing::Values(
 		FmkIsTestParameter({
@@ -184,26 +252,52 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkIsParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода сравнения строк
+ *
+ */
 struct FmkCompareTestParameter {
+	// Первая строка для сравнения в однобайтовой кодировке
 	std::string forst1 = "";
+	// Вторая строка для сравнения в однобайтовой кодировке
 	std::string second1 = "";
+	// Первая строка для сравнения в многобайтовой кодировке
 	std::wstring forst2 = L"";
+	// Вторая строка для сравнения в многобайтовой кодировке
 	std::wstring second2 = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода сравнения строк
+ *
+ */
 class FmkCompareParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkCompareTestParameter> {
 	public:
 		FmkCompareTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода сравнения строк №1
+ *
+ */
 TEST_P(FmkCompareParameterizedFixture, FmkCompare1Test){
+	// Тестируем сравнение строк
 	ASSERT_TRUE(this->_fmk->compare(this->_parameter.forst1, this->_parameter.second1));
 }
 
+/**
+ * @brief Метод тестирования метода сравнения строк №2
+ *
+ */
 TEST_P(FmkCompareParameterizedFixture, FmkCompare2Test){
+	// Тестируем сравнение строк
 	ASSERT_TRUE(this->_fmk->compare(this->_parameter.forst2, this->_parameter.second2));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода сравнения строк
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkCompareParameterizedFixture,
 	::testing::Values(
 		FmkCompareTestParameter({
@@ -222,55 +316,103 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkCompareParameterizedFixture,
 );
 
 struct FmkTimestampTestParameter {
-	awh::fmk_t::stamp_t stamp = awh::fmk_t::stamp_t::NONE;
+	// Тип временной метки
+	awh::fmk_t::chrono_t stamp = awh::fmk_t::chrono_t::NONE;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода получения временной метки
+ *
+ */
 class FmkTimestampParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkTimestampTestParameter> {
 	public:
 		FmkTimestampTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода получения временной метки
+ *
+ */
 TEST_P(FmkTimestampParameterizedFixture, FmkTimestampTest){
-	ASSERT_TRUE(this->_fmk->timestamp(this->_parameter.stamp) > 0);
+	// Тестируем получение временной метки
+	ASSERT_TRUE(this->_fmk->timestamp <uint8_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(this->_fmk->timestamp <uint16_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(this->_fmk->timestamp <uint32_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(this->_fmk->timestamp <uint64_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(this->_fmk->timestamp <float> (this->_parameter.stamp) > .0f);
+	ASSERT_TRUE(this->_fmk->timestamp <double> (this->_parameter.stamp) > .0);
+	ASSERT_FALSE(this->_fmk->timestamp <std::string> (this->_parameter.stamp).empty());
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода получения временной метки
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTimestampParameterizedFixture,
 	::testing::Values(
-		// FmkTimestampTestParameter({awh::fmk_t::stamp_t::YEARS}),
-		// FmkTimestampTestParameter({awh::fmk_t::stamp_t::MONTHS}),
-		// FmkTimestampTestParameter({awh::fmk_t::stamp_t::WEEKS}),
-		// FmkTimestampTestParameter({awh::fmk_t::stamp_t::DAYS}),
-		FmkTimestampTestParameter({awh::fmk_t::stamp_t::HOURS}),
-		FmkTimestampTestParameter({awh::fmk_t::stamp_t::MINUTES}),
-		FmkTimestampTestParameter({awh::fmk_t::stamp_t::SECONDS}),
-		FmkTimestampTestParameter({awh::fmk_t::stamp_t::MILLISECONDS}),
-		FmkTimestampTestParameter({awh::fmk_t::stamp_t::MICROSECONDS}),
-		FmkTimestampTestParameter({awh::fmk_t::stamp_t::NANOSECONDS})
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::YEAR}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MONTH}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::WEEK}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::DAY}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::HOUR}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MINUTES}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::SECONDS}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MILLISECONDS}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MICROSECONDS}),
+		FmkTimestampTestParameter({awh::fmk_t::chrono_t::NANOSECONDS})
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода конвертации кодировок
+ *
+ */
 struct FmkIconvTestParameter {
+	// Текст для конвертации кодировок
 	std::string text = "";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода конвертации кодировок
+ *
+ */
 class FmkIconvParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkIconvTestParameter> {
 	public:
 		FmkIconvTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода конвертации кодировок
+ *
+ */
 TEST_P(FmkIconvParameterizedFixture, FmkIconvTest){
-
-	const auto & result1 = this->_fmk->iconv(this->_parameter.text, awh::fmk_t::codepage_t::UTF8_CP1251);
-
-	ASSERT_FALSE(this->_fmk->is(result1, awh::fmk_t::check_t::UTF8));
-
-	const auto & result2 = this->_fmk->iconv(result1, awh::fmk_t::codepage_t::CP1251_UTF8);
-
-	ASSERT_TRUE(this->_fmk->is(result2, awh::fmk_t::check_t::UTF8));
-
-	ASSERT_EQ(this->_parameter.text, result2);
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64 || AWH_IDN
+		// Конвертируем из UTF-8 в CP1251
+		const auto & result1 = this->_fmk->transcode(this->_parameter.text, awh::fmk_t::codepage_t::UTF8_CP1251);
+		// Проверяем что результат не в UTF-8
+		ASSERT_FALSE(this->_fmk->is(result1, awh::fmk_t::check_t::UTF8));
+		// Конвертируем из CP1251 в UTF-8
+		const auto & result2 = this->_fmk->transcode(result1, awh::fmk_t::codepage_t::CP1251_UTF8);
+		// Проверяем что результат в UTF-8
+		ASSERT_TRUE(this->_fmk->is(result2, awh::fmk_t::check_t::UTF8));
+		// Сравниваем что исходный текст и результат совпадают
+		ASSERT_EQ(this->_parameter.text, result2);
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		// Заглушка для остальных ОС
+		ASSERT_TRUE(true);
+	#endif
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода конвертации кодировок
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkIconvParameterizedFixture,
 	::testing::Values(
 		FmkIconvTestParameter({"Привет Мир!!!"}),
@@ -278,55 +420,104 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkIconvParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода трансформации символов и строк
+ *
+ */
 struct FmkTransformTestParameter {
+	// Ожидаемый символ в однобайтовой кодировке
 	char letter1 = 0;
+	// Ожидаемый символ в многобайтовой кодировке
 	wchar_t letter2 = 0;
+	// Ожидаемая строка в однобайтовой кодировке
 	std::string text1 = "";
+	// Ожидаемая строка в многобайтовой кодировке
 	std::wstring text2 = L"";
+	// Результат в однобайтовой кодировке
 	std::string result1 = "";
+	// Результат в многобайтовой кодировке
 	std::wstring result2 = L"";
+	// Флаг трансформации
 	awh::fmk_t::transform_t flag = awh::fmk_t::transform_t::NONE;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода трансформации символов и строк
+ *
+ */
 class FmkTransformParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkTransformTestParameter> {
 	public:
 		FmkTransformTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода трансформации символов и строк
+ *
+ */
 TEST_P(FmkTransformParameterizedFixture, FmkTransformLetter1Test){
+	/**
+	 * Выполняем проверку символа в зависимости от флага
+	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
+		// Особый случай для обрезки пробелов
 		case static_cast <uint8_t> (awh::fmk_t::transform_t::TRIM):
 			ASSERT_EQ(this->_parameter.result1.front(), this->_parameter.letter1);
 		break;
-		case static_cast <uint8_t> (awh::fmk_t::transform_t::SMART):
-			ASSERT_EQ(this->_parameter.result1.front(), this->_fmk->transform(this->_parameter.letter1, awh::fmk_t::transform_t::UPPER));
+		// Особый случай для преобразования в верхний регистр
+		case static_cast <uint8_t> (awh::fmk_t::transform_t::SMART_CASE):
+			ASSERT_EQ(this->_parameter.result1.front(), this->_fmk->transform(this->_parameter.letter1, awh::fmk_t::transform_t::UPPER_CASE));
 		break;
+		// Общий случай для всех остальных флагов
 		default:
 			ASSERT_EQ(this->_parameter.result1.front(), this->_fmk->transform(this->_parameter.letter1, this->_parameter.flag));
 	}
 }
 
+/**
+ * @brief Метод тестирования метода трансформации символов и строк
+ *
+ */
 TEST_P(FmkTransformParameterizedFixture, FmkTransformLetter2Test){
+	/**
+	 * Выполняем проверку символа в зависимости от флага
+	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
+		// Особый случай для обрезки пробелов
 		case static_cast <uint8_t> (awh::fmk_t::transform_t::TRIM):
 			ASSERT_EQ(this->_parameter.result2.front(), this->_parameter.letter2);
 		break;
-		case static_cast <uint8_t> (awh::fmk_t::transform_t::SMART):
-			ASSERT_EQ(this->_parameter.result2.front(), this->_fmk->transform(this->_parameter.letter2, awh::fmk_t::transform_t::UPPER));
+		// Особый случай для преобразования в верхний регистр
+		case static_cast <uint8_t> (awh::fmk_t::transform_t::SMART_CASE):
+			ASSERT_EQ(this->_parameter.result2.front(), this->_fmk->transform(this->_parameter.letter2, awh::fmk_t::transform_t::UPPER_CASE));
 		break;
+		// Общий случай для всех остальных флагов
 		default:
 			ASSERT_EQ(this->_parameter.result2.front(), this->_fmk->transform(this->_parameter.letter2, this->_parameter.flag));
 	}
 }
 
+/**
+ * @brief Метод тестирования метода трансформации символов и строк
+ *
+ */
 TEST_P(FmkTransformParameterizedFixture, FmkTransformText1Test){
+	// Тестируем метод трансформации строки
 	ASSERT_EQ(this->_parameter.result1, this->_fmk->transform(this->_parameter.text1, this->_parameter.flag));
 }
 
+/**
+ * @brief Метод тестирования метода трансформации символов и строк
+ *
+ */
 TEST_P(FmkTransformParameterizedFixture, FmkTransformText2Test){
+	// Тестируем метод трансформации строки
 	ASSERT_EQ(this->_parameter.result2, this->_fmk->transform(this->_parameter.text2, this->_parameter.flag));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода трансформации символов и строк
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 	::testing::Values(
 		FmkTransformTestParameter({
@@ -345,7 +536,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"Привет Мир!!!",
 			"HELLO WORLD!!!",
 			L"ПРИВЕТ МИР!!!",
-			awh::fmk_t::transform_t::UPPER
+			awh::fmk_t::transform_t::UPPER_CASE
 		}),
 		FmkTransformTestParameter({
 			'H',
@@ -354,7 +545,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"Привет Мир!!!",
 			"hello world!!!",
 			L"привет мир!!!",
-			awh::fmk_t::transform_t::LOWER
+			awh::fmk_t::transform_t::LOWER_CASE
 		}),
 		FmkTransformTestParameter({
 			'H',
@@ -363,33 +554,59 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"ПРИВЕТ МИР!!!",
 			"Hello World!!!",
 			L"Привет Мир!!!",
-			awh::fmk_t::transform_t::SMART
+			awh::fmk_t::transform_t::SMART_CASE
 		})
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода разделения строк
+ *
+ */
 struct FmkJoinTestParameter {
+	// Разделитель для однобайтовой строки
 	std::string delim1 = "";
+	// Разделитель для многобайтовой строки
 	std::wstring delim2 = L"";
+	// Ожидаемый результат для однобайтовой строки
 	std::string result1 = "";
+	// Ожидаемый результат для многобайтовой строки
 	std::wstring result2 = L"";
+	// Список элементов для однобайтовой строки
 	std::vector <std::string> items1;
+	// Список элементов для многобайтовой строки
 	std::vector <std::wstring> items2;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода соединения строк
+ *
+ */
 class FmkJoinParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkJoinTestParameter> {
 	public:
 		FmkJoinTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода соединения строк №1
+ *
+ */
 TEST_P(FmkJoinParameterizedFixture, FmkJoin1Test){
 	ASSERT_EQ(this->_parameter.result1, this->_fmk->join(this->_parameter.items1, this->_parameter.delim1));
 }
 
+/**
+ * @brief Метод тестирования метода соединения строк №2
+ *
+ */
 TEST_P(FmkJoinParameterizedFixture, FmkJoin2Test){
 	ASSERT_EQ(this->_parameter.result2, this->_fmk->join(this->_parameter.items2, this->_parameter.delim2));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода соединения строк
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkJoinParameterizedFixture,
 	::testing::Values(
 		FmkJoinTestParameter({
@@ -411,30 +628,60 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkJoinParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода разделения строк
+ *
+ */
 struct FmkSplitTestParameter {
+	// Разделитель для однобайтовой строки
 	std::string delim1 = "";
+	// Разделитель для многобайтовой строки
 	std::wstring delim2 = L"";
+	// Текст для однобайтовой строки
 	std::string text1 = "";
+	// Текст для многобайтовой строки
 	std::wstring text2 = L"";
+	// Ожидаемый результат для однобайтовой строки
 	std::vector <std::string> result1;
+	// Ожидаемый результат для многобайтовой строки
 	std::vector <std::wstring> result2;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода разделения строк
+ *
+ */
 class FmkSplitParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkSplitTestParameter> {
 	public:
 		FmkSplitTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода разделения строк №1
+ *
+ */
 TEST_P(FmkSplitParameterizedFixture, FmkSplit1Test){
+	// Создаем контейнер для хранения результата разделения
 	std::vector <std::string> container;
+	// Выполняем разделение строки
 	ASSERT_EQ(this->_parameter.result1, this->_fmk->split(this->_parameter.text1, this->_parameter.delim1, container));
 }
 
+/**
+ * @brief Метод тестирования метода разделения строк №2
+ *
+ */
 TEST_P(FmkSplitParameterizedFixture, FmkSplit2Test){
+	// Создаем контейнер для хранения результата разделения
 	std::vector <std::wstring> container;
+	// Выполняем разделение строки
 	ASSERT_EQ(this->_parameter.result2, this->_fmk->split(this->_parameter.text2, this->_parameter.delim2, container));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода разделения строк
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSplitParameterizedFixture,
 	::testing::Values(
 		FmkSplitTestParameter({
@@ -456,21 +703,41 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSplitParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода конвертации кодировок
+ *
+ */
 struct FmkConvertTestParameter {
+	// Текст для конвертации из однобайтовой кодировки в многобайтовую
 	std::string text1 = "";
+	// Текст для конвертации из многобайтовой кодировки в однобайтовую
 	std::wstring text2 = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода конвертации кодировок
+ *
+ */
 class FmkConvertParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkConvertTestParameter> {
 	public:
 		FmkConvertTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода конвертации кодировок
+ *
+ */
 TEST_P(FmkConvertParameterizedFixture, FmkConvertTest){
+	// Тестируем конвертацию из однобайтовой кодировки в многобайтовую
 	ASSERT_EQ(this->_parameter.text2, this->_fmk->convert(this->_parameter.text1));
+	// Тестируем конвертацию из многобайтовой кодировки в однобайтовую
 	ASSERT_EQ(this->_parameter.text1, this->_fmk->convert(this->_parameter.text2));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода конвертации кодировок
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkConvertParameterizedFixture,
 	::testing::Values(
 		FmkConvertTestParameter({
@@ -484,23 +751,45 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkConvertParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода получения размера
+ *
+ */
 struct FmkSizeTestParameter {
+	// Размер данных в байтах
 	size_t size = 0;
+	// Номер элемента для получения размера
 	uint64_t num = 0;
+	// Данные для получения размера
 	const char * data = nullptr;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода получения размера
+ *
+ */
 class FmkSizeParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkSizeTestParameter> {
 	public:
 		FmkSizeTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода получения размера
+ *
+ */
 TEST_P(FmkSizeParameterizedFixture, FmkSizeTest){
+	// Проверяем что размер данных соответствует ожидаемому
 	if(this->_parameter.data == nullptr)
+		// Если данные не указаны, то проверяем размер по номеру элемента
 		ASSERT_EQ(this->_parameter.size, this->_fmk->size(this->_parameter.num));
+	// Если данные указаны, то проверяем размер по данным и размеру
 	else ASSERT_EQ(static_cast <size_t> (this->_parameter.num), this->_fmk->size(this->_parameter.data, this->_parameter.size));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода получения размера
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeParameterizedFixture,
 	::testing::Values(
 		FmkSizeTestParameter({8, 18446744073709551615}),
@@ -511,24 +800,47 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода сравнения чисел
+ *
+ */
 struct FmkGreaterTestParameter {
+	// Первое число для сравнения
 	uint64_t num1 = 0;
+	// Второе число для сравнения
 	uint64_t num2 = 0;
+	// Первые данные для сравнения
 	std::vector <uint64_t> data1;
+	// Вторые данные для сравнения
 	std::vector <uint64_t> data2;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода сравнения чисел
+ *
+ */
 class FmkGreaterParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkGreaterTestParameter> {
 	public:
 		FmkGreaterTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода сравнения чисел
+ *
+ */
 TEST_P(FmkGreaterParameterizedFixture, FmkGreaterTest){
+	// Проверяем что первое число больше второго
 	if(this->_parameter.data1.empty() && this->_parameter.data2.empty())
-		ASSERT_TRUE(this->_fmk->greater(this->_parameter.num1, this->_parameter.num2));
-	else ASSERT_TRUE(this->_fmk->greater(this->_parameter.data1.data(), this->_parameter.data2.data(), this->_parameter.data2.size() * sizeof(uint64_t)));
+		// Если данные не указаны, то проверяем числа
+		ASSERT_TRUE(this->_fmk->isGreater(this->_parameter.num1, this->_parameter.num2));
+	// Если данные указаны, то проверяем данные
+	else ASSERT_TRUE(this->_fmk->isGreater(this->_parameter.data1.data(), this->_parameter.data2.data(), this->_parameter.data2.size() * sizeof(uint64_t)));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода сравнения чисел
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkGreaterParameterizedFixture,
 	::testing::Values(
 		FmkGreaterTestParameter({18446744073709551615, 18446744073709551614}),
@@ -543,24 +855,47 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkGreaterParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода преобразования числа в строку
+ *
+ */
 struct FmkItoaTestParameter {
+	// Система счисления
 	uint8_t radix = 0;
+	// Число для преобразования
 	uint32_t value = 0;
+	// Текст для преобразования
 	std::string text = "";
+	// Ожидаемый результат
 	std::string result = "";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода преобразования числа в строку
+ *
+ */
 class FmkItoaParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkItoaTestParameter> {
 	public:
 		FmkItoaTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода преобразования числа в строку
+ *
+ */
 TEST_P(FmkItoaParameterizedFixture, FmkItoaTest){
+	// Проверяем что текст для преобразования пустой
 	if(this->_parameter.text.empty())
+		// Если текст не указан, то проверяем число
 		ASSERT_EQ(this->_parameter.result, this->_fmk->itoa(this->_parameter.value, this->_parameter.radix));
+	// Если текст указан, то проверяем текст
 	else ASSERT_EQ(this->_parameter.result, this->_fmk->itoa(this->_parameter.text.c_str(), this->_parameter.text.length(), 2));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода преобразования числа в строку
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkItoaParameterizedFixture,
 	::testing::Values(
 		FmkItoaTestParameter({2, 2986, "", "00000000000000000000101110101010"}),
@@ -573,36 +908,64 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkItoaParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода преобразования строки в число
+ *
+ */
 struct FmkAtoiTestParameter {
+	// Система счисления
 	uint8_t radix = 0;
+	// Ожидаемый результат
 	uint32_t result = 0;
+	// Строка для преобразования
 	std::string value = "";
+	// Текст для преобразования
 	std::string text = "";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода преобразования строки в число
+ *
+ */
 class FmkAtoiParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkAtoiTestParameter> {
 	public:
 		FmkAtoiTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода преобразования строки в число
+ *
+ */
 TEST_P(FmkAtoiParameterizedFixture, FmkAtoiTest){
+	// Если текст для преобразования пустой
 	if(this->_parameter.text.empty())
+		// Проверяем что результат преобразования строки в число совпадает с ожидаемым
 		ASSERT_EQ(this->_parameter.result, this->_fmk->atoi <uint32_t> (this->_parameter.value, this->_parameter.radix));
+	// Если текст для преобразования не пустой
 	else {
+		// Вычисляем размер результата
 		size_t size = 0;
+		// Получаем количество битов в строке
 		const size_t count = (this->_parameter.value.length() % 8);
+		// Если количество битов равно нулю
 		if(count == 0)
+			// Получаем размер результата
 			size = (this->_parameter.value.length() / 8);
+		// Если количество битов не равно нулю, получаем размер результата с учетом остатка
 		else size = ((this->_parameter.value.length() + (8 - count)) / 8);
-
+		// Результат преобразования
 		std::string result(size, 0);
-
+		// Выполняем преобразование
 		this->_fmk->atoi(this->_parameter.value, 2, result.data(), result.size());
-		
+		// Проверяем что результат преобразования совпадает с ожидаемым
 		ASSERT_EQ(result, this->_parameter.text);
 	}
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода преобразования строки в число
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkAtoiParameterizedFixture,
 	::testing::Values(
 		FmkAtoiTestParameter({2, 2986, "00000000000000000000101110101010"}),
@@ -615,27 +978,49 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkAtoiParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода noexp
+ *
+ */
 struct FmkNoexpTestParameter {
+	// Количество знаков после запятой
 	uint8_t step = 0;
+	// Значение для преобразования
 	double value = 0.;
+	// Флаг, указывающий на то, что нужно преобразовать только число
 	bool onlyNum = false;
+	// Ожидаемый результат
 	std::string result = "";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода noexp
+ *
+ */
 class FmkNoexpParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkNoexpTestParameter> {
 	public:
 		FmkNoexpTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода noexp
+ *
+ */
 TEST_P(FmkNoexpParameterizedFixture, FmkNoexpTest){
-	
+	// Устанавливаем локаль для корректного отображения чисел
 	this->_fmk->setLocale();
-
+	// Проверяем, что количество знаков после запятой больше нуля
 	if(this->_parameter.step > 0)
+		// Если количество знаков после запятой больше нуля, то проверяем результат с учетом шага
 		ASSERT_EQ(this->_parameter.result, this->_fmk->noexp(this->_parameter.value, this->_parameter.step));
+	// Если количество знаков после запятой равно нулю
 	else ASSERT_EQ(this->_parameter.result, this->_fmk->noexp(this->_parameter.value, this->_parameter.onlyNum));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода noexp
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkNoexpParameterizedFixture,
 	::testing::Values(
 		FmkNoexpTestParameter({3, 2986.808299, false, "2986.808"}),
@@ -647,21 +1032,41 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkNoexpParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода rate
+ *
+ */
 struct FmkRateTestParameter {
+	// Первое число для расчета
 	float num1 = 0.f;
+	// Второе число для расчета
 	float num2 = 0.f;
+	// Ожидаемый результат
 	float result = 0.f;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода rate
+ *
+ */
 class FmkRateParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkRateTestParameter> {
 	public:
 		FmkRateTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода rate
+ *
+ */
 TEST_P(FmkRateParameterizedFixture, FmkRateTest){
+	// Проверяем, что результат расчета совпадает с ожидаемым
 	ASSERT_EQ(static_cast <int32_t> (this->_parameter.result), static_cast <int32_t> (this->_fmk->rate(this->_parameter.num1, this->_parameter.num2)));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода проверки на сколько одно число больше другого в процентах
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkRateParameterizedFixture,
 	::testing::Values(
 		FmkRateTestParameter({58929.f, 38963.f, 51.f}),
@@ -674,21 +1079,41 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkRateParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода floor
+ *
+ */
 struct FmkFloorTestParameter {
+	// Количество знаков после запятой
 	uint8_t count = 0;
+	// Число для округления
 	double num = 0.;
+	// Ожидаемый результат
 	double result = 0.;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода floor
+ *
+ */
 class FmkFloorParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkFloorTestParameter> {
 	public:
 		FmkFloorTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода floor
+ *
+ */
 TEST_P(FmkFloorParameterizedFixture, FmkFloorTest){
+	// Проверяем, что результат округления совпадает с ожидаемым
 	ASSERT_EQ(this->_parameter.result, this->_fmk->floor(this->_parameter.num, this->_parameter.count));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода floor
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFloorParameterizedFixture,
 	::testing::Values(
 		FmkFloorTestParameter({3, 38963.892549, 38963.892}),
@@ -698,25 +1123,49 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFloorParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода конвертирования римских чисел в арабские
+ *
+ */
 struct FmkRome2arabicTestParameter {
+	// Результат конвертации
 	uint16_t result = 0;
+	// Римское число в виде строки
 	std::string num1 = "";
+	// Римское число в виде широкой строки
 	std::wstring num2 = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода конвертирования римских чисел в арабские
+ *
+ */
 class FmkRome2arabicParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkRome2arabicTestParameter> {
 	public:
 		FmkRome2arabicTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода конвертирования римских чисел в арабские
+ *
+ */
 TEST_P(FmkRome2arabicParameterizedFixture, FmkRome2arabicTest){
+	// Если римское число представлено в виде строки
 	if(!this->_parameter.num1.empty())
+		// Выполняем проверку конвертации римского числа в арабское число из строки
 		ASSERT_EQ(this->_parameter.result, this->_fmk->rome2arabic(this->_parameter.num1));
+	// Если римское число представлено в виде широкой строки
 	else if(!this->_parameter.num2.empty())
+		// Выполняем проверку конвертации римского числа в арабское число из широкой строки
 		ASSERT_EQ(this->_parameter.result, this->_fmk->rome2arabic(this->_parameter.num2));
+	// Если римское число не представлено ни в одной из форм
 	else ASSERT_TRUE(false);
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода конвертирования римских чисел в арабские
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkRome2arabicParameterizedFixture,
 	::testing::Values(
 		FmkRome2arabicTestParameter({3874, "MMMDCCCLXXIV"}),
@@ -726,29 +1175,57 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkRome2arabicParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода конвертирования арабских чисел в римские
+ *
+ */
 struct FmkArabic2romeTestParameter {
+	// Число для конвертации
 	uint32_t number = 0;
+	// Число в виде строки
 	std::string word1 = "";
+	// Число в виде широкой строки
 	std::wstring word2 = L"";
+	// Результат конвертации в виде строки
 	std::string result1 = "";
+	// Результат конвертации в виде широкой строки
 	std::wstring result2 = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода конвертирования арабских чисел в римские
+ *
+ */
 class FmkArabic2romeParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkArabic2romeTestParameter> {
 	public:
 		FmkArabic2romeTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода конвертирования арабских чисел в римские
+ *
+ */
 TEST_P(FmkArabic2romeParameterizedFixture, FmkArabic2romeTest){
+	// Если число для конвертации больше нуля
 	if(this->_parameter.number > 0)
+		// Выполняем проверку конвертации арабского числа в римское число из числа
 		ASSERT_EQ(this->_parameter.result2, this->_fmk->arabic2rome(this->_parameter.number));
+	// Если число для конвертации представлено в виде строки
 	else if(!this->_parameter.word1.empty())
+		// Выполняем проверку конвертации арабского числа в римское число из строки
 		ASSERT_EQ(this->_parameter.result1, this->_fmk->arabic2rome(this->_parameter.word1));
+	// Если число для конвертации представлено в виде широкой строки
 	else if(!this->_parameter.word2.empty())
+		// Выполняем проверку конвертации арабского числа в римское число из широкой строки
 		ASSERT_EQ(this->_parameter.result2, this->_fmk->arabic2rome(this->_parameter.word2));
+	// Если римское число не представлено ни в одной из форм
 	else ASSERT_TRUE(false);
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода конвертирования арабских чисел в римские
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkArabic2romeParameterizedFixture,
 	::testing::Values(
 		FmkArabic2romeTestParameter({3874, "", L"", "", L"MMMDCCCLXXIV"}),
@@ -757,21 +1234,41 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkArabic2romeParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода подсчёта количества вхождений буквы в строку
+ *
+ */
 struct FmkCountLetterTestParameter {
+	// Результат подсчёта количества вхождений буквы в строку
 	size_t result = 0;
+	// Буква для подсчёта
 	wchar_t letter = 0;
+	// Строка для подсчёта
 	std::wstring word = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода подсчёта количества вхождений буквы в строку
+ *
+ */
 class FmkCountLetterParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkCountLetterTestParameter> {
 	public:
 		FmkCountLetterTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода подсчёта количества вхождений буквы в строку
+ *
+ */
 TEST_P(FmkCountLetterParameterizedFixture, FmkCountLetterTest){
+	// Выполняем подсчёт количества вхождений буквы в строку
 	ASSERT_EQ(this->_parameter.result, this->_fmk->countLetter(this->_parameter.word, this->_parameter.letter));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода подсчёта количества вхождений буквы в строку
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkCountLetterParameterizedFixture,
 	::testing::Values(
 		FmkCountLetterTestParameter({3, L'т', L"Привет этот мир!!!"}),
@@ -780,21 +1277,42 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkCountLetterParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода форматирования строки
+ *
+ */
 struct FmkFormatTestParameter {
+	// Результат форматирования строки
 	std::string result = "";
+	// Формат формирования строки
 	std::string format = "";
+	// Элементы для форматирования
 	std::vector <std::string> items;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода форматирования строки
+ *
+ */
 class FmkFormatParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkFormatTestParameter> {
 	public:
 		FmkFormatTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода форматирования строки
+ *
+ */
 TEST_P(FmkFormatParameterizedFixture, FmkFormatTest){
+	// Выполняем форматирование строки и проверяем результат
+	ASSERT_EQ(this->_parameter.result, this->_fmk->format("%s", this->_parameter.result.c_str()));
 	ASSERT_EQ(this->_parameter.result, this->_fmk->format(this->_parameter.format, this->_parameter.items));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода форматирования строки
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFormatParameterizedFixture,
 	::testing::Values(
 		FmkFormatTestParameter({"Hello World!!!", "$1 $2!!!", {"Hello", "World"}}),
@@ -802,24 +1320,47 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFormatParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода проверки существования подстроки в строке
+ *
+ */
 struct FmkExistsTestParameter {
+	// Слово для проверки нахождения в тексте
 	std::string word1 = "";
+	// Текст в котором производится проверка
 	std::string text1 = "";
+	// Слово для проверки нахождения в тексте (широкая строка)
 	std::wstring word2 = L"";
+	// Текст в котором производится проверки (широкая строка)
 	std::wstring text2 = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода проверки существования подстроки в строке
+ *
+ */
 class FmkExistsParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkExistsTestParameter> {
 	public:
 		FmkExistsTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода проверки существования подстроки в строке
+ *
+ */
 TEST_P(FmkExistsParameterizedFixture, FmkExistsTest){
+	// Проверяем, что слово существует в тексте
 	if(!this->_parameter.word1.empty() && !this->_parameter.text1.empty())
+		// Если слово и текст указаны, то проверяем существование слова в тексте
 		ASSERT_TRUE(this->_fmk->exists(this->_parameter.word1, this->_parameter.text1));
+	// Если слово и текст не указаны, то проверяем существование слова в тексте (широкая строка)
 	else ASSERT_TRUE(this->_fmk->exists(this->_parameter.word2, this->_parameter.text2));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода проверки существования подстроки в строке
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkExistsParameterizedFixture,
 	::testing::Values(
 		FmkExistsTestParameter({"Wor", "Hello World!!!"}),
@@ -827,28 +1368,55 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkExistsParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода замены подстроки в строке
+ *
+ */
 struct FmkReplaceTestParameter {
+	// Текст в котором производится замена
 	std::string text1 = "";
+	// Слово для замены
 	std::string word1 = "";
+	// Замена слова
 	std::string alt1 = "";
+	// Результат после замены
 	std::string result1 = "";
+	// Текст в котором производится замена (широкая строка)
 	std::wstring text2 = L"";
+	// Слово для замены (широкая строка)
 	std::wstring word2 = L"";
+	// Замена слова (широкая строка)
 	std::wstring alt2 = L"";
+	// Результат после замены (широкая строка)
 	std::wstring result2 = L"";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода замены подстроки в строке
+ *
+ */
 class FmkReplaceParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkReplaceTestParameter> {
 	public:
 		FmkReplaceTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода замены подстроки в строке
+ *
+ */
 TEST_P(FmkReplaceParameterizedFixture, FmkReplaceTest){
+	// Если текстовые параметры для замены заданы и не пустые
 	if(!this->_parameter.text1.empty() && !this->_parameter.word1.empty() && !this->_parameter.result1.empty())
+		// Проверяем, что результат замены слова в тексте совпадает с ожидаемым
 		ASSERT_EQ(this->_parameter.result1, this->_fmk->replace(this->_parameter.text1, this->_parameter.word1, this->_parameter.alt1));
+	// Если широкие текстовые параметры для замены заданы и не пустые, то проверяем результат замены слова в тексте (широкая строка)
 	else ASSERT_EQ(this->_fmk->convert(this->_parameter.result2), this->_fmk->convert(this->_fmk->replace(this->_parameter.text2, this->_parameter.word2, this->_parameter.alt2)));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода замены подстроки в строке
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkReplaceParameterizedFixture,
 	::testing::Values(
 		FmkReplaceTestParameter({"Hello World!!!", "o W", "o and W", "Hello and World!!!"}),
@@ -856,20 +1424,111 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkReplaceParameterizedFixture,
 	)
 );
 
-struct FmkUrlsTestParameter {
-	std::string text;
-	std::map <size_t, size_t> map;
+/**
+ * @brief Структура параметров тестирования метода разбора ключ-значение
+ *
+ */
+struct FmkKVTestParameter {
+	// Текст для разбора
+	std::string text1 = "";
+	// Текст для разбора (широкая строка)
+	std::wstring text2 = L"";
+	// Разделитель ключ-значение
+	std::string delim1 = " ";
+	// Разделитель ключ-значение (широкая строка)
+	std::wstring delim2 = L" ";
+	// Альтернативный результат разбора
+	std::unordered_map <std::string, std::string> result1;
+	// Альтернативный результат разбора (широкая строка)
+	std::unordered_map <std::wstring, std::wstring> result2;
 };
 
+/**
+ * @brief Класс параметризованного теста для метода разбора ключ-значение
+ *
+ */
+class FmkKVParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkKVTestParameter> {
+	public:
+		FmkKVTestParameter _parameter = GetParam();
+};
+
+/**
+ * @brief Метод тестирования метода разбора ключ-значение
+ *
+ */
+TEST_P(FmkKVParameterizedFixture, FmkKVTest){
+	// Если текстовые параметры для замены заданы и не пустые
+	if(!this->_parameter.text1.empty() && !this->_parameter.delim1.empty()){
+		// Выполняем парсинг строки ключ-значение
+		const auto & result = this->_fmk->kv(this->_parameter.text1, this->_parameter.delim1);
+		// Проверяем, что количество разобранных ключ-значение совпадает с ожидаемым
+		ASSERT_EQ(this->_parameter.result1.size(), result.size());
+		// Выполняем проверку каждого ключ-значение
+		for(const auto & [key, value] : this->_parameter.result1)
+			ASSERT_EQ(value, result.at(key));
+	// Если широкие текстовые параметры для замены заданы и не пустые, то проверяем результат разбора ключ-значение (широкая строка)
+	} else ASSERT_EQ(this->_parameter.result2, this->_fmk->kv(this->_parameter.text2, this->_parameter.delim2));
+}
+
+/**
+ * @brief Инициализация параметров тестирования метода разбора ключ-значение
+ *
+ */
+INSTANTIATE_TEST_SUITE_P(TestParameters, FmkKVParameterizedFixture,
+	::testing::Values(
+		FmkKVTestParameter({
+			"http_agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0\" http_retcode=200 msg=\"HTTPS post request from 188.43.251.186:59420 to 10.77.194.51:80\" data=\"abc:\\\" deas\\\"\"",
+			L"http_agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0\" http_retcode=200 msg=\"HTTPS post request from 188.43.251.186:59420 to 10.77.194.51:80\" data=\"abc:\\\" deas\\\"\"",
+			" ",
+			L" ",
+			{
+				{"http_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0"},
+				{"http_retcode", "200"},
+				{"msg", "HTTPS post request from 188.43.251.186:59420 to 10.77.194.51:80"},
+				{"data", "abc:\\\" deas\\\""}
+			},{
+				{L"http_agent", L"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0"},
+				{L"http_retcode", L"200"},
+				{L"msg", L"HTTPS post request from 188.43.251.186:59420 to 10.77.194.51:80"},
+				{L"data", L"abc:\\\" deas\\\""}
+			}
+		})
+	)
+);
+
+/**
+ * @brief Структура параметров тестирования метода извлечения URL из текста
+ *
+ */
+struct FmkUrlsTestParameter {
+	// Текст для извлечения URL
+	std::string text = "";
+	// Ожидаемый результат извлечения URL
+	std::unordered_map <size_t, size_t> map;
+};
+
+/**
+ * @brief Класс параметризованного теста для метода извлечения URL из текста
+ *
+ */
 class FmkUrlsParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkUrlsTestParameter> {
 	public:
 		FmkUrlsTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода извлечения URL из текста
+ *
+ */
 TEST_P(FmkUrlsParameterizedFixture, FmkUrlsTest){
+	// Проверяем, что результат извлечения URL совпадает с ожидаемым
 	ASSERT_EQ(this->_parameter.map, this->_fmk->urls(this->_parameter.text));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода извлечения URL из текста
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkUrlsParameterizedFixture,
 	::testing::Values(
 		FmkUrlsTestParameter({"The address of our site https://www.ddd.com:8080/?id=test&key=hash#is_not_work is not working. You can contact us at another address http://www.example.ru/", {{24,78},{133,155}}}),
@@ -877,21 +1536,41 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkUrlsParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода преобразования байт в человекочитаемый формат и обратно
+ *
+ */
 struct FmkBytesTestParameter {
+	// Число байт
 	double number = 0.;
+	// Человекочитаемый формат
 	std::string word = "";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода преобразования байт в человекочитаемый формат и обратно
+ *
+ */
 class FmkBytesParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkBytesTestParameter> {
 	public:
 		FmkBytesTestParameter _parameter = GetParam();
 };
 
+/**
+ * @brief Метод тестирования метода преобразования байт в человекочитаемый формат и обратно
+ *
+ */
 TEST_P(FmkBytesParameterizedFixture, FmkBytesTest){
+	// Проверяем, что результат преобразования байт в человекочитаемый формат и обратно совпадает с ожидаемым
 	ASSERT_EQ(this->_parameter.number, this->_fmk->bytes(this->_parameter.word));
+	// Проверяем обратное преобразование человекочитаемого формата в байты
 	ASSERT_EQ(this->_parameter.word, this->_fmk->bytes(this->_parameter.number));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода преобразования байт в человекочитаемый формат и обратно
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkBytesParameterizedFixture,
 	::testing::Values(
 		FmkBytesTestParameter({107374182400., "100 Gb"}),
@@ -902,45 +1581,40 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkBytesParameterizedFixture,
 	)
 );
 
-struct FmkSecondsTestParameter {
-	time_t seconds = 0;
-	std::string str = "";
-};
-
-class FmkSecondsParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkSecondsTestParameter> {
-	public:
-		FmkSecondsTestParameter _parameter = GetParam();
-};
-
-TEST_P(FmkSecondsParameterizedFixture, FmkSecondsTest){
-	ASSERT_EQ(this->_parameter.seconds, this->_fmk->seconds(this->_parameter.str));
-	ASSERT_EQ(this->_parameter.str, this->_fmk->seconds(this->_parameter.seconds));
-}
-
-INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSecondsParameterizedFixture,
-	::testing::Values(
-		FmkSecondsTestParameter({1020, "17m"}),
-		FmkSecondsTestParameter({86400, "1d"}),
-		FmkSecondsTestParameter({8672400, "3.3M"}),
-		FmkSecondsTestParameter({88300800, "2.8y"}),
-		FmkSecondsTestParameter({94608000, "3y"})
-	)
-);
-
+/**
+ * @brief Структура параметров тестирования метода преобразования человекочитаемого формата в байты
+ *
+ */
 struct FmkSizeBufferTestParameter {
+	// Ожидаемый результат
 	size_t result = 0;
+	// Человекочитаемый формат
 	std::string str = "";
 };
 
+/**
+ * @brief Класс параметризованного теста для метода преобразования человекочитаемого формата в байты
+ *
+ */
 class FmkSizeBufferParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkSizeBufferTestParameter> {
 	public:
 		FmkSizeBufferTestParameter _parameter = GetParam();
 };
 
+/**
+ * 
+ * @brief Метод тестирования метода преобразования человекочитаемого формата в байты
+ *
+ */
 TEST_P(FmkSizeBufferParameterizedFixture, FmkSizeBufferTest){
+	// Проверяем, что результат преобразования человекочитаемого формата в байты совпадает с ожидаемым
 	ASSERT_EQ(this->_parameter.result, this->_fmk->sizeBuffer(this->_parameter.str));
 }
 
+/**
+ * @brief Инициализация параметров тестирования метода преобразования человекочитаемого формата в байты
+ *
+ */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeBufferParameterizedFixture,
 	::testing::Values(
 		FmkSizeBufferTestParameter({5, "1024 bps"}),
@@ -949,105 +1623,3 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeBufferParameterizedFixture,
 		FmkSizeBufferTestParameter({56320000, "11 Gbps"})
 	)
 );
-
-struct FmkTime2abbrTestParameter {
-	time_t date = 0;
-	std::string result = "";
-};
-
-class FmkTime2abbrParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkTime2abbrTestParameter> {
-	public:
-		FmkTime2abbrTestParameter _parameter = GetParam();
-};
-
-TEST_P(FmkTime2abbrParameterizedFixture, FmkTime2abbrTest){
-	ASSERT_EQ(this->_parameter.result, this->_fmk->time2abbr(this->_parameter.date));
-}
-
-INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTime2abbrParameterizedFixture,
-	::testing::Values(
-		FmkTime2abbrTestParameter({582892, "9.7 min"}),
-		FmkTime2abbrTestParameter({47799, "47.8 sec"}),
-		FmkTime2abbrTestParameter({2589, "2.6 sec"}),
-		FmkTime2abbrTestParameter({10844922, "3.0 hour"})
-	)
-);
-
-struct FmkTime2strTestParameter {
-	time_t date = 0;
-	std::string format;
-	std::string result;
-};
-
-class FmkTime2strParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkTime2strTestParameter> {
-	public:
-		FmkTime2strTestParameter _parameter = GetParam();
-};
-
-TEST_P(FmkTime2strParameterizedFixture, FmkTime2strTest){
-	ASSERT_EQ(this->_parameter.result, this->_fmk->time2str(this->_parameter.date, this->_parameter.format));
-}
-
-INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTime2strParameterizedFixture,
-	::testing::Values(
-		FmkTime2strTestParameter({1743943021, "%Y-%m-%dT%H:%M:%S%z", "2025-04-06T15:37:01+0300"}),
-		FmkTime2strTestParameter({1743943021, "%m/%d/%Y %I:%M:%S %p", "04/06/2025 03:37:01 PM"}),
-		FmkTime2strTestParameter({1743943021, "%m/%d/%y %I:%M:%S %p", "04/06/25 03:37:01 PM"}),
-		FmkTime2strTestParameter({1743943021, "%Y-%m-%dT%H:%M:%S", "2025-04-06T15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%m/%d/%Y %I:%M:%S %p", "04/06/2025 03:37:01 PM"}),
-		FmkTime2strTestParameter({1743943021, "%a %h %d %H:%M:%S %Y", "Sun Apr 06 15:37:01 2025"}),
-		FmkTime2strTestParameter({1743943021, "%d/%h/%Y:%H:%M:%S %z", "06/Apr/2025:15:37:01 +0300"}),
-		FmkTime2strTestParameter({1743943021, "%h %d %H:%M:%S", "Apr 06 15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%Y-%m-%d %H:%M:%S", "2025-04-06 15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%d/%h/%Y:%H:%M:%S %z", "06/Apr/2025:15:37:01 +0300"}),
-		FmkTime2strTestParameter({1743943021, "%Y/%m/%d %H:%M:%S", "2025/04/06 15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%d.%m.%Y %H:%M:%S", "06.04.2025 15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%m-%d %H:%M:%S", "04-06 15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%H:%M:%S", "15:37:01"}),
-		FmkTime2strTestParameter({1743943021, "%a %h %e %Y %H:%M:%S %z", "Sun Apr  6 2025 15:37:01 +0300"}),
-		FmkTime2strTestParameter({1743943021, "%a %h %e %H:%M:%S %z", "Sun Apr  6 15:37:01 +0300"}),
-		FmkTime2strTestParameter({1743943021, "%a %h %e %Y %H:%M:%S %Z%z", "Sun Apr  6 2025 15:37:01 MSK+0300"}),
-		FmkTime2strTestParameter({1743943021, "%h %d %H:%M %Z%z", "Apr 06 15:37 MSK+0300"}),
-		FmkTime2strTestParameter({1743943021, "%a %h %e %H:%M:%S %W %z %j", "Sun Apr  6 15:37:01 13 +0300 096"}),
-		FmkTime2strTestParameter({1743943021, "%Y%m%dT%H%M%S%z", "20250406T153701+0300"})
-	)
-);
-
-struct FmkStr2timeTestParameter {
-	std::string date;
-	std::string format;
-	time_t result = 0;
-};
-
-class FmkStr2timeParameterizedFixture : public FmkFixture, public ::testing::WithParamInterface <FmkStr2timeTestParameter> {
-	public:
-		FmkStr2timeTestParameter _parameter = GetParam();
-};
-
-TEST_P(FmkStr2timeParameterizedFixture, FmkStr2timeTest){
-	ASSERT_EQ(this->_parameter.result, this->_fmk->str2time(this->_parameter.date, this->_parameter.format));
-}
-
-INSTANTIATE_TEST_SUITE_P(TestParameters, FmkStr2timeParameterizedFixture,
-	::testing::Values(
-		FmkStr2timeTestParameter({"2023-03-05T12:55:58.0490925Z", "%Y-%m-%dT%H:%M:%S.%s%Z", 1678010158}),
-		FmkStr2timeTestParameter({"2024-08-06T11:08:55Z", "%Y-%m-%dT%H:%M:%S%Z", 1722931735}),
-		FmkStr2timeTestParameter({"2024-08-06T14:47:34+0300", "%Y-%m-%dT%H:%M:%S%z", 1722944854}),
-		FmkStr2timeTestParameter({"7/26/2023 2:39:42 PM", "%m/%d/%Y %I:%M:%S %p", 1690371582}),
-		FmkStr2timeTestParameter({"2023-07-26T14:39:4", "%Y-%m-%dT%H:%M:%S", 1690371544}),
-		FmkStr2timeTestParameter({"7/26/2023 2:39:42 PM", "%m/%d/%Y %I:%M:%S %p", 1690371582}),
-		FmkStr2timeTestParameter({"2024-11-15 17:14:03", "%Y-%m-%d %H:%M:%S", 1731680043}),
-		FmkStr2timeTestParameter({"Tue Jul 16 10:45:40 2024", "%a %h %d %H:%M:%S %Y", 1721115940}),
-		FmkStr2timeTestParameter({"05/Apr/2023:12:45:12 +0300", "%d/%h/%Y:%H:%M:%S %z", 1680687912}),
-		FmkStr2timeTestParameter({"2024-10-16 10:30:45", "%Y-%m-%d %H:%M:%S", 1729063845}),
-		FmkStr2timeTestParameter({"[18/Jul/2024:13:34:00 +0300]", "[%d/%h/%Y:%H:%M:%S %z]", 1721298840}),
-		FmkStr2timeTestParameter({"[18/Jul/24:13:34:00 +0300]", "[%d/%h/%y:%H:%M:%S %z]", 1721298840}),
-		FmkStr2timeTestParameter({"2024/07/18 13:33:17", "%Y/%m/%d %H:%M:%S", 1721298797}),
-		FmkStr2timeTestParameter({"17.07.2023 13:25:53", "%d.%m.%Y %H:%M:%S", 1689589553}),
-		FmkStr2timeTestParameter({"Wed Mar 19 2025 15:51:10 GMT+0300", "%a %h %e %Y %H:%M:%S %z", 1742388670}),
-		FmkStr2timeTestParameter({"Wed Mar 30 2025 15:51:10 GMT+0300", "%a %h %e %Y %H:%M:%S %Z%z", 1743339070}),
-		FmkStr2timeTestParameter({"20050809T183142+0330", "%Y%m%dT%H%M%S%z", 1123601502}),
-		FmkStr2timeTestParameter({"Wed Mar 19 2025 15:51:10", "%a %h %e %Y %H:%M:%S %z", 1742388670})
-	)
-);
-*/

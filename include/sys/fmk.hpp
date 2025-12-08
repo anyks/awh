@@ -347,7 +347,7 @@ namespace awh {
 			 * @param codepage кодировка в которую необходимо сконвертировать текст
 			 * @return         сконвертированный текст в требуемой кодировке
 			 */
-			string iconv(const string & text, const codepage_t codepage = codepage_t::AUTO) const noexcept;
+			string transcode(const string & text, const codepage_t codepage = codepage_t::AUTO) const noexcept;
 		public:
 			/**
 			 * @brief Метод трансформации одного символа

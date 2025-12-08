@@ -174,7 +174,7 @@ namespace {
 			 * @param log  объект работы с логами
 			 * @return     получившееся в результате значение
 			 */
-			string convertEncoding(const string & data, const string & from, const string & to, const awh::log_t * log){
+			static string convertEncoding(const string & data, const string & from, const string & to, const awh::log_t * log){
 				// Результат работы функции
 				string result = "";
 				// Если данные переданы на вход правильно
@@ -2132,7 +2132,7 @@ template string awh::Framework::timestamp <string> (const chrono_t) const noexce
  * @param codepage кодировка в которую необходимо сконвертировать текст
  * @return         сконвертированный текст в требуемой кодировке
  */
-string awh::Framework::iconv(const string & text, const codepage_t codepage) const noexcept {
+string awh::Framework::transcode(const string & text, const codepage_t codepage) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если текст передан
@@ -2154,9 +2154,9 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 						// Если текст передан в кодировке UTF-8
 						if(this->is(text, check_t::UTF8))
 							// Выполняем перекодирование в CP1251
-							return this->iconv(text, codepage_t::UTF8_CP1251);
+							return this->transcode(text, codepage_t::UTF8_CP1251);
 						// Выполняем перекодирование в UTF-8
-						else return this->iconv(text, codepage_t::CP1251_UTF8);
+						else return this->transcode(text, codepage_t::CP1251_UTF8);
 					} break;
 					// Если требуется выполнить кодировку в UTF-8
 					case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
@@ -2232,9 +2232,9 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 							// Если текст передан в кодировке UTF-8
 							if(this->is(text, check_t::UTF8))
 								// Выполняем перекодирование в CP1251
-								return this->iconv(text, codepage_t::UTF8_CP1251);
+								return this->transcode(text, codepage_t::UTF8_CP1251);
 							// Выполняем перекодирование в UTF-8
-							else return this->iconv(text, codepage_t::CP1251_UTF8);
+							else return this->transcode(text, codepage_t::CP1251_UTF8);
 						} break;
 						// Если требуется выполнить кодировку в UTF-8
 						case static_cast <uint8_t> (codepage_t::CP1251_UTF8):
