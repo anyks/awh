@@ -17,6 +17,8 @@ if(${GTest_FOUND})
 		fmk/fmk.cpp
 		fmk/static.cpp
 		fmk/parameterized.cpp
+		chrono/chrono.cpp
+		chrono/parameterized.cpp
 	)
 
 	# Библиотеки GTest для линковки
