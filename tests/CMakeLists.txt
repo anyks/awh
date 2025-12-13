@@ -14,28 +14,31 @@ if(${GTest_FOUND})
 	# Источники для сборки юнит-тестов
 	SET(${PROJECT_NAME}_UNITTEST_SOURCES
 		main.cpp
-		os/os.cpp
-		os/static.cpp
-		fmk/fmk.cpp
-		fmk/static.cpp
-		fmk/parameterized.cpp
-		log/log.cpp
-		log/static.cpp
-		log/parameterized.cpp
-		reg/reg.cpp
-		reg/static.cpp
-		reg/parameterized.cpp
-		queue/queue.cpp
-		queue/static.cpp
-		queue/parameterized.cpp
-		buffer/buffer.cpp
-		buffer/static.cpp
-		buffer/parameterized.cpp
-		chrono/chrono.cpp
-		chrono/parameterized.cpp
-		threadpool/threadpool.cpp
-		threadpool/static.cpp
-		threadpool/parameterized.cpp
+		sys/os/os.cpp
+		sys/os/static.cpp
+		sys/fmk/fmk.cpp
+		sys/fmk/static.cpp
+		sys/fmk/parameterized.cpp
+		sys/log/log.cpp
+		sys/log/static.cpp
+		sys/log/parameterized.cpp
+		sys/reg/reg.cpp
+		sys/reg/static.cpp
+		sys/reg/parameterized.cpp
+		sys/queue/queue.cpp
+		sys/queue/static.cpp
+		sys/queue/parameterized.cpp
+		sys/buffer/buffer.cpp
+		sys/buffer/static.cpp
+		sys/buffer/parameterized.cpp
+		sys/chrono/chrono.cpp
+		sys/chrono/parameterized.cpp
+		sys/threadpool/threadpool.cpp
+		sys/threadpool/static.cpp
+		sys/threadpool/parameterized.cpp
+		net/addr/addr.cpp
+		net/addr/static.cpp
+		net/addr/parameterized.cpp
 	)
 
 	# Библиотеки GTest для линковки

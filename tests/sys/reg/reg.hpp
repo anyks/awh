@@ -18,9 +18,9 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../main.hpp"
-#include "../../include/sys/log.hpp"
-#include "../../include/sys/reg.hpp"
+#include "../../main.hpp"
+#include "../../../include/sys/log.hpp"
+#include "../../../include/sys/reg.hpp"
 
 /**
  * @brief Класс фикстуры для тестов регулярных выражений

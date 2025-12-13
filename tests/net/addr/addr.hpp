@@ -1,5 +1,5 @@
 /**
- * @file: queue.hpp
+ * @file: addr.hpp
  * @date: 2025-12-13
  * @license: GPL-3.0
  *
@@ -12,27 +12,24 @@
  * @copyright: Copyright © 2025
  */
  
-#ifndef __AWH_QUEUE_TESTS__
-#define __AWH_QUEUE_TESTS__
+#ifndef __AWH_NET_ADDR_TESTS__
+#define __AWH_NET_ADDR_TESTS__
+
+#include "../../main.hpp"
+#include "../../../include/net/addr.hpp"
 
 /**
- * Подключаем заголовочный файлы проекта
- */
-#include "../main.hpp"
-#include "../../include/sys/queue.hpp"
-
-/**
- * @brief Класс фикстуры для тестов бинарной очереди
+ * @brief Класс фикстуры для тестов сетевых адресов
  *
  */
-class QueueFixture : public testing::Test {
+class NetFixture : public testing::Test {
 	protected:
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
+		// Объект для работы с логами
 		std::unique_ptr <awh::log_t> _log;
-		// Объект очереди
-		std::unique_ptr <awh::queue_t> _queue;
+		// Объект сетевого адреса
+		std::unique_ptr <awh::net_addr_t> _addr;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды
@@ -46,4 +43,4 @@ class QueueFixture : public testing::Test {
 		void TearDown();
 };
 
-#endif // __AWH_QUEUE_TESTS__
+#endif // __AWH_NET_ADDR_TESTS__

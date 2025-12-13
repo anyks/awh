@@ -1,5 +1,5 @@
 /**
- * @file: os.hpp
+ * @file: buffer.hpp
  * @date: 2025-12-13
  * @license: GPL-3.0
  *
@@ -11,28 +11,28 @@
  *
  * @copyright: Copyright © 2025
  */
- 
-#ifndef __AWH_OS_TESTS__
-#define __AWH_OS_TESTS__
+
+#ifndef __AWH_BUFFER_TESTS__
+#define __AWH_BUFFER_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../main.hpp"
-#include "../../include/sys/os.hpp"
+#include "../../main.hpp"
+#include "../../../include/sys/buffer.hpp"
 
 /**
- * @brief Класс фикстуры для тестов модуля работы с операционной системой
+ * @brief Класс фикстуры для тестов смартбуфера
  *
  */
-class OSFixture : public testing::Test {
+class BufferFixture : public testing::Test {
 	protected:
-		// Объект работы с операционной системой
-		std::unique_ptr <awh::os_t> _os;
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
+		// Объект смартбуфера
+		std::unique_ptr <awh::buffer_t> _buffer;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения
@@ -46,4 +46,4 @@ class OSFixture : public testing::Test {
 		void TearDown();
 };
 
-#endif // __AWH_OS_TESTS__
+#endif // __AWH_BUFFER_TESTS__

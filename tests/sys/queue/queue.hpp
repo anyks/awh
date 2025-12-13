@@ -1,5 +1,5 @@
 /**
- * @file: buffer.hpp
+ * @file: queue.hpp
  * @date: 2025-12-13
  * @license: GPL-3.0
  *
@@ -11,39 +11,39 @@
  *
  * @copyright: Copyright © 2025
  */
-
-#ifndef __AWH_BUFFER_TESTS__
-#define __AWH_BUFFER_TESTS__
+ 
+#ifndef __AWH_QUEUE_TESTS__
+#define __AWH_QUEUE_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../main.hpp"
-#include "../../include/sys/buffer.hpp"
+#include "../../main.hpp"
+#include "../../../include/sys/queue.hpp"
 
 /**
- * @brief Класс фикстуры для тестов смартбуфера
+ * @brief Класс фикстуры для тестов бинарной очереди
  *
  */
-class BufferFixture : public testing::Test {
+class QueueFixture : public testing::Test {
 	protected:
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
-		// Объект смартбуфера
-		std::unique_ptr <awh::buffer_t> _buffer;
+		// Объект очереди
+		std::unique_ptr <awh::queue_t> _queue;
 	public:
 		/**
-		 * @brief Метод настройки тестового окружения
+		 * @brief Метод инициализации тестовой среды
 		 *
 		 */
 		void SetUp();
 		/**
-		 * @brief Метод очистки тестового окружения
+		 * @brief Метод очистки тестовой среды
 		 *
 		 */
 		void TearDown();
 };
 
-#endif // __AWH_BUFFER_TESTS__
+#endif // __AWH_QUEUE_TESTS__

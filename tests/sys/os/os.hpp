@@ -1,6 +1,6 @@
 /**
- * @file: log.hpp
- * @date: 2025-12-12
+ * @file: os.hpp
+ * @date: 2025-12-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,21 +12,23 @@
  * @copyright: Copyright © 2025
  */
  
-#ifndef __AWH_LOG_TESTS__
-#define __AWH_LOG_TESTS__
+#ifndef __AWH_OS_TESTS__
+#define __AWH_OS_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../main.hpp"
-#include "../../include/sys/log.hpp"
+#include "../../main.hpp"
+#include "../../../include/sys/os.hpp"
 
 /**
- * @brief Тестовый класс для работы с логами
+ * @brief Класс фикстуры для тестов модуля работы с операционной системой
  *
  */
-class LogFixture : public testing::Test {
+class OSFixture : public testing::Test {
 	protected:
+		// Объект работы с операционной системой
+		std::unique_ptr <awh::os_t> _os;
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
@@ -44,4 +46,4 @@ class LogFixture : public testing::Test {
 		void TearDown();
 };
 
-#endif // __AWH_LOG_TESTS__
+#endif // __AWH_OS_TESTS__

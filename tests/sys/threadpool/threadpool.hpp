@@ -18,9 +18,9 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../main.hpp"
-#include "../../include/sys/locker.hpp"
-#include "../../include/sys/threadpool.hpp"
+#include "../../main.hpp"
+#include "../../../include/sys/locker.hpp"
+#include "../../../include/sys/threadpool.hpp"
 
 /**
  * @brief Класс фикстуры для тестов пула потоков

@@ -18,8 +18,8 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../main.hpp"
-#include "../../include/sys/fmk.hpp"
+#include "../../main.hpp"
+#include "../../../include/sys/fmk.hpp"
 
 /**
  * @brief Класс фикстуры для тестов фреймворка

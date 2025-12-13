@@ -2744,7 +2744,7 @@ bool awh::NetworkAddress::mapping(const string & network, const uint8_t prefix, 
 							const uint32_t nwk = netaddr.v4();
 							// Выводим результат проверки
 							return (ip == nwk);
-						} break;
+						}
 						// Если IP-адрес определён как IPv6
 						case static_cast <uint8_t> (type_t::IPV6): {
 							// Копируем текущий IP-адрес
@@ -2761,7 +2761,7 @@ bool awh::NetworkAddress::mapping(const string & network, const uint8_t prefix, 
 							const auto & nwk = netaddr.v6();
 							// Выводим результат проверки
 							return (::memcmp(&ip[0], &nwk[0], sizeof(ip)) == 0);
-						} break;
+						}
 					}
 				}
 			}
@@ -4218,29 +4218,49 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 												// Формируем строку в формате ::xxx
 												pos = ::sprintf(&result[0], "%c%c", delim, delim);
 												// Продолжаем вывод оставшихся хекстетов
-												for(int16_t i = length; i < 8; ++i)
+												for(int16_t i = length; i < 8; ++i){
+													// Если разделитель нам не требуется
+													if(i == length)
+														// Выводим хекстеты с разделителем
+														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
 													// Выводим хекстеты с разделителем
-													pos += ::sprintf(&result[0] + pos, "%c%X", (i == length) ? 0 : delim, hexets[i]);
+													else pos += ::sprintf(&result[0] + pos, "%c%X", delim, hexets[i]);
+												}
 											// Если сжатие в конце
 											} else if((begin + length) == 8) {
 												// Формируем строку в формате xxx::
-												for(int16_t i = 0; i < begin; ++i)
+												for(int16_t i = 0; i < begin; ++i){
+													// Если разделитель нам не требуется
+													if(i == 0)
+														// Выводим хекстеты с разделителем
+														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
 													// Выводим хекстеты с разделителем
-													pos += ::sprintf(&result[0] + pos, "%c%X", (i == 0) ? 0 : delim, hexets[i]);
+													else pos += ::sprintf(&result[0] + pos, "%c%X", delim, hexets[i]);
+												}
 												// Завершаем сжатием
 												pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
 											// Если сжатие в середине
 											} else {
 												// Формируем строку в формате xxx::xxx
-												for(int16_t i = 0; i < begin; ++i)
+												for(int16_t i = 0; i < begin; ++i){
+													// Если разделитель нам не требуется
+													if(i == 0)
+														// Выводим хекстеты с разделителем
+														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
 													// Выводим хекстеты с разделителем
-													pos += ::sprintf(&result[0] + pos, "%c%X", (i == 0) ? 0 : delim, hexets[i]);
+													else pos += ::sprintf(&result[0] + pos, "%c%X", delim, hexets[i]);
+												}
 												// Добавляем сжатие
 												pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
 												// Продолжаем вывод оставшихся хекстетов
-												for(int16_t i = (begin + length); i < 8; ++i)
+												for(int16_t i = (begin + length); i < 8; ++i){
+													// Если разделитель нам не требуется
+													if(i == 7)
+														// Выводим хекстеты с разделителем
+														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
 													// Выводим хекстеты с разделителем
-													pos += ::sprintf(&result[0] + pos, "%X%c", hexets[i], (i == 7) ? 0 : delim);
+													else pos += ::sprintf(&result[0] + pos, "%X%c", hexets[i], delim);
+												}
 											}
 										}
 									}
@@ -4284,29 +4304,49 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 											// Формируем строку в формате ::xxx
 											pos = ::sprintf(&result[0], "%c%c", delim, delim);
 											// Продолжаем вывод оставшихся хекстетов
-											for(int16_t i = length; i < 8; ++i)
+											for(int16_t i = length; i < 8; ++i){
+												// Если разделитель нам не требуется
+												if(i == length)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%c%u", (i == length) ? 0 : delim, hexets[i]);
+												else pos += ::sprintf(&result[0] + pos, "%c%u", delim, hexets[i]);
+											}
 										// Если сжатие в конце
 										} else if((begin + length) == 8) {
 											// Формируем строку в формате xxx::
-											for(int16_t i = 0; i < begin; ++i)
+											for(int16_t i = 0; i < begin; ++i){
+												// Если разделитель нам не требуется
+												if(i == 0)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%c%u", (i == 0) ? 0 : delim, hexets[i]);
+												else pos += ::sprintf(&result[0] + pos, "%c%u", delim, hexets[i]);
+											}
 											// Завершаем сжатием
 											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
 										// Если сжатие в середине
 										} else {
 											// Формируем строку в формате xxx::xxx
-											for(int16_t i = 0; i < begin; ++i)
+											for(int16_t i = 0; i < begin; ++i){
+												// Если разделитель нам не требуется
+												if(i == 0)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%c%u", (i == 0) ? 0 : delim, hexets[i]);
+												else pos += ::sprintf(&result[0] + pos, "%c%u", delim, hexets[i]);
+											}
 											// Добавляем сжатие
 											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
 											// Продолжаем вывод оставшихся хекстетов
-											for(int16_t i = (begin + length); i < 8; ++i)
+											for(int16_t i = (begin + length); i < 8; ++i){
+												// Если разделитель нам не требуется
+												if(i == 7)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%u%c", hexets[i], (i == 7) ? 0 : delim);
+												else pos += ::sprintf(&result[0] + pos, "%u%c", hexets[i], delim);
+											}
 										}
 									}
 								} break;
@@ -4349,29 +4389,49 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 											// Формируем строку в формате ::xxx
 											pos = ::sprintf(&result[0], "%c%c", delim, delim);
 											// Продолжаем вывод оставшихся хекстетов
-											for(int16_t i = length; i < 8; ++i)
+											for(int16_t i = length; i < 8; ++i){
+												// Если разделитель нам не требуется
+												if(i == length)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%c%o", (i == length) ? 0 : delim, hexets[i]);
+												else pos += ::sprintf(&result[0] + pos, "%c%o", delim, hexets[i]);
+											}
 										// Если сжатие в конце
 										} else if((begin + length) == 8) {
 											// Формируем строку в формате xxx::
-											for(int16_t i = 0; i < begin; ++i)
+											for(int16_t i = 0; i < begin; ++i){
+												// Если разделитель нам не требуется
+												if(i == 0)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%c%o", (i == 0) ? 0 : delim, hexets[i]);
+												else pos += ::sprintf(&result[0] + pos, "%c%o", delim, hexets[i]);
+											}
 											// Завершаем сжатием
 											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
 										// Если сжатие в середине
 										} else {
 											// Формируем строку в формате xxx::xxx
-											for(int16_t i = 0; i < begin; ++i)
+											for(int16_t i = 0; i < begin; ++i){
+												// Если разделитель нам не требуется
+												if(i == 0)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%c%o", (i == 0) ? 0 : delim, hexets[i]);
+												else pos += ::sprintf(&result[0] + pos, "%c%o", delim, hexets[i]);
+											}
 											// Добавляем сжатие
 											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
 											// Продолжаем вывод оставшихся хекстетов
-											for(int16_t i = (begin + length); i < 8; ++i)
+											for(int16_t i = (begin + length); i < 8; ++i){
+												// Если разделитель нам не требуется
+												if(i == 7)
+													// Выводим хекстеты с разделителем
+													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
 												// Выводим хекстеты с разделителем
-												pos += ::sprintf(&result[0] + pos, "%o%c", hexets[i], (i == 7) ? 0 : delim);
+												else pos += ::sprintf(&result[0] + pos, "%o%c", hexets[i], delim);
+											}
 										}
 									}
 								} break;
