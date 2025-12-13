@@ -1,6 +1,6 @@
 /**
- * @file: fmk.hpp
- * @date: 2025-12-07
+ * @file: queue.hpp
+ * @date: 2025-12-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,23 +12,27 @@
  * @copyright: Copyright © 2025
  */
  
-#ifndef __AWH_FMK_TESTS__
-#define __AWH_FMK_TESTS__
+#ifndef __AWH_QUEUE_TESTS__
+#define __AWH_QUEUE_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
 #include "../main.hpp"
-#include "../../include/sys/fmk.hpp"
+#include "../../include/sys/queue.hpp"
 
 /**
- * @brief Класс фикстуры для тестов фреймворка
+ * @brief Класс фикстуры для тестов бинарной очереди
  *
  */
-class FmkFixture : public testing::Test {
+class QueueFixture : public testing::Test {
 	protected:
-		// Объект фреймворка
+		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
+		// Объект логов
+		std::unique_ptr <awh::log_t> _log;
+		// Объект очереди
+		std::unique_ptr <awh::queue_t> _queue;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды
@@ -42,4 +46,4 @@ class FmkFixture : public testing::Test {
 		void TearDown();
 };
 
-#endif // __AWH_FMK_TESTS__
+#endif // __AWH_QUEUE_TESTS__

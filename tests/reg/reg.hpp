@@ -1,6 +1,6 @@
 /**
- * @file: chrono.hpp
- * @date: 2025-12-10
+ * @file: fmk.hpp
+ * @date: 2025-12-12
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,39 +12,39 @@
  * @copyright: Copyright © 2025
  */
  
-#ifndef __AWH_CHRONO_TESTS__
-#define __AWH_CHRONO_TESTS__
+#ifndef __AWH_REGEXP_TESTS__
+#define __AWH_REGEXP_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
 #include "../main.hpp"
 #include "../../include/sys/log.hpp"
-#include "../../include/sys/chrono.hpp"
+#include "../../include/sys/reg.hpp"
 
 /**
- * @brief Класс фикстуры для тестов модуля работы с датой и временем
+ * @brief Класс фикстуры для тестов регулярных выражений
  *
  */
-class ChronoFixture : public testing::Test {
+class RegFixture : public testing::Test {
 	protected:
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
-		// Объект работы с датой и временем
-		std::unique_ptr <awh::chrono_t> _chrono;
+		// Объект регулярного выражения
+		std::unique_ptr <awh::regexp_t> _reg;
 	public:
 		/**
-		 * @brief Метод настройки тестового окружения
+		 * @brief Метод инициализации тестовой среды
 		 *
 		 */
 		void SetUp();
 		/**
-		 * @brief Метод очистки тестового окружения
+		 * @brief Метод очистки тестовой среды
 		 *
 		 */
 		void TearDown();
 };
 
-#endif // __AWH_CHRONO_TESTS__
+#endif // __AWH_REGEXP_TESTS__

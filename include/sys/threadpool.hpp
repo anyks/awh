@@ -75,7 +75,7 @@ namespace awh {
 			 */
 			bool check() const noexcept {
 				// Если данные получены или произошла остановка
-				return (this->_stop || !this->_tasks.empty());
+				return (this->_stop.load(std::memory_order_acquire) || !this->_tasks.empty());
 			}
 		private:
 			/**
@@ -86,7 +86,7 @@ namespace awh {
 				/**
 				 * Запускаем бесконечный цикл
 				 */
-				while(!this->_stop){
+				while(!this->_stop.load(std::memory_order_acquire)){
 					/**
 					 * Создаём текущее задание
 					 */
@@ -98,24 +98,31 @@ namespace awh {
 						// Если это не остановка приложения и список задач пустой, ожидаем добавления нового задания
 						this->_cv.wait_for(lock, 100ms, std::bind(&ThreadPool::check, this));
 						// Если это остановка приложения и список задач пустой, выходим
-						if(this->_stop && this->_tasks.empty())
+						if(this->_stop.load(std::memory_order_acquire) && this->_tasks.empty())
 							// Выходим из функции
 							return;
 						// Если данные в очереди существуют
 						if(!this->_tasks.empty()){
 							// Получаем текущее задание
-							task = this->_tasks.front();
+							task = std::move(this->_tasks.front());
 							// Удаляем текущее задание
 							this->_tasks.pop();
-						// Иначе выполняем пропуск
-						} else continue;
+						// Если заданий нет
+						} else {
+							// Если мы ожидаем завершения работы всех задач
+							if(this->_wait.load(std::memory_order_acquire))
+								// Выполняем остановку работы цикла задач
+								this->_stop.store(this->_wait.load(std::memory_order_acquire), std::memory_order_release);
+							// Пропускаем итерацию цикла
+							continue;
+						}
 					}
 					// Задача появилась, исполняем её и сообщаем о том, что задача выбрана из очереди
 					task();
 					// Если мы ожидаем завершения работы всех задач
-					if(this->_wait)
+					if(this->_wait.load(std::memory_order_acquire))
 						// Выполняем остановку работы цикла задач
-						this->_stop = this->_tasks.empty();
+						this->_stop.store(this->_tasks.empty(), std::memory_order_release);
 				}
 			}
 		public:
@@ -135,15 +142,15 @@ namespace awh {
 			 */
 			void wait() noexcept {
 				// Устанавливаем флаг ожидания выполнения всех зада
-				this->_wait = true;
+				this->_wait.store(true, std::memory_order_release);
 				// Ожидаем завершение работы каждого воркера
 				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
-					worker.join();
+					worker.join();		
 				// Сбрасываем флаг завершения работы пула потоков по умолчанию
-				this->_stop = false;
+				this->_stop.store(false, std::memory_order_release);
 				// Сбрасываем флаг ожидания выполнения всех зада
-				this->_wait = false;
+				this->_wait.store(false, std::memory_order_release);
 				// Очищаем список потоков
 				this->_workers.clear();
 				// Очищаем список задач
@@ -155,7 +162,7 @@ namespace awh {
 			 */
 			void stop() noexcept {
 				// Останавливаем работу потоков
-				this->_stop = true;
+				this->_stop.store(true, std::memory_order_release);
 				// Сообщаем всем что мы завершаем работу
 				this->_cv.notify_all();
 				// Ожидаем завершение работы каждого воркера
@@ -163,7 +170,7 @@ namespace awh {
 					// Выполняем ожидание завершения работы потоков
 					worker.join();
 				// Восстанавливаем работу потоков
-				this->_stop = false;
+				this->_stop.store(false, std::memory_order_release);
 				// Очищаем список потоков
 				this->_workers.clear();
 				// Очищаем список задач
@@ -254,7 +261,7 @@ namespace awh {
 					// Выполняем блокировку уникальным мютексом
 					unique_lock <std::mutex> lock(this->_locker);
 					// Если это не остановка работы
-					if(!this->_stop)
+					if(!this->_stop.load(std::memory_order_acquire))
 						// Выполняем добавление задания в список заданий
 						this->_tasks.emplace([task](){(* task)();});
 				}

@@ -14,11 +14,28 @@ if(${GTest_FOUND})
 	# Источники для сборки юнит-тестов
 	SET(${PROJECT_NAME}_UNITTEST_SOURCES
 		main.cpp
+		os/os.cpp
+		os/static.cpp
 		fmk/fmk.cpp
 		fmk/static.cpp
 		fmk/parameterized.cpp
+		log/log.cpp
+		log/static.cpp
+		log/parameterized.cpp
+		reg/reg.cpp
+		reg/static.cpp
+		reg/parameterized.cpp
+		queue/queue.cpp
+		queue/static.cpp
+		queue/parameterized.cpp
+		buffer/buffer.cpp
+		buffer/static.cpp
+		buffer/parameterized.cpp
 		chrono/chrono.cpp
 		chrono/parameterized.cpp
+		threadpool/threadpool.cpp
+		threadpool/static.cpp
+		threadpool/parameterized.cpp
 	)
 
 	# Библиотеки GTest для линковки

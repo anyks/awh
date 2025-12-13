@@ -1,6 +1,6 @@
 /**
- * @file: chrono.hpp
- * @date: 2025-12-10
+ * @file: os.hpp
+ * @date: 2025-12-13
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,28 +12,27 @@
  * @copyright: Copyright © 2025
  */
  
-#ifndef __AWH_CHRONO_TESTS__
-#define __AWH_CHRONO_TESTS__
+#ifndef __AWH_OS_TESTS__
+#define __AWH_OS_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
 #include "../main.hpp"
-#include "../../include/sys/log.hpp"
-#include "../../include/sys/chrono.hpp"
+#include "../../include/sys/os.hpp"
 
 /**
- * @brief Класс фикстуры для тестов модуля работы с датой и временем
+ * @brief Класс фикстуры для тестов модуля работы с операционной системой
  *
  */
-class ChronoFixture : public testing::Test {
+class OSFixture : public testing::Test {
 	protected:
+		// Объект работы с операционной системой
+		std::unique_ptr <awh::os_t> _os;
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
-		// Объект работы с датой и временем
-		std::unique_ptr <awh::chrono_t> _chrono;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения
@@ -47,4 +46,4 @@ class ChronoFixture : public testing::Test {
 		void TearDown();
 };
 
-#endif // __AWH_CHRONO_TESTS__
+#endif // __AWH_OS_TESTS__
