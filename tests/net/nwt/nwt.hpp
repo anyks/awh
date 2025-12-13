@@ -1,6 +1,6 @@
 /**
- * @file: reg.hpp
- * @date: 2025-12-12
+ * @file: nwt.hpp
+ * @date: 2025-12-14
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,28 +12,28 @@
  * @copyright: Copyright © 2025
  */
  
-#ifndef __AWH_REGEXP_TESTS__
-#define __AWH_REGEXP_TESTS__
+#ifndef __AWH_NWT_TESTS__
+#define __AWH_NWT_TESTS__
 
 /**
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
 #include "../../../include/sys/log.hpp"
-#include "../../../include/sys/reg.hpp"
+#include "../../../include/net/nwt.hpp"
 
 /**
- * @brief Класс фикстуры для тестов регулярных выражений
+ * @brief Класс фикстуры для тестов работы со списком параметров URL
  *
  */
-class RegFixture : public testing::Test {
+class NwtFixture : public testing::Test {
 	protected:
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
-		// Объект регулярного выражения
-		std::unique_ptr <awh::regexp_t> _reg;
+		// Объект работы со списком параметров URL
+		std::unique_ptr <awh::nwt_t> _nwt;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды
@@ -47,4 +47,4 @@ class RegFixture : public testing::Test {
 		void TearDown();
 };
 
-#endif // __AWH_REGEXP_TESTS__
+#endif // __AWH_NWT_TESTS__

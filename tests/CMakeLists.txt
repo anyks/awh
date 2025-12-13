@@ -39,6 +39,9 @@ if(${GTest_FOUND})
 		net/addr/addr.cpp
 		net/addr/static.cpp
 		net/addr/parameterized.cpp
+		net/nwt/nwt.cpp
+		net/nwt/static.cpp
+		net/nwt/parameterized.cpp
 	)
 
 	# Библиотеки GTest для линковки

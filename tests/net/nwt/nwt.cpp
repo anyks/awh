@@ -1,6 +1,6 @@
 /**
- * @file: reg.cpp
- * @date: 2025-12-12
+ * @file: nwt.cpp
+ * @date: 2025-12-14
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -15,23 +15,23 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "reg.hpp"
+#include "nwt.hpp"
 
 /**
  * @brief Метод инициализации тестовой среды
  *
  */
-void RegFixture::SetUp(){
+void NwtFixture::SetUp(){
 	// Создаём объект фреймворка
 	this->_fmk = std::make_unique <awh::fmk_t> ();
 	// Создаём объект логгера
 	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
-	// Создаём объект регулярного выражения
-	this->_reg = std::make_unique <awh::regexp_t> (this->_log.get());
+	// Создаём объект работы со списком параметров URL
+	this->_nwt = std::make_unique <awh::nwt_t> (this->_log.get());
 }
 
 /**
  * @brief Метод очистки тестовой среды
  *
  */
-void RegFixture::TearDown() {}
+void NwtFixture::TearDown() {}

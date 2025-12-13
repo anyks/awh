@@ -710,8 +710,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 						}
 						// Запоминаем тип параметра
 						result.type = types_t::URL;
-					// Устанавливаем параметр неверных данных
-					} else result.type = types_t::WRONG;
+					}
 				}
 				// Выводим результат
 				return result;
@@ -731,31 +730,25 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 					// Если результат найден
 					if(!match.empty()){
 						// Запоминаем uri адрес
-						result.uri = match.at(0);
+						result.uri = match[0];
 						// Если это MAC адрес
-						if(!match[2].empty()){
+						if(!match[1].empty()){
 							// Запоминаем сам параметр
-							result.host = match[2];
+							result.host = match[1];
 							// Запоминаем тип параметра
 							result.type = types_t::MAC;
 						// Если это IPv4 адрес
-						} else if(!match[4].empty()) {
-							// Запоминаем сам параметр
-							result.host = match[4];
-							// Запоминаем тип параметра
-							result.type = types_t::IPV4;
-						// Если это IPv6 адрес
 						} else if(!match[3].empty()) {
 							// Запоминаем сам параметр
 							result.host = match[3];
 							// Запоминаем тип параметра
-							result.type = types_t::IPV6;
-						// Если это параметры сети
-						} else if(!match[1].empty()) {
+							result.type = types_t::IPV4;
+						// Если это IPv6 адрес
+						} else if(!match[2].empty()) {
 							// Запоминаем сам параметр
-							result.host = match[1];
+							result.host = match[2];
 							// Запоминаем тип параметра
-							result.type = types_t::NETWORK;
+							result.type = types_t::IPV6;
 						}
 					}
 				}
@@ -768,8 +761,8 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 			url_t url = urlFn(text);
 			// Если мы получили какие-то достоверные параметры
 			if((url.type == types_t::URL) && ((url.port > 0) ||
-			!url.path.empty() || !url.pass.empty() ||
-			!url.anchor.empty() || !url.params.empty() || !url.schema.empty()))
+			   !url.path.empty() || !url.pass.empty() ||
+			   !url.anchor.empty() || !url.params.empty() || !url.schema.empty()))
 				// Устанавливаем полученный результат
 				result = ::move(url);
 			// Если URL адрес мы не получили
@@ -785,7 +778,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 					// Выполняем извлечение IP адреса
 					url_t ip = ipFn(text);
 					// Если мы получили IP адрес
-					if((ip.type == types_t::IPV4) || (ip.type == types_t::IPV6) || (ip.type == types_t::MAC) || (ip.type == types_t::NETWORK))
+					if((ip.type == types_t::IPV4) || (ip.type == types_t::IPV6) || (ip.type == types_t::MAC))
 						// Устанавливаем полученный результат
 						result = ::move(ip);
 				}
@@ -868,13 +861,11 @@ void awh::NWT::letters(const string & letters) noexcept {
 		);
 		// Устанавливаем правило регулярного выражения для проверки IP адресов
 		this->_ip = this->_regexp.build(
-			// Если это сеть
-			"(?:((?:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}[\\:]{2}|[\\:]{2})|[\\:]{2}))\\/(?:\\d{1,3}(?:\\.\\d{1,3}){3}|\\d+))|"
-			// Определение MAC адреса
-			"([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
-			// Определение IPv6 адреса
+			// Определение MAC-адреса
+			"(?:([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
+			// Определение IPv6-адреса
 			"(?:\\[?(\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:\\:\\:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){1,7})?)|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)|"
-			// Определение IPv4 адреса
+			// Определение IPv4-адреса
 			"(\\d{1,3}(?:\\.\\d{1,3}){3})(?:\\:\\d+)?\\/?)", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
 		);
 	/**
@@ -924,6 +915,16 @@ void awh::NWT::setLogger(const log_t * log) noexcept {
 	this->_log = log;
 	// Устанавливаем объект логера для работы с регулярными выражениями
 	this->_regexp.setLogger(log);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::NWT::NWT() noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _log(nullptr) {
+	// Выполняем инициализацию модуля
+	this->init();
+	// Если буквы переданы запоминаем их
+	this->letters(this->_letters);
 }
 /**
  * @brief Конструктор

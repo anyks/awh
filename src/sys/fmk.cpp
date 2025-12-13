@@ -1086,7 +1086,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Выполняем парсинг nwt адреса
 					const auto & url = const_cast <fmk_t *> (this)->_nwt.parse(text);
 					// Если ссылка найдена
-					result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
+					result = (url.type != nwt_t::types_t::NONE);
 				} break;
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT): {
@@ -1423,7 +1423,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Выполняем парсинг nwt адреса
 					const auto & url = const_cast <fmk_t *> (this)->_nwt.parse(this->convert(text));
 					// Если ссылка найдена
-					result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
+					result = (url.type != nwt_t::types_t::NONE);
 				} break;
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT): {
@@ -5949,19 +5949,16 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(const string & text) co
 				if(resUri.type != nwt_t::types_t::NONE){
 					// Получаем данные слова
 					const string & word = resUri.uri;
-					// Если это не предупреждение
-					if(resUri.type != nwt_t::types_t::WRONG){
-						// Если позиция найдена
-						if((pos = text.find(word, pos)) != string::npos){
-							// Если в списке результатов найдены пустные значения, очищаем список
-							if(result.count(string::npos) > 0)
-								// Выполняем очистку результата
-								result.clear();
-							// Добавляем в список нашу ссылку
-							result.insert({pos, pos + word.length()});
-						// Если ссылка не найдена в тексте, выходим
-						} else break;
-					}
+					// Если позиция найдена
+					if((pos = text.find(word, pos)) != string::npos){
+						// Если в списке результатов найдены пустные значения, очищаем список
+						if(result.count(string::npos) > 0)
+							// Выполняем очистку результата
+							result.clear();
+						// Добавляем в список нашу ссылку
+						result.insert({pos, pos + word.length()});
+					// Если ссылка не найдена в тексте, выходим
+					} else break;
 					// Сдвигаем значение позиции
 					pos += word.length();
 				// Если uri адрес больше не найден то выходим
