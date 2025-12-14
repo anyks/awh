@@ -42,6 +42,10 @@ if(${GTest_FOUND})
 		net/nwt/nwt.cpp
 		net/nwt/static.cpp
 		net/nwt/parameterized.cpp
+		net/fds/fds.cpp
+		net/fds/static.cpp
+		net/eth/eth.cpp
+		net/eth/static.cpp
 	)
 
 	# Библиотеки GTest для линковки

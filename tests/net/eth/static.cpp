@@ -1,0 +1,185 @@
+/**
+ * @file: static.cpp
+ * @date: 2025-12-14
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2025
+ */
+
+/**
+ * Подключаем заголовочный файлы проекта
+ */
+#include "eth.hpp"
+
+/**
+ * @brief Тест создания объекта работы с Ethernet
+ *
+ */
+TEST_F(EthFixture, CreateEthTest){
+	// Проверяем, что объект работы с Ethernet создан
+	ASSERT_TRUE(this->_eth != nullptr);
+	// Сбрасываем объект работы с Ethernet
+	this->_eth.reset();
+	// Проверяем, что объект работы с Ethernet сброшен
+	ASSERT_TRUE(this->_eth == nullptr);
+}
+
+/**
+ * @brief Тест сброса и повторного создания объекта работы с Ethernet
+ *
+ */
+TEST_F(EthFixture, ResetAndCreateEthTest){
+	// Проверяем, что объект работы с Ethernet создан
+	ASSERT_TRUE(this->_eth != nullptr);
+	// Сбрасываем объект работы с Ethernet
+	this->_eth.reset();
+	// Проверяем, что объект работы с Ethernet сброшен
+	ASSERT_TRUE(this->_eth == nullptr);
+	// Создаём объект работы с Ethernet заново
+	this->_eth = std::make_unique <awh::eth_t> (this->_fmk.get(), this->_log.get());
+	// Проверяем, что объект работы с Ethernet создан
+	ASSERT_TRUE(this->_eth != nullptr);
+}
+
+/**
+ * @brief Тест повторного создания объекта работы с Ethernet
+ *
+ */
+TEST_F(EthFixture, ReCreateEthTest){
+	// Проверяем, что объект работы с Ethernet создан
+	ASSERT_TRUE(this->_eth != nullptr);
+	// Создаём объект работы с Ethernet заново
+	this->_eth = std::make_unique <awh::eth_t> (this->_fmk.get(), this->_log.get());
+	// Проверяем, что объект работы с Ethernet создан
+	ASSERT_TRUE(this->_eth != nullptr);
+}
+
+/**
+ * @brief Тест набора сетевых тестов
+ *
+ */
+TEST_F(EthFixture, EthSuiteTest){
+	// Создаём UDP сокет
+	awh::net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Проверяем, что сокет создан
+	ASSERT_NE(sock, awh::net::invalid_socket_t);
+	// Устанавливаем таймаут на чтение сокета
+	ASSERT_TRUE(this->_eth->timeout(sock, awh::net::socket_event_t::READ, 32000));
+	// Устанавливаем таймаут на запись сокета
+	ASSERT_TRUE(this->_eth->timeout(sock, awh::net::socket_event_t::WRITE, 32000));
+	// Получаем размер буфера на чтение сокета
+	int32_t rcvbuf = this->_eth->bufferSize(sock, awh::net::socket_event_t::READ);
+	// Проверяем, что размер буфера на чтение сокета получен
+	ASSERT_GT(rcvbuf, 0);
+	// Устанавливаем размер буфера на чтение сокета
+	ASSERT_GT(this->_eth->bufferSize(sock, awh::net::socket_event_t::READ, rcvbuf * 2), 0);
+	// Получаем размер буфера на запись сокета
+	int32_t sndbuf = this->_eth->bufferSize(sock, awh::net::socket_event_t::WRITE);
+	// Проверяем, что размер буфера на запись сокета получен
+	ASSERT_GT(sndbuf, 0);
+	// Устанавливаем размер буфера на запись сокета
+	ASSERT_GT(this->_eth->bufferSize(sock, awh::net::socket_event_t::WRITE, sndbuf * 2), 0);
+	// Блокируем сигнал SIGILL
+	ASSERT_TRUE(this->_eth->nosigill());
+	/**
+	 * Для операционной системы FreeBSD и Linux
+	 */
+	#if __FreeBSD__ || __Linux__
+		// Активируем получение SCTP-событий для сокета
+		ASSERT_TRUE(this->_eth->sctp(sock));
+	/**
+	 * Для остальных операционных систем
+	 */
+	#else
+		// Активируем получение SCTP-событий для сокета
+		ASSERT_FALSE(this->_eth->sctp(sock));
+	#endif
+	// Получаем код ошибки сокета
+	ASSERT_EQ(0, this->_eth->error(sock));
+	// Включаем режим cork для TCP-сокета
+	ASSERT_FALSE(this->_eth->tcpcork(sock, awh::net::socket_mode_t::ENABLED));
+	// Включаем или отключаем режим отображения IPv4 => IPv6
+	ASSERT_FALSE(this->_eth->ipv6only(sock, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем повторное использование адреса сокета
+	ASSERT_TRUE(this->_eth->reuseaddr(sock, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем повторное использование порта сокета
+	ASSERT_TRUE(this->_eth->reuseport(sock, awh::net::socket_mode_t::ENABLED));
+	// Игнорируем отключение сигнала записи в убитый сокет
+	ASSERT_TRUE(this->_eth->nosigpipe(sock, awh::net::socket_mode_t::ENABLED));
+	// Разрешаем широковещательный адрес
+	ASSERT_TRUE(this->_eth->broadcast(sock, awh::net::socket_mode_t::ENABLED));
+	// Отключаем алгоритм Нейгла
+	ASSERT_FALSE(this->_eth->tcpnodelay(sock, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем блокирующий сокет
+	ASSERT_TRUE(this->_eth->noblocking(sock, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем режим автоматического закрытия файлового дескриптора при вызове exec
+	ASSERT_TRUE(this->_eth->closeonexec(sock, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем постоянное подключение на сокет
+	ASSERT_FALSE(this->_eth->keepalive(sock, 30, 60, 10));
+	// Включаем заголовки в сокете
+	ASSERT_FALSE(this->_eth->hdrinclude(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем интерфейс мультикаст группы по имени
+	ASSERT_TRUE(this->_eth->multicastIface(sock, awh::event::family_t::IPV4, "eth0"));
+	// Устанавливаем режим обратной петли для multicast пакетов
+	ASSERT_TRUE(this->_eth->multicastLoop(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	// Устанавливаем максимальное количество хопов, через которые может пройти пакет
+	ASSERT_FALSE(this->_eth->hops(sock, awh::event::family_t::IPV4, awh::event::cast_t::UNICAST, awh::event::hops_t::NETWORK));
+	// Вычисляем контрольную сумму транспортного уровня с некорректными данными
+	ASSERT_EQ(0, this->_eth->checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, nullptr, nullptr, nullptr, 0));
+	// Выполняем проверку принадлежности IP-адреса подсети
+	ASSERT_TRUE(this->_eth->isInSubnet(ntohl(4178028736), htonl(4178028736), 32));
+	{
+		// Создаём объект IPv4-адреса
+		std::unique_ptr <awh::net::addr_net_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Устанавливаем адрес мультикаст-группы
+		static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
+		// Устанавливаем членство в мультикаст группе
+		ASSERT_FALSE(this->_eth->membership(sock, awh::net::socket_mode_t::ENABLED, addr.get(), addr.get()));
+	}{
+		// Создаём два пустых IPv6-адреса
+		uint8_t a[16] = {0};
+		uint8_t b[16] = {0};
+		// Выполняем проверку равенства префиксов IPv6-адресов
+		ASSERT_TRUE(this->_eth->ipv6PrefixEqual(a, b, 16));
+	}{
+		// Создаём объект IPv4-адреса
+		std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Устанавливаем адрес мультикаст-группы
+		static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
+		// Получаем имя сетевого интерфейса по IP-адресу
+		ASSERT_TRUE(this->_eth->iface(addr).empty());
+	}{
+		// Временный объект для извлечения сетевого интерфейса
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+		// Создаём объект IPv4-адреса
+		std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Устанавливаем адрес мультикаст-группы
+		static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
+		// Выполняем извлечение сетевых параметров
+		this->_eth->fillsource(addr, source);
+		// Получаем имя сетевого интерфейса по IP-адресу
+		ASSERT_TRUE(source.iface.empty());
+	}{
+		// Временный объект для извлечения сетевого интерфейса
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+		// Выполняем извлечение сетевых параметров
+		this->_eth->fillsource(source);
+		// Получаем имя сетевого интерфейса по IP-адресу
+		ASSERT_FALSE(source.iface.empty());
+	}{
+		// Временный объект для извлечения сетевого интерфейса
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+		// Выполняем извлечение сетевых параметров
+		this->_eth->fillsource(awh::event::node_t::CLIENT, source);
+		// Получаем имя сетевого интерфейса по IP-адресу
+		ASSERT_FALSE(source.iface.empty());
+	}
+	// Закрываем сокет
+	::close(sock);
+}

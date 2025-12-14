@@ -2791,175 +2791,178 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 uint16_t awh::Ethernet::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Общий размер данных
-		size_t totalSize = 0;
-		// Размер псевдозаголовка
-		size_t pseudoSize = 0;
-		// Оригинальный checksum
-		uint16_t original = 0;
-		// Указатель на checksum в транспортном заголовке
-		uint16_t * checksum = nullptr;
-		// Псевдозаголовок
-		unique_ptr <uint8_t []> pseudo = nullptr;
+	// Проверяем корректность входных данных
+	if((src != nullptr) && (dst != nullptr) && (transport != nullptr) && (length > 0)){
 		/**
-		 * Определяем протокол
+		 * Выполняем перехват ошибок
 		 */
-		switch(static_cast <uint8_t> (protocol)){
-			// Если протокол определён как TCP
-			case static_cast <uint8_t> (event::protocol_t::TCP):
-				// Сохраняем оригинальный checksum
-				checksum = const_cast <uint16_t *> (&(reinterpret_cast <const struct tcphdr *> (transport))->th_sum);
-			break;
-			// Если протокол определён как UDP
-			case static_cast <uint8_t> (event::protocol_t::UDP):
-				// Сохраняем оригинальный checksum
-				checksum = const_cast <uint16_t *> (&(reinterpret_cast <const struct udphdr *> (transport))->uh_sum);
-			break;
-			// Для неподдерживаемого протокола
-			default: {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Unsupported protocol for checksum calculation", log_t::flag_t::CRITICAL);
-				#endif
-				// Выходим из функции
-				return result;
+		try {
+			// Общий размер данных
+			size_t totalSize = 0;
+			// Размер псевдозаголовка
+			size_t pseudoSize = 0;
+			// Оригинальный checksum
+			uint16_t original = 0;
+			// Указатель на checksum в транспортном заголовке
+			uint16_t * checksum = nullptr;
+			// Псевдозаголовок
+			unique_ptr <uint8_t []> pseudo = nullptr;
+			/**
+			 * Определяем протокол
+			 */
+			switch(static_cast <uint8_t> (protocol)){
+				// Если протокол определён как TCP
+				case static_cast <uint8_t> (event::protocol_t::TCP):
+					// Сохраняем оригинальный checksum
+					checksum = const_cast <uint16_t *> (&(reinterpret_cast <const struct tcphdr *> (transport))->th_sum);
+				break;
+				// Если протокол определён как UDP
+				case static_cast <uint8_t> (event::protocol_t::UDP):
+					// Сохраняем оригинальный checksum
+					checksum = const_cast <uint16_t *> (&(reinterpret_cast <const struct udphdr *> (transport))->uh_sum);
+				break;
+				// Для неподдерживаемого протокола
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unsupported protocol for checksum calculation", log_t::flag_t::CRITICAL);
+					#endif
+					// Выходим из функции
+					return result;
+				}
 			}
-		}
-		// Сохраняем оригинал
-		original = (* checksum);
-		// Обнуляем checksum в транспортном заголовке
-		(* checksum) = 0;
+			// Сохраняем оригинал
+			original = (* checksum);
+			// Обнуляем checksum в транспортном заголовке
+			(* checksum) = 0;
+			/**
+			 * Определяем семейство события
+			 */
+			switch(static_cast <uint8_t> (family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4): {
+					/**
+					 * @brief Структура псевдозаголовка IPv4
+					 *
+					 */
+					struct {
+						uint32_t src;    // IP-адрес источника
+						uint32_t dst;    // IP-адрес назначения
+						uint8_t zero;    // Зарезервировано, должно быть равно 0
+						uint8_t proto;   // Протокол транспортного уровня
+						uint16_t length; // Длина транспортного уровня
+					} hdr;
+					// Устанавливаем ноль в зарезервированное поле
+					hdr.zero = 0;
+					/**
+					 * Определяем протокол
+					 */
+					switch(static_cast <uint8_t> (protocol)){
+						// Если протокол определён как TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP):
+							// Устанавливаем протокол транспортного уровня
+							hdr.proto = IPPROTO_TCP;
+						break;
+						// Если протокол определён как UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+							// Устанавливаем протокол транспортного уровня
+							hdr.proto = IPPROTO_UDP;
+						break;
+					}
+					// Устанавливаем IP-адреса источника и назначения
+					hdr.src = (* reinterpret_cast <const uint32_t *> (src));
+					hdr.dst = (* reinterpret_cast <const uint32_t *> (dst));
+					// Устанавливаем длину транспортного уровня
+					hdr.length = htons(static_cast <uint16_t> (length));
+					// Вычисляем размеры псевдозаголовка
+					pseudoSize = sizeof(hdr);
+					// Вычисляем общий размер данных
+					totalSize = (pseudoSize + length);
+					// Выделяем память под псевдозаголовок
+					pseudo = make_unique <uint8_t []> (totalSize);
+					// Формируем псевдозаголовок
+					::memcpy(pseudo.get(), &hdr, pseudoSize);
+				} break;
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// IPv6
+					struct {
+						// IP-адрес источника
+						struct in6_addr src;
+						// IP-адрес назначения
+						struct in6_addr dst;
+						// Длина транспортного уровня
+						uint32_t length;
+						// Зарезервировано, должно быть равно 0
+						uint8_t zero[3];
+						// Следующий заголовок
+						uint8_t next_hdr;
+					} hdr;
+					/**
+					 * Определяем протокол
+					 */
+					switch(static_cast <uint8_t> (protocol)){
+						// Если протокол определён как TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP):
+							// Устанавливаем протокол транспортного уровня
+							hdr.next_hdr = IPPROTO_TCP;
+						break;
+						// Если протокол определён как UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+							// Устанавливаем протокол транспортного уровня
+							hdr.next_hdr = IPPROTO_UDP;
+						break;
+					}
+					// Устанавливаем нули в зарезервированное поле
+					hdr.zero[0] = hdr.zero[1] = hdr.zero[2] = 0;
+					// Устанавливаем IP-адреса источника и назначения
+					hdr.src = (* reinterpret_cast <const struct in6_addr *> (src));
+					hdr.dst = (* reinterpret_cast <const struct in6_addr *> (dst));
+					// Устанавливаем длину транспортного уровня (да, 32-bit, но значение 16-bit)
+					hdr.length = htonl(static_cast <uint32_t> (length));
+					// Вычисляем размеры псевдозаголовка
+					pseudoSize = sizeof(hdr);
+					// Вычисляем общий размер данных
+					totalSize = (pseudoSize + length);
+					// Выделяем память под псевдозаголовок
+					pseudo = make_unique <uint8_t []> (totalSize);
+					// Формируем псевдозаголовок
+					::memcpy(pseudo.get(), &hdr, pseudoSize);
+				} break;
+			}
+			// Копируем транспортный заголовок + данные
+			::memcpy(pseudo.get() + pseudoSize, transport, length);
+			// Вычисляем контрольную сумму
+			result = ::checksum(pseudo.get(), totalSize);
+			// Восстанавливаем оригинал (опционально — обычно вызывающий сам запишет результат)
+			(* checksum) = original;
 		/**
-		 * Определяем семейство события
+		 * Если возникает ошибка
 		 */
-		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4): {
-				/**
-				 * @brief Структура псевдозаголовка IPv4
-				 *
-				 */
-				struct {
-					uint32_t src;    // IP-адрес источника
-					uint32_t dst;    // IP-адрес назначения
-					uint8_t zero;    // Зарезервировано, должно быть равно 0
-					uint8_t proto;   // Протокол транспортного уровня
-					uint16_t length; // Длина транспортного уровня
-				} hdr;
-				// Устанавливаем ноль в зарезервированное поле
-				hdr.zero = 0;
-				/**
-				 * Определяем протокол
-				 */
-				switch(static_cast <uint8_t> (protocol)){
-					// Если протокол определён как TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP):
-						// Устанавливаем протокол транспортного уровня
-						hdr.proto = IPPROTO_TCP;
-					break;
-					// Если протокол определён как UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP):
-						// Устанавливаем протокол транспортного уровня
-						hdr.proto = IPPROTO_UDP;
-					break;
-				}
-				// Устанавливаем IP-адреса источника и назначения
-				hdr.src = (* reinterpret_cast <const uint32_t *> (src));
-				hdr.dst = (* reinterpret_cast <const uint32_t *> (dst));
-				// Устанавливаем длину транспортного уровня
-				hdr.length = htons(static_cast <uint16_t> (length));
-				// Вычисляем размеры псевдозаголовка
-				pseudoSize = sizeof(hdr);
-				// Вычисляем общий размер данных
-				totalSize = (pseudoSize + length);
-				// Выделяем память под псевдозаголовок
-				pseudo = make_unique <uint8_t []> (totalSize);
-				// Формируем псевдозаголовок
-				::memcpy(pseudo.get(), &hdr, pseudoSize);
-			} break;
-			// Для семейства IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// IPv6
-				struct {
-					// IP-адрес источника
-					struct in6_addr src;
-					// IP-адрес назначения
-					struct in6_addr dst;
-					// Длина транспортного уровня
-					uint32_t length;
-					// Зарезервировано, должно быть равно 0
-					uint8_t zero[3];
-					// Следующий заголовок
-					uint8_t next_hdr;
-				} hdr;
-				/**
-				 * Определяем протокол
-				 */
-				switch(static_cast <uint8_t> (protocol)){
-					// Если протокол определён как TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP):
-						// Устанавливаем протокол транспортного уровня
-						hdr.next_hdr = IPPROTO_TCP;
-					break;
-					// Если протокол определён как UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP):
-						// Устанавливаем протокол транспортного уровня
-						hdr.next_hdr = IPPROTO_UDP;
-					break;
-				}
-				// Устанавливаем нули в зарезервированное поле
-				hdr.zero[0] = hdr.zero[1] = hdr.zero[2] = 0;
-				// Устанавливаем IP-адреса источника и назначения
-				hdr.src = (* reinterpret_cast <const struct in6_addr *> (src));
-				hdr.dst = (* reinterpret_cast <const struct in6_addr *> (dst));
-				// Устанавливаем длину транспортного уровня (да, 32-bit, но значение 16-bit)
-				hdr.length = htonl(static_cast <uint32_t> (length));
-				// Вычисляем размеры псевдозаголовка
-				pseudoSize = sizeof(hdr);
-				// Вычисляем общий размер данных
-				totalSize = (pseudoSize + length);
-				// Выделяем память под псевдозаголовок
-				pseudo = make_unique <uint8_t []> (totalSize);
-				// Формируем псевдозаголовок
-				::memcpy(pseudo.get(), &hdr, pseudoSize);
-			} break;
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-		// Копируем транспортный заголовок + данные
-		::memcpy(pseudo.get() + pseudoSize, transport, length);
-		// Вычисляем контрольную сумму
-		result = ::checksum(pseudo.get(), totalSize);
-		// Восстанавливаем оригинал (опционально — обычно вызывающий сам запишет результат)
-    	(* checksum) = original;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат
 	return result;
