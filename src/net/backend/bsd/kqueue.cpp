@@ -31442,208 +31442,200 @@ bool awh::IO::deinitialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
-	if((result = (::__awh_kq__ != net::invalid_socket_t))){
+	if(::__awh_kq__ != net::invalid_socket_t)
 		// Выполняем пинок Kqueue для обработки всех удалений
 		this->kick();
+	// Если после деинициализации остались активные узлы
+	if((result = !::__awh_nodes__.empty())){
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
-			// Если узел уже находится в рабочем состоянии
-			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMEOUT):
-					// Если узел является интервалом
-					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					} break;
-					// Если узел является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Получаем текущее значение объекта директории
-						dir_t * node = awh_cast <dir_t *> (i->second.get());
-						// Если каталог открыт
-						if(node->handle != nullptr)
-							// Закрываем каталог
-							::closedir(node->handle);
-						// Если дескриптор сокета инициализирован
-						if(node->fd != net::invalid_socket_t)
-							// Закрываем дескриптор сокета
-							::close(node->fd);
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					} break;
-					// Если узел является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Получаем текущее значение объекта файловой системы
-						file_t * node = awh_cast <file_t *> (i->second.get());
-						// Если дескриптор сокета инициализирован
-						if(node->fd != net::invalid_socket_t)
-							// Закрываем дескриптор сокета
-							::close(node->fd);
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					} break;
-					// Если узел является межпроцессным взаимодействием
-					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * node = awh_cast <ipc_t *> (i->second.get());
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t)
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					} break;
-					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER): {
-						// Получаем текущее значение объекта однорангового узла
-						peer_t * node = awh_cast <peer_t *> (i->second.get());
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t)
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						client_t * node = awh_cast <client_t *> (i->second.get());
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t)
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-						}
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						server_t * node = awh_cast <server_t *> (i->second.get());
-						// Если дескриптор сокета инициализирован
-						if(node->transfer.fd != net::invalid_socket_t)
-							// Закрываем дескриптор сокета
-							::close(node->transfer.fd);
-						// Если установлена функция обратного вызова
-						if(node->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							node->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					} break;
-					// Для других типов узлов
-					default: {
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Производим удаление списка подготовленных событий
-						::local::evaccs.erase(i->first);
-						{
-							// Выполняем блокировку потоков
-							const locker_t lock(::__awh_mtx__);
-							// Производим удаление узла
-							i = ::__awh_nodes__.erase(i);
-						}
-					}
-				}
-			// Если узел не находится в рабочем состоянии уничтожаем её сразу
-			} else {
-				// Выполняем блокировку потоков
-				const locker_t lock(::local::mtx);
-				// Производим удаление списка подготовленных событий
-				::local::evaccs.erase(i->first);
-				{
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Выполняем блокировку потоков
-					const locker_t lock(::__awh_mtx__);
-					// Производим удаление узла
-					i = ::__awh_nodes__.erase(i);
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					dir_t * node = awh_cast <dir_t *> (i->second.get());
+					// Если каталог открыт
+					if(node->handle != nullptr)
+						// Закрываем каталог
+						::closedir(node->handle);
+					// Если дескриптор сокета инициализирован
+					if(node->fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(node->fd);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					file_t * node = awh_cast <file_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(node->fd);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					ipc_t * node = awh_cast <ipc_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(node->transfer.fd);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					peer_t * node = awh_cast <peer_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(node->transfer.fd);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					client_t * node = awh_cast <client_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(node->transfer.fd);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					server_t * node = awh_cast <server_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(node->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(node->transfer.fd);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						node->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
+				} break;
+				// Для других типов узлов
+				default: {
+					// Выполняем блокировку потоков
+					const locker_t lock(::local::mtx);
+					// Производим удаление списка подготовленных событий
+					::local::evaccs.erase(i->first);
+					{
+						// Выполняем блокировку потоков
+						const locker_t lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					}
 				}
 			}
 		}
+	}
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
 		// Сбрасываем значение Kqueue
 		::__awh_kq__ = net::invalid_socket_t;
+		// Устанавливаем результат деинициализации в успешный
+		result = (::__awh_kq__ == net::invalid_socket_t);
 	}
 	// Возвращаем результат работы функции
 	return result;

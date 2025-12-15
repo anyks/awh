@@ -1178,40 +1178,54 @@ void awh::Ethernet::fillsource(const unique_ptr <net::addr_t> & net, net::src_t 
 				if(network->prefix > 32)
 					// Корректируем префикс сети
 					const_cast <net::addr_net_ipv4_t *> (network)->prefix = 32;
-				// Проверка выравнивания сетевого адреса по маске
-				const uint32_t mask = ((network->prefix == 0) ? 0 : (~((1U << (32 - network->prefix)) - 1)));
-				// Если сетевой адрес не выровнен по маске
-				if((htonl(network->address) & mask) != htonl(network->address)){
+				/**
+				 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
+				 * Проверка не работает на то, соответствует ли IP-адрес 192.168.7.249 маске 255.255.255.0
+				 */
+				#ifdef __AWH_DISABLED__
+					// Проверка выравнивания сетевого адреса по маске
+					const uint32_t mask = ((network->prefix == 0) ? 0 : (~((1U << (32 - network->prefix)) - 1)));
+					// Если сетевой адрес не выровнен по маске
+					if((htonl(network->address) & mask) != htonl(network->address)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
+								std::make_tuple(htonl(network->address), static_cast <uint16_t> (network->prefix)),
+								log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
+							);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Network address %u is not aligned to prefix %u", log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
+						#endif
+						// Выводим пустой результат
+						return;
+					}
+				#endif
+				// Получаем список сетевых интерфейсов
+				struct ifaddrs * ptr = nullptr;
+				// Выполняем получение списка сетевых интерфейсов
+				if(::getifaddrs(&ptr) != 0){
+					// Буфер временных данных для генерации IP-адреса
+					char buffer[INET_ADDRSTRLEN];
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug(
-							"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
-							std::make_tuple(htonl(network->address), static_cast <uint16_t> (network->prefix)),
-							log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
+							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								::inet_ntop(AF_INET, &network->address, buffer, sizeof(buffer)),
+								static_cast <uint16_t> (network->prefix)
+							), log_t::flag_t::WARNING
 						);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Network address %u is not aligned to prefix %u", log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
-					#endif
-					// Выводим пустой результат
-					return;
-				}
-				// Получаем список сетевых интерфейсов
-				struct ifaddrs * ptr = nullptr;
-				// Выполняем получение списка сетевых интерфейсов
-				if(::getifaddrs(&ptr) != 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(htonl(network->address), static_cast <uint16_t> (network->prefix)), log_t::flag_t::WARNING);
 					/**
 					* Если режим отладки не включён
 					*/
@@ -1267,12 +1281,20 @@ void awh::Ethernet::fillsource(const unique_ptr <net::addr_t> & net, net::src_t 
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
 				if(::getifaddrs(&ptr) != 0){
+					// Буфер временных данных для генерации IP-адреса
+					char buffer[INET_ADDRSTRLEN];
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(&network->address[0], static_cast <uint16_t> (network->prefix)), awh::log_t::flag_t::WARNING);
+						this->_log->debug(
+							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								::inet_ntop(AF_INET6, &network->address[0], buffer, sizeof(buffer)),
+								static_cast <uint16_t> (network->prefix)
+							), awh::log_t::flag_t::WARNING
+						);
 					/**
 					* Если режим отладки не включён
 					*/

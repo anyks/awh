@@ -46,6 +46,9 @@ if(${GTest_FOUND})
 		net/fds/static.cpp
 		net/eth/eth.cpp
 		net/eth/static.cpp
+		net/io/io.cpp
+		net/io/static.cpp
+		net/io/parameterized.cpp
 	)
 
 	# Библиотеки GTest для линковки
