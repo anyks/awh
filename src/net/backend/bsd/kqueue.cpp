@@ -3295,6 +3295,8 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			// Извлекаем идентификатор ноды
+			const event::id_t id = node->id;
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -3335,7 +3337,7 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(fs->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												fs->callbacks.event(fs->id, event::action_t::READ);
+												fs->callbacks.event(id, event::action_t::READ);
 											// Получаем размер прочитанных данных из файла
 											size = ::min(fs->bytes, static_cast <size_t> (fs->info.st_size - fs->offset));
 											// Если мы заполнили весь буфер данных
@@ -3347,7 +3349,7 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(fs->dst == 0)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
+												fs->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											else const_cast <io_t *> (io)->send(fs->dst, buffer + offset, size);
 											// Отвязываем текущий маппинг
@@ -3359,7 +3361,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(fs->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												fs->callbacks.error(id, event::error_t::EVENT_FAIL, ::strerror(errno));
 											// Если функция обратного вызова вывода ошибки не установлена
 											else {
 												/**
@@ -3367,7 +3369,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -3394,7 +3396,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(fs->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+										fs->callbacks.error(id, event::error_t::EVENT_FAIL, ::strerror(errno));
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -3402,7 +3404,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -3461,7 +3463,7 @@ namespace io {
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+															ipc->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -3469,7 +3471,7 @@ namespace io {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -3490,13 +3492,18 @@ namespace io {
 													// Если функция обратного вызова для вывода события установлена
 													if(ipc->callbacks.event != nullptr)
 														// Вызываем функцию обратного вызова флаг события
-														ipc->callbacks.event(ipc->id, event::action_t::READ);
+														ipc->callbacks.event(id, event::action_t::READ);
 													// Если идентификатор события для передачи данных не установлен
 													if(ipc->transfer.dst == 0){
 														// Если функция обратного вызова для вывода прочитанных данных установлена
-														if(ipc->callbacks.read != nullptr)
+														if(ipc->callbacks.read != nullptr){
 															// Вывзываем функцию обратного вызова для вывода полученных данных
-															ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+															ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+															// Если идентификатор ноды не найден, тогда просто выходим
+															if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+																// Формируем отрицательный результат
+																return false;
+														}
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 													} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 												// Если произошёл дисконнект
@@ -3522,7 +3529,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+													ipc->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -3530,7 +3537,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -3550,13 +3557,13 @@ namespace io {
 												// Если функция обратного вызова для вывода события установлена
 												if(ipc->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова флаг события
-													ipc->callbacks.event(ipc->id, event::action_t::READ);
+													ipc->callbacks.event(id, event::action_t::READ);
 												// Если идентификатор события для передачи данных не установлен
 												if(ipc->transfer.dst == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(ipc->callbacks.read != nullptr)
 														// Вывзываем функцию обратного вызова для вывода полученных данных
-														ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+														ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 												// Формируем положительный результат
@@ -3579,7 +3586,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
+											ipc->callbacks.error(id, event::error_t::EVENT_FAIL, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3587,7 +3594,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3624,7 +3631,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+													ipc->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -3632,7 +3639,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -3653,13 +3660,18 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(ipc->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												ipc->callbacks.event(ipc->id, event::action_t::READ);
+												ipc->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(ipc->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(ipc->callbacks.read != nullptr)
+												if(ipc->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+													ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -3685,7 +3697,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+											ipc->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3693,7 +3705,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3713,13 +3725,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(ipc->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											ipc->callbacks.event(ipc->id, event::action_t::READ);
+											ipc->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(ipc->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Формируем положительный результат
@@ -3756,7 +3768,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+												ipc->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -3764,7 +3776,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -3785,13 +3797,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(ipc->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											ipc->callbacks.event(ipc->id, event::action_t::READ);
+											ipc->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(ipc->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Формируем положительный результат
@@ -3816,7 +3828,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+											ipc->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3824,7 +3836,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3844,13 +3856,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(ipc->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											ipc->callbacks.event(ipc->id, event::action_t::READ);
+											ipc->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(ipc->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Формируем положительный результат
@@ -3904,7 +3916,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+													peer->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -3912,7 +3924,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -3933,13 +3945,18 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(peer->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												peer->callbacks.event(peer->id, event::action_t::READ);
+												peer->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(peer->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(peer->callbacks.read != nullptr)
+												if(peer->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+													peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -3963,7 +3980,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+											peer->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -3971,7 +3988,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3991,13 +4008,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(peer->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											peer->callbacks.event(peer->id, event::action_t::READ);
+											peer->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(peer->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4030,7 +4047,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+												peer->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -4038,7 +4055,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -4059,13 +4076,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(peer->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											peer->callbacks.event(peer->id, event::action_t::READ);
+											peer->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(peer->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4088,7 +4105,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+											peer->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -4096,7 +4113,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -4116,13 +4133,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(peer->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											peer->callbacks.event(peer->id, event::action_t::READ);
+											peer->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(peer->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4148,9 +4165,9 @@ namespace io {
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем таймаут на получение данных
-							EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+							EV_SET(&::local::change.back(), id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 							// Создаём объект промежуточного звена
-							auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
+							auto ret = ::local::evaccs.emplace(id, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
@@ -4197,7 +4214,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -4205,7 +4222,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -4226,13 +4243,18 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(client->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												client->callbacks.event(client->id, event::action_t::READ);
+												client->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr)
+												if(client->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -4256,7 +4278,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+											client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -4264,7 +4286,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -4284,13 +4306,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(client->id, event::action_t::READ);
+											client->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4323,7 +4345,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -4331,7 +4353,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -4352,13 +4374,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(client->id, event::action_t::READ);
+											client->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4381,7 +4403,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+											client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -4389,7 +4411,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -4409,13 +4431,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(client->id, event::action_t::READ);
+											client->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4454,7 +4476,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -4462,7 +4484,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -4483,13 +4505,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(client->id, event::action_t::READ);
+											client->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Выполняем обработку закрытия подключения
@@ -4524,7 +4546,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+											client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -4532,7 +4554,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -4552,13 +4574,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(client->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(client->id, event::action_t::READ);
+											client->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Выполняем обработку закрытия подключения
@@ -4599,7 +4621,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -4607,7 +4629,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -4628,13 +4650,13 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(client->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												client->callbacks.event(client->id, event::action_t::READ);
+												client->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -4657,7 +4679,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -4665,7 +4687,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -4685,13 +4707,13 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(client->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												client->callbacks.event(client->id, event::action_t::READ);
+												client->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -4729,7 +4751,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -4737,7 +4759,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -4758,13 +4780,13 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(client->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												client->callbacks.event(client->id, event::action_t::READ);
+												client->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Выполняем обработку закрытия подключения
@@ -4799,7 +4821,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -4807,7 +4829,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -4827,13 +4849,13 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											if(client->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
-												client->callbacks.event(client->id, event::action_t::READ);
+												client->callbacks.event(id, event::action_t::READ);
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dst == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Выполняем обработку закрытия подключения
@@ -4866,9 +4888,9 @@ namespace io {
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем таймаут на получение данных
-							EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+							EV_SET(&::local::change.back(), id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 							// Создаём объект промежуточного звена
-							auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+							auto ret = ::local::evaccs.emplace(id, ::local::evacc_t{});
 							// Если событие успешно добавлено
 							if(ret.second)
 								// Устанавливаем индекс текущего элемента
@@ -4932,7 +4954,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+														server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -4940,7 +4962,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -4959,7 +4981,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+														server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -4967,7 +4989,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -4991,7 +5013,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+													server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -4999,7 +5021,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -5018,7 +5040,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+													server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -5026,7 +5048,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -5063,7 +5085,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+														server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -5071,7 +5093,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -5090,7 +5112,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+														server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -5098,7 +5120,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -5122,7 +5144,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+													server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -5130,7 +5152,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -5149,7 +5171,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+													server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -5157,7 +5179,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -5195,7 +5217,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+												server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -5203,7 +5225,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -5218,13 +5240,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(server->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											server->callbacks.event(server->id, event::action_t::READ);
+											server->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(server->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(server->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(server->transfer.dst, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Заполняем структуру клиента нулями после того как извлекли данные
@@ -5247,7 +5269,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+											server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
@@ -5255,7 +5277,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -5269,13 +5291,13 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										if(server->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова флаг события
-											server->callbacks.event(server->id, event::action_t::READ);
+											server->callbacks.event(id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(server->transfer.dst == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(server->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												server->callbacks.read(server->id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(server->transfer.dst, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Заполняем структуру клиента нулями после того как извлекли данные
@@ -18947,47 +18969,99 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 					default: {
 						// Выполняем блокировку потоков
 						const locker_t lock(::__awh_mtx__);
-						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
-						// Устанавливаем идентификатор события
-						ret.first->second->id = ret.first->first;
-						// Устанавливаем флаг типа сокета
-						ret.first->second->state.type = type;
-						// Устанавливаем флаг семейства сокета
-						ret.first->second->state.family = family;
-						// Устанавливаем флаг протокола сокета
-						ret.first->second->state.protocol = protocol;
-						// Устанавливаем тип узла события
-						ret.first->second->state.node = event::node_t::CLIENT;
-						// Получаем объект клиента
-						client_t * client = awh_cast <client_t *> (ret.first->second.get());
-						// Активируем или деактивируем работу мютексов для передачи данных
-						client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						/**
-						 * Определяем семейство события
+						 * Определяем тип ноды
 						 */
-						switch(static_cast <uint8_t> (family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Создаём сокет подключения
-								client->transfer.fd = fds[i];
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_net_t> ();
-								// Выполняем инициализацию объекта IP-адреса клиента
-								awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+						switch(i){
+							// Для клиента
+							case 0: {
+								// Выполняем создание события
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								// Устанавливаем идентификатор события
+								ret.first->second->id = ret.first->first;
+								// Устанавливаем флаг типа сокета
+								ret.first->second->state.type = type;
+								// Устанавливаем флаг семейства сокета
+								ret.first->second->state.family = family;
+								// Устанавливаем флаг протокола сокета
+								ret.first->second->state.protocol = protocol;
+								// Устанавливаем тип узла события
+								ret.first->second->state.node = event::node_t::CLIENT;
+								// Получаем объект клиента
+								client_t * client = awh_cast <client_t *> (ret.first->second.get());
+								// Активируем или деактивируем работу мютексов для передачи данных
+								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Создаём сокет подключения
+										client->transfer.fd = fds[i];
+										// Выполняем инициализацию объекта хоста клиента
+										client->target = make_unique <net::attr_net_t> ();
+										// Выполняем инициализацию объекта IP-адреса клиента
+										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Создаём сокет подключения
+										client->transfer.fd = fds[i];
+										// Выполняем инициализацию объекта хоста клиента
+										client->target = make_unique <net::attr_net_t> ();
+										// Выполняем инициализацию объекта IP-адреса клиента
+										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+									} break;
+								}
+								// Возвращаем идентификатор созданного события
+								result[i] = ret.first->first;
 							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Создаём сокет подключения
-								client->transfer.fd = fds[i];
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_net_t> ();
-								// Выполняем инициализацию объекта IP-адреса клиента
-								awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+							// Для сервера
+							case 1: {
+								// Выполняем создание события
+								auto ret = ::__awh_nodes__.emplace(io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
+								// Устанавливаем идентификатор события
+								ret.first->second->id = ret.first->first;
+								// Устанавливаем флаг типа сокета
+								ret.first->second->state.type = type;
+								// Устанавливаем флаг семейства сокета
+								ret.first->second->state.family = family;
+								// Устанавливаем флаг протокола сокета
+								ret.first->second->state.protocol = protocol;
+								// Устанавливаем тип узла события
+								ret.first->second->state.node = event::node_t::SERVER;
+								// Получаем объект сервера
+								server_t * server = awh_cast <server_t *> (ret.first->second.get());
+								// Активируем или деактивируем работу мютексов для передачи данных
+								server->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Создаём сокет подключения
+										server->transfer.fd = fds[i];
+										// Выполняем инициализацию объекта хоста сервера
+										server->host = make_unique <net::attr_net_t> ();
+										// Выполняем инициализацию объекта IP-адреса сервера
+										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Создаём сокет подключения
+										server->transfer.fd = fds[i];
+										// Выполняем инициализацию объекта хоста сервера
+										server->host = make_unique <net::attr_net_t> ();
+										// Выполняем инициализацию объекта IP-адреса сервера
+										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+									} break;
+								}
+								// Возвращаем идентификатор созданного события
+								result[i] = ret.first->first;
 							} break;
 						}
-						// Возвращаем идентификатор созданного события
-						result[i] = ret.first->first;
 					}
 				}
 			}
