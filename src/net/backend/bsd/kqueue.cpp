@@ -4518,10 +4518,6 @@ namespace io {
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
-										// Выполняем обработку закрытия подключения
-										if(io::close(node, log))
-											// Выполняем удаление узла
-											io::destroy(node, log);
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -4587,10 +4583,6 @@ namespace io {
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
-										// Выполняем обработку закрытия подключения
-										if(io::close(node, log))
-											// Выполняем удаление узла
-											io::destroy(node, log);
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -4793,10 +4785,6 @@ namespace io {
 													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
-											// Выполняем обработку закрытия подключения
-											if(io::close(node, log))
-												// Выполняем удаление узла
-												io::destroy(node, log);
 											// Формируем положительный результат
 											return true;
 										// Если произошёл дисконнект
@@ -4862,10 +4850,6 @@ namespace io {
 													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
-											// Выполняем обработку закрытия подключения
-											if(io::close(node, log))
-												// Выполняем удаление узла
-												io::destroy(node, log);
 											// Формируем положительный результат
 											return true;
 										// Если произошёл дисконнект
