@@ -3347,11 +3347,15 @@ namespace io {
 											// Формируем смещение в буфере, согласно только порции новым данных
 											else offset = (fs->offset - offset);
 											// Если идентификатор события для передачи данных не установлен
-											if(fs->dst == 0)
+											if(fs->dst == 0){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												fs->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											else const_cast <io_t *> (io)->send(fs->dst, buffer + offset, size);
+											} else const_cast <io_t *> (io)->send(fs->dst, buffer + offset, size);
 											// Отвязываем текущий маппинг
 											::munmap(buffer, fs->bytes);
 											// Устанавливаем новое смещение в файле
