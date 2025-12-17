@@ -842,10 +842,16 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::TIMEOUT): {
 					// Выполняем извлечение текущего значения объекта таймера
 					timer_t * timer = awh_cast <timer_t *> (node);
+					// Извлекаем идентификатор ноды
+					const event::id_t id = timer->id;
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова статуса события
 						timer->callbacks.status(timer->id, event::status_t::SUCCESS);
+					// Если идентификатор ноды не найден, тогда просто выходим
+					if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+						// Формируем отрицательный результат
+						return result;
 					// Выполняем удаление узла
 					result = io::destroy(node, log);
 				} break;
@@ -31696,8 +31702,10 @@ bool awh::IO::deinitialize() noexcept {
 		::close(::__awh_kq__);
 		// Сбрасываем значение Kqueue
 		::__awh_kq__ = net::invalid_socket_t;
+		// Очищаем временный список подготовленных событий
+		::local::change.clear();
 		// Устанавливаем результат деинициализации в успешный
-		result = (::__awh_kq__ == net::invalid_socket_t);
+		result = ::local::change.empty();
 	}
 	// Возвращаем результат работы функции
 	return result;
@@ -32250,8 +32258,12 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							} break;
 						}
 					}
-					// Удаляем текущий элемент из списка изменений
-					i = ::local::change.erase(i);
+					// Если список ещё не очистили раньше
+					if(!::local::change.empty())
+						// Удаляем текущий элемент из списка изменений
+						i = ::local::change.erase(i);
+					// Просто выходим из цикла
+					else break;
 				}
 				// Очищаем список промежуточных звеньев
 				::local::evaccs.clear();

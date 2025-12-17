@@ -837,8 +837,6 @@ TEST_F(IoFixture, IoTCPTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -997,6 +995,8 @@ TEST_F(IoFixture, IoTCPTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -1353,8 +1353,6 @@ TEST_F(IoFixture, IoUDPTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -1497,6 +1495,8 @@ TEST_F(IoFixture, IoUDPTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -1853,8 +1853,6 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -2013,6 +2011,8 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -2448,8 +2448,6 @@ TEST_F(IoFixture, IoUDSTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -2608,6 +2606,8 @@ TEST_F(IoFixture, IoUDSTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -3041,8 +3041,6 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -3201,6 +3199,8 @@ TEST_F(IoFixture, IoUDPUDSTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -3553,8 +3553,6 @@ TEST_F(IoFixture, IoBroadcastTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -3697,6 +3695,8 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -3816,8 +3816,6 @@ TEST_F(IoFixture, IoMulticastTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -4107,6 +4105,8 @@ TEST_F(IoFixture, IoMulticastTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -4469,8 +4469,6 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			// Останавливаем тест
 			stop = true;
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -4625,6 +4623,8 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -5095,8 +5095,6 @@ TEST_F(IoFixture, IoFsTest){
 				// Удаляем файл
 				::unlink("./tmp.txt");
 			#endif
-			// Уничтожаем все события после получения ответа
-			this->_io->deinitialize();
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(fid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -5235,6 +5233,8 @@ TEST_F(IoFixture, IoFsTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -5336,8 +5336,6 @@ TEST_F(IoFixture, IoEventsTest){
 		this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 		// Останавливаем тест
 		stop = true;
-		// Уничтожаем все события после получения ответа
-		this->_io->deinitialize();
 	});
 	// Устанавливаем функцию обратного вызова на ошибку события
 	this->_io->on(eid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -5478,4 +5476,6 @@ TEST_F(IoFixture, IoEventsTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }

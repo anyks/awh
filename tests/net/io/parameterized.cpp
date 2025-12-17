@@ -164,6 +164,8 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		// Добавляем новое событие клиента ICMP
 		else eid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::RAW, awh::event::protocol_t::ICMP);
 	#endif
+	// Проверяем, что идентификатор события больше нуля
+	ASSERT_GT(eid, 0);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
@@ -352,6 +354,8 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		// Выполняем подсчёт количество прошедшего времени
 		ASSERT_GT(this->chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS) - mseconds, 0);
 	}
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
 }
 
 /**
@@ -374,3 +378,106 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, IoPingParameterizedFixture,
 		})
 	)
 );
+
+/**
+ * @brief Параметры теста временного таймера
+ *
+ */
+struct IoTimerTestParameter {
+	// Таймаут ожидания в миллисекундах
+	uint32_t timeout = 0;
+	// Тип узла события
+	awh::event::node_t node = awh::event::node_t::NONE;
+};
+
+/**
+ * @brief Класс параметризованной тестовой фикстуры
+ *
+ */
+class IoTimerParameterizedFixture : public IoFixture, public ::testing::WithParamInterface <IoTimerTestParameter> {
+	public:
+		// Параметры теста
+		IoTimerTestParameter _parameter = GetParam();
+	public:
+		// Замеряем время начала работы для таймера
+		std::chrono::time_point <std::chrono::system_clock> ts;
+};
+
+/**
+ * @brief Тест параметризованного выполнения работы таймера
+ *
+ */
+TEST_P(IoTimerParameterizedFixture, IoTimerTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Добавляем новое событие таймера
+	awh::event::id_t eid = this->_io->event(this->_parameter.node, awh::event::family_t::TIMER);
+	// Проверяем, что идентификатор события больше нуля
+	ASSERT_GT(eid, 0);
+	// Добавляем новое событие таймера
+	this->_io->timeout(eid, awh::event::action_t::NONE, this->_parameter.timeout);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(eid));
+	// Запоминаем текущее значение времени
+	this->ts = std::chrono::system_clock::now();
+	// Если таймер является интервалом
+	if(this->_parameter.node == awh::event::node_t::INTERVAL){
+		// Количество срабатываний интервала
+		uint8_t count = 0;
+		// Устанавливаем функцию обратного вызова на событие интервала
+		this->_io->on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Замеряем время начала работы для интервала времени
+			auto shift = std::chrono::system_clock::now();
+			// Если статус события успешен
+			if(status == awh::event::status_t::SUCCESS){
+				// Выводим сообщение о срабатывании интервала
+				this->_log->print("Интервал сработал: ID=%u, %u seconds", awh::log_t::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - ts).count());
+				// Замеряем время начала работы для интервала времени
+				this->ts = std::move(shift);
+				// Если таймер отработал 10 раз, выходим
+				if((count++) >= 3)
+					// Останавливаем тест
+					stop = true;
+			}
+		});
+	// Если таймер является таймаутом
+	} else {
+		// Устанавливаем функцию обратного вызова на событие таймера
+		this->_io->on(eid, [&stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Замеряем время начала работы для интервала времени
+			auto shift = std::chrono::system_clock::now();
+			// Если статус события успешен
+			if(status == awh::event::status_t::SUCCESS)
+				// Выводим сообщение о срабатывании таймера
+				this->_log->print("Таймер сработал: ID=%u, %u seconds", awh::log_t::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - this->ts).count());
+			// Останавливаем тест
+			stop = true;
+		});
+	}
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Инициализация параметров теста
+ *
+ */
+INSTANTIATE_TEST_SUITE_P(TestParameters, IoTimerParameterizedFixture,
+	::testing::Values(
+		IoTimerTestParameter({
+			5000,
+			awh::event::node_t::INTERVAL
+		}),
+		IoTimerTestParameter({
+			12000,
+			awh::event::node_t::TIMEOUT
+		})
+	)
+);
+
