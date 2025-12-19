@@ -206,23 +206,23 @@ namespace alpn {
 	/**
 	 * Идентификатор протокола HTTP/2.0
 	 */
-	static const std::string HTTP2 = "h2";
+	static constexpr char HTTP2[] = "\x2h2";
 	/**
 	 * Идентификатор протокола HTTP/3.0
 	 */
-	static const std::string HTTP3 = "h3";
+	static constexpr char HTTP3[] = "\x2h3";
 	/**
 	 * Идентификатор протокола SPDY
 	 */
-	static const std::string SPDY = "spdy/1";
+	static constexpr char SPDY[] = "\x6spdy/1";
 	/**
 	 * Идентификатор протокола HTTP/1.0
 	 */
-	static const std::string HTTP = "http/1";
+	static constexpr char HTTP[] = "\x6http/1";
 	/*
 	 * Идентификатор протокола HTTP/1.1
 	 */
-	static const std::string HTTP1_1 = "http/1.1";
+	static constexpr char HTTP1_1[] = "\x8http/1.1";
 };
 
 /**	
@@ -240,21 +240,23 @@ namespace ssl {
 	 * @param keySize размер ключа для копирования
 	 * @return        результат переключения протокола
 	 */
-	bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, const char * key, uint32_t keySize) noexcept {
+	static bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, const char * key, uint32_t keySize) noexcept {
+		// Результат работы функции
+		bool result = false;
 		// Выполняем перебор всех данных в входящем буфере
 		for(uint32_t i = 0; (i + keySize) <= inSize; i += (uint32_t) (in[i] + 1)){
 			// Если данные ключа скопированны удачно
-			if(::memcmp(&in[i], key, keySize) == 0){
+			if((result = (::memcmp(&in[i], key, keySize) == 0))){
 				// Выполняем установку размеров исходящего буфера
 				(* outSize) = in[i];
 				// Выполняем установку полученных данных в исходящий буфер
 				(* out) = const_cast <uint8_t *> (&in[i + 1]);
 				// Выходим из функции
-				return true;
+				break;
 			}
 		}
 		// Выводим результат
-		return false;
+		return result;
 	}
 	/**
 	 * @brief собран без следующих переговорщиков по протоколам
@@ -270,7 +272,7 @@ namespace ssl {
 		 * @param ctx  передаваемый контекст
 		 * @return     результат переключения протокола
 		 */
-		int32_t nextProto([[maybe_unused]] SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx) noexcept {
+		static int32_t nextProto([[maybe_unused]] SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx) noexcept {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
@@ -296,19 +298,23 @@ namespace ssl {
 		 * @param ctx     передаваемый контекст
 		 * @return        результат выбора протокола
 		 */
-		int32_t clientNextProtoSelect([[maybe_unused]] SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
+		static int32_t clientNextProtoSelect([[maybe_unused]] SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
 				ssl_t * ctx = reinterpret_cast <ssl_t *> (ctx);
 				// Если протокол переключить получилось на HTTP/2
-				if(::ssl::selectProto(out, outSize, in, inSize, "\x2h2", 2))
+				if(::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP3, static_cast <uint32_t> (::alpn::HTTP3[0])))
+					// Выводим результат
+					return SSL_TLSEXT_ERR_OK;
+				// Если протокол переключить получилось на HTTP/2
+				else if(::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP2, static_cast <uint32_t> (::alpn::HTTP2[0])))
 					// Выводим результат
 					return SSL_TLSEXT_ERR_OK;
 				// Если протокол переключить не получилось
 				else {
 					// Выполняем переключение протокола обратно на HTTP/1.1
-					::ssl::selectProto(out, outSize, in, inSize, "\x8http/1.1", 8);
+					::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP1_1, static_cast <uint32_t> (::alpn::HTTP1_1[0]));
 					// Выполняем переключение протокола на HTTP/1.1
 					ctx->alpn = tls_t::alpn_t::HTTP;
 				}
@@ -332,19 +338,23 @@ namespace ssl {
 		 * @param ctx     передаваемый контекст
 		 * @return        результат выбора протокола
 		 */
-		int32_t serverNextProtoSelect([[maybe_unused]] SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
+		static int32_t serverNextProtoSelect([[maybe_unused]] SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
 				ssl_t * ctx = reinterpret_cast <ssl_t *> (ctx);
 				// Если протокол переключить получилось на HTTP/2
-				if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, "\x2h2", 2))
+				if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP3, static_cast <uint32_t> (::alpn::HTTP3[0])))
+					// Выводим результат
+					return SSL_TLSEXT_ERR_OK;
+				// Если протокол переключить получилось на HTTP/2
+				else if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP2, static_cast <uint32_t> (::alpn::HTTP2[0])))
 					// Выводим результат
 					return SSL_TLSEXT_ERR_OK;
 				// Если протокол переключить не получилось
 				else {
 					// Выполняем переключение протокола обратно на HTTP/1.1
-					::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, "\x8http/1.1", 8);
+					::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP1_1, static_cast <uint32_t> (::alpn::HTTP1_1[0]));
 					// Выполняем переключение протокола на HTTP/1.1
 					ctx->alpn = tls_t::alpn_t::HTTP;
 				}
@@ -756,71 +766,43 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				switch(static_cast <uint8_t> (alpn)){
 					// Если протокол соответствует SPDY
 					case static_cast <uint8_t> (alpn_t::SPDY): {
-						// Устанавливаем количество символов для протокола SPDY/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::SPDY.size()));
 						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY.begin(), ::alpn::SPDY.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 					// Если протокол соответствует HTTP/1.1
 					case static_cast <uint8_t> (alpn_t::HTTP): {
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 					// Если протокол соответствует HTTP/2.0
 					case static_cast <uint8_t> (alpn_t::HTTP2): {
-						// Устанавливаем количество символов для протокола HTTP/2
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP2.size()));
 						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2.begin(), ::alpn::HTTP2.end());
-						// Устанавливаем количество символов для протокола SPDY/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::SPDY.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
 						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY.begin(), ::alpn::SPDY.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 					// Если протокол соответствует HTTP/3.0
 					case static_cast <uint8_t> (alpn_t::HTTP3): {
-						// Устанавливаем количество символов для протокола HTTP/2
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP2.size()));
-						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2.begin(), ::alpn::HTTP2.end());
-						// Устанавливаем количество символов для протокола HTTP/3
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP3.size()));
 						// Устанавливаем идентификатор протокола HTTP/3
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP3.begin(), ::alpn::HTTP3.end());
-						// Устанавливаем количество символов для протокола SPDY/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::SPDY.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP3, ::alpn::HTTP3 + (static_cast <uint16_t> (::alpn::HTTP3[0]) + 1));
+						// Устанавливаем идентификатор протокола HTTP/2
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
 						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY.begin(), ::alpn::SPDY.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 				}
 				/**
@@ -1115,71 +1097,43 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				switch(static_cast <uint8_t> (alpn)){
 					// Если протокол соответствует SPDY
 					case static_cast <uint8_t> (alpn_t::SPDY): {
-						// Устанавливаем количество символов для протокола SPDY/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::SPDY.size()));
 						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY.begin(), ::alpn::SPDY.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 					// Если протокол соответствует HTTP/1.1
 					case static_cast <uint8_t> (alpn_t::HTTP): {
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 					// Если протокол соответствует HTTP/2.0
 					case static_cast <uint8_t> (alpn_t::HTTP2): {
-						// Устанавливаем количество символов для протокола HTTP/2
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP2.size()));
 						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2.begin(), ::alpn::HTTP2.end());
-						// Устанавливаем количество символов для протокола SPDY/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::SPDY.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
 						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY.begin(), ::alpn::SPDY.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 					// Если протокол соответствует HTTP/3.0
 					case static_cast <uint8_t> (alpn_t::HTTP3): {
-						// Устанавливаем количество символов для протокола HTTP/2
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP2.size()));
-						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2.begin(), ::alpn::HTTP2.end());
-						// Устанавливаем количество символов для протокола HTTP/3
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP3.size()));
 						// Устанавливаем идентификатор протокола HTTP/3
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP3.begin(), ::alpn::HTTP3.end());
-						// Устанавливаем количество символов для протокола SPDY/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::SPDY.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP3, ::alpn::HTTP3 + (static_cast <uint16_t> (::alpn::HTTP3[0]) + 1));
+						// Устанавливаем идентификатор протокола HTTP/2
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
 						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY.begin(), ::alpn::SPDY.end());
-						// Устанавливаем количество символов для протокола HTTP/1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP.begin(), ::alpn::HTTP.end());
-						// Устанавливаем количество символов для протокола HTTP/1.1
-						(* ret.first)->protocols.push_back(static_cast <uint8_t> (::alpn::HTTP1_1.size()));
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
 						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1.begin(), ::alpn::HTTP1_1.end());
+						(* ret.first)->protocols.insert((* ret.first)->protocols.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
 					} break;
 				}
 				/**
