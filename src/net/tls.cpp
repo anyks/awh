@@ -64,7 +64,7 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * Прототип структуры уровня защищённых сокетов
+	 * Прототип класса уровня защищённых сокетов
 	 *
 	 */
 	class SecureSocketsLayer;
@@ -75,7 +75,7 @@ namespace {
 	using layers_t = unordered_set <unique_ptr <SecureSocketsLayer>>;
 
 	/**
-	 * @brief Структура уровня защищённых сокетов
+	 * @brief Класс уровня защищённых сокетов
 	 *
 	 */
 	typedef class SecureSocketsLayer {
@@ -112,67 +112,80 @@ namespace {
 			 *
 			 * @param layers контейнер уровней защищённых сокетов
 			 */
-			void erase(layers_t & layers) noexcept {
-				/**
-				 * Выполняем перехват ошибок
-				 */
-				try {
-					// Удаляем уровень защищённых сокетов из контейнера
-					layers.erase(this->iterator);
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "ERROR! %s\n\n", error.what());
-					#endif
-				}
-			}
+			void erase(layers_t & layers) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			SecureSocketsLayer() noexcept :
-			 ssl(nullptr),
-			 rbio(nullptr),
-			 wbio(nullptr),
-			 ctx(nullptr),
-			 crl(nullptr),
-			 handshake(false),
-			 node(event::node_t::NONE),
-			 proto(event::protocol_t::NONE),
-			 alpn(tls_t::alpn_t::NONE),
-			 error(nullptr) {}
+			SecureSocketsLayer() noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~SecureSocketsLayer() noexcept {
-				// Если CRL-файл сертификата уже создан
-				if(this->crl != nullptr)
-					// Выполняем освобождение памяти
-					::X509_CRL_free(this->crl);
-				// Если объект SSL существует
-				if(this->ssl != nullptr)
-					// Удаляем объект SSL
-					::SSL_free(this->ssl);
-				// Если объект SSL контекста существует
-				if(this->ctx != nullptr)
-					// Удаляем объект SSL контекста
-					::SSL_CTX_free(this->ctx);
-			}
+			~SecureSocketsLayer() noexcept;
 	} ssl_t;
+
+	/**
+	 * @brief Метод удаления уровня защищённых сокетов
+	 *
+	 * @param layers контейнер уровней защищённых сокетов
+	 */
+	void SecureSocketsLayer::erase(layers_t & layers) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Удаляем уровень защищённых сокетов из контейнера
+			layers.erase(this->iterator);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	SecureSocketsLayer::SecureSocketsLayer() noexcept :
+	 ssl(nullptr), rbio(nullptr), wbio(nullptr),
+	 ctx(nullptr), crl(nullptr), handshake(false),
+	 node(event::node_t::NONE), proto(event::protocol_t::NONE),
+	 alpn(tls_t::alpn_t::NONE), error(nullptr) {}
+
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	SecureSocketsLayer::~SecureSocketsLayer() noexcept {
+		// Если CRL-файл сертификата уже создан
+		if(this->crl != nullptr)
+			// Выполняем освобождение памяти
+			::X509_CRL_free(this->crl);
+		// Если объект SSL существует
+		if(this->ssl != nullptr)
+			// Удаляем объект SSL
+			::SSL_free(this->ssl);
+		// Если объект SSL контекста существует
+		if(this->ctx != nullptr)
+			// Удаляем объект SSL контекста
+			::SSL_CTX_free(this->ctx);
+	}
 
 	/**
 	 * @brief Глобальный список алгоритмов шифрования
