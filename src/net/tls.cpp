@@ -13,16 +13,6 @@
  */
 
 /**
- * Если разделитель алгоритмов шифрования не определён
- */
-#ifndef __AWH_TLS_CIPHER_SEPARATOR__
-	/**
-	 * Определяем разделитель алгоритмов шифрования
-	 */
-	#define __AWH_TLS_CIPHER_SEPARATOR__ ":"
-#endif // __AWH_TLS_CIPHER_SEPARATOR__
-
-/**
  * Стандартные модули
  */
 #include <atomic>
@@ -53,6 +43,16 @@
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Если разделитель алгоритмов шифрования не определён
+ */
+#ifndef __AWH_TLS_CIPHER_SEPARATOR__
+	/**
+	 * Определяем разделитель алгоритмов шифрования
+	 */
+	#define __AWH_TLS_CIPHER_SEPARATOR__ ":"
+#endif // __AWH_TLS_CIPHER_SEPARATOR__
 
 /**
  * Инкапсулируем статические типы данных в пространство имён
