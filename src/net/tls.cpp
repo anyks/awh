@@ -102,10 +102,10 @@ namespace {
 			tls_t::alpn_t alpn;
 			// Функция обратного вызова получения ошибок
 			tls_t::error_callback_t error;
-			// Список поддерживаемых ALPN-протоколов
-			vector <uint8_t> support;
 			// Мьютекс для синхронизации потоков
 			lock_state_t <mutex> mtx;
+			// Список поддерживаемых ALPN-протоколов
+			vector <uint8_t> support;
 			// Итератор уровня защищённых сокетов
 			layers_t::iterator iterator;
 		public:
