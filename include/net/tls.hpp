@@ -132,13 +132,6 @@ namespace awh {
 			 * @return    результат выполнения рукопожатия
 			 */
 			bool handshake(const id_t id, buffer_t out) noexcept;
-			/**
-			 * @brief Метод проверки завершённости TLS рукопожатия
-			 *
-			 * @param id идентификатор события
-			 * @return   результат проверки завершённости рукопожатия
-			 */
-			bool isHandshakeComplete(const id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод шифрования данных

@@ -461,17 +461,6 @@ bool awh::TransportLayerSecurity::handshake(const id_t id, buffer_t out) noexcep
 	return false;
 }
 /**
- * @brief Метод проверки завершённости TLS рукопожатия
- *
- * @param id идентификатор события
- * @return   результат проверки завершённости рукопожатия
- */
-bool awh::TransportLayerSecurity::isHandshakeComplete(const id_t id) const noexcept {
-
-	// Возвращаем отрицательный результат
-	return false;
-}
-/**
  * @brief Метод шифрования данных
  *
  * @param id  идентификатор события
