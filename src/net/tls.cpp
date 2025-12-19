@@ -92,8 +92,6 @@ namespace {
 			X509_CRL * crl;
 			// Флаг выполнения рукопожатия SSL
 			bool handshake;
-			// Флаг проверки валидности хоста сервера
-			bool validateHost;
 			// Тип узла события
 			event::node_t node;
 			// Тип протокола события
@@ -152,7 +150,6 @@ namespace {
 			 ctx(nullptr),
 			 crl(nullptr),
 			 handshake(false),
-			 validateHost(false),
 			 node(event::node_t::NONE),
 			 proto(event::protocol_t::NONE),
 			 alpn(tls_t::alpn_t::NONE),
