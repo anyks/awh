@@ -193,10 +193,10 @@ namespace awh {
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации
 			 *
-			 * @param id   идентификатор события
-			 * @param path адрес файла сертификата доверенных центров сертификации
+			 * @param id       идентификатор события
+			 * @param filename адрес файла сертификата доверенных центров сертификации
 			 */
-			void ca(const id_t id, const string & path) noexcept;
+			void ca(const id_t id, const string & filename) noexcept;
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации
 			 *

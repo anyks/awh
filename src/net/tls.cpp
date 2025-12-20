@@ -37,6 +37,7 @@
 /**
  * Подключаем системные заголовочные файлы
  */
+#include <sys/os.hpp>
 #include <sys/locker.hpp>
 
 /**
@@ -207,6 +208,11 @@ namespace {
 	 *
 	 */
 	bool __awh_ssl_initialized__ = false;
+	/**
+	 * @brief Глобальный набор идентификаторов контекстов TLS
+	 *
+	 */
+	unordered_set <uint64_t> __awh_ssl_ids__;
 };
 
 /**
@@ -534,11 +540,62 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & path
 /**
  * @brief Метод установки сертификатов доверенных центров сертификации
  *
- * @param id   идентификатор события
- * @param path адрес файла сертификата доверенных центров сертификации
+ * @param id       идентификатор события
+ * @param filename адрес файла сертификата доверенных центров сертификации
  */
-void awh::TransportLayerSecurity::ca(const id_t id, const string & path) noexcept {
-
+void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если адрес файла центра сертификации не пустой
+		if(!filename.empty()){
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			auto i = ::__awh_ssl_ids__.find(id);
+			// Если идентификатор контекста TLS найден
+			if(i != ::__awh_ssl_ids__.end()){
+				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+				// Выполняем проверку
+				if(::SSL_CTX_load_verify_locations(layer->ctx, filename.c_str(), nullptr) != 1){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+					#endif
+					// Выходим из функции
+					return;
+				}
+				// Выполняем установку CRL-файла сертификата
+				::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(filename.c_str()));
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод установки сертификатов доверенных центров сертификации
@@ -548,7 +605,195 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & path) noexcep
  * @param file адрес файла сертификата доверенного центра сертификации
  */
 void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const string & file) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if(i != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			// Если название файла центра сертификации не пустое
+			if(!file.empty()){
+				// Если каталог сертификатов передан
+				if(!dir.empty()){
+					// Выполняем проверку
+					if(::SSL_CTX_load_verify_locations(layer->ctx, file.c_str(), dir.c_str()) != 1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из функции
+						return;
+					}
+					// Полный адрес файла центра сертификации
+					string filename = "";
+					// Если последний символ каталога является разделителем
+					if(dir.back() == AWH_FS_SEPARATOR[0])
+						// Формируем полный адрес файла центра сертификации
+						filename = ::move(this->_fmk->format("%s%s", dir.c_str(), file.c_str()));
+					// Формируем полный адрес файла центра сертификации
+					else filename = ::move(this->_fmk->format("%s%s%s", dir.c_str(), AWH_FS_SEPARATOR, file.c_str()));
+					// Выполняем установку CRL-файла сертификата
+					::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(filename.c_str()));
+				// Если каталог сертификатов не передан
+				} else {
+					// Выполняем проверку
+					if(::SSL_CTX_load_verify_locations(layer->ctx, file.c_str(), nullptr) != 1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, file), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из функции
+						return;
+					}
+					// Выполняем установку CRL-файла сертификата
+					::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(file.c_str()));
+				}
+			// Если адрес файла центра сертификации не передан
+			} else {
+				// Получаем данные стора
+				X509_STORE * store = ::SSL_CTX_get_cert_store(layer->ctx);
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					/**
+					 * @brief Функция проверки параметров сертификата
+					 *
+					 * @param store стор с сертификатами для работы
+					 * @param name  название параметра сертификата
+					 * @return      результат проверки
+					 */
+					auto addCertToStoreFn = [id, this](X509_STORE * store = nullptr, const char * name = nullptr) noexcept -> int32_t {
+						// Результат работы функции
+						int32_t result = 0;
+						// Если объекты переданы верно
+						if((store != nullptr) && (name != nullptr)){
+							// Контекст сертификата
+							PCCERT_CONTEXT ctx = nullptr;
+							// Получаем данные системного стора
+							HCERTSTORE sys = ::CertOpenSystemStore(0, name);
+							// Если системный стор не получен
+							if(!sys){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to open system certificate store", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим
+								return -1;
+							}
+							/**
+							 * Перебираем все сертификаты в системном сторе
+							 */
+							while((ctx = ::CertEnumCertificatesInStore(sys, ctx))){
+								// Выполняем создание сертификата
+								X509 * cert = X509_new();
+								// Если сертификат не создан
+								if(cert == nullptr){
+									// Формируем результат ответа
+									result = -1;
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Create X509 is failed", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL);
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Create X509 is failed", log_t::flag_t::CRITICAL);
+									#endif
+									// Выходим из цикла
+									break;
+								// Если сертификат создан удачно
+								} else {
+									// Получаем объект закодированного сертификата
+									const BYTE * encoded = ctx->pbCertEncoded;
+									// Добавляем сертификат в стор
+									::X509_STORE_add_cert(store, ::d2i_X509(&cert, reinterpret_cast <const uint8_t **> (&encoded), ctx->cbCertEncoded));
+									// Очищаем выделенную память
+									::X509_free(cert);
+								}
+							}
+							// Закрываем системный стор
+							::CertCloseStore(sys, 0);
+						}
+						// Выводим сформированный результат
+						return result;
+					};
+					// Проверяем существует ли путь
+					if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0))
+						// Выходим из функции
+						return;
+				#endif
+				// Если стор не устанавливается, тогда выводим ошибку
+				if(::X509_STORE_set_default_paths(store) != 1){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Set default paths for x509 store is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод установки функции обратного вывода получения ошибок
@@ -558,9 +803,38 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
  * @return        результат установки функции обратного вызова
  */
 bool awh::TransportLayerSecurity::error(const id_t id, error_callback_t callback) noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if((result = (i != ::__awh_ssl_ids__.end())))
+			// Устанавливаем функцию обратного вызова получения ошибок
+			reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->error = ::move(callback);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 	// Возвращаем отрицательный результат
-	return false;
+	return result;
 }
 /**
  * @brief Метод удаления контекста TLS
@@ -575,10 +849,15 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если идентификатор контекста TLS передан
-		if((result = (id > 0)))
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if((result = (i != ::__awh_ssl_ids__.end()))){
+			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
+			::__awh_ssl_ids__.erase(i);
 			// Удаляем контекст TLS из контейнера уровней защищённых сокетов
 			reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->erase(::__awh_ssl_layers__);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -928,6 +1207,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_set_bio((* ret.first)->ssl, (* ret.first)->rbio, (* ret.first)->wbio);
 				// Устанавливаем режим клиента для SSL объекта
 				::SSL_set_connect_state((* ret.first)->ssl);
+				// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
+				::__awh_ssl_ids__.emplace(result);
 			} break;
 			// Если узел является сервером
 			case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -1290,6 +1571,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_set_bio((* ret.first)->ssl, (* ret.first)->rbio, (* ret.first)->wbio);
 				// Устанавливаем режим сервера для SSL объекта
 				::SSL_set_accept_state((* ret.first)->ssl);
+				// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
+				::__awh_ssl_ids__.emplace(result);
 			} break;
 			// Во всех остальных случаях
 			default: {
