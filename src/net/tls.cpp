@@ -379,6 +379,85 @@ namespace ssl {
 			return SSL_TLSEXT_ERR_NOACK;
 		}
 	#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * @brief Функция проверки параметров сертификата
+		 *
+		 * @param store стор с сертификатами для работы
+		 * @param name  название параметра сертификата
+		 * @param log   объект для работы с логами
+		 * @return      результат проверки
+		 */
+		static bool addCertToStore(X509_STORE * store, const char * name, const awh::log_t * log) noexcept {
+			// Результат работы функции
+			bool result = false;
+			// Если объекты переданы верно
+			if((store != nullptr) && (name != nullptr)){
+				// Получаем данные системного стора
+				HCERTSTORE sys = ::CertOpenSystemStore(0, name);
+				// Если системный стор не получен
+				if(!(result = (sys != nullptr))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("Failed to open system certificate store", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
+					#endif
+					// Выходим
+					return result;
+				}
+				// Контекст сертификата
+				PCCERT_CONTEXT ctx = nullptr;
+				/**
+				 * Перебираем все сертификаты в системном сторе
+				 */
+				while((ctx = ::CertEnumCertificatesInStore(sys, ctx))){
+					// Выполняем создание сертификата
+					X509 * cert = X509_new();
+					// Если сертификат создан удачно
+					if((result = (cert != nullptr))){
+						// Получаем объект закодированного сертификата
+						const BYTE * encoded = ctx->pbCertEncoded;
+						// Добавляем сертификат в стор
+						::X509_STORE_add_cert(store, ::d2i_X509(&cert, reinterpret_cast <const uint8_t **> (&encoded), ctx->cbCertEncoded));
+						// Очищаем выделенную память
+						::X509_free(cert);
+					// Если сертификат не создан
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("Create X509 is failed", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("Create X509 is failed", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из цикла
+						break;
+					}
+				}
+				// Закрываем системный стор
+				::CertCloseStore(sys, 0);
+			}
+			// Выводим сформированный результат
+			return result;
+		}
+	#endif
 };
 
 /**
@@ -678,88 +757,15 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					/**
-					 * @brief Функция проверки параметров сертификата
-					 *
-					 * @param store стор с сертификатами для работы
-					 * @param name  название параметра сертификата
-					 * @return      результат проверки
-					 */
-					auto addCertToStoreFn = [id, this](X509_STORE * store = nullptr, const char * name = nullptr) noexcept -> int32_t {
-						// Результат работы функции
-						int32_t result = 0;
-						// Если объекты переданы верно
-						if((store != nullptr) && (name != nullptr)){
-							// Контекст сертификата
-							PCCERT_CONTEXT ctx = nullptr;
-							// Получаем данные системного стора
-							HCERTSTORE sys = ::CertOpenSystemStore(0, name);
-							// Если системный стор не получен
-							if(!sys){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Failed to open system certificate store", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL);
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
-								#endif
-								// Выходим
-								return -1;
-							}
-							/**
-							 * Перебираем все сертификаты в системном сторе
-							 */
-							while((ctx = ::CertEnumCertificatesInStore(sys, ctx))){
-								// Выполняем создание сертификата
-								X509 * cert = X509_new();
-								// Если сертификат не создан
-								if(cert == nullptr){
-									// Формируем результат ответа
-									result = -1;
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Create X509 is failed", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL);
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Create X509 is failed", log_t::flag_t::CRITICAL);
-									#endif
-									// Выходим из цикла
-									break;
-								// Если сертификат создан удачно
-								} else {
-									// Получаем объект закодированного сертификата
-									const BYTE * encoded = ctx->pbCertEncoded;
-									// Добавляем сертификат в стор
-									::X509_STORE_add_cert(store, ::d2i_X509(&cert, reinterpret_cast <const uint8_t **> (&encoded), ctx->cbCertEncoded));
-									// Очищаем выделенную память
-									::X509_free(cert);
-								}
-							}
-							// Закрываем системный стор
-							::CertCloseStore(sys, 0);
-						}
-						// Выводим сформированный результат
-						return result;
-					};
 					// Проверяем существует ли путь
-					if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0))
+					if(!::ssl::addCertToStore(store, "CA", this->_log) ||
+					   !::ssl::addCertToStore(store, "ROOT", this->_log) ||
+					   !::ssl::addCertToStore(store, "AuthRoot", this->_log))
 						// Выходим из функции
 						return;
 				#endif
 				// Если стор не устанавливается, тогда выводим ошибку
-				if(::X509_STORE_set_default_paths(store) != 1){
+				if(::X509_STORE_set_default_paths(store) == 0){
 					/**
 					 * Если включён режим отладки
 					 */
