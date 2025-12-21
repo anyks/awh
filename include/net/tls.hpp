@@ -18,6 +18,7 @@
 /**
  * Наши модули
  */
+#include "addr.hpp"
 #include "event.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
@@ -38,6 +39,16 @@ namespace awh {
 	typedef class TransportLayerSecurity {
 		public:
 			/**
+			 * Флаги типов ошибок TLS
+			 */
+			enum class error_t : uint8_t {
+				NONE     = 0x00, // Флаг не установлен
+				INFO     = 0x01, // Информационное сообщение
+				WARNING  = 0x02, // Предупреждающее сообщение
+				CRITICAL = 0x03  // Критическое сообщение
+			};
+		public:
+			/**
 			 * @brief Тип идентификатора события
 			 *
 			 */
@@ -50,7 +61,7 @@ namespace awh {
 			/**
 			 * Функция обратного вызова срабатывающая при ошибке события
 			 */
-			using error_callback_t = std::function <void (const id_t, const string &)>;
+			using error_callback_t = std::function <void (const id_t, const error_t, const string &)>;
 		public:
 			/**
 			 * Основные поддерживаемые Application-Layer Protocol Negotiation (ALPN) протоколы
@@ -64,6 +75,9 @@ namespace awh {
 				HTTP3 = 0x05  // Протокол соответствует HTTP/3.0
 			};
 		private:
+			// Объект работы с IP-адресами
+			net_addr_t _addr;
+		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
@@ -72,10 +86,9 @@ namespace awh {
 			/**
 			 * @brief Метод получения версии протокола TLS
 			 *
-			 * @param id идентификатор события
-			 * @return   версия протокола TLS
+			 * @return версия протокола TLS
 			 */
-			string version(const id_t id) const noexcept;
+			string version() const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения активного протокола
@@ -84,6 +97,22 @@ namespace awh {
 			 * @return   метод активного протокола
 			 */
 			alpn_t alpn(const id_t id) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения общей информации о TLS соединении
+			 *
+			 * @param id идентификатор события
+			 * @return   общая информация о TLS соединении
+			 */
+			string info(const id_t id) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения информации о списке отзыва сертификатов
+			 *
+			 * @param id идентификатор события
+			 * @return   информация о списке отзыва сертификатов
+			 */
+			string crlInfo(const id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения информации о шифре
@@ -123,6 +152,16 @@ namespace awh {
 			 * @param hostname имя хоста сервера
 			 */
 			void setHostname(const id_t id, const string & hostname) noexcept;
+		public:
+			/**
+			 * @brief Метод установки адреса и порта сервера назначения
+			 *
+			 * @param id   идентификатор события
+			 * @param ip   IP-адрес сервера
+			 * @param port порт сервера
+			 * @return     результат выполнения установки
+			 */
+			bool destination(const id_t id, const string & ip, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод выполнения TLS рукопожатия
@@ -171,24 +210,24 @@ namespace awh {
 			/**
 			 * @brief Метод установки списка отзыва сертификатов
 			 *
-			 * @param id   идентификатор события
-			 * @param path адрес файла списка отзыва сертификатов
+			 * @param id       идентификатор события
+			 * @param filename адрес файла списка отзыва сертификатов
 			 */
-			void crl(const id_t id, const string & path) noexcept;
+			void crl(const id_t id, const string & filename) noexcept;
 			/**
 			 * @brief Метод установки приватного ключа клиента
 			 *
-			 * @param id   идентификатор события
-			 * @param path адрес файла приватного ключа клиента
+			 * @param id       идентификатор события
+			 * @param filename адрес файла приватного ключа клиента
 			 */
-			void privateKey(const id_t id, const string & path) noexcept;
+			void privateKey(const id_t id, const string & filename) noexcept;
 			/**
 			 * @brief Метод установки клиентского сертификата
 			 *
-			 * @param id   идентификатор события
-			 * @param path адрес файла клиентского сертификата
+			 * @param id       идентификатор события
+			 * @param filename адрес файла клиентского сертификата
 			 */
-			void certificate(const id_t id, const string & path) noexcept;
+			void certificate(const id_t id, const string & filename) noexcept;
 		public:
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации
