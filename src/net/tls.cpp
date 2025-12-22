@@ -2852,7 +2852,36 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					return 0;
 				}
 				// Устанавливаем опции запроса
-				::SSL_CTX_set_options((* ret.first)->ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
+				::SSL_CTX_set_options(
+					(* ret.first)->ctx,
+					/**
+					 * 1. Совместимость и безопасность по умолчанию
+					 */
+					SSL_OP_ALL |
+					/**
+					 * 2. Отключить устаревшие и небезопасные протоколы
+					 */
+					SSL_OP_NO_SSLv2 |
+					SSL_OP_NO_SSLv3 |
+					SSL_OP_NO_TLSv1 |
+					SSL_OP_NO_TLSv1_1 |
+					/**
+					 * 3. Защита от атак
+					 */
+					SSL_OP_NO_COMPRESSION |                         // CRIME / BREACH
+					SSL_OP_CIPHER_SERVER_PREFERENCE |               // Сервер выбирает шифр
+					SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | // Безопасная ренеготиация
+					/**
+					 * 5. Дополнительные меры (опционально, но рекомендованы)
+					 */
+					SSL_OP_NO_RENEGOTIATION | // Отключить ренеготиацию вообще (OpenSSL 1.1.1+)
+					SSL_OP_SINGLE_DH_USE |    // Свежие DH-ключи (для DHE)
+					SSL_OP_SINGLE_ECDH_USE    // Свежие ECDH-ключи (для ECDHE)
+				);
+				// Устанавливаем минимально-возможную версию TLS
+				::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+				// Устанавливаем максимально-возможную версию TLS
+				::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
 				/**
 				 * Если версия OpenSSL соответствует или выше версии 3.0.0
 				 */
@@ -3189,7 +3218,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					SSL_OP_SINGLE_ECDH_USE    // Свежие ECDH-ключи (для ECDHE)
 				);
 				// Устанавливаем минимально-возможную версию TLS
-				::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_VERSION);
+				::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
 				// Устанавливаем максимально-возможную версию TLS
 				::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
 				// Устанавливаем все основные алгоритмы шифрования
