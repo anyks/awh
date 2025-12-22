@@ -46,21 +46,34 @@ namespace awh {
 				WARNING  = 0x01, // Предупреждающее сообщение
 				CRITICAL = 0x02  // Критическое сообщение
 			};
+			/**
+			 * Типы событий TLS
+			 *
+			 */
+			enum class event_t : uint8_t {
+				NONE        = 0x00, // Событие не установлено
+				ENCRYPTION  = 0x01, // Событие шифрования данных
+				DECRYPTION  = 0x02  // Событие расшифровки данных
+			};
 		public:
 			/**
 			 * @brief Тип идентификатора события
 			 *
 			 */
 			using id_t = uint64_t;
-			/**
-			 * @brief Тип буфера данных
-			 *
-			 */
-			using buffer_t = std::pair <void *, size_t>;
+		public:
 			/**
 			 * Функция обратного вызова срабатывающая при ошибке события
 			 */
 			using error_callback_t = std::function <void (const id_t, const error_t, const string &)>;
+			/**
+			 * Функция обратного вызова срабатывающая при записи
+			 */
+			using write_callback_t = std::function <void (const id_t, const event_t, const size_t)>;
+			/**
+			 * Функция обратного вызова срабатывающая при чтении
+			 */
+			using read_callback_t = std::function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
 		public:
 			/**
 			 * Основные поддерживаемые Application-Layer Protocol Negotiation (ALPN) протоколы
@@ -153,6 +166,15 @@ namespace awh {
 			void setHostname(const id_t id, const string & hostname) noexcept;
 		public:
 			/**
+			 * @brief Метод установки размера буфера передачи данных
+			 *
+			 * @param id   идентификатор события
+			 * @param size размер буфера передачи данных
+			 * @return     результат выполнения установки
+			 */
+			bool bufferSize(const id_t id, const size_t size) noexcept;
+		public:
+			/**
 			 * @brief Метод установки адреса и порта отдалённого узла
 			 *
 			 * @param id   идентификатор события
@@ -165,30 +187,29 @@ namespace awh {
 			/**
 			 * @brief Метод выполнения TLS рукопожатия
 			 *
-			 * @param id  идентификатор события
-			 * @param out буфер для записи зашифрованных данных
-			 * @return    результат выполнения рукопожатия
+			 * @param id идентификатор события
+			 * @return   результат выполнения рукопожатия
 			 */
-			bool handshake(const id_t id, buffer_t out) noexcept;
+			bool handshake(const id_t id) noexcept;
 		public:
 			/**
 			 * @brief Метод шифрования данных
 			 *
-			 * @param id  идентификатор события
-			 * @param in  буфер данных для шифрования
-			 * @param out буфер для записи зашифрованных данных
-			 * @return    результат выполнения шифрования
+			 * @param id     идентификатор события
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер буфера данных для шифрования
+			 * @return       результат выполнения шифрования
 			 */
-			bool encrypt(const id_t id, const buffer_t in, buffer_t out) noexcept;
+			bool encrypt(const id_t id, const void * buffer, const size_t size) noexcept;
 			/**
 			 * @brief Метод расшифровки данных
 			 *
-			 * @param id  идентификатор события
-			 * @param in  буфер данных для расшифровки
-			 * @param out буфер для записи расшифрованных данных
-			 * @return    результат выполнения расшифровки
+			 * @param id     идентификатор события
+			 * @param buffer буфер данных для расшифровки
+			 * @param size   размер буфера данных для расшифровки
+			 * @return       результат выполнения расшифровки
 			 */
-			bool decrypt(const id_t id, const buffer_t in, buffer_t out) noexcept;
+			bool decrypt(const id_t id, const void * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод установки безопасности работы потоков
@@ -245,13 +266,29 @@ namespace awh {
 			void ca(const id_t id, const string & dir, const string & file = "") noexcept;
 		public:
 			/**
+			 * @brief Метод установки функции обратного вывода получения данных
+			 *
+			 * @param id       идентификатор события
+			 * @param callback объект функции обратного вызова
+			 * @return         результат установки функции обратного вызова
+			 */
+			bool on(const id_t id, read_callback_t callback) noexcept;
+			/**
+			 * @brief Метод установки функции обратного вывода передачи данных
+			 *
+			 * @param id       идентификатор события
+			 * @param callback объект функции обратного вызова
+			 * @return         результат установки функции обратного вызова
+			 */
+			bool on(const id_t id, write_callback_t callback) noexcept;
+			/**
 			 * @brief Метод установки функции обратного вывода получения ошибок
 			 *
 			 * @param id       идентификатор события
 			 * @param callback объект функции обратного вызова
-			 * @return        результат установки функции обратного вызова
+			 * @return         результат установки функции обратного вызова
 			 */
-			bool error(const id_t id, error_callback_t callback) noexcept;
+			bool on(const id_t id, error_callback_t callback) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления контекста TLS
