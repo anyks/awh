@@ -1089,6 +1089,72 @@ namespace verify {
 		// Выводим результат
 		return ok;
 	}
+	/**
+	 * @brief Функция формирования сообщения об ошибке
+	 *
+	 * @param id      идентификатор события
+	 * @param message дополнительное сообщение
+	 * @return        сформированное сообщение об ошибке
+	 */
+	static string error(const tls_t::id_t id, const string & message = "") noexcept {
+		// Результат работы функции
+		string result = "";
+		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+		auto layer = reinterpret_cast <::ssl_t *> (static_cast <uintptr_t> (id));
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем данные описание ошибки
+			uint64_t error = ::ERR_get_error();
+			// Получаем объект фреймворка
+			awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(layer->ssl, ::cookie::index[1]));
+			// Если ошибка получена
+			if(error != 0){
+				// Получаем текст общего сообщения
+				const string state = ::SSL_state_string(layer->ssl);
+				/**
+				 * Выполняем извлечение остальных ошибок
+				 */
+				do {
+					// Если результат уже сформирован
+					if(!result.empty())
+						// Добавляем разделитель
+						result.append("\n\n");
+					// Если получено состояние SSL
+					if(!state.empty())
+						// Добавляем информацию об ошибке в результат
+						result.append(fmk->format("%s: %s", state.c_str(), ::ERR_error_string(error, nullptr)));
+					// Если получено дополнительное сообщение
+					else if(!message.empty())
+						// Добавляем информацию об ошибке в результат
+						result.append(fmk->format("%s: %s", message.c_str(), ::ERR_error_string(error, nullptr)));
+					// Если не получено ни состояние SSL, ни дополнительное сообщение
+					else result.append(fmk->format("%s", ::ERR_error_string(error, nullptr)));
+				/**
+				 * Если ещё есть ошибки
+				 */
+				} while((error = ::ERR_get_error()));
+			// Если получено дополнительное сообщение
+			} else if(!message.empty())
+				// Добавляем информацию об ошибке в результат
+				result.append(fmk->format("%s", message.c_str()));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Получаем объект фреймворка
+			awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(layer->ssl, ::cookie::index[1]));
+			// Если получено дополнительное сообщение
+			if(!message.empty())
+				// Добавляем информацию об ошибке в результат
+				result.append(fmk->format("%s: %s", message.c_str(), error.what()));
+			// Если не получено ни состояние SSL, ни дополнительное сообщение
+			else result.append(fmk->format("%s", error.what()));
+		}
+		// Выводим сформированное сообщение об ошибке
+		return result;
+	}
 };
 
 /**
@@ -1268,76 +1334,50 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если BIO не создан
 				if(bio == nullptr){
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
+					// Если функция обратного вызова ошибки установлена
+					if(layer->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
 						/**
-						 * Выполняем извлечение остальных ошибок
+						 * Если включён режим отладки
 						 */
-						do {
-							// Если функция обратного вызова ошибки установлена
-							if(layer->error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								layer->error(id, error_t::CRITICAL, this->_fmk->format("Engine store CRL: %s", ::ERR_error_string(error, nullptr)));
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Engine store CRL: %s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								#endif
-							}
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
 						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+						#endif
 					}
 					// Выходим из функции
 					return result;
 				}
 				// Печатаем CRL в BIO
 				if(::X509_CRL_print(bio, layer->crl) == 0){
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
+					// Если функция обратного вызова ошибки установлена
+					if(layer->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
 						/**
-						 * Выполняем извлечение остальных ошибок
+						 * Если включён режим отладки
 						 */
-						do {
-							// Если функция обратного вызова ошибки установлена
-							if(layer->error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								layer->error(id, error_t::CRITICAL, this->_fmk->format("Engine store CRL: %s", ::ERR_error_string(error, nullptr)));
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Engine store CRL: %s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								#endif
-							}
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
 						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+						#endif
 					}
 					// Выполняем очистку BIO
 					::BIO_free(bio);
@@ -1402,76 +1442,50 @@ string awh::TransportLayerSecurity::crlInfo(const id_t id) const noexcept {
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если BIO не создан
 				if(bio == nullptr){
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
+					// Если функция обратного вызова ошибки установлена
+					if(layer->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
 						/**
-						 * Выполняем извлечение остальных ошибок
+						 * Если включён режим отладки
 						 */
-						do {
-							// Если функция обратного вызова ошибки установлена
-							if(layer->error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								layer->error(id, error_t::CRITICAL, this->_fmk->format("Engine store CRL: %s", ::ERR_error_string(error, nullptr)));
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Engine store CRL: %s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								#endif
-							}
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
 						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+						#endif
 					}
 					// Выходим из функции
 					return result;
 				}
 				// Печатаем CRL в BIO
 				if(::X509_CRL_print(bio, layer->crl) == 0){
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
+					// Если функция обратного вызова ошибки установлена
+					if(layer->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
 						/**
-						 * Выполняем извлечение остальных ошибок
+						 * Если включён режим отладки
 						 */
-						do {
-							// Если функция обратного вызова ошибки установлена
-							if(layer->error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								layer->error(id, error_t::CRITICAL, this->_fmk->format("Engine store CRL: %s", ::ERR_error_string(error, nullptr)));
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Engine store CRL: %s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-								#endif
-							}
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
 						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+						#endif
 					}
 					// Выполняем очистку BIO
 					::BIO_free(bio);
@@ -1661,38 +1675,25 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 			X509_STORE_CTX * ctx = ::X509_STORE_CTX_new();
 			// Если контекст не создан
 			if(ctx == nullptr){
-				// Получаем данные описание ошибки
-				uint64_t error = ::ERR_get_error();
-				// Если ошибка получена
-				if(error != 0){
+				// Если функция обратного вызова ошибки установлена
+				if(layer->error != nullptr)
+					// Вызываем функцию обратного вызова ошибки
+					layer->error(id, error_t::CRITICAL, ::verify::error(id));
+				// Если функция обратного вызова ошибки не установлена
+				else {
 					/**
-					 * Выполняем извлечение остальных ошибок
+					 * Если включён режим отладки
 					 */
-					do {
-						// Если функция обратного вызова ошибки установлена
-						if(layer->error != nullptr)
-							// Вызываем функцию обратного вызова ошибки
-							layer->error(id, error_t::CRITICAL, ::ERR_error_string(error, nullptr));
-						// Если функция обратного вызова ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-							#endif
-						}
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
 					/**
-					 * Если ещё есть ошибки
-					 */
-					} while((error = ::ERR_get_error()));
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
+					#endif
 				}
 				// Возвращаем отрицательный результат
 				return false;
@@ -1701,38 +1702,25 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 			if(::X509_STORE_CTX_init(ctx, store, x509, ::SSL_get_peer_cert_chain(layer->ssl)) == 0){
 				// Выполняем очистку контекста
 				::X509_STORE_CTX_free(ctx);
-				// Получаем данные описание ошибки
-				uint64_t error = ::ERR_get_error();
-				// Если ошибка получена
-				if(error != 0){
+				// Если функция обратного вызова ошибки установлена
+				if(layer->error != nullptr)
+					// Вызываем функцию обратного вызова ошибки
+					layer->error(id, error_t::CRITICAL, ::verify::error(id));
+				// Если функция обратного вызова ошибки не установлена
+				else {
 					/**
-					 * Выполняем извлечение остальных ошибок
+					 * Если включён режим отладки
 					 */
-					do {
-						// Если функция обратного вызова ошибки установлена
-						if(layer->error != nullptr)
-							// Вызываем функцию обратного вызова ошибки
-							layer->error(id, error_t::CRITICAL, ::ERR_error_string(error, nullptr));
-						// Если функция обратного вызова ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-							#endif
-						}
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
 					/**
-					 * Если ещё есть ошибки
-					 */
-					} while((error = ::ERR_get_error()));
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
+					#endif
 				}
 				// Возвращаем отрицательный результат
 				return false;
@@ -2256,50 +2244,51 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 				BIO * bio = ::BIO_new(::BIO_s_file());
 				// Если BIO не создан
 				if(bio == nullptr){
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
+					// Если функция обратного вызова ошибки установлена
+					if(layer->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
 						/**
-						 * Выполняем извлечение остальных ошибок
+						 * Если включён режим отладки
 						 */
-						do {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Engine store CRL: %s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-							#endif
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
 						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+						#endif
 					}
 					// Выходим из функции
 					return;
 				}
 				// Выполняем чтение CRL-файла сертификата
 				if(BIO_read_filename(bio, filename.c_str()) <= 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("CRL-file is corrupted or unreadable", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("CRL-file is corrupted or unreadable", log_t::flag_t::CRITICAL);
-					#endif
+					// Если функция обратного вызова ошибки установлена
+					if(layer->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						layer->error(id, error_t::CRITICAL, ::verify::error(id, "CRL-file is corrupted or unreadable"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "CRL-file is corrupted or unreadable").c_str());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "CRL-file is corrupted or unreadable").c_str());
+						#endif
+					}
 					// Выполняем очистку памяти BIO
 					::BIO_free(bio);
 					// Выходим из функции
