@@ -67,20 +67,56 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Прототип класса участника уровня защищённых сокетов
+	 *
+	 */
+	class Member;
+	/**
+	 * @brief Тип контейнера участников уровня защищённых сокетов
+	 *
+	 */
+	using members_t = unordered_set <unique_ptr <Member>>;
+
+	/**
+	 * @brief Глобальный список алгоритмов шифрования
+	 *
+	 */
+	string __awh_ssl_ciphers__;
+	/**
+	 * @brief Глобальный контейнер уровней защищённых сокетов
+	 *
+	 */
+	members_t __awh_ssl_members__;
+	/**
+	 * @brief Счётчик инициализации библиотеки OpenSSL
+	 *
+	 */
+	uint16_t __awh_ssl_init_count__ = 0;
+	/**
+	 * @brief Флаг инициализации библиотеки OpenSSL
+	 *
+	 */
+	bool __awh_ssl_initialized__ = false;
+	/**
+	 * @brief Глобальный набор идентификаторов контекстов TLS
+	 *
+	 */
+	unordered_set <uint64_t> __awh_ssl_ids__;
+	/**
+	 * @brief Индексы для хранения состояний проверки куков
+	 *
+	 */
+	int32_t __awh_ssl_index__[3] = {-1, -1, -1};
+}
+
+/**
+ * Инкапсулируем статические типы данных в пространство имён
+ */
+namespace {
+	/**
 	 * Подписываемся на пространство имён AWH
 	 */
 	using namespace awh;
-
-	/**
-	 * Прототип класса уровня защищённых сокетов
-	 *
-	 */
-	class SecureSocketsLayer;
-	/**
-	 * @brief Тип контейнера уровней защищённых сокетов
-	 *
-	 */
-	using layers_t = unordered_set <unique_ptr <SecureSocketsLayer>>;
 
 	/**
 	 * @brief Структура печенок SSL
@@ -115,10 +151,10 @@ namespace {
 	} host_t;
 
 	/**
-	 * @brief Класс уровня защищённых сокетов
+	 * @brief Класс участника уровня защищённых сокетов
 	 *
 	 */
-	typedef class SecureSocketsLayer {
+	typedef class Member {
 		public:
 			// Объект SSL
 			SSL * ssl;
@@ -149,74 +185,50 @@ namespace {
 			// Список поддерживаемых ALPN-протоколов
 			vector <uint8_t> support;
 			// Итератор уровня защищённых сокетов
-			layers_t::iterator iterator;
+			members_t::iterator iterator;
 		public:
 			/**
 			 * @brief Метод удаления уровня защищённых сокетов
 			 *
-			 * @param layers контейнер уровней защищённых сокетов
+			 * @param members контейнер уровней защищённых сокетов
 			 */
-			void erase(layers_t & layers) noexcept;
+			void erase(members_t & members) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			SecureSocketsLayer() noexcept;
+			Member() noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~SecureSocketsLayer() noexcept;
-	} ssl_t;
+			~Member() noexcept;
+	} member_t;
 
 	/**
 	 * @brief Метод удаления уровня защищённых сокетов
 	 *
-	 * @param layers контейнер уровней защищённых сокетов
+	 * @param members контейнер уровней защищённых сокетов
 	 */
-	void SecureSocketsLayer::erase(layers_t & layers) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Удаляем уровень защищённых сокетов из контейнера
-			layers.erase(this->iterator);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+	void Member::erase(members_t & members) noexcept {
+		// Удаляем уровень защищённых сокетов из контейнера
+		members.erase(this->iterator);
 	}
-
 	/**
 	 * @brief Конструктор
 	 *
 	 */
-	SecureSocketsLayer::SecureSocketsLayer() noexcept :
+	Member::Member() noexcept :
 	 ssl(nullptr), rbio(nullptr), wbio(nullptr),
 	 ctx(nullptr), crl(nullptr), handshake(false),
 	 node(event::node_t::NONE), proto(event::protocol_t::NONE),
 	 alpn(tls_t::alpn_t::NONE), error(nullptr) {}
-
 	/**
 	 * @brief Деструктор
 	 *
 	 */
-	SecureSocketsLayer::~SecureSocketsLayer() noexcept {
+	Member::~Member() noexcept {
 		// Если CRL-файл сертификата уже создан
 		if(this->crl != nullptr)
 			// Выполняем освобождение памяти
@@ -230,32 +242,6 @@ namespace {
 			// Удаляем объект SSL контекста
 			::SSL_CTX_free(this->ctx);
 	}
-
-	/**
-	 * @brief Глобальный список алгоритмов шифрования
-	 *
-	 */
-	string __awh_ssl_ciphers__;
-	/**
-	 * @brief Глобальный контейнер уровней защищённых сокетов
-	 *
-	 */
-	layers_t __awh_ssl_layers__;
-	/**
-	 * @brief Счётчик инициализации библиотеки OpenSSL
-	 *
-	 */
-	uint16_t __awh_ssl_init_count__ = 0;
-	/**
-	 * @brief Флаг инициализации библиотеки OpenSSL
-	 *
-	 */
-	bool __awh_ssl_initialized__ = false;
-	/**
-	 * @brief Глобальный набор идентификаторов контекстов TLS
-	 *
-	 */
-	unordered_set <uint64_t> __awh_ssl_ids__;
 };
 
 /**
@@ -288,6 +274,72 @@ namespace alpn {
  * Инкапсулируем методы TLS в пространство имён
  */
 namespace ssl {
+	/**
+	 * @brief Функция формирования сообщения об ошибке
+	 *
+	 * @param id      идентификатор события
+	 * @param message дополнительное сообщение
+	 * @return        сформированное сообщение об ошибке
+	 */
+	static string error(const tls_t::id_t id, const string & message = "") noexcept {
+		// Результат работы функции
+		string result = "";
+		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+		auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем данные описание ошибки
+			uint64_t error = ::ERR_get_error();
+			// Получаем объект фреймворка
+			awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
+			// Если ошибка получена
+			if(error != 0){
+				// Получаем текст общего сообщения
+				const string state = ::SSL_state_string(member->ssl);
+				/**
+				 * Выполняем извлечение остальных ошибок
+				 */
+				do {
+					// Если результат уже сформирован
+					if(!result.empty())
+						// Добавляем разделитель
+						result.append("\n\n");
+					// Если получено состояние SSL
+					if(!state.empty())
+						// Добавляем информацию об ошибке в результат
+						result.append(fmk->format("%s: %s", state.c_str(), ::ERR_error_string(error, nullptr)));
+					// Если получено дополнительное сообщение
+					else if(!message.empty())
+						// Добавляем информацию об ошибке в результат
+						result.append(fmk->format("%s: %s", message.c_str(), ::ERR_error_string(error, nullptr)));
+					// Если не получено ни состояние SSL, ни дополнительное сообщение
+					else result.append(fmk->format("%s", ::ERR_error_string(error, nullptr)));
+				/**
+				 * Если ещё есть ошибки
+				 */
+				} while((error = ::ERR_get_error()));
+			// Если получено дополнительное сообщение
+			} else if(!message.empty())
+				// Добавляем информацию об ошибке в результат
+				result.append(fmk->format("%s", message.c_str()));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Получаем объект фреймворка
+			awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
+			// Если получено дополнительное сообщение
+			if(!message.empty())
+				// Добавляем информацию об ошибке в результат
+				result.append(fmk->format("%s: %s", message.c_str(), error.what()));
+			// Если не получено ни состояние SSL, ни дополнительное сообщение
+			else result.append(fmk->format("%s", error.what()));
+		}
+		// Выводим сформированное сообщение об ошибке
+		return result;
+	}
 	/**
 	 * @brief Функция выполнения выбора протокола
 	 *
@@ -335,7 +387,7 @@ namespace ssl {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
-				ssl_t * ctx = reinterpret_cast <ssl_t *> (ctx);
+				::member_t * ctx = reinterpret_cast <::member_t *> (ctx);
 				// Выполняем установку буфера данных
 				(* data) = ctx->support.data();
 				// Выполняем установку размер буфера данных протокола
@@ -361,7 +413,7 @@ namespace ssl {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
-				ssl_t * ctx = reinterpret_cast <ssl_t *> (ctx);
+				::member_t * ctx = reinterpret_cast <::member_t *> (ctx);
 				// Если протокол переключить получилось на HTTP/2
 				if(::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP3, static_cast <uint32_t> (::alpn::HTTP3[0])))
 					// Выводим результат
@@ -401,7 +453,7 @@ namespace ssl {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
-				ssl_t * ctx = reinterpret_cast <ssl_t *> (ctx);
+				::member_t * ctx = reinterpret_cast <::member_t *> (ctx);
 				// Если протокол переключить получилось на HTTP/2
 				if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP3, static_cast <uint32_t> (::alpn::HTTP3[0])))
 					// Выводим результат
@@ -429,12 +481,12 @@ namespace ssl {
 		/**
 		 * @brief Функция проверки параметров сертификата
 		 *
-		 * @param store стор с сертификатами для работы
-		 * @param name  название параметра сертификата
-		 * @param log   объект для работы с логами
-		 * @return      результат проверки
+		 * @param store  магазин с сертификатами для работы
+		 * @param name   название параметра сертификата
+		 * @param member объект уровня защищённых сокетов
+		 * @return       результат проверки
 		 */
-		static bool addCertToStore(X509_STORE * store, const char * name, const awh::log_t * log) noexcept {
+		static bool addCertToStore(X509_STORE * store, const char * name, const ::member_t * member) noexcept {
 			// Результат работы функции
 			bool result = false;
 			// Если объекты переданы верно
@@ -443,19 +495,30 @@ namespace ssl {
 				HCERTSTORE sys = ::CertOpenSystemStore(0, name);
 				// Если системный стор не получен
 				if(!(result = (sys != nullptr))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						log->debug("Failed to open system certificate store", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
-					#endif
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr){
+						// Выполняем получение идентификатора контекста TLS
+						const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, awh::tls_t::error_t::CRITICAL, ::ssl::error(id, "Failed to open system certificate store"));
+					// Если функция обратного вызова ошибки не установлена
+					} else {
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("Failed to open system certificate store", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
+						#endif
+					}
 					// Выходим
 					return result;
 				}
@@ -477,19 +540,30 @@ namespace ssl {
 						::X509_free(cert);
 					// Если сертификат не создан
 					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							log->debug("Create X509 is failed", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							log->print("Create X509 is failed", log_t::flag_t::CRITICAL);
-						#endif
+						// Если функция обратного вызова ошибки установлена
+						if(member->error != nullptr){
+							// Выполняем получение идентификатора контекста TLS
+							const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+							// Вызываем функцию обратного вызова ошибки
+							member->error(id, awh::tls_t::error_t::CRITICAL, ::ssl::error(id, "Create X509 is failed"));
+						// Если функция обратного вызова ошибки не установлена
+						} else {
+							// Получаем объект логирования
+							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug("Create X509 is failed", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								log->print("Create X509 is failed", log_t::flag_t::CRITICAL);
+							#endif
+						}
 						// Выходим из цикла
 						break;
 					}
@@ -508,11 +582,6 @@ namespace ssl {
  */
 namespace cookie {
 	/**
-	 * Индексы для хранения состояний проверки куков
-	 */
-	static int32_t index[3] = {-1};
-
-	/**
 	 * @brief Функция обратного вызова для генерации куков
 	 *
 	 * @param ssl    объект SSL
@@ -520,55 +589,73 @@ namespace cookie {
 	 * @param size   количество символов
 	 * @return       результат проверки
 	 */
-	static int32_t generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
+	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
-		::ssl_t * layer = reinterpret_cast <::ssl_t *> (::SSL_get_ex_data(ssl, ::cookie::index[0]));
+		::member_t * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Если печенки еще не проинициализированны
-		if(!layer->cookie.initialized){
+		if(!member->cookie.initialized){
 			// Выполняем произвольно генерацию байт в буфере печенок
-			if(!(layer->cookie.initialized = ::RAND_bytes(layer->cookie.buffer, sizeof(layer->cookie.buffer)))){
-				// Получаем объект логирования
-				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::cookie::index[2]));
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					log->debug("Setting random cookie secret", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					log->print("Setting random cookie secret", awh::log_t::flag_t::CRITICAL);
-				#endif
+			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
+				// Если функция обратного вызова ошибки установлена
+				if(member->error != nullptr){
+					// Выполняем получение идентификатора контекста TLS
+					const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+					// Вызываем функцию обратного вызова ошибки
+					member->error(id, awh::tls_t::error_t::CRITICAL, ::ssl::error(id, "Setting random cookie secret"));
+				// Если функция обратного вызова ошибки не установлена
+				} else {
+					// Получаем объект логирования
+					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("Setting random cookie secret", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						log->print("Setting random cookie secret", awh::log_t::flag_t::CRITICAL);
+					#endif
+				}
 				// Выходим и сообщаем, что генерация куков не удалась
 				return 0;
 			}
 		}
 		// Получаем объект хоста IPv4-адреса
-		net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->host.peer.get());
+		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
 		// Размер буфера и длина сгенерированных печенок
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
 		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
-			// Получаем объект логирования
-			awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::cookie::index[2]));
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("Out of memory cookie", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL);
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("Out of memory cookie", awh::log_t::flag_t::CRITICAL);
-			#endif
+			// Если функция обратного вызова ошибки установлена
+			if(member->error != nullptr){
+				// Выполняем получение идентификатора контекста TLS
+				const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+				// Вызываем функцию обратного вызова ошибки
+				member->error(id, awh::tls_t::error_t::CRITICAL, ::ssl::error(id, "Out of memory cookie"));
+			// Если функция обратного вызова ошибки не установлена
+			} else {
+				// Получаем объект логирования
+				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("Out of memory cookie", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					log->print("Out of memory cookie", awh::log_t::flag_t::CRITICAL);
+				#endif
+			}
 			// Выходим и сообщаем, что генерация куков не удалась
 			return 0;
 		}
@@ -594,7 +681,7 @@ namespace cookie {
 		// Буфер под генерацию печенок
 		uint8_t result[EVP_MAX_MD_SIZE];
 		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (layer->cookie.buffer), sizeof(layer->cookie.buffer), buffer, bytes, result, &length);
+		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
 		// Очищаем ранее выделенную память
 		OPENSSL_free(buffer);
 		// Выполняем копирование полученного результата в буфер печенок
@@ -612,11 +699,11 @@ namespace cookie {
 	 * @param size   количество символов
 	 * @return       результат проверки
 	 */
-	static int32_t generateStatelessCookie(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
+	static int32_t generateStateless(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
 		// Размер буфера с печенками
 		uint32_t length = 0;
 		// Выполняем генерацию печенок
-		const int32_t result = ::cookie::generateCookie(ssl, cookie, &length);
+		const int32_t result = ::cookie::generate(ssl, cookie, &length);
 		// Получаем размер буфера с печенками
 		(* size) = length;
 		// Выводим результат работы функции
@@ -630,36 +717,45 @@ namespace cookie {
 	 * @param size   количество символов
 	 * @return       результат проверки
 	 */
-	static int32_t verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
+	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
-		::ssl_t * layer = reinterpret_cast <::ssl_t *> (::SSL_get_ex_data(ssl, ::cookie::index[0]));
+		::member_t * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Если печенки не проинициализированы, значит куки не валидные
-		if(!layer->cookie.initialized)
+		if(!member->cookie.initialized)
 			// Выходим из функции
 			return 0;
 		// Получаем объект хоста IPv4-адреса
-		net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->host.peer.get());
+		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
 		// Размер буфера и длина сгенерированных печенок
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
 		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
-			// Получаем объект логирования
-			awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::cookie::index[2]));
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("Out of memory cookie", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL);
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				log->print("Out of memory cookie", awh::log_t::flag_t::CRITICAL);
-			#endif
+			// Если функция обратного вызова ошибки установлена
+			if(member->error != nullptr){
+				// Выполняем получение идентификатора контекста TLS
+				const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+				// Вызываем функцию обратного вызова ошибки
+				member->error(id, awh::tls_t::error_t::CRITICAL, ::ssl::error(id, "Out of memory cookie"));
+			// Если функция обратного вызова ошибки не установлена
+			} else {
+				// Получаем объект логирования
+				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("Out of memory cookie", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					log->print("Out of memory cookie", awh::log_t::flag_t::CRITICAL);
+				#endif
+			}
 			// Выходим и сообщаем, что генерация куков не удалась
 			return 0;
 		}
@@ -685,7 +781,7 @@ namespace cookie {
 		// Буфер под генерацию печенок
 		uint8_t result[EVP_MAX_MD_SIZE];
 		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (layer->cookie.buffer), sizeof(layer->cookie.buffer), buffer, bytes, result, &length);
+		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
 		// Очищаем ранее выделенную память
 		::OPENSSL_free(buffer);
 		// Выполняем проверку печенок, если печенки совпадают, значит всё хорошо
@@ -703,9 +799,9 @@ namespace cookie {
 	 * @param size   количество символов
 	 * @return       результат проверки
 	 */
-	static int32_t verifyStatelessCookie(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
+	static int32_t verifyStateless(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
 		// Выполняем проверку печенок
-		return ::cookie::verifyCookie(ssl, cookie, static_cast <uint32_t> (size));
+		return ::cookie::verify(ssl, cookie, static_cast <uint32_t> (size));
 	}
 };
 
@@ -967,11 +1063,11 @@ namespace verify {
 			// Получаем объект SSL
 			SSL * ssl = reinterpret_cast <SSL *> (ctx);
 			// Получаем объект уровня защищённых сокетов
-			::ssl_t * layer = reinterpret_cast <::ssl_t *> (::SSL_get_ex_data(ssl, ::cookie::index[0]));
+			::member_t * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 			// Если проверка сертификата прошла удачно
 			if(ok){
 				// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-				validate = ::verify::validateHostname(layer->host.name, cert);
+				validate = ::verify::validateHostname(member->host.name, cert);
 				/**
 				 * Определяем полученную ошибку
 				 */
@@ -1016,29 +1112,40 @@ namespace verify {
 				 */
 				#if DEBUG_MODE
 					// Получаем объект логирования
-					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::cookie::index[2]));
+					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 					// Выводим в лог сообщение
-					log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, layer->host.name.c_str(), buffer);
+					log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.name.c_str(), buffer);
 				#endif
 				// Выводим сообщение, что проверка пройдена
 				return 1;
 			// Если ресурс не найден тогда выводим сообщение об ошибке
 			} else {
-				// Получаем объект логирования
-				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::cookie::index[2]));
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), layer->host.name.c_str(), buffer);
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), layer->host.name.c_str(), buffer);
-				#endif
+				// Если функция обратного вызова ошибки установлена
+				if(member->error != nullptr){
+					// Выполняем получение идентификатора контекста TLS
+					const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+					// Получаем объект фреймворка
+					awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[1]));
+					// Вызываем функцию обратного вызова ошибки
+					member->error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", status.c_str(), member->host.name.c_str(), buffer)));
+				// Если функция обратного вызова ошибки не установлена
+				} else {
+					// Получаем объект логирования
+					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
+					#endif
+				}
 			}
 		}
 		// Выводим сообщение, что проверка не пройдена
@@ -1089,72 +1196,6 @@ namespace verify {
 		// Выводим результат
 		return ok;
 	}
-	/**
-	 * @brief Функция формирования сообщения об ошибке
-	 *
-	 * @param id      идентификатор события
-	 * @param message дополнительное сообщение
-	 * @return        сформированное сообщение об ошибке
-	 */
-	static string error(const tls_t::id_t id, const string & message = "") noexcept {
-		// Результат работы функции
-		string result = "";
-		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-		auto layer = reinterpret_cast <::ssl_t *> (static_cast <uintptr_t> (id));
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Получаем данные описание ошибки
-			uint64_t error = ::ERR_get_error();
-			// Получаем объект фреймворка
-			awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(layer->ssl, ::cookie::index[1]));
-			// Если ошибка получена
-			if(error != 0){
-				// Получаем текст общего сообщения
-				const string state = ::SSL_state_string(layer->ssl);
-				/**
-				 * Выполняем извлечение остальных ошибок
-				 */
-				do {
-					// Если результат уже сформирован
-					if(!result.empty())
-						// Добавляем разделитель
-						result.append("\n\n");
-					// Если получено состояние SSL
-					if(!state.empty())
-						// Добавляем информацию об ошибке в результат
-						result.append(fmk->format("%s: %s", state.c_str(), ::ERR_error_string(error, nullptr)));
-					// Если получено дополнительное сообщение
-					else if(!message.empty())
-						// Добавляем информацию об ошибке в результат
-						result.append(fmk->format("%s: %s", message.c_str(), ::ERR_error_string(error, nullptr)));
-					// Если не получено ни состояние SSL, ни дополнительное сообщение
-					else result.append(fmk->format("%s", ::ERR_error_string(error, nullptr)));
-				/**
-				 * Если ещё есть ошибки
-				 */
-				} while((error = ::ERR_get_error()));
-			// Если получено дополнительное сообщение
-			} else if(!message.empty())
-				// Добавляем информацию об ошибке в результат
-				result.append(fmk->format("%s", message.c_str()));
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Получаем объект фреймворка
-			awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(layer->ssl, ::cookie::index[1]));
-			// Если получено дополнительное сообщение
-			if(!message.empty())
-				// Добавляем информацию об ошибке в результат
-				result.append(fmk->format("%s: %s", message.c_str(), error.what()));
-			// Если не получено ни состояние SSL, ни дополнительное сообщение
-			else result.append(fmk->format("%s", error.what()));
-		}
-		// Выводим сформированное сообщение об ошибке
-		return result;
-	}
 };
 
 /**
@@ -1178,7 +1219,7 @@ awh::TransportLayerSecurity::alpn_t awh::TransportLayerSecurity::alpn(const id_t
 	 */
 	try {
 		// Выполняем извлечение активного протокола
-		return reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->alpn;
+		return reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->alpn;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1218,13 +1259,13 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если версия OpenSSL не соответствует указанной при сборке
 			if(::OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
 				// Если функция обратного вызова ошибки установлена
-				if(layer->error != nullptr){
+				if(member->error != nullptr){
 					// Вызываем функцию обратного вызова ошибки
-					layer->error(
+					member->error(
 						id, error_t::WARNING,
 						this->_fmk->format(
 							"OpenSSL version mismatch!\n"
@@ -1237,7 +1278,7 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 					// Если мажорная и минорная версия OpenSSL не совпадают
 					if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, "Major and minor version numbers must match, exiting");
+						member->error(id, error_t::CRITICAL, "Major and minor version numbers must match, exiting");
 				// Если функция обратного вызова ошибки не установлена
 				} else {
 					/**
@@ -1283,9 +1324,9 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 			// Если версия OpenSSL ниже версии 1.1.1b
 			if(OPENSSL_VERSION_NUMBER < 0x1010102fL){
 				// Если функция обратного вызова ошибки установлена
-				if(layer->error != nullptr)
+				if(member->error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					layer->error(
+					member->error(
 						id, error_t::CRITICAL,
 						this->_fmk->format("%s is unsupported, use OpenSSL Version 1.1.1a or higher", ::OpenSSL_version(OPENSSL_VERSION))
 					);
@@ -1309,9 +1350,9 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 				::exit(EXIT_FAILURE);
 			}
 			// Если объект подключения создан и сертификат передан
-			if(layer->ssl != nullptr){
+			if(member->ssl != nullptr){
 				// Выполняем получение сертификата сервера
-				X509 * x509 = ::SSL_get_peer_certificate(layer->ssl);
+				X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
 				// Если сертификат сервера получен
 				if(x509 != nullptr){
 					// Буфер данных для получения данных
@@ -1325,19 +1366,19 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 					// Формируем результат
 					result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
 					// Выводим параметры шифрования
-					result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(layer->ssl))));
+					result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
 				}
 			}
 			// Если объект CRL-файла сертификата создан
-			if(layer->crl != nullptr){
+			if(member->crl != nullptr){
 				// Создаём memory BIO
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если BIO не создан
 				if(bio == nullptr){
 					// Если функция обратного вызова ошибки установлена
-					if(layer->error != nullptr)
+					if(member->error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Engine store CRL"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -1345,24 +1386,24 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						#endif
 					}
 					// Выходим из функции
 					return result;
 				}
 				// Печатаем CRL в BIO
-				if(::X509_CRL_print(bio, layer->crl) == 0){
+				if(::X509_CRL_print(bio, member->crl) == 0){
 					// Если функция обратного вызова ошибки установлена
-					if(layer->error != nullptr)
+					if(member->error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Engine store CRL"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -1370,13 +1411,13 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						#endif
 					}
 					// Выполняем очистку BIO
@@ -1435,17 +1476,17 @@ string awh::TransportLayerSecurity::crlInfo(const id_t id) const noexcept {
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если объект CRL-файла сертификата создан
-			if(layer->crl != nullptr){
+			if(member->crl != nullptr){
 				// Создаём memory BIO
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если BIO не создан
 				if(bio == nullptr){
 					// Если функция обратного вызова ошибки установлена
-					if(layer->error != nullptr)
+					if(member->error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Engine store CRL"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -1453,24 +1494,24 @@ string awh::TransportLayerSecurity::crlInfo(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						#endif
 					}
 					// Выходим из функции
 					return result;
 				}
 				// Печатаем CRL в BIO
-				if(::X509_CRL_print(bio, layer->crl) == 0){
+				if(::X509_CRL_print(bio, member->crl) == 0){
 					// Если функция обратного вызова ошибки установлена
-					if(layer->error != nullptr)
+					if(member->error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Engine store CRL"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -1478,13 +1519,13 @@ string awh::TransportLayerSecurity::crlInfo(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						#endif
 					}
 					// Выполняем очистку BIO
@@ -1541,7 +1582,7 @@ string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end())
 			// Выполняем извлечение информации о шифре
-			return ::SSL_CIPHER_get_name(::SSL_get_current_cipher(reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->ssl));
+			return ::SSL_CIPHER_get_name(::SSL_get_current_cipher(reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->ssl));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1581,9 +1622,9 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Получить сертификат клиента (на сервере) или сервера (на клиенте)
-			X509 * x509 = ::SSL_get_peer_certificate(layer->ssl);
+			X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
 			// Если сертификат получен
 			if(x509 != nullptr){
 				// Буфер данных для получения данных
@@ -1635,9 +1676,9 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Шаг 1: Получить сертификат
-			X509 * x509 = ::SSL_get_peer_certificate(layer->ssl);
+			X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
 			// Если сертификат не получен
 			if(x509 == nullptr)
 				// Нет сертификата
@@ -1647,9 +1688,9 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 			// Если срок действия сертификата истёк
 			if(!((::X509_cmp_time(::X509_get0_notBefore(x509), &date) <= 0) && (::X509_cmp_time(::X509_get0_notAfter(x509), &date) >= 0))){
 				// Если функция обратного вызова ошибки установлена
-				if(layer->error != nullptr)
+				if(member->error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					layer->error(id, error_t::WARNING, "Сertificate is not yet valid or has expired");
+					member->error(id, error_t::WARNING, "Сertificate is not yet valid or has expired");
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					/**
@@ -1670,15 +1711,15 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				return false;
 			}
 			// Получить хранилище CA из SSL_CTX
-			X509_STORE * store = ::SSL_CTX_get_cert_store(::SSL_get_SSL_CTX(layer->ssl));
+			X509_STORE * store = ::SSL_CTX_get_cert_store(::SSL_get_SSL_CTX(member->ssl));
 			// Создать контекст проверки
 			X509_STORE_CTX * ctx = ::X509_STORE_CTX_new();
 			// Если контекст не создан
 			if(ctx == nullptr){
 				// Если функция обратного вызова ошибки установлена
-				if(layer->error != nullptr)
+				if(member->error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					layer->error(id, error_t::CRITICAL, ::verify::error(id));
+					member->error(id, error_t::CRITICAL, ::ssl::error(id));
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					/**
@@ -1686,26 +1727,26 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id).c_str());
 					#endif
 				}
 				// Возвращаем отрицательный результат
 				return false;
 			}
 			// Инициализировать (x509 — сертификат пира, untrusted — промежуточные, если есть)
-			if(::X509_STORE_CTX_init(ctx, store, x509, ::SSL_get_peer_cert_chain(layer->ssl)) == 0){
+			if(::X509_STORE_CTX_init(ctx, store, x509, ::SSL_get_peer_cert_chain(member->ssl)) == 0){
 				// Выполняем очистку контекста
 				::X509_STORE_CTX_free(ctx);
 				// Если функция обратного вызова ошибки установлена
-				if(layer->error != nullptr)
+				if(member->error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					layer->error(id, error_t::CRITICAL, ::verify::error(id));
+					member->error(id, error_t::CRITICAL, ::ssl::error(id));
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					/**
@@ -1713,13 +1754,13 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id).c_str());
 					#endif
 				}
 				// Возвращаем отрицательный результат
@@ -1732,9 +1773,9 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				// Получаем код ошибки
 				const int32_t error = ::X509_STORE_CTX_get_error(ctx);
 				// Если функция обратного вызова ошибки установлена
-				if(layer->error != nullptr)
+				if(member->error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					layer->error(id, error_t::CRITICAL, ::X509_verify_cert_error_string(error));
+					member->error(id, error_t::CRITICAL, ::X509_verify_cert_error_string(error));
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					/**
@@ -1775,7 +1816,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Формируем строковое представление доменного имени
 						fqdn.assign(reinterpret_cast <char *> (const_cast <uint8_t *> (::ASN1_STRING_get0_data(cn->d.dNSName))), ::ASN1_STRING_length(cn->d.dNSName));
 						// Если размер имени и dns имя совпадает
-						if((ok = ::verify::certHostcheck(layer->host.name, fqdn)))
+						if((ok = ::verify::certHostcheck(member->host.name, fqdn)))
 							// Выходим из цикла
 							break;
 					}
@@ -1791,7 +1832,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				// Если удалось получить Common Name
 				if(::X509_NAME_get_text_by_NID(subject, NID_commonName, buffer, sizeof(buffer)) == 1)
 					// Если размер имени и dns имя совпадает
-					ok = ::verify::certHostcheck(layer->host.name, buffer);
+					ok = ::verify::certHostcheck(member->host.name, buffer);
 			}
 			// Возвращаем результат проверки
 			return ok;
@@ -1833,27 +1874,27 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			/**
 			 * Определяем узел события к которому относится контекст TLS
 			 */
-			switch(static_cast <uint8_t> (layer->node)){
+			switch(static_cast <uint8_t> (member->node)){
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если нужно произвести проверку
 					if(mode){
 						// Выполняем проверку сертификата
-						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 						// Выполняем проверку всех дочерних сертификатов
-						::SSL_CTX_set_cert_verify_callback(layer->ctx, &::verify::hostname, layer->ssl);
+						::SSL_CTX_set_cert_verify_callback(member->ctx, &::verify::hostname, member->ssl);
 						// Устанавливаем глубину проверки
-						::SSL_CTX_set_verify_depth(layer->ctx, 4);
+						::SSL_CTX_set_verify_depth(member->ctx, 4);
 					// Запрещаем выполнять првоерку доменного имени
 					} else {
 						// Устанавливаем проверку сертификата сервера
-						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_PEER, nullptr);
+						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER, nullptr);
 						// Отключаем проверку сертификата сервера
-						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_NONE, nullptr);
+						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_NONE, nullptr);
 					}
 				} break;
 				// Если узел является сервером
@@ -1861,15 +1902,15 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 					// Если нужно произвести проверку
 					if(mode){
 						// Устанавливаем глубину проверки
-						::SSL_CTX_set_verify_depth(layer->ctx, 2);
+						::SSL_CTX_set_verify_depth(member->ctx, 2);
 						// Выполняем проверку сертификата клиента
-						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &::verify::certificate);
+						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &::verify::certificate);
 					// Запрещаем выполнять првоерку доменного имени
 					} else {
 						// Устанавливаем проверку сертификата сервера
-						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_PEER, nullptr);
+						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER, nullptr);
 						// Отключаем проверку сертификата сервера
-						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_NONE, nullptr);
+						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_NONE, nullptr);
 					}
 				} break;
 			}
@@ -1911,33 +1952,40 @@ void awh::TransportLayerSecurity::setHostname(const id_t id, const string & host
 			// Если идентификатор контекста TLS найден
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Устанавливаем хост для уровня защищённых сокетов
-				layer->host.name = hostname;
+				member->host.name = hostname;
 				// Устанавливаем имя хоста для SNI расширения
-				::SSL_set_tlsext_host_name(layer->ssl, layer->host.name.c_str());
+				::SSL_set_tlsext_host_name(member->ssl, member->host.name.c_str());
 				/**
 				 * Если версия OpenSSL соответствует или выше версии 1.1.1
 				 */
 				#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 					// Устанавливаем имя хоста для проверки
-					::SSL_set1_host(layer->ssl, layer->host.name.c_str());
+					::SSL_set1_host(member->ssl, member->host.name.c_str());
 				#endif
 				// Активируем верификацию доменного имени
-				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(layer->ssl), layer->host.name.c_str(), 0) != 1){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Host SSL verification failed", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Host SSL verification failed", log_t::flag_t::CRITICAL);
-					#endif
+				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), member->host.name.c_str(), 0) != 1){
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Host SSL verification failed"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Host SSL verification failed", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Host SSL verification failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
 				}
 			}
 		}
@@ -1979,14 +2027,14 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 			auto i = ::__awh_ssl_ids__.find(id);
 			// Если идентификатор контекста TLS найден
 			if(i != ::__awh_ssl_ids__.end()){
+				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем парсинг I-адреса
 				if(this->_addr.parse(ip)){
-					// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-					auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
 					// Выполняем инициализацию объекта хоста IPv4-адреса
-					layer->host.peer = make_unique <net::attr_net_t> ();
+					member->host.peer = make_unique <net::attr_net_t> ();
 					// Получаем объект хоста IPv4-адреса
-					net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->host.peer.get());
+					net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
 					/**
 					 * Выполняем определение типа IP-адреса
 					 */
@@ -2011,38 +2059,52 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 						} break;
 						// Для других типов адресов
 						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Unsupported IP-address type", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Unsupported IP-address type", log_t::flag_t::CRITICAL);
-							#endif
+							// Если функция обратного вызова ошибки установлена
+							if(member->error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->error(id, error_t::CRITICAL, ::ssl::error(id, "Unsupported IP-address type"));
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Unsupported IP-address type", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Unsupported IP-address type", log_t::flag_t::CRITICAL);
+								#endif
+							}
 							// Возвращаем отрицательный результат
 							return false;
 						}
 					}
 				// Если парсинг IP-адреса не выполнен
 				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to parse IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Failed to parse IP-address", log_t::flag_t::CRITICAL);
-					#endif
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Failed to parse IP-address"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Failed to parse IP-address", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Failed to parse IP-address", log_t::flag_t::CRITICAL);
+						#endif
+					}
 					// Возвращаем отрицательный результат
 					return false;
 				}
@@ -2125,7 +2187,7 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end())
 			// Устанавливаем режим безопасности потоков
-			reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->mtx.enabled = (mode == event::mode_t::ENABLED);
+			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (mode == event::mode_t::ENABLED);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2176,22 +2238,29 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 				// Если строка алгоритмов шифрования собрана
 				if(!result.empty()){
 					// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-					auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+					auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 					// Устанавливаем все основные алгоритмы шифрования
-					if(::SSL_CTX_set_cipher_list(layer->ctx, result.c_str()) != 1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Set SSL ciphers: %s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						#endif
+					if(::SSL_CTX_set_cipher_list(member->ctx, result.c_str()) != 1){
+						// Если функция обратного вызова ошибки установлена
+						if(member->error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->error(id, error_t::CRITICAL, ::ssl::error(id, "Set SSL ciphers"));
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Set SSL ciphers: %s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+							#endif
+						}
 					}
 				}
 			}
@@ -2233,19 +2302,19 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 			// Если идентификатор контекста TLS найден
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Если CRL-файл сертификата уже создан
-				if(layer->crl != nullptr)
+				if(member->crl != nullptr)
 					// Выполняем освобождение памяти
-					::X509_CRL_free(layer->crl);
+					::X509_CRL_free(member->crl);
 				// Создаём объект BIO для загрузки файла
 				BIO * bio = ::BIO_new(::BIO_s_file());
 				// Если BIO не создан
 				if(bio == nullptr){
 					// Если функция обратного вызова ошибки установлена
-					if(layer->error != nullptr)
+					if(member->error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, ::verify::error(id, "Engine store CRL"));
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Engine store CRL"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -2253,13 +2322,13 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "Engine store CRL").c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id, "Engine store CRL").c_str());
 						#endif
 					}
 					// Выходим из функции
@@ -2268,9 +2337,9 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 				// Выполняем чтение CRL-файла сертификата
 				if(BIO_read_filename(bio, filename.c_str()) <= 0){
 					// Если функция обратного вызова ошибки установлена
-					if(layer->error != nullptr)
+					if(member->error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						layer->error(id, error_t::CRITICAL, ::verify::error(id, "CRL-file is corrupted or unreadable"));
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "CRL-file is corrupted or unreadable"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -2278,13 +2347,13 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::verify::error(id, "CRL-file is corrupted or unreadable").c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::ssl::error(id, "CRL-file is corrupted or unreadable").c_str());
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::verify::error(id, "CRL-file is corrupted or unreadable").c_str());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ssl::error(id, "CRL-file is corrupted or unreadable").c_str());
 						#endif
 					}
 					// Выполняем очистку памяти BIO
@@ -2293,22 +2362,29 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 					return;
 				}
 				// Выполняем создание объекта CRL-файла сертификата
-				layer->crl = ::PEM_read_bio_X509_CRL(bio, nullptr, nullptr, nullptr);
+				member->crl = ::PEM_read_bio_X509_CRL(bio, nullptr, nullptr, nullptr);
 				// Если CRL-файл сертификата не создан
-				if(layer->crl == nullptr){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("CRL file cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("CRL file cannot be set", log_t::flag_t::CRITICAL);
-					#endif
+				if(member->crl == nullptr){
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "CRL file cannot be set"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("CRL file cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("CRL file cannot be set", log_t::flag_t::CRITICAL);
+						#endif
+					}
 				}
 				// Выполняем очистку памяти BIO
 				::BIO_free(bio);
@@ -2351,40 +2427,54 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 			// Если идентификатор контекста TLS найден
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Если приватный ключ не может быть установлен
-				if(::SSL_CTX_use_PrivateKey_file(layer->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Private key cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
-					#endif
+				if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Private key cannot be set"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
+						#endif
+					}
 					// Выходим
 					return;
 				}
 				// Если приватный ключ недействителен
-				if(::SSL_CTX_check_private_key(layer->ctx) != 1){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Private key is not valid", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
-					#endif
+				if(::SSL_CTX_check_private_key(member->ctx) != 1){
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Private key is not valid"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key is not valid", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
+						#endif
+					}
 				}
 			}
 		}
@@ -2425,47 +2515,61 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 			// Если идентификатор контекста TLS найден
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				/**
 				 * Определяем узел события к которому относится контекст TLS
 				 */
-				switch(static_cast <uint8_t> (layer->node)){
+				switch(static_cast <uint8_t> (member->node)){
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Если сертификат не устанавливается
-						if(::SSL_CTX_use_certificate_file(layer->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Certificate cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-							#endif
+						if(::SSL_CTX_use_certificate_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+							// Если функция обратного вызова ошибки установлена
+							if(member->error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->error(id, error_t::CRITICAL, ::ssl::error(id, "Certificate cannot be set"));
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Certificate cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
+								#endif
+							}
 						}
 					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Если сертификат не устанавливается
-						if(::SSL_CTX_use_certificate_chain_file(layer->ctx, filename.c_str()) != 1){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Certificate cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-							#endif
+						if(::SSL_CTX_use_certificate_chain_file(member->ctx, filename.c_str()) != 1){
+							// Если функция обратного вызова ошибки установлена
+							if(member->error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->error(id, error_t::CRITICAL, ::ssl::error(id, "Certificate cannot be set"));
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Certificate cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
+								#endif
+							}
 						}
 					} break;
 				}
@@ -2506,31 +2610,38 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если адрес файла центра сертификации не пустой
 			if(!filename.empty()){
 				// Выполняем проверку
-				if(::SSL_CTX_load_verify_locations(layer->ctx, filename.c_str(), nullptr) != 1){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
-					#endif
+				if(::SSL_CTX_load_verify_locations(member->ctx, filename.c_str(), nullptr) != 1){
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "SSL verify locations is not allow"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+						#endif
+					}
 					// Выходим из функции
 					return;
 				}
 				// Выполняем установку CRL-файла сертификата
-				::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(filename.c_str()));
+				::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.c_str()));
 			// Устанавливаем пути по умолчанию для проверки сертификатов
-			} else ::SSL_CTX_set_default_verify_paths(layer->ctx);
+			} else ::SSL_CTX_set_default_verify_paths(member->ctx);
 		}
 	/**
 	 * Если возникает ошибка
@@ -2568,26 +2679,33 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если название файла центра сертификации не пустое
 			if(!file.empty()){
 				// Если каталог сертификатов передан
 				if(!dir.empty()){
 					// Выполняем проверку
-					if(::SSL_CTX_load_verify_locations(layer->ctx, file.c_str(), dir.c_str()) != 1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
-						#endif
+					if(::SSL_CTX_load_verify_locations(member->ctx, file.c_str(), dir.c_str()) != 1){
+						// Если функция обратного вызова ошибки установлена
+						if(member->error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->error(id, error_t::CRITICAL, ::ssl::error(id, "SSL verify locations is not allow"));
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+							#endif
+						}
 						// Выходим из функции
 						return;
 					}
@@ -2600,60 +2718,74 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 					// Формируем полный адрес файла центра сертификации
 					else filename = ::move(this->_fmk->format("%s%s%s", dir.c_str(), AWH_FS_SEPARATOR, file.c_str()));
 					// Выполняем установку CRL-файла сертификата
-					::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(filename.c_str()));
+					::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.c_str()));
 				// Если каталог сертификатов не передан
 				} else {
 					// Выполняем проверку
-					if(::SSL_CTX_load_verify_locations(layer->ctx, file.c_str(), nullptr) != 1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, file), log_t::flag_t::CRITICAL);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
-						#endif
+					if(::SSL_CTX_load_verify_locations(member->ctx, file.c_str(), nullptr) != 1){
+						// Если функция обратного вызова ошибки установлена
+						if(member->error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->error(id, error_t::CRITICAL, ::ssl::error(id, "SSL verify locations is not allow"));
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, file), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+							#endif
+						}
 						// Выходим из функции
 						return;
 					}
 					// Выполняем установку CRL-файла сертификата
-					::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(file.c_str()));
+					::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(file.c_str()));
 				}
 			// Если адрес файла центра сертификации не передан
 			} else {
 				// Получаем данные стора
-				X509_STORE * store = ::SSL_CTX_get_cert_store(layer->ctx);
+				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Проверяем существует ли путь
-					if(!::ssl::addCertToStore(store, "CA", this->_log) ||
-					   !::ssl::addCertToStore(store, "ROOT", this->_log) ||
-					   !::ssl::addCertToStore(store, "AuthRoot", this->_log))
+					if(!::ssl::addCertToStore(store, "CA", member) ||
+					   !::ssl::addCertToStore(store, "ROOT", member) ||
+					   !::ssl::addCertToStore(store, "AuthRoot", member))
 						// Выходим из функции
 						return;
 				#endif
 				// Если стор не устанавливается, тогда выводим ошибку
 				if(::X509_STORE_set_default_paths(store) == 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Set default paths for x509 store is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
-					#endif
+					// Если функция обратного вызова ошибки установлена
+					if(member->error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->error(id, error_t::CRITICAL, ::ssl::error(id, "Set default paths for x509 store is not allow"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set default paths for x509 store is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
+						#endif
+					}
 				}
 			}
 		}
@@ -2695,7 +2827,7 @@ bool awh::TransportLayerSecurity::error(const id_t id, error_callback_t callback
 		// Если идентификатор контекста TLS найден
 		if((result = (i != ::__awh_ssl_ids__.end())))
 			// Устанавливаем функцию обратного вызова получения ошибок
-			reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->error = ::move(callback);
+			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->error = ::move(callback);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2737,7 +2869,7 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
 			::__awh_ssl_ids__.erase(i);
 			// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-			reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id))->erase(::__awh_ssl_layers__);
+			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->erase(::__awh_ssl_members__);
 		}
 	/**
 	 * Если возникает ошибка
@@ -2776,7 +2908,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 	 */
 	try {
 		// Создаём новый уровень защищённых сокетов и добавляем его в контейнер
-		auto ret = ::__awh_ssl_layers__.emplace(::make_unique <SecureSocketsLayer> ());
+		auto ret = ::__awh_ssl_members__.emplace(::make_unique <::member_t> ());
 		// Устанавливаем поддерживаемый ALPN-протокол
 		(* ret.first)->alpn = alpn;
 		// Устанавливаем тип узла события
@@ -2846,7 +2978,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -2906,7 +3038,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							this->_log->print("Set SSL CURVEs list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 						#endif
 						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						(* ret.first)->erase(::__awh_ssl_layers__);
+						(* ret.first)->erase(::__awh_ssl_members__);
 						// Выходим
 						return 0;
 					}
@@ -2939,7 +3071,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							this->_log->print("Set new SSL CURVE name failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 						#endif
 						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						(* ret.first)->erase(::__awh_ssl_layers__);
+						(* ret.first)->erase(::__awh_ssl_members__);
 						// Выходим
 						return 0;
 					}
@@ -3031,7 +3163,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3070,16 +3202,16 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Could not create TLS session object: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
 				// Привязываем текущий объект TLS к SSL объекту
-				::SSL_set_ex_data((* ret.first)->ssl, ::cookie::index[0], (* ret.first).get());
+				::SSL_set_ex_data((* ret.first)->ssl, ::__awh_ssl_index__[0], (* ret.first).get());
 				// Привязываем текущий объект фреймворка к SSL объекту
-				::SSL_set_ex_data((* ret.first)->ssl, ::cookie::index[1], const_cast <fmk_t *> (this->_fmk));
+				::SSL_set_ex_data((* ret.first)->ssl, ::__awh_ssl_index__[1], const_cast <fmk_t *> (this->_fmk));
 				// Привязываем текущий объект лога к SSL объекту
-				::SSL_set_ex_data((* ret.first)->ssl, ::cookie::index[2], const_cast <log_t *> (this->_log));
+				::SSL_set_ex_data((* ret.first)->ssl, ::__awh_ssl_index__[2], const_cast <log_t *> (this->_log));
 				// Создаём объект BIO для чтения
 				(* ret.first)->rbio = ::BIO_new(::BIO_s_mem());
 				// Создаём объект BIO для записи
@@ -3115,7 +3247,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						// Освобождаем объект BIO для записи
 						::BIO_free((* ret.first)->wbio);
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3179,7 +3311,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3241,7 +3373,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3272,7 +3404,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							this->_log->print("Set SSL CURVEs list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 						#endif
 						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						(* ret.first)->erase(::__awh_ssl_layers__);
+						(* ret.first)->erase(::__awh_ssl_members__);
 						// Выходим
 						return 0;
 					}
@@ -3305,7 +3437,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							this->_log->print("Set new SSL CURVE name failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 						#endif
 						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						(* ret.first)->erase(::__awh_ssl_layers__);
+						(* ret.first)->erase(::__awh_ssl_members__);
 						// Выходим
 						return 0;
 					}
@@ -3397,7 +3529,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Failed to set session ID: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3424,7 +3556,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3449,18 +3581,18 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Если протокол подключения UDP
 					case static_cast <uint8_t> (event::protocol_t::UDP): {
 						// Выполняем проверку файлов печенок
-						::SSL_CTX_set_cookie_verify_cb((* ret.first)->ctx, &::cookie::verifyCookie);
+						::SSL_CTX_set_cookie_verify_cb((* ret.first)->ctx, &::cookie::verify);
 						// Выполняем генерацию файлов печенок
-						::SSL_CTX_set_cookie_generate_cb((* ret.first)->ctx, &::cookie::generateCookie);
+						::SSL_CTX_set_cookie_generate_cb((* ret.first)->ctx, &::cookie::generate);
 					} break;
 					// Если протокол подключения TCP
 					case static_cast <uint8_t> (event::protocol_t::TCP):
 					// Если протокол подключения SCTP
 					case static_cast <uint8_t> (event::protocol_t::SCTP): {
 						// Выполняем проверку файлов печенок
-						::SSL_CTX_set_stateless_cookie_verify_cb((* ret.first)->ctx, &::cookie::verifyStatelessCookie);
+						::SSL_CTX_set_stateless_cookie_verify_cb((* ret.first)->ctx, &::cookie::verifyStateless);
 						// Выполняем генерацию файлов печенок
-						::SSL_CTX_set_stateless_cookie_generate_cb((* ret.first)->ctx, &::cookie::generateStatelessCookie);
+						::SSL_CTX_set_stateless_cookie_generate_cb((* ret.first)->ctx, &::cookie::generateStateless);
 					} break;
 				}
 				// Создаем SSL объект
@@ -3488,16 +3620,16 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						this->_log->print("Could not create TLS session object: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
 				// Привязываем текущий объект TLS к SSL объекту
-				::SSL_set_ex_data((* ret.first)->ssl, ::cookie::index[0], (* ret.first).get());
+				::SSL_set_ex_data((* ret.first)->ssl, ::__awh_ssl_index__[0], (* ret.first).get());
 				// Привязываем текущий объект фреймворка к SSL объекту
-				::SSL_set_ex_data((* ret.first)->ssl, ::cookie::index[1], const_cast <fmk_t *> (this->_fmk));
+				::SSL_set_ex_data((* ret.first)->ssl, ::__awh_ssl_index__[1], const_cast <fmk_t *> (this->_fmk));
 				// Привязываем текущий объект лога к SSL объекту
-				::SSL_set_ex_data((* ret.first)->ssl, ::cookie::index[2], const_cast <log_t *> (this->_log));
+				::SSL_set_ex_data((* ret.first)->ssl, ::__awh_ssl_index__[2], const_cast <log_t *> (this->_log));
 				// Создаём объект BIO для чтения
 				(* ret.first)->rbio = ::BIO_new(::BIO_s_mem());
 				// Создаём объект BIO для записи
@@ -3533,7 +3665,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						// Освобождаем объект BIO для записи
 						::BIO_free((* ret.first)->wbio);
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					(* ret.first)->erase(::__awh_ssl_layers__);
+					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
 				}
@@ -3758,11 +3890,11 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 			::exit(EXIT_FAILURE);
 		}
 		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
-		::cookie::index[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
-		::cookie::index[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		::__awh_ssl_index__[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL
-		::cookie::index[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		::__awh_ssl_index__[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 	}
 }
 /**
