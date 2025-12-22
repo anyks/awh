@@ -2868,9 +2868,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					/**
 					 * 3. Защита от атак
 					 */
-					SSL_OP_NO_COMPRESSION |                         // CRIME / BREACH
-					SSL_OP_CIPHER_SERVER_PREFERENCE |               // Сервер выбирает шифр
-					SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | // Безопасная ренеготиация
+					SSL_OP_NO_COMPRESSION | // CRIME / BREACH
 					/**
 					 * 5. Дополнительные меры (опционально, но рекомендованы)
 					 */
