@@ -43,9 +43,8 @@ namespace awh {
 			 */
 			enum class error_t : uint8_t {
 				NONE     = 0x00, // Флаг не установлен
-				INFO     = 0x01, // Информационное сообщение
-				WARNING  = 0x02, // Предупреждающее сообщение
-				CRITICAL = 0x03  // Критическое сообщение
+				WARNING  = 0x01, // Предупреждающее сообщение
+				CRITICAL = 0x02  // Критическое сообщение
 			};
 		public:
 			/**
@@ -154,14 +153,14 @@ namespace awh {
 			void setHostname(const id_t id, const string & hostname) noexcept;
 		public:
 			/**
-			 * @brief Метод установки адреса и порта сервера назначения
+			 * @brief Метод установки адреса и порта отдалённого узла
 			 *
 			 * @param id   идентификатор события
-			 * @param ip   IP-адрес сервера
-			 * @param port порт сервера
+			 * @param ip   IP-адрес отдалённого узла
+			 * @param port порт отдалённого узла
 			 * @return     результат выполнения установки
 			 */
-			bool destination(const id_t id, const string & ip, const uint16_t port) noexcept;
+			bool peer(const id_t id, const string & ip, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод выполнения TLS рукопожатия

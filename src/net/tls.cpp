@@ -99,20 +99,20 @@ namespace {
 	} cookie_t;
 
 	/**
-	 * @brief Структура сервера назначения
+	 * @brief Структура хоста
 	 *
 	 */
-	typedef struct Destination {
-		// Имя хоста события
-		string hostname;
-		// Адрес сервера
-		unique_ptr <net::attr_net_t> address;
+	typedef struct Host {
+		// Имя хоста
+		string name;
+		// Параметры однорангового узла
+		unique_ptr <net::attr_net_t> peer;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Destination() noexcept : hostname{""}, address(nullptr) {}
-	} dest_t;
+		Host() noexcept : name{""}, peer(nullptr) {}
+	} host_t;
 
 	/**
 	 * @brief Класс уровня защищённых сокетов
@@ -130,12 +130,12 @@ namespace {
 			SSL_CTX * ctx;
 			// Объект CRL-файла сертификата
 			X509_CRL * crl;
-			// Флаг выполнения рукопожатия SSL
-			bool handshake;
+			// Объект хоста
+			host_t host;
 			// Объект печенок SSL
 			cookie_t cookie;
-			// Объект сервера назначения
-			dest_t destination;
+			// Флаг выполнения рукопожатия SSL
+			bool handshake;
 			// Тип узла события
 			event::node_t node;
 			// Тип протокола события
@@ -547,7 +547,7 @@ namespace cookie {
 			}
 		}
 		// Получаем объект хоста IPv4-адреса
-		net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->destination.address.get());
+		net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->host.peer.get());
 		// Размер буфера и длина сгенерированных печенок
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
@@ -638,7 +638,7 @@ namespace cookie {
 			// Выходим из функции
 			return 0;
 		// Получаем объект хоста IPv4-адреса
-		net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->destination.address.get());
+		net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->host.peer.get());
 		// Размер буфера и длина сгенерированных печенок
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
@@ -971,7 +971,7 @@ namespace verify {
 			// Если проверка сертификата прошла удачно
 			if(ok){
 				// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-				validate = ::verify::validateHostname(layer->destination.hostname, cert);
+				validate = ::verify::validateHostname(layer->host.name, cert);
 				/**
 				 * Определяем полученную ошибку
 				 */
@@ -1018,7 +1018,7 @@ namespace verify {
 					// Получаем объект логирования
 					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::cookie::index[2]));
 					// Выводим в лог сообщение
-					log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, layer->destination.hostname.c_str(), buffer);
+					log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, layer->host.name.c_str(), buffer);
 				#endif
 				// Выводим сообщение, что проверка пройдена
 				return 1;
@@ -1031,13 +1031,13 @@ namespace verify {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), layer->destination.hostname.c_str(), buffer);
+					log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), layer->host.name.c_str(), buffer);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), layer->destination.hostname.c_str(), buffer);
+					log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), layer->host.name.c_str(), buffer);
 				#endif
 			}
 		}
@@ -1775,7 +1775,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Формируем строковое представление доменного имени
 						fqdn.assign(reinterpret_cast <char *> (const_cast <uint8_t *> (::ASN1_STRING_get0_data(cn->d.dNSName))), ::ASN1_STRING_length(cn->d.dNSName));
 						// Если размер имени и dns имя совпадает
-						if((ok = ::verify::certHostcheck(layer->destination.hostname, fqdn)))
+						if((ok = ::verify::certHostcheck(layer->host.name, fqdn)))
 							// Выходим из цикла
 							break;
 					}
@@ -1791,7 +1791,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				// Если удалось получить Common Name
 				if(::X509_NAME_get_text_by_NID(subject, NID_commonName, buffer, sizeof(buffer)) == 1)
 					// Если размер имени и dns имя совпадает
-					ok = ::verify::certHostcheck(layer->destination.hostname, buffer);
+					ok = ::verify::certHostcheck(layer->host.name, buffer);
 			}
 			// Возвращаем результат проверки
 			return ok;
@@ -1915,18 +1915,18 @@ void awh::TransportLayerSecurity::setHostname(const id_t id, const string & host
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
 				// Устанавливаем хост для уровня защищённых сокетов
-				layer->destination.hostname = hostname;
+				layer->host.name = hostname;
 				// Устанавливаем имя хоста для SNI расширения
-				::SSL_set_tlsext_host_name(layer->ssl, layer->destination.hostname.c_str());
+				::SSL_set_tlsext_host_name(layer->ssl, layer->host.name.c_str());
 				/**
 				 * Если версия OpenSSL соответствует или выше версии 1.1.1
 				 */
 				#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 					// Устанавливаем имя хоста для проверки
-					::SSL_set1_host(layer->ssl, layer->destination.hostname.c_str());
+					::SSL_set1_host(layer->ssl, layer->host.name.c_str());
 				#endif
 				// Активируем верификацию доменного имени
-				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(layer->ssl), layer->destination.hostname.c_str(), 0) != 1){
+				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(layer->ssl), layer->host.name.c_str(), 0) != 1){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1963,14 +1963,14 @@ void awh::TransportLayerSecurity::setHostname(const id_t id, const string & host
 	}
 }
 /**
- * @brief Метод установки адреса и порта сервера назначения
+ * @brief Метод установки адреса и порта отдалённого узла
  *
  * @param id   идентификатор события
- * @param ip   IP-адрес сервера
- * @param port порт сервера
+ * @param ip   IP-адрес отдалённого узла
+ * @param port порт отдалённого узла
  * @return     результат выполнения установки
  */
-bool awh::TransportLayerSecurity::destination(const id_t id, const string & ip, const uint16_t port) noexcept {
+bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1986,9 +1986,9 @@ bool awh::TransportLayerSecurity::destination(const id_t id, const string & ip, 
 					// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 					auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
 					// Выполняем инициализацию объекта хоста IPv4-адреса
-					layer->destination.address = make_unique <net::attr_net_t> ();
+					layer->host.peer = make_unique <net::attr_net_t> ();
 					// Получаем объект хоста IPv4-адреса
-					net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->destination.address.get());
+					net::attr_net_t * address = awh_cast <net::attr_net_t *> (layer->host.peer.get());
 					/**
 					 * Выполняем определение типа IP-адреса
 					 */
