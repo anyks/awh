@@ -1852,8 +1852,6 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 					} else {
 						// Устанавливаем проверку сертификата сервера
 						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_PEER, nullptr);
-						// Устанавливаем пути по умолчанию для проверки сертификатов
-						::SSL_CTX_set_default_verify_paths(layer->ctx);
 						// Отключаем проверку сертификата сервера
 						::SSL_CTX_set_verify(layer->ctx, SSL_VERIFY_NONE, nullptr);
 					}
@@ -2503,14 +2501,14 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если адрес файла центра сертификации не пустой
-		if(!filename.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
-				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if(i != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto layer = reinterpret_cast <SecureSocketsLayer *> (static_cast <uintptr_t> (id));
+			// Если адрес файла центра сертификации не пустой
+			if(!filename.empty()){
 				// Выполняем проверку
 				if(::SSL_CTX_load_verify_locations(layer->ctx, filename.c_str(), nullptr) != 1){
 					/**
@@ -2531,7 +2529,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 				}
 				// Выполняем установку CRL-файла сертификата
 				::SSL_CTX_set_client_CA_list(layer->ctx, ::SSL_load_client_CA_file(filename.c_str()));
-			}
+			// Устанавливаем пути по умолчанию для проверки сертификатов
+			} else ::SSL_CTX_set_default_verify_paths(layer->ctx);
 		}
 	/**
 	 * Если возникает ошибка
@@ -3040,10 +3039,10 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_CTX_set_mode((* ret.first)->ctx, SSL_MODE_RELEASE_BUFFERS);
 				// Устанавливаем проверку сертификата сервера
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER, nullptr);
-				// Устанавливаем пути по умолчанию для проверки сертификатов
-				::SSL_CTX_set_default_verify_paths((* ret.first)->ctx);
 				// Отключаем проверку сертификата сервера
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_NONE, nullptr);
+				// Устанавливаем пути по умолчанию для проверки сертификатов
+				::SSL_CTX_set_default_verify_paths((* ret.first)->ctx);
 				// Устанавливаем, что мы должны читать как можно больше входных байтов
 				::SSL_CTX_set_read_ahead((* ret.first)->ctx, 1);
 				// Создаем SSL объект
@@ -3439,8 +3438,6 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_CTX_set_session_cache_mode((* ret.first)->ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 				// Устанавливаем проверку сертификата сервера
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER, nullptr);
-				// Устанавливаем пути по умолчанию для проверки сертификатов
-				::SSL_CTX_set_default_verify_paths((* ret.first)->ctx);
 				// Отключаем проверку сертификата сервера
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_NONE, nullptr);
 				// Устанавливаем, что мы должны читать как можно больше входных байтов
