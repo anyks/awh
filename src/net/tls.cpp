@@ -3391,6 +3391,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_NONE, nullptr);
 				// Устанавливаем, что мы должны читать как можно больше входных байтов
 				::SSL_CTX_set_read_ahead((* ret.first)->ctx, 1);
+				// Включаем обмен куками
+				::SSL_CTX_set_options((* ret.first)->ctx, SSL_OP_COOKIE_EXCHANGE);
 				/**
 				 * Определяем тип протокола подключения
 				 */
@@ -3681,6 +3683,8 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 		#else
 			// Выполняем инициализацию OpenSSL
 			::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
+			// Выполняем загрузки описаний ошибок TLS/SSL
+			::ERR_load_SSL_strings();
 		#endif
 		// Выполняем загрузки описаний ошибок шифрования
 		::ERR_load_crypto_strings();
