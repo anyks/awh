@@ -3191,7 +3191,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					return 0;
 				}
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				::SSL_CTX_set_options((* ret.first)->ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+				::SSL_CTX_set_options((* ret.first)->ctx, SSL_OP_COOKIE_EXCHANGE | SSL_OP_CIPHER_SERVER_PREFERENCE);
 				/**
 				 * Если версия OpenSSL соответствует или выше версии 3.0.0
 				 */
@@ -3391,8 +3391,6 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_NONE, nullptr);
 				// Устанавливаем, что мы должны читать как можно больше входных байтов
 				::SSL_CTX_set_read_ahead((* ret.first)->ctx, 1);
-				// Включаем обмен куками
-				::SSL_CTX_set_options((* ret.first)->ctx, SSL_OP_COOKIE_EXCHANGE);
 				/**
 				 * Определяем тип протокола подключения
 				 */
