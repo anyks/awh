@@ -92,13 +92,13 @@ TEST_F(EthFixture, EthSuiteTest){
 	 */
 	#if __FreeBSD__ || __Linux__
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_TRUE(this->_eth->sctp(sock));
+		ASSERT_TRUE(this->_eth->sctp(sock, awh::event::type_t::STREAM));
 	/**
 	 * Для остальных операционных систем
 	 */
 	#else
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_FALSE(this->_eth->sctp(sock));
+		ASSERT_FALSE(this->_eth->sctp(sock, awh::event::type_t::STREAM));
 	#endif
 	// Получаем код ошибки сокета
 	ASSERT_EQ(0, this->_eth->error(sock));

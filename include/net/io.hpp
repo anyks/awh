@@ -200,6 +200,21 @@ namespace awh {
 			bool splice(const event::id_t eid, const event::id_t dst) noexcept;
 		public:
 			/**
+			 * @brief Метод получения информационных метаданных SCTP сообщения
+			 *
+			 * @param id идентификатор события
+			 * @return   информационные метаданные SCTP сообщения
+			 */
+			net::sctp_minfo_t sctpMessageInfo(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки информационных метаданных SCTP сообщения
+			 *
+			 * @param id   идентификатор события
+			 * @param info информационные метаданные SCTP сообщения
+			 */
+			void sctpMessageInfo(const event::id_t id, const net::sctp_minfo_t & info) noexcept;
+		public:
+			/**
 			 * @brief Метод отключения события
 			 *
 			 * @param id идентификатор события

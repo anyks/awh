@@ -640,6 +640,130 @@ namespace ssl {
 };
 
 /**
+ * Для операционной системы Linux или FreeBSD
+ */
+#if __linux__ || __FreeBSD__
+	/**
+	 * Инкапсулируем методы SCTP в пространство имён
+	 */
+	namespace sctp {
+		/**
+		 * @brief Функция обработки нотификации SCTP
+		 *
+		 * @param bio    объект подключения BIO
+		 * @param ctx    промежуточный передаваемый контекст
+		 * @param buffer буфер передаваемых данных
+		 */
+		static void notifications(BIO * bio, void * ctx, void * buffer) noexcept {
+			// Если данные переданы
+			if((bio != nullptr) && (ctx != nullptr) && (buffer != nullptr)){
+				// Создаём объект событий SCTP
+				union sctp_notification * snp = reinterpret_cast <union sctp_notification *> (buffer);
+				// Получаем объект уровня защищённых сокетов
+				::member_t * member = reinterpret_cast <::member_t *> (ctx);
+				// Получаем объект логирования
+				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+				/**
+				 * Определяем тип события
+				 */
+				switch(snp->sn_header.sn_type){
+					// Если произошло событие изменения ассоциации
+					case SCTP_ASSOC_CHANGE: {
+						// Получаем ассоциацию
+						struct sctp_assoc_change * sac = &snp->sn_assoc_change;
+						// Выводим в лог информационное сообщение
+						log->print("Assoc_change: STATE=%hu, ERROR=%hu, INPUT=%hu, OUTPUT=%hu", awh::log_t::flag_t::INFO, sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
+					} break;
+					// Если изменился адрес подключения клиента
+					case SCTP_PEER_ADDR_CHANGE: {
+						// Получаем данные изменившегося адреса
+						struct sctp_paddr_change * spc = &snp->sn_paddr_change;
+						// Получаем объект хоста IPv4-адреса
+						net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
+						/**
+						 * Определяем тип адреса
+						 */
+						switch(address->ip->size){
+							// Если адрес является IPv4
+							case 4: {
+								// Объект данных подключения
+								char buffer[INET_ADDRSTRLEN];
+								// Выполняем зануление буфера данных
+								::memset(buffer, 0, sizeof(buffer));
+								// Выводим в лог информационное сообщение
+								log->print("Intf change: IP=%s, STATE=%d, ERROR=%d", awh::log_t::flag_t::INFO, ::inet_ntop(AF_INET, &awh_cast <net::addr_net_ipv4_t *> (address->ip.get())->address, buffer, sizeof(buffer)), spc->spc_state, spc->spc_error);
+							} break;
+							// Если адрес является IPv6
+							case 16: {
+								// Объект данных подключения
+								char buffer[INET6_ADDRSTRLEN];
+								// Выполняем зануление буфера данных
+								::memset(buffer, 0, sizeof(buffer));
+								// Выводим в лог информационное сообщение
+								log->print("Intf change: IP=%s, STATE=%d, ERROR=%d", awh::log_t::flag_t::INFO, ::inet_ntop(AF_INET6, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], buffer, sizeof(buffer)), spc->spc_state, spc->spc_error);
+							} break;
+						}
+					} break;
+					// Если произошла ошибка удалённого подключения
+					case SCTP_REMOTE_ERROR: {
+						// Получаем данные ошибки удалённого подключения
+						struct sctp_remote_error * sre = &snp->sn_remote_error;
+						// Выводим в лог информационное сообщение
+						log->print("Remote error: ERROR=%hu, LENGTH=%hu", awh::log_t::flag_t::INFO, ntohs(sre->sre_error), ntohs(sre->sre_length));
+					} break;
+					// Если произошло событие неудачной отправки
+					case SCTP_SEND_FAILED: {
+						// Получаем объект ошибки
+						struct sctp_send_failed * ssf = &snp->sn_send_failed;
+						// Выводим в лог информационное сообщение
+						log->print("Sendfailed: ERROR=%d, LENGTH=%u", awh::log_t::flag_t::INFO, ssf->ssf_error, ssf->ssf_length);
+					} break;
+					// Если произошло событие отключения подключения
+					case SCTP_SHUTDOWN_EVENT:
+						// Выводим в лог информационное сообщение
+						log->print("Shutdown event", awh::log_t::flag_t::INFO);
+					break;
+					// Если произошло событие адаптации
+					case SCTP_ADAPTATION_INDICATION:
+						// Выводим в лог информационное сообщение
+						log->print("Adaptation event", awh::log_t::flag_t::INFO);
+					break;
+					// Если произошло сообщение частичной передачи данных
+					case SCTP_PARTIAL_DELIVERY_EVENT:
+						// Выводим в лог информационное сообщение
+						log->print("Partial delivery", awh::log_t::flag_t::INFO);
+					break;
+					/**
+					 * Если требуется аутентификация
+					 */
+					#ifdef SCTP_AUTHENTICATION_EVENT
+						// Если произошло событие аутентификации
+						case SCTP_AUTHENTICATION_EVENT:
+							// Выводим в лог информационное сообщение
+							log->print("Authentication event", awh::log_t::flag_t::INFO);
+						break;
+					#endif
+					/**
+					 * Если требуется отображение сухих событий
+					 */
+					#ifdef SCTP_SENDER_DRY_EVENT
+						// Отправитель прислал сухое событие
+						case SCTP_SENDER_DRY_EVENT:
+							// Выводим в лог информационное сообщение
+							log->print("Sender dry event", awh::log_t::flag_t::INFO);
+						break;
+					#endif
+					// Если произошло неизвестное событие
+					default:
+						// Выводим в лог информационное сообщение
+						log->print("Unknown type: %hu", awh::log_t::flag_t::INFO, snp->sn_header.sn_type);
+				}
+			}
+		}
+	};
+#endif
+
+/**
  * Инкапсулируем методы работы с cookie в пространство имён
  */
 namespace cookie {
@@ -733,10 +857,10 @@ namespace cookie {
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv4_t *> (address->ip.get())->address, 4);
 			break;
 			// Если адрес является IPv6
-			case 16: {
+			case 16:
 				// Выполняем чтение в буфер данных данные структуры подключения
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
-			} break;
+			break;
 			// Если производится работа с другими протоколами, выходим
 			default: OPENSSL_assert(0);
 		}
@@ -2363,6 +2487,20 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			/**
+			 * Для операционной системы Linux или FreeBSD
+			 */
+			#if __linux__ || __FreeBSD__
+				// Если протокол интернета установлен как SCTP
+				if(member->proto == event::protocol_t::SCTP){
+					// Создаём объект получения информационных событий
+					struct bio_dgram_sctp_sndinfo info;
+					// Выполняем зануление объекта информационного события
+					::memset(&info, 0, sizeof(info));
+					// Выполняем установку события
+					::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
+				}
+			#endif
 			// Выполняем запись данных в защищённый сокет
 			int32_t bytes = ::SSL_write(member->ssl, buffer, static_cast <int32_t> (size));
 			// Если данные не записаны
@@ -2402,6 +2540,41 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 				if(member->callback.write != nullptr)
 					// Вызываем функцию обратного вызова записи данных
 					member->callback.write(id, event_t::ENCRYPTION, static_cast <size_t> (bytes));
+				/**
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+				 */
+				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
+					// Если протокол интернета установлен как SCTP
+					if((member->proto == event::protocol_t::SCTP) && (::SSL_get_error(member->ssl, bytes) == SSL_ERROR_NONE)){
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём объект получения информационных событий
+								struct bio_dgram_sctp_sndinfo info;
+								// Выполняем зануление объекта информационного события
+								::memset(&info, 0, sizeof(info));
+								// Выполняем извлечение события
+								::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
+								// Выводим в лог информационное сообщение
+								this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, bytes, info.snd_sid, info.snd_ppid);
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Создаём объект получения информационных событий
+								struct bio_dgram_sctp_rcvinfo info;
+								// Выполняем зануление объекта информационного события
+								::memset(&info, 0, sizeof(info));
+								// Выполняем извлечение события
+								::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
+								// Выводим в лог информационное сообщение
+								this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, bytes, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+							} break;
+						}
+					}
+				#endif
 				// Количество ожидающих данных для чтения
 				size_t pending = 0;
 				/**
@@ -2469,6 +2642,22 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 				if(member->callback.write != nullptr)
 					// Вызываем функцию обратного вызова записи данных
 					member->callback.write(id, event_t::DECRYPTION, static_cast <size_t> (bytes));
+				/**
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+				 */
+				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
+					// Если протокол интернета установлен как SCTP
+					if((member->proto == event::protocol_t::SCTP) && (::SSL_get_error(member->ssl, bytes) == SSL_ERROR_NONE)){
+						// Создаём объект получения информационных событий
+						struct bio_dgram_sctp_rcvinfo info;
+						// Выполняем зануление объекта информационного события
+						::memset(&info, 0, sizeof(info));
+						// Выполняем извлечение события
+						::BIO_ctrl(member->rbio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
+						// Выводим в лог информационное сообщение
+						this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, bytes, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+					}
+				#endif
 				/**
 				 * Читаем все доступные данные из защищённого сокета
 				 */
@@ -3737,6 +3926,15 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_set_bio((* ret.first)->ssl, (* ret.first)->rbio, (* ret.first)->wbio);
 				// Устанавливаем режим клиента для SSL объекта
 				::SSL_set_connect_state((* ret.first)->ssl);
+				/**
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+				 */
+				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
+					// Если протокол интернета установлен как SCTP
+					if(proto == event::protocol_t::SCTP)
+						// Устанавливаем функцию нотификации
+						::BIO_dgram_sctp_notification_cb((* ret.first)->rbio, &::sctp::notifications, (* ret.first).get());
+				#endif
 				// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
 				::__awh_ssl_ids__.emplace(result);
 			} break;
@@ -4187,6 +4385,15 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_set_bio((* ret.first)->ssl, (* ret.first)->rbio, (* ret.first)->wbio);
 				// Устанавливаем режим сервера для SSL объекта
 				::SSL_set_accept_state((* ret.first)->ssl);
+				/**
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+				 */
+				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
+					// Если протокол интернета установлен как SCTP
+					if(proto == event::protocol_t::SCTP)
+						// Устанавливаем функцию нотификации
+						::BIO_dgram_sctp_notification_cb((* ret.first)->rbio, &::sctp::notifications, (* ret.first).get());
+				#endif
 				// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
 				::__awh_ssl_ids__.emplace(result);
 			} break;

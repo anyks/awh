@@ -130,19 +130,21 @@ namespace awh {
 			 */
 			bool nosigill() const noexcept;
 			/**
-			* @brief Метод активации получения SCTP-событий для сокета
-			*
-			* @param sock сетевой сокет
-			* @return     результат работы функции
-			*/
-			bool sctp(const net::socket_t sock) const noexcept;
-			/**
 			* @brief Метод получения кода ошибки
 			*
 			* @param sock сетевой сокет
 			* @return     код ошибки на сокете если присутствует
 			*/
 			int32_t error(const net::socket_t sock) const noexcept;
+		public:
+			/**
+			* @brief Метод активации получения SCTP-событий для сокета
+			*
+			* @param sock сетевой сокет
+			* @param type тип сокета
+			* @return     результат работы функции
+			*/
+			bool sctp(const net::socket_t sock, const event::type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK

@@ -146,6 +146,27 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * @brief Структура SCTP-событий
+		 *
+		 */
+		typedef struct SCTP {
+			// Флаги SCTP-событий
+			int32_t flags;
+			// Информация о SCTP-событиях
+			struct sctp_sndrcvinfo info;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit SCTP() noexcept : flags(0), info{} {}
+		} sctp_t;
+	#endif
+
+	/**
 	 * @brief Структура конечного подключения
 	 *
 	 */
@@ -182,13 +203,23 @@ namespace {
 	 *
 	 */
 	typedef struct Transfer {
-		event::id_t dst;          // Идентификатор события принимающей стороны
-		net::socket_t fd;         // Файловый дескриптор сервиса
-		uint16_t actions;         // Флаги активированных событий файла
-		size_t offset;            // Смещение передачи данных
-		buffer_t input;           // Буфер получения данных
-		queue_t output;           // Очередь отправки данных
-		lock_state_t <mutex> mtx; // Мьютекс для синхронизации потоков
+		event::id_t dst;  // Идентификатор события принимающей стороны
+		net::socket_t fd; // Файловый дескриптор сервиса
+		uint16_t actions; // Флаги активированных событий файла
+		size_t offset;    // Смещение передачи данных
+		/**
+		 * Если операционной системой является FreeBSD
+		 */
+		#if __FreeBSD__
+			// Объект SCTP-событий
+			sctp_t sctp;
+		#endif
+		// Буфер получения данных
+		buffer_t input;
+		// Очередь отправки данных
+		queue_t output;
+		// Мьютекс для синхронизации потоков
+		lock_state_t <mutex> mtx;
 		/**
 		 * @brief Конструктор
 		 *
@@ -2659,6 +2690,10 @@ namespace io {
 						peer->state.family = node->state.family;
 						// Устанавливаем протокол сокета
 						peer->state.protocol = node->state.protocol;
+						// Если протокол интернета установлен как SCTP
+						if(peer->state.protocol == event::protocol_t::SCTP)
+							// Выполняем активацию событий SCTP
+							eth->sctp(peer->transfer.fd, peer->state.type);
 						// Выполняем инициализацию объекта MAC-адреса
 						peer->mac = make_unique <net::addr_mac_t> ();
 						/**
@@ -4042,8 +4077,32 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Если событие является неблокирующим
 								if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
-									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(node->state.protocol == event::protocol_t::SCTP)
+											// Выполняем чтение данных из TCP/IP сокета
+											bytes = ::sctp_recvmsg(
+												peer->transfer.fd,
+												peer->transfer.input.data.get(),
+												peer->transfer.input.size,
+												nullptr, nullptr,
+												&peer->transfer.sctp.info,
+												&peer->transfer.sctp.flags
+											);
+										// Выполняем чтение данных из TCP/IP сокета
+										else bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем чтение данных из TCP/IP сокета
+										const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Если нам нужно повторить попытку позже
@@ -4106,8 +4165,32 @@ namespace io {
 									}
 								// Если событие является блокирующим
 								} else {
-									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(node->state.protocol == event::protocol_t::SCTP)
+											// Выполняем чтение данных из TCP/IP сокета
+											bytes = ::sctp_recvmsg(
+												peer->transfer.fd,
+												peer->transfer.input.data.get(),
+												peer->transfer.input.size,
+												nullptr, nullptr,
+												&peer->transfer.sctp.info,
+												&peer->transfer.sctp.flags
+											);
+										// Выполняем чтение данных из TCP/IP сокета
+										else bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем чтение данных из TCP/IP сокета
+										const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -4340,8 +4423,32 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Если событие является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
-									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(node->state.protocol == event::protocol_t::SCTP)
+											// Выполняем чтение данных из TCP/IP сокета
+											bytes = ::sctp_recvmsg(
+												client->transfer.fd,
+												client->transfer.input.data.get(),
+												client->transfer.input.size,
+												nullptr, nullptr,
+												&client->transfer.sctp.info,
+												&client->transfer.sctp.flags
+											);
+										// Выполняем чтение данных из TCP/IP сокета
+										else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем чтение данных из TCP/IP сокета
+										const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Если нам нужно повторить попытку позже
@@ -4404,8 +4511,32 @@ namespace io {
 									}
 								// Если событие является блокирующим
 								} else {
-									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(node->state.protocol == event::protocol_t::SCTP)
+											// Выполняем чтение данных из TCP/IP сокета
+											bytes = ::sctp_recvmsg(
+												client->transfer.fd,
+												client->transfer.input.data.get(),
+												client->transfer.input.size,
+												nullptr, nullptr,
+												&client->transfer.sctp.info,
+												&client->transfer.sctp.flags
+											);
+										// Выполняем чтение данных из TCP/IP сокета
+										else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем чтение данных из TCP/IP сокета
+										const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -5714,8 +5845,35 @@ namespace io {
 								} break;
 								// Для типа сокета SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									// Выполняем отправку данных в TCP/IP сокет
-									const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()), peer->transfer.output.size(), 0);
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(node->state.protocol == event::protocol_t::SCTP)
+											// Выполняем отправку данных в TCP/IP сокет
+											bytes = ::sctp_sendmsg(
+												peer->transfer.fd,
+												reinterpret_cast <const uint8_t *> (peer->transfer.output.data()),
+												peer->transfer.output.size(),
+												nullptr, 0,
+												peer->transfer.sctp.info.sinfo_ppid,
+												peer->transfer.sctp.info.sinfo_flags,
+												peer->transfer.sctp.info.sinfo_stream,
+												peer->transfer.sctp.info.sinfo_timetolive,
+												peer->transfer.sctp.info.sinfo_context
+											);
+										// Выполняем отправку данных в TCP/IP сокет
+										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()), peer->transfer.output.size(), 0);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем отправку данных в TCP/IP сокет
+										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()), peer->transfer.output.size(), 0);
+									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
@@ -5921,8 +6079,35 @@ namespace io {
 									} break;
 									// Для типа сокета SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(node->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в TCP/IP сокет
+												bytes = ::sctp_sendmsg(
+													client->transfer.fd,
+													reinterpret_cast <const uint8_t *> (client->transfer.output.data()),
+													client->transfer.output.size(),
+													nullptr, 0,
+													client->transfer.sctp.info.sinfo_ppid,
+													client->transfer.sctp.info.sinfo_flags,
+													client->transfer.sctp.info.sinfo_stream,
+													client->transfer.sctp.info.sinfo_timetolive,
+													client->transfer.sctp.info.sinfo_context
+												);
+											// Выполняем отправку данных в TCP/IP сокет
+											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -7919,6 +8104,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if(node->target != nullptr){
+												// Если протокол интернета установлен как SCTP
+												if(node->state.protocol == event::protocol_t::SCTP)
+													// Выполняем активацию событий SCTP
+													this->_eth.sctp(node->transfer.fd, node->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -8435,6 +8624,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if(node->target != nullptr){
+												// Если протокол интернета установлен как SCTP
+												if(node->state.protocol == event::protocol_t::SCTP)
+													// Выполняем активацию событий SCTP
+													this->_eth.sctp(node->transfer.fd, node->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -9465,6 +9658,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if(node->host != nullptr){
+												// Если протокол интернета установлен как SCTP
+												if(node->state.protocol == event::protocol_t::SCTP)
+													// Выполняем активацию событий SCTP
+													this->_eth.sctp(node->transfer.fd, node->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -9691,6 +9888,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if(node->host != nullptr){
+												// Если протокол интернета установлен как SCTP
+												if(node->state.protocol == event::protocol_t::SCTP)
+													// Выполняем активацию событий SCTP
+													this->_eth.sctp(node->transfer.fd, node->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -21133,6 +21334,486 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dst) noexcept {
 	return false;
 }
 /**
+ * @brief Метод получения информационных метаданных SCTP сообщения
+ *
+ * @param id идентификатор события
+ * @return   информационные метаданные SCTP сообщения
+ */
+awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id) const noexcept {
+	// Резузльтат работы функции
+	net::sctp_minfo_t result;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						/**
+						 * Определяем тип полезной нагрузки SCTP
+						 */
+						switch(node->transfer.sctp.info.sinfo_ppid){
+							// Если тип полезной нагрузки является WebRTC текстовым
+							case 0x33:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::WEBRTC_STR;
+							break;
+							// Если тип полезной нагрузки является WebRTC бинарным
+							case 0x35:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::WEBRTC_BIN;
+							break;
+							// Если тип полезной нагрузки является DTLS
+							default:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::DTLS;
+							break;
+						}
+						// Устанавливаем номер потока SCTP в результат работы функции
+						result.num = node->transfer.sctp.info.sinfo_stream;
+						// Устанавливаем контекст сообщения SCTP в результат работы функции
+						result.ctx = node->transfer.sctp.info.sinfo_context;
+						// Устанавливаем время жизни сообщения SCTP в результат работы функции
+						result.ttl = node->transfer.sctp.info.sinfo_timetolive;
+						// Если установлен флаг EOF в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_EOF)
+							// Устанавливаем флаг EOF в результат работы функции
+							result.flags |= event::sctp::AWH_EOF;
+						// Если установлен флаг ABORT в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
+							// Устанавливаем флаг ABORT в результат работы функции
+							result.flags |= event::sctp::AWH_ABORT;
+						// Если установлен флаг SENDALL в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
+							// Устанавливаем флаг SENDALL в результат работы функции
+							result.flags |= event::sctp::AWH_SENDALL;
+						// Если установлен флаг UNORDERED в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
+							// Устанавливаем флаг UNORDERED в результат работы функции
+							result.flags |= event::sctp::AWH_UNORDERED;
+						// Если установлен флаг ADDR_OVER в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
+							// Устанавливаем флаг ADDR_OVER в результат работы функции
+							result.flags |= event::sctp::AWH_ADDR_OVER;
+						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
+							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
+							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
+							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						/**
+						 * Определяем тип полезной нагрузки SCTP
+						 */
+						switch(node->transfer.sctp.info.sinfo_ppid){
+							// Если тип полезной нагрузки является WebRTC текстовым
+							case 0x33:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::WEBRTC_STR;
+							break;
+							// Если тип полезной нагрузки является WebRTC бинарным
+							case 0x35:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::WEBRTC_BIN;
+							break;
+							// Если тип полезной нагрузки является DTLS
+							default:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::DTLS;
+							break;
+						}
+						// Устанавливаем номер потока SCTP в результат работы функции
+						result.num = node->transfer.sctp.info.sinfo_stream;
+						// Устанавливаем контекст сообщения SCTP в результат работы функции
+						result.ctx = node->transfer.sctp.info.sinfo_context;
+						// Устанавливаем время жизни сообщения SCTP в результат работы функции
+						result.ttl = node->transfer.sctp.info.sinfo_timetolive;
+						// Если установлен флаг EOF в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_EOF)
+							// Устанавливаем флаг EOF в результат работы функции
+							result.flags |= event::sctp::AWH_EOF;
+						// Если установлен флаг ABORT в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
+							// Устанавливаем флаг ABORT в результат работы функции
+							result.flags |= event::sctp::AWH_ABORT;
+						// Если установлен флаг SENDALL в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
+							// Устанавливаем флаг SENDALL в результат работы функции
+							result.flags |= event::sctp::AWH_SENDALL;
+						// Если установлен флаг UNORDERED в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
+							// Устанавливаем флаг UNORDERED в результат работы функции
+							result.flags |= event::sctp::AWH_UNORDERED;
+						// Если установлен флаг ADDR_OVER в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
+							// Устанавливаем флаг ADDR_OVER в результат работы функции
+							result.flags |= event::sctp::AWH_ADDR_OVER;
+						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
+							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
+							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
+							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						/**
+						 * Определяем тип полезной нагрузки SCTP
+						 */
+						switch(node->transfer.sctp.info.sinfo_ppid){
+							// Если тип полезной нагрузки является WebRTC текстовым
+							case 0x33:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::WEBRTC_STR;
+							break;
+							// Если тип полезной нагрузки является WebRTC бинарным
+							case 0x35:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::WEBRTC_BIN;
+							break;
+							// Если тип полезной нагрузки является DTLS
+							default:
+								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+								result.ppi = event::sctp::ppi_t::DTLS;
+							break;
+						}
+						// Устанавливаем номер потока SCTP в результат работы функции
+						result.num = node->transfer.sctp.info.sinfo_stream;
+						// Устанавливаем контекст сообщения SCTP в результат работы функции
+						result.ctx = node->transfer.sctp.info.sinfo_context;
+						// Устанавливаем время жизни сообщения SCTP в результат работы функции
+						result.ttl = node->transfer.sctp.info.sinfo_timetolive;
+						// Если установлен флаг EOF в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_EOF)
+							// Устанавливаем флаг EOF в результат работы функции
+							result.flags |= event::sctp::AWH_EOF;
+						// Если установлен флаг ABORT в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
+							// Устанавливаем флаг ABORT в результат работы функции
+							result.flags |= event::sctp::AWH_ABORT;
+						// Если установлен флаг SENDALL в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
+							// Устанавливаем флаг SENDALL в результат работы функции
+							result.flags |= event::sctp::AWH_SENDALL;
+						// Если установлен флаг UNORDERED в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
+							// Устанавливаем флаг UNORDERED в результат работы функции
+							result.flags |= event::sctp::AWH_UNORDERED;
+						// Если установлен флаг ADDR_OVER в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
+							// Устанавливаем флаг ADDR_OVER в результат работы функции
+							result.flags |= event::sctp::AWH_ADDR_OVER;
+						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
+							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
+							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
+							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+						if(node->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+					} break;
+					// Если узел является другим типом узла
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("SCTP settings can only be retrieved from peer, client, or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("SCTP settings can only be retrieved from peer, client, or server nodes", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Метод установки информационных метаданных SCTP сообщения
+ *
+ * @param id   идентификатор события
+ * @param info информационные метаданные SCTP сообщения
+ */
+void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unused]] const net::sctp_minfo_t & info) noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						peer_t * node = awh_cast <peer_t *> (i->second.get());
+						// Выполняем зануление объекта информации SCTP
+						::memset(&node->transfer.sctp.info, 0, sizeof(node->transfer.sctp.info));
+						// Устанавливаем номер потока SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_stream = info.num;
+						// Устанавливаем контекст сообщения SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_context = info.ctx;
+						// Устанавливаем время жизни сообщения SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_timetolive = info.ttl;
+						// Устанавливаем тип полезной нагрузки SCTP сообщения
+						node->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppi);
+						// Если установлен флаг EOF в сообщении SCTP
+						if(info.flags & event::sctp::AWH_EOF)
+							// Устанавливаем флаг EOF в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+						// Если установлен флаг ABORT в сообщении SCTP
+						if(info.flags & event::sctp::AWH_ABORT)
+							// Устанавливаем флаг ABORT в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+						// Если установлен флаг SENDALL в сообщении SCTP
+						if(info.flags & event::sctp::AWH_SENDALL)
+							// Устанавливаем флаг SENDALL в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+						// Если установлен флаг UNORDERED в сообщении SCTP
+						if(info.flags & event::sctp::AWH_UNORDERED)
+							// Устанавливаем флаг UNORDERED в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+						// Если установлен флаг ADDR_OVER в сообщении SCTP
+						if(info.flags & event::sctp::AWH_ADDR_OVER)
+							// Устанавливаем флаг ADDR_OVER в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * node = awh_cast <client_t *> (i->second.get());
+						// Выполняем зануление объекта информации SCTP
+						::memset(&node->transfer.sctp.info, 0, sizeof(node->transfer.sctp.info));
+						// Устанавливаем номер потока SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_stream = info.num;
+						// Устанавливаем контекст сообщения SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_context = info.ctx;
+						// Устанавливаем время жизни сообщения SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_timetolive = info.ttl;
+						// Устанавливаем тип полезной нагрузки SCTP сообщения
+						node->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppi);
+						// Если установлен флаг EOF в сообщении SCTP
+						if(info.flags & event::sctp::AWH_EOF)
+							// Устанавливаем флаг EOF в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+						// Если установлен флаг ABORT в сообщении SCTP
+						if(info.flags & event::sctp::AWH_ABORT)
+							// Устанавливаем флаг ABORT в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+						// Если установлен флаг SENDALL в сообщении SCTP
+						if(info.flags & event::sctp::AWH_SENDALL)
+							// Устанавливаем флаг SENDALL в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+						// Если установлен флаг UNORDERED в сообщении SCTP
+						if(info.flags & event::sctp::AWH_UNORDERED)
+							// Устанавливаем флаг UNORDERED в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+						// Если установлен флаг ADDR_OVER в сообщении SCTP
+						if(info.flags & event::sctp::AWH_ADDR_OVER)
+							// Устанавливаем флаг ADDR_OVER в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						server_t * node = awh_cast <server_t *> (i->second.get());
+						// Выполняем зануление объекта информации SCTP
+						::memset(&node->transfer.sctp.info, 0, sizeof(node->transfer.sctp.info));
+						// Устанавливаем номер потока SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_stream = info.num;
+						// Устанавливаем контекст сообщения SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_context = info.ctx;
+						// Устанавливаем время жизни сообщения SCTP в результат работы функции
+						node->transfer.sctp.info.sinfo_timetolive = info.ttl;
+						// Устанавливаем тип полезной нагрузки SCTP сообщения
+						node->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppi);
+						// Если установлен флаг EOF в сообщении SCTP
+						if(info.flags & event::sctp::AWH_EOF)
+							// Устанавливаем флаг EOF в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+						// Если установлен флаг ABORT в сообщении SCTP
+						if(info.flags & event::sctp::AWH_ABORT)
+							// Устанавливаем флаг ABORT в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+						// Если установлен флаг SENDALL в сообщении SCTP
+						if(info.flags & event::sctp::AWH_SENDALL)
+							// Устанавливаем флаг SENDALL в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+						// Если установлен флаг UNORDERED в сообщении SCTP
+						if(info.flags & event::sctp::AWH_UNORDERED)
+							// Устанавливаем флаг UNORDERED в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+						// Если установлен флаг ADDR_OVER в сообщении SCTP
+						if(info.flags & event::sctp::AWH_ADDR_OVER)
+							// Устанавливаем флаг ADDR_OVER в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+							node->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+					} break;
+					// Если узел является другим типом узла
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("SCTP settings can only be configured for peer nodes, clients, or servers", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("SCTP settings can only be configured for peer nodes, clients, or servers", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+}
+/**
  * @brief Метод отключения события
  *
  * @param id идентификатор события
@@ -21398,10 +22079,6 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											node->endpoint.size = sizeof(struct sockaddr_in6);
 										break;
 									}
-									// Если протокол интернета установлен как SCTP
-									if(node->state.protocol == event::protocol_t::SCTP)
-										// Выполняем активацию событий SCTP
-										this->_eth.sctp(node->transfer.fd);
 									// Если размер структуры сервера установлен
 									if(node->endpoint.size > 0){
 										// Если подключение к удаленному серверу не выполнено
@@ -24220,8 +24897,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									if(peer->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
 										if(peer->transfer.output.empty()){
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														peer->transfer.fd,
+														data, size, nullptr, 0,
+														peer->transfer.sctp.info.sinfo_ppid,
+														peer->transfer.sctp.info.sinfo_flags,
+														peer->transfer.sctp.info.sinfo_stream,
+														peer->transfer.sctp.info.sinfo_timetolive,
+														peer->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(peer->transfer.fd, data, size, 0);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+											#endif
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -24338,8 +25040,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != peer->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														peer->transfer.fd,
+														data, size, nullptr, 0,
+														peer->transfer.sctp.info.sinfo_ppid,
+														peer->transfer.sctp.info.sinfo_flags,
+														peer->transfer.sctp.info.sinfo_stream,
+														peer->transfer.sctp.info.sinfo_timetolive,
+														peer->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(peer->transfer.fd, data, size, 0);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+											#endif
 											// Если данные отправлены успешно
 											if(bytes == 0){
 												// Выполняем обработку закрытия подключения
@@ -24392,8 +25119,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if((i != peer->timeouts.end()) && (i->second > 0))
 											// Устанавливаем таймаут на отправку данных
 											this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(peer->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в TCP/IP сокет
+												bytes = ::sctp_sendmsg(
+													peer->transfer.fd,
+													data, size, nullptr, 0,
+													peer->transfer.sctp.info.sinfo_ppid,
+													peer->transfer.sctp.info.sinfo_flags,
+													peer->transfer.sctp.info.sinfo_stream,
+													peer->transfer.sctp.info.sinfo_timetolive,
+													peer->transfer.sctp.info.sinfo_context
+												);
+											// Выполняем отправку данных в TCP/IP сокет
+											else bytes = ::send(peer->transfer.fd, data, size, 0);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+										#endif
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения
@@ -24614,7 +25366,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
+											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
 											if(bytes == 0){
@@ -24668,7 +25420,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if((i != client->timeouts.end()) && (i->second > 0))
 											// Устанавливаем таймаут на отправку данных
 											this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
+										// Выполняем отправку данных в TCP/IP сокет
 										const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
 										// Если данные отправлены успешно
 										if(bytes == 0){
@@ -24746,8 +25498,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									if(client->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
 										if(client->transfer.output.empty()){
-											// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														data, size, nullptr, 0,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(client->transfer.fd, data, size, 0);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+											#endif
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -24864,8 +25641,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Определяем переменную для хранения количества отправленных байт
-											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														data, size, nullptr, 0,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(client->transfer.fd, data, size, 0);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+											#endif
 											// Если данные отправлены успешно
 											if(bytes == 0){
 												// Выполняем обработку закрытия подключения
@@ -24918,8 +25720,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if((i != client->timeouts.end()) && (i->second > 0))
 											// Устанавливаем таймаут на отправку данных
 											this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-										// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(client->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в TCP/IP сокет
+												bytes = ::sctp_sendmsg(
+													client->transfer.fd,
+													data, size, nullptr, 0,
+													client->transfer.sctp.info.sinfo_ppid,
+													client->transfer.sctp.info.sinfo_flags,
+													client->transfer.sctp.info.sinfo_stream,
+													client->transfer.sctp.info.sinfo_timetolive,
+													client->transfer.sctp.info.sinfo_context
+												);
+											// Выполняем отправку данных в TCP/IP сокет
+											else bytes = ::send(client->transfer.fd, data, size, 0);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+										#endif
 										// Если данные отправлены успешно
 										if(bytes == 0){
 											// Выполняем обработку закрытия подключения

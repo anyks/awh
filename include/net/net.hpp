@@ -107,6 +107,24 @@ namespace awh {
 			WRITE = 0x02  // Запись
 		};
 		/**
+		 * @brief Структура метаданных сообщения SCTP
+		 *
+		 */
+		typedef struct SctpMessageInfo {
+			uint16_t num;           // Номер потока
+			uint32_t ttl;           // Время жизни (в миллисекундах)
+			uint32_t ctx;           // Контекст для уведомлений об ошибках
+			uint32_t flags;         // Флаги сообщения
+			event::sctp::ppi_t ppi; // Идентификатор полезной нагрузки
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit SctpMessageInfo() noexcept :
+			 num(0), ttl(0), ctx(0), flags(0),
+			 ppi(event::sctp::ppi_t::DTLS) {}
+		} sctp_minfo_t;
+		/**
 		 * @brief Структура адреса
 		 *
 		 */

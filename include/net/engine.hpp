@@ -217,6 +217,21 @@ namespace awh {
 			virtual bool splice(const event::id_t eid, const event::id_t dst) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения информационных метаданных SCTP сообщения
+			 *
+			 * @param id идентификатор события
+			 * @return   информационные метаданные SCTP сообщения
+			 */
+			virtual net::sctp_minfo_t sctpMessageInfo(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки информационных метаданных SCTP сообщения
+			 *
+			 * @param id   идентификатор события
+			 * @param info информационные метаданные SCTP сообщения
+			 */
+			virtual void sctpMessageInfo(const event::id_t id, const net::sctp_minfo_t & info) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод отключения события
 			 *
 			 * @param id идентификатор события
