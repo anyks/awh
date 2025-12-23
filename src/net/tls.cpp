@@ -103,6 +103,11 @@ namespace {
 	 */
 	unordered_set <uint64_t> __awh_ssl_ids__;
 	/**
+	 * @brief Мьютекс для синхронизации потоков
+	 *
+	 */
+	awh::lock_state_t <mutex> __awh_ssl_mtx__;
+	/**
 	 * @brief Индексы для хранения состояний проверки куков
 	 *
 	 */
@@ -234,12 +239,12 @@ namespace {
 			event::node_t node;
 			// Тип протокола события
 			event::protocol_t proto;
-			// Мьютекс для синхронизации потоков
-			lock_state_t <mutex> mtx;
 			// Список поддерживаемых ALPN-протоколов
 			vector <uint8_t> support;
 			// Итератор уровня защищённых сокетов
 			members_t::iterator iterator;
+			// Мьютекс для синхронизации потоков
+			lock_state_t <recursive_mutex> mtx;
 		public:
 			/**
 			 * @brief Метод удаления уровня защищённых сокетов
@@ -266,6 +271,8 @@ namespace {
 	 * @param members контейнер уровней защищённых сокетов
 	 */
 	void Member::erase(members_t & members) noexcept {
+		// Выполняем блокировку потоков
+		const locker_t lock(::__awh_ssl_mtx__);
 		// Удаляем уровень защищённых сокетов из контейнера
 		members.erase(this->iterator);
 	}
@@ -2061,6 +2068,8 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			/**
 			 * Определяем узел события к которому относится контекст TLS
 			 */
@@ -2139,6 +2148,8 @@ void awh::TransportLayerSecurity::setHostname(const id_t id, const string & host
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				// Устанавливаем хост для уровня защищённых сокетов
 				member->host.name = hostname;
 				// Устанавливаем имя хоста для SNI расширения
@@ -2214,6 +2225,8 @@ bool awh::TransportLayerSecurity::bufferSize(const id_t id, const size_t size) n
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				// Сбрасываем смещение буфера приёма данных
 				member->transfer.input.offset = 0;
 				// Сбрасываем смещение буфера передачи данных
@@ -2270,6 +2283,8 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				// Выполняем парсинг I-адреса
 				if(this->_addr.parse(ip)){
 					// Выполняем инициализацию объекта хоста IPv4-адреса
@@ -2389,6 +2404,8 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 	try {
 		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+		// Выполняем блокировку потоков
+		const locker_t lock(member->mtx);
 		// Если рукопожатие ещё не выполнено
 		if(!(result = member->handshake)){
 			// Выполняем TLS рукопожатие
@@ -2487,6 +2504,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
@@ -2577,6 +2596,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 				#endif
 				// Количество ожидающих данных для чтения
 				size_t pending = 0;
+				// Выполняем блокировку потоков
+				const locker_t lock(member->transfer.output.mtx);
 				/**
 				 * Читаем все ожидающие данные из BIO буфера записи
 				 */
@@ -2634,6 +2655,8 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Выполняем запись данных в BIO буфер чтения
 			int32_t bytes = ::BIO_write(member->rbio, buffer, static_cast <int32_t> (size));
 			// Если данные записаны успешно и размер записанных данных совпадает с размером входного буфера
@@ -2658,6 +2681,8 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 						this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, bytes, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 					}
 				#endif
+				// Выполняем блокировку потоков
+				const locker_t lock(member->transfer.input.mtx);
 				/**
 				 * Читаем все доступные данные из защищённого сокета
 				 */
@@ -2740,6 +2765,8 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 		auto i = ::__awh_ssl_ids__.find(id);
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
+			// Устанавливаем глобальный режим безопасности потоков
+			::__awh_ssl_mtx__.enabled = (mode == event::mode_t::ENABLED);
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Устанавливаем режим безопасности потоков
@@ -2800,6 +2827,8 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 				if(!result.empty()){
 					// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 					auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+					// Выполняем блокировку потоков
+					const locker_t lock(member->mtx);
 					// Устанавливаем все основные алгоритмы шифрования
 					if(::SSL_CTX_set_cipher_list(member->ctx, result.c_str()) != 1){
 						// Если функция обратного вызова ошибки установлена
@@ -2868,6 +2897,8 @@ void awh::TransportLayerSecurity::crl(const id_t id, const string & filename) no
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				// Если CRL-файл сертификата уже создан
 				if(member->crl != nullptr)
 					// Выполняем освобождение памяти
@@ -2993,6 +3024,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				// Если приватный ключ не может быть установлен
 				if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
 					// Если функция обратного вызова ошибки установлена
@@ -3081,6 +3114,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 			if(i != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				/**
 				 * Определяем узел события к которому относится контекст TLS
 				 */
@@ -3176,6 +3211,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Если адрес файла центра сертификации не пустой
 			if(!filename.empty()){
 				// Выполняем проверку
@@ -3245,6 +3282,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 		if(i != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Если название файла центра сертификации не пустое
 			if(!file.empty()){
 				// Если каталог сертификатов передан
@@ -3554,6 +3593,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Выполняем блокировку потоков
+		const locker_t lock(::__awh_ssl_mtx__);
 		// Создаём новый уровень защищённых сокетов и добавляем его в контейнер
 		auto ret = ::__awh_ssl_members__.emplace(::make_unique <::member_t> ());
 		// Устанавливаем поддерживаемый ALPN-протокол

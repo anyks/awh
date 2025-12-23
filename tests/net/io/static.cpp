@@ -113,6 +113,10 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(this->_io->iface(eid1).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
 			ASSERT_EQ(source.iface, this->_io->iface(eid1));
+			// Извлекаем информационные метаданные SCTP сообщения
+			const awh::net::sctp_minfo_t minfo = this->_io->sctpMessageInfo(eid1);
+			// Устанавливаем информационные метаданные SCTP сообщения
+			this->_io->sctpMessageInfo(eid1, minfo);
 			// Извлекаем IP-адрес сетевого интерфейса
 			ip = this->_io->address(eid1, awh::event::address_t::IPV4);
 			// Извлекаем MAC-адрес сетевого интерфейса
