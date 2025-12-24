@@ -170,15 +170,6 @@ namespace awh {
 			void setHostname(const id_t id, const string & hostname) noexcept;
 		public:
 			/**
-			 * @brief Метод установки размера буфера передачи данных
-			 *
-			 * @param id   идентификатор события
-			 * @param size размер буфера передачи данных
-			 * @return     результат выполнения установки
-			 */
-			bool bufferSize(const id_t id, const size_t size) noexcept;
-		public:
-			/**
 			 * @brief Метод установки адреса и порта отдалённого узла
 			 *
 			 * @param id   идентификатор события

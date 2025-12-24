@@ -63,6 +63,16 @@ using namespace std;
 #endif // __AWH_TLS_CIPHER_SEPARATOR__
 
 /**
+ * Если максимальный размер SSL буфера не определён
+ */
+#ifndef AWH_MAX_SSL_BUFFER_SIZE
+	/**
+	 * Устанавливаем максимальный размер SSL буфера в 16 КБ
+	 */
+	#define AWH_MAX_SSL_BUFFER_SIZE 0x4000
+#endif
+
+/**
  * Инкапсулируем статические типы данных в пространство имён
  */
 namespace {
@@ -140,36 +150,6 @@ namespace {
 	} cookie_t;
 
 	/**
-	 * @brief Структура буфера данных
-	 *
-	 */
-	typedef struct Buffer {
-		// Размер буфера данных
-		size_t size;
-		// Мьютекс для синхронизации потоков
-		lock_state_t <mutex> mtx;
-		// Указатель на буфер данных
-		unique_ptr <uint8_t []> data;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Buffer() noexcept :
-		 size(0x4000), data(make_unique <uint8_t []> (0x4000)) {}
-	} buffer_t;
-
-	/**
-	 * @brief Структура передачи данных
-	 *
-	 */
-	typedef struct Transfer {
-		// Буфер получения данных
-		buffer_t input;
-		// Буфер отправки данных
-		buffer_t output;
-	} transfer_t;
-
-	/**
 	 * @brief Структура хоста
 	 *
 	 */
@@ -227,8 +207,6 @@ namespace {
 			host_t host;
 			// Объект печенок SSL
 			cookie_t cookie;
-			// Объект передачи данных
-			transfer_t transfer;
 			// Объект обратных вызовов
 			callback_t callback;
 			// Флаг выполнения рукопожатия SSL
@@ -2206,59 +2184,6 @@ void awh::TransportLayerSecurity::setHostname(const id_t id, const string & host
 	}
 }
 /**
- * @brief Метод установки размера буфера передачи данных
- *
- * @param id   идентификатор события
- * @param size размер буфера передачи данных
- * @return     результат выполнения установки
- */
-bool awh::TransportLayerSecurity::bufferSize(const id_t id, const size_t size) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Если размер буфера передачи данных больше нуля
-		if(size > 0){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
-				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
-				// Выполняем блокировку потоков
-				const locker_t lock(member->mtx);
-				// Устанавливаем размер буфера приёма данных
-				member->transfer.input.size = size;
-				// Устанавливаем размер буфера передачи данных
-				member->transfer.output.size = size;
-				// Выделяем память под буфер приёма данных
-				member->transfer.input.data = make_unique <uint8_t []> (size);
-				// Выделяем память под буфер передачи данных
-				member->transfer.output.data = make_unique <uint8_t []> (size);
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем отрицательный результат
-	return false;
-}
-/**
  * @brief Метод установки адреса и порта отдалённого узла
  *
  * @param id   идентификатор события
@@ -2438,18 +2363,18 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 					}
 				// Если ошибка связана с необходимостью повторного чтения или записи
 				} else {
-					// Выполняем блокировку потоков
-					const locker_t lock(member->transfer.output.mtx);
 					// Количество прочитанных данных
 					int32_t bytes = 0;
 					// Количество ожидающих данных для чтения
 					size_t pending = 0;
+					// Буфер данных для чтения
+					uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 					/**
 					 * Читаем все ожидающие данные из BIO буфера записи
 					 */
 					while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
 						// Читаем данные из BIO буфера записи
-						bytes = ::BIO_read(member->wbio, member->transfer.output.data.get(), static_cast <size_t> (::min(pending, member->transfer.output.size)));
+						bytes = ::BIO_read(member->wbio, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 						// Если данные не прочитаны
 						if(bytes <= 0)
 							// Выходим из цикла
@@ -2457,7 +2382,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 						// Если функция обратного вызова чтения данных установлена
 						else if((result = (member->callback.read != nullptr)))
 							// Вызываем функцию обратного вызова чтения данных
-							member->callback.read(id, event_t::ENCRYPTION, member->transfer.output.data.get(), static_cast <size_t> (bytes));
+							member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
 					}
 				}
 				// Выводим результат
@@ -2602,14 +2527,14 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 					#endif
 					// Количество ожидающих данных для чтения
 					size_t pending = 0;
-					// Выполняем блокировку потоков
-					const locker_t lock(member->transfer.output.mtx);
+					// Буфер данных для чтения
+					uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 					/**
 					 * Читаем все ожидающие данные из BIO буфера записи
 					 */
 					while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
 						// Читаем данные из BIO буфера записи
-						bytes = ::BIO_read(member->wbio, member->transfer.output.data.get(), static_cast <size_t> (::min(pending, member->transfer.output.size)));
+						bytes = ::BIO_read(member->wbio, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 						// Если данные не прочитаны
 						if(bytes <= 0)
 							// Выходим из цикла
@@ -2617,7 +2542,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 						// Если функция обратного вызова чтения данных установлена
 						else if(member->callback.read != nullptr)
 							// Вызываем функцию обратного вызова чтения данных
-							member->callback.read(id, event_t::ENCRYPTION, member->transfer.output.data.get(), static_cast <size_t> (bytes));
+							member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
 					}
 				}
 			// Если рукопожатие не выполнено
@@ -2716,14 +2641,14 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 					return this->handshake(id);
 				// Если рукопожатие выполнено успешно
 				else {
-					// Выполняем блокировку потоков
-					const locker_t lock(member->transfer.input.mtx);
+					// Буфер данных для чтения
+					uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 					/**
 					 * Читаем все доступные данные из защищённого сокета
 					 */
 					while((::BIO_ctrl_pending(member->rbio) > 0) || ::SSL_has_pending(member->ssl)){
 						// Читаем данные из защищённого сокета
-						bytes = ::SSL_read(member->ssl, member->transfer.input.data.get(), static_cast <int32_t> (member->transfer.input.size));
+						bytes = ::SSL_read(member->ssl, buffer, AWH_MAX_SSL_BUFFER_SIZE);
 						// Если данные не прочитаны
 						if(bytes <= 0)
 							// Выходим из цикла
@@ -2731,7 +2656,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 						// Если функция обратного вызова чтения данных установлена
 						else if(member->callback.read != nullptr)
 							// Вызываем функцию обратного вызова чтения данных
-							member->callback.read(id, event_t::DECRYPTION, member->transfer.input.data.get(), static_cast <size_t> (bytes));
+							member->callback.read(id, event_t::DECRYPTION, buffer, static_cast <size_t> (bytes));
 					}
 				}
 			// Если данные не записаны полностью
@@ -2798,16 +2723,12 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 		auto i = ::__awh_ssl_ids__.find(id);
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end()){
-			// Устанавливаем глобальный режим безопасности потоков
-			::__awh_ssl_mtx__.enabled = (mode == event::mode_t::ENABLED);
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Устанавливаем режим безопасности потоков
 			member->mtx.enabled = (mode == event::mode_t::ENABLED);
-			// Устанавливаем режим безопасности потоков для приёма данных
-			member->transfer.input.mtx.enabled = (mode == event::mode_t::ENABLED);
-			// Устанавливаем режим безопасности потоков для передачи данных
-			member->transfer.output.mtx.enabled = (mode == event::mode_t::ENABLED);
+			// Устанавливаем глобальный режим безопасности потоков
+			::__awh_ssl_mtx__.enabled = (mode == event::mode_t::ENABLED);
 		}
 	/**
 	 * Если возникает ошибка

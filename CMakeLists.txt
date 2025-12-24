@@ -68,6 +68,18 @@ if (CMAKE_MAX_HTTP_BODY_SIZE)
     message(STATUS "Build with max body size: ${CMAKE_MAX_HTTP_BODY_SIZE}\n")
 endif (CMAKE_MAX_HTTP_BODY_SIZE)
 
+# Если активирован флаг установки максимального размера SSL буфера
+if (CMAKE_MAX_SSL_BUFFER_SIZE)
+    add_compile_definitions(AWH_MAX_SSL_BUFFER_SIZE=${CMAKE_MAX_SSL_BUFFER_SIZE})
+    message(STATUS "Build with max SSL buffer size: ${CMAKE_MAX_SSL_BUFFER_SIZE}\n")
+endif (CMAKE_MAX_SSL_BUFFER_SIZE)
+
+# Если активирован флаг установки максимального количества опрашиваемых событий за одну итерацию
+if (CMAKE_MAX_POLL_EVENTS_COUNT)
+    add_compile_definitions(AWH_MAX_POLL_EVENTS_COUNT=${CMAKE_MAX_POLL_EVENTS_COUNT})
+    message(STATUS "Build with max poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
+endif (CMAKE_MAX_POLL_EVENTS_COUNT)
+
 # Если активирован флаг установки максимального размера очереди
 if (CMAKE_MAX_RECORDS_QUEUE)
     add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})
