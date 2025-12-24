@@ -74,6 +74,12 @@ if (CMAKE_MAX_SSL_BUFFER_SIZE)
     message(STATUS "Build with max SSL buffer size: ${CMAKE_MAX_SSL_BUFFER_SIZE}\n")
 endif (CMAKE_MAX_SSL_BUFFER_SIZE)
 
+# Если активирован флаг установки максимального размера буфера на четение данных событий
+if (CMAKE_MAX_EVENT_BUFFER_SIZE)
+    add_compile_definitions(AWH_MAX_EVENT_BUFFER_SIZE=${CMAKE_MAX_EVENT_BUFFER_SIZE})
+    message(STATUS "Build with max event buffer size: ${CMAKE_MAX_EVENT_BUFFER_SIZE}\n")
+endif (CMAKE_MAX_EVENT_BUFFER_SIZE)
+
 # Если активирован флаг установки максимального количества опрашиваемых событий за одну итерацию
 if (CMAKE_MAX_POLL_EVENTS_COUNT)
     add_compile_definitions(AWH_MAX_POLL_EVENTS_COUNT=${CMAKE_MAX_POLL_EVENTS_COUNT})

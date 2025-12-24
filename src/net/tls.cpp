@@ -993,9 +993,9 @@ namespace cookie {
  */
 namespace verify {
 	/**
-	 * Типы ошибок валидации
+	 * Статусы проверки сертификата
 	 */
-	enum class validate_t : uint8_t {
+	enum class status_t : uint8_t {
 		NONE                 = 0x00, // Не установлено
 		Error                = 0x01, // Ошибка валидации
 		MatchFound           = 0x02, // Валидация пройдена
@@ -1112,9 +1112,9 @@ namespace verify {
 	 * @param x509 сертификат
 	 * @return     результат проверки
 	 */
-	static validate_t matchSubjectName(const string & host, const X509 * x509) noexcept {
+	static status_t matchSubjectName(const string & host, const X509 * x509) noexcept {
 		// Результат работы функции
-		validate_t result = validate_t::MatchNotFound;
+		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
 		if(!host.empty() && (x509 != nullptr)){
 			// Извлекаем SAN из сертификата
@@ -1134,7 +1134,7 @@ namespace verify {
 						// Если размер имени и dns имя совпадает
 						if(::verify::certHostcheck(host, fqdn)){
 							// Запоминаем результат что домен найден
-							result = validate_t::MatchFound;
+							result = status_t::MatchFound;
 							// Выходим из цикла
 							break;
 						}
@@ -1153,7 +1153,7 @@ namespace verify {
 					// Если размер имени и dns имя совпадает
 					if(::verify::certHostcheck(host, buffer))
 						// Запоминаем результат что домен найден
-						result = validate_t::MatchFound;
+						result = status_t::MatchFound;
 			}
 		}
 		// Выводим результат
@@ -1166,9 +1166,9 @@ namespace verify {
 	 * @param x509 сертификат
 	 * @return     результат проверки
 	 */
-	validate_t matchesCommonName(const string & host, const X509 * x509) noexcept {
+	static status_t matchesCommonName(const string & host, const X509 * x509) noexcept {
 		// Результат работы функции
-		validate_t result = validate_t::MatchNotFound;
+		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
 		if(!host.empty() && (x509 != nullptr)){
 			// Получаем индекс имени по "NID"
@@ -1176,25 +1176,23 @@ namespace verify {
 			// Если индекс не получен тогда выходим
 			if(cnl < 0)
 				// Выводим сформированную ошибку
-				return validate_t::Error;
+				return status_t::Error;
 			// Извлекаем поле "CN"
 			X509_NAME_ENTRY * cne = ::X509_NAME_get_entry(X509_get_subject_name(const_cast <X509 *> (x509)), cnl);
 			// Если поле не получено тогда выходим
 			if(cne == nullptr)
 				// Выводим сформированную ошибку
-				return validate_t::Error;
+				return status_t::Error;
 			// Конвертируем "CN" поле в "C" строку
 			ASN1_STRING * cna = ::X509_NAME_ENTRY_get_data(cne);
 			// Если строка не сконвертирована тогда выходим
 			if(cna == nullptr)
 				// Выводим сформированную ошибку
-				return validate_t::Error;
-			// Извлекаем название в виде строки
-			const string cn(reinterpret_cast <char *> (const_cast <uint8_t *> (::ASN1_STRING_get0_data(cna))), ::ASN1_STRING_length(cna));
+				return status_t::Error;
 			// Выполняем рукопожатие
-			if(::verify::certHostcheck(host, cn))
+			if(::verify::certHostcheck(host, string(reinterpret_cast <char *> (const_cast <uint8_t *> (::ASN1_STRING_get0_data(cna))), ::ASN1_STRING_length(cna))))
 				// Выводим сформированную ошибку
-				return validate_t::MatchFound;
+				return status_t::MatchFound;
 		}
 		// Выводим результат
 		return result;
@@ -1206,15 +1204,15 @@ namespace verify {
 	 * @param x509 сертификат
 	 * @return     результат проверки
 	 */
-	static validate_t validateHostname(const string & host, const X509 * x509) noexcept {
+	static status_t validateHostname(const string & host, const X509 * x509) noexcept {
 		// Результат работы функции
-		validate_t result = validate_t::Error;
+		status_t result = status_t::Error;
 		// Если данные переданы
 		if(!host.empty() && (x509 != nullptr)){
 			// Выполняем проверку имени хоста по списку доменов у сертификата
 			result = ::verify::matchSubjectName(host, x509);
 			// Если у сертификата только один домен
-			if(result == validate_t::NoSANPresent)
+			if(result == status_t::NoSANPresent)
 				// Выполняем проверку имени хоста по общему имени у сертификата
 				result = ::verify::matchesCommonName(host, x509);
 		}
@@ -1319,42 +1317,6 @@ namespace verify {
 						}
 					// Если данные сертификата получены
 					} else {
-						// Ошибка проверки сертификата
-						string status = "X509VerifyCertFailed";
-						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-						validate_t validate = ::verify::validateHostname(member->host.name, x509);
-						/**
-						 * Определяем полученную ошибку
-						 */
-						switch(static_cast <uint8_t> (validate)){
-							// Если домен найден в записях сертификата
-							case static_cast <uint8_t> (validate_t::MatchFound):
-								// Устанавливаем статус проверки
-								status = "MatchFound";
-							break;
-							// Если домен не найден в записях сертификата
-							case static_cast <uint8_t> (validate_t::MatchNotFound):
-								// Устанавливаем статус проверки
-								status = "MatchNotFound";
-							break;
-							// Если в сертификате отсутствует SAN
-							case static_cast <uint8_t> (validate_t::NoSANPresent):
-								// Устанавливаем статус проверки
-								status = "NoSANPresent";
-							break;
-							// Если сертификат имеет неверный формат
-							case static_cast <uint8_t> (validate_t::MalformedCertificate):
-								// Устанавливаем статус проверки
-								status = "MalformedCertificate";
-							break;
-							// Если произошла ошибка при проверке
-							case static_cast <uint8_t> (validate_t::Error):
-								// Устанавливаем статус проверки
-								status = "Error";
-							break;
-							// В иных случаях
-							default: status = "WTF!";
-						}
 						// Получаем имя эмитента выпустившего сертификат
 						X509_NAME * name = ::X509_get_issuer_name(x509);
 						// Если имя эмитента не получено
@@ -1387,14 +1349,16 @@ namespace verify {
 							}
 						// Если имя эмитента получено
 						} else {
-							// Буфер данных сертификатов из хранилища
-							char buffer[256];
-							// Заполняем структуру нулями
-							::memset(buffer, 0, sizeof(buffer));
+							// Буфер доменного имени
+							char fqdn[256];
+							// Заполняем буфер нулями
+							::memset(fqdn, 0, sizeof(fqdn));
 							// Запрашиваем имя домена
-							::X509_NAME_oneline(name, buffer, sizeof(buffer));
+							::X509_NAME_oneline(name, fqdn, sizeof(fqdn));
+							// Выполняем проверку на соответствие хоста с данными хостов у сертификата
+							const status_t status = ::verify::validateHostname(member->host.name, x509);
 							// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-							if((result = static_cast <int32_t> (validate == validate_t::MatchFound))){
+							if((result = static_cast <int32_t> (status == status_t::MatchFound))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -1402,10 +1366,46 @@ namespace verify {
 									// Получаем объект логирования
 									awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
 									// Выводим в лог сообщение
-									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.name.c_str(), buffer);
+									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.name.c_str(), fqdn);
 								#endif
 							// Если ресурс не найден тогда выводим сообщение об ошибке
 							} else {
+								// Буфер под результат
+								char result[31];
+								// Устанавливаем результат ошибки по умолчанию
+								::snprintf(result, 31, "%s", "X509 Verify certificate failed");
+								/**
+								 * Определяем полученную ошибку
+								 */
+								switch(static_cast <uint8_t> (status)){
+									// Если домен найден в записях сертификата
+									case static_cast <uint8_t> (status_t::MatchFound):
+										// Устанавливаем статус проверки
+										::snprintf(result, 14, "%s", "Found a match");
+									break;
+									// Если домен не найден в записях сертификата
+									case static_cast <uint8_t> (status_t::MatchNotFound):
+										// Устанавливаем статус проверки
+										::snprintf(result, 15, "%s", "No match found");
+									break;
+									// Если в сертификате отсутствует SAN
+									case static_cast <uint8_t> (status_t::NoSANPresent):
+										// Устанавливаем статус проверки
+										::snprintf(result, 18, "%s", "Present is no SAN");
+									break;
+									// Если сертификат имеет неверный формат
+									case static_cast <uint8_t> (status_t::MalformedCertificate):
+										// Устанавливаем статус проверки
+										::snprintf(result, 22, "%s", "Malformed certificate");
+									break;
+									// Если произошла ошибка при проверке
+									case static_cast <uint8_t> (status_t::Error):
+										// Устанавливаем статус проверки
+										::snprintf(result, 6, "%s", "Error");
+									break;
+									// В иных случаях
+									default: ::snprintf(result, 4, "%s", "WTF");
+								}
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr){
 									// Выполняем получение идентификатора контекста TLS
@@ -1413,7 +1413,7 @@ namespace verify {
 									// Получаем объект фреймворка
 									awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", status.c_str(), member->host.name.c_str(), buffer)));
+									member->callback.error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", result, member->host.name.c_str(), fqdn)));
 								// Если функция обратного вызова ошибки не установлена
 								} else {
 									// Получаем объект логирования
@@ -1423,13 +1423,13 @@ namespace verify {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
+										log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, result, member->host.name.c_str(), fqdn);
 									/**
 									* Если режим отладки не включён
 									*/
 									#else
 										// Выводим сообщение об ошибке
-										log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
+										log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, result, member->host.name.c_str(), fqdn);
 									#endif
 								}
 							}

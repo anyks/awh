@@ -23,6 +23,16 @@
 #endif
 
 /**
+ * Если максимальный размер буфера на чтение данных не определён
+ */
+#ifndef AWH_MAX_EVENT_BUFFER_SIZE
+	/**
+	 * Устанавливаем максимальный размер буфера на чтение данных в 64 КБ
+	 */
+	#define AWH_MAX_EVENT_BUFFER_SIZE 0x10000
+#endif
+
+/**
  * Стандартные модули
  */
 #include <ctime>
@@ -184,21 +194,6 @@ namespace {
 		explicit Endpoint() noexcept : size(0), client{0}, server{0} {}
 	} endpoint_t;
 	/**
-	 * @brief Структура буфера данных
-	 *
-	 */
-	typedef struct Buffer {
-		// Размер буфера данных
-		size_t size;
-		// Указатель на буфер данных
-		unique_ptr <uint8_t []> data;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Buffer() noexcept : size(0), data(nullptr) {}
-	} buffer_t;
-	/**
 	 * @brief Структура передачи данных
 	 *
 	 */
@@ -214,10 +209,8 @@ namespace {
 			// Объект SCTP-событий
 			sctp_t sctp;
 		#endif
-		// Буфер получения данных
-		buffer_t input;
 		// Очередь отправки данных
-		queue_t output;
+		queue_t queue;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		/**
@@ -228,7 +221,7 @@ namespace {
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
 		 dst(0), fd(net::invalid_socket_t),
-		 actions(action::NONE), offset(0), output(fmk, log) {}
+		 actions(action::NONE), offset(0), queue(fmk, log) {}
 	} transfer_t;
 	/**
 	 * @brief Структура таймера
@@ -3059,13 +3052,6 @@ namespace io {
 						if(node->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об принятии подключения
 							node->callbacks.status(node->id, event::status_t::ACCEPTED);
-						// Если буфер на чтение не создан
-						if(peer->transfer.input.data == nullptr){
-							// Устанавливаем размер буфера на чтение
-							peer->transfer.input.size = eth->bufferSize(peer->transfer.fd, net::socket_event_t::READ);
-							// Выполняем создание нового буфера на чтение
-							peer->transfer.input.data = make_unique <uint8_t []> (peer->transfer.input.size);
-						}
 						// Устанавливаем флаг разрешающий выполнять чтение из сокета
 						peer->transfer.actions |= action::READ;
 						// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -3485,6 +3471,8 @@ namespace io {
 								switch(static_cast <uint8_t> (ipc->state.family)){
 									// Для семейства межпроцессных соединений
 									case static_cast <uint8_t> (event::family_t::PIPE): {
+										// Буфер для временного хранения данных
+										char buffer[0x1000];
 										// Если событие является неблокирующим
 										if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
 											// Количество прочитанных байт
@@ -3494,7 +3482,7 @@ namespace io {
 											 */
 											for(;;){
 												// Выполняем чтение данных из TCP/IP сокета
-												bytes = ::read(ipc->transfer.fd, ipc->transfer.input.data.get(), ipc->transfer.input.size);
+												bytes = ::read(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE);
 												// Если мы получили ошибку
 												if(bytes < 0){
 													// Если нам нужно повторить попытку позже
@@ -3543,14 +3531,14 @@ namespace io {
 														// Если функция обратного вызова для вывода прочитанных данных установлена
 														if(ipc->callbacks.read != nullptr){
 															// Вывзываем функцию обратного вызова для вывода полученных данных
-															ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+															ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 															// Если идентификатор ноды не найден, тогда просто выходим
 															if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
 																// Формируем отрицательный результат
 																return false;
 														}
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+													} else const_cast <io_t *> (io)->send(ipc->transfer.dst, buffer, static_cast <size_t> (bytes));
 												// Если произошёл дисконнект
 												} else {
 													// Выполняем обработку закрытия подключения
@@ -3566,7 +3554,7 @@ namespace io {
 										// Если событие является блокирующим
 										} else {
 											// Выполняем чтение данных из TCP/IP сокета
-											const ssize_t bytes = ::read(ipc->transfer.fd, ipc->transfer.input.data.get(), ipc->transfer.input.size);
+											const ssize_t bytes = ::read(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE);
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Устанавливаем текст ошибки
@@ -3608,9 +3596,9 @@ namespace io {
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(ipc->callbacks.read != nullptr)
 														// Вывзываем функцию обратного вызова для вывода полученных данных
-														ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+														ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												} else const_cast <io_t *> (io)->send(ipc->transfer.dst, buffer, static_cast <size_t> (bytes));
 												// Формируем положительный результат
 												return true;
 											// Если произошёл дисконнект
@@ -3653,6 +3641,8 @@ namespace io {
 							} break;
 							// Для типа сокета STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
+								// Буфер для временного хранения данных
+								char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 								// Если событие является неблокирующим
 								if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
 									// Количество прочитанных байт
@@ -3662,7 +3652,7 @@ namespace io {
 									 */
 									for(;;){
 										// Выполняем чтение данных из TCP/IP сокета
-										bytes = ::recv(ipc->transfer.fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+										bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если нам нужно повторить попытку позже
@@ -3711,14 +3701,14 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(ipc->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+													ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор ноды не найден, тогда просто выходим
 													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
 														// Формируем отрицательный результат
 														return false;
 												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(ipc->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -3734,7 +3724,7 @@ namespace io {
 								// Если событие является блокирующим
 								} else {
 									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(ipc->transfer.fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+									const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -3776,9 +3766,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -3796,10 +3786,12 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Буфер для временного хранения данных
+								char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 								// Если событие является неблокирующим
 								if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
 									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(ipc->transfer.fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+									const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Если нам нужно повторить попытку позже
@@ -3848,9 +3840,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -3865,7 +3857,7 @@ namespace io {
 								// Если событие является блокирующим
 								} else {
 									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(ipc->transfer.fd, ipc->transfer.input.data.get(), ipc->transfer.input.size, 0);
+									const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -3907,9 +3899,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+												ipc->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, reinterpret_cast <const char *> (ipc->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(ipc->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -3932,6 +3924,8 @@ namespace io {
 					peer_t * peer = awh_cast <peer_t *> (node);
 					// Если событие чтения разрешено
 					if(peer->transfer.actions & action::READ){
+						// Буфер для временного хранения данных
+						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 						/**
 						 * Определяем тип сокета
 						 */
@@ -3947,7 +3941,7 @@ namespace io {
 									 */
 									for(;;){
 										// Выполняем чтение данных из TCP/IP сокета
-										bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+										bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если нам нужно повторить попытку позже
@@ -3996,14 +3990,14 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(peer->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+													peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор ноды не найден, тогда просто выходим
 													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
 														// Формируем отрицательный результат
 														return false;
 												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(peer->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4017,7 +4011,7 @@ namespace io {
 								// Если событие является блокирующим
 								} else {
 									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+									const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -4059,9 +4053,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(peer->transfer.dst, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4088,20 +4082,20 @@ namespace io {
 											// Выполняем чтение данных из TCP/IP сокета
 											bytes = ::sctp_recvmsg(
 												peer->transfer.fd,
-												peer->transfer.input.data.get(),
-												peer->transfer.input.size,
+												buffer,
+												AWH_MAX_EVENT_BUFFER_SIZE,
 												nullptr, nullptr,
 												&peer->transfer.sctp.info,
 												&peer->transfer.sctp.flags
 											);
 										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+										else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									/**
 									 * Если это другая операционная система
 									 */
 									#else
 										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+										const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
@@ -4151,9 +4145,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(peer->transfer.dst, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4176,20 +4170,20 @@ namespace io {
 											// Выполняем чтение данных из TCP/IP сокета
 											bytes = ::sctp_recvmsg(
 												peer->transfer.fd,
-												peer->transfer.input.data.get(),
-												peer->transfer.input.size,
+												buffer,
+												AWH_MAX_EVENT_BUFFER_SIZE,
 												nullptr, nullptr,
 												&peer->transfer.sctp.info,
 												&peer->transfer.sctp.flags
 											);
 										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+										else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									/**
 									 * Если это другая операционная система
 									 */
 									#else
 										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(peer->transfer.fd, peer->transfer.input.data.get(), peer->transfer.input.size, 0);
+										const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
@@ -4232,9 +4226,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(peer->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(peer->transfer.dst, reinterpret_cast <const char *> (peer->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(peer->transfer.dst, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4278,6 +4272,8 @@ namespace io {
 					client_t * client = awh_cast <client_t *> (node);
 					// Если событие чтения разрешено
 					if(client->transfer.actions & action::READ){
+						// Буфер для временного хранения данных
+						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 						/**
 						 * Определяем тип сокета
 						 */
@@ -4293,7 +4289,7 @@ namespace io {
 									 */
 									for(;;){
 										// Выполняем чтение данных из TCP/IP сокета
-										bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если нам нужно повторить попытку позже
@@ -4342,14 +4338,14 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор ноды не найден, тогда просто выходим
 													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
 														// Формируем отрицательный результат
 														return false;
 												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4363,7 +4359,7 @@ namespace io {
 								// Если событие является блокирующим
 								} else {
 									// Выполняем чтение данных из TCP/IP сокета
-									const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+									const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Устанавливаем текст ошибки
@@ -4405,9 +4401,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4434,20 +4430,20 @@ namespace io {
 											// Выполняем чтение данных из TCP/IP сокета
 											bytes = ::sctp_recvmsg(
 												client->transfer.fd,
-												client->transfer.input.data.get(),
-												client->transfer.input.size,
+												buffer,
+												AWH_MAX_EVENT_BUFFER_SIZE,
 												nullptr, nullptr,
 												&client->transfer.sctp.info,
 												&client->transfer.sctp.flags
 											);
 										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									/**
 									 * Если это другая операционная система
 									 */
 									#else
 										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
@@ -4497,9 +4493,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4522,20 +4518,20 @@ namespace io {
 											// Выполняем чтение данных из TCP/IP сокета
 											bytes = ::sctp_recvmsg(
 												client->transfer.fd,
-												client->transfer.input.data.get(),
-												client->transfer.input.size,
+												buffer,
+												AWH_MAX_EVENT_BUFFER_SIZE,
 												nullptr, nullptr,
 												&client->transfer.sctp.info,
 												&client->transfer.sctp.flags
 											);
 										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									/**
 									 * Если это другая операционная система
 									 */
 									#else
 										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 									#endif
 									// Если мы получили ошибку
 									if(bytes < 0){
@@ -4578,9 +4574,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -4599,8 +4595,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									const ssize_t bytes = ::recvfrom(
 										client->transfer.fd,
-										client->transfer.input.data.get(),
-										client->transfer.input.size, 0,
+										buffer,
+										AWH_MAX_EVENT_BUFFER_SIZE, 0,
 										reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
 										&client->endpoint.size
 									);
@@ -4652,9 +4648,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -4671,8 +4667,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									const ssize_t bytes = ::recvfrom(
 										client->transfer.fd,
-										client->transfer.input.data.get(),
-										client->transfer.input.size, 0,
+										buffer,
+										AWH_MAX_EVENT_BUFFER_SIZE, 0,
 										reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
 										&client->endpoint.size
 									);
@@ -4717,9 +4713,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(client->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Формируем положительный результат
 										return true;
 									// Если произошёл дисконнект
@@ -4740,7 +4736,7 @@ namespace io {
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
 										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если нам нужно повторить попытку позже
@@ -4789,9 +4785,9 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4804,7 +4800,7 @@ namespace io {
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, client->transfer.input.data.get(), client->transfer.input.size, 0);
+										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Устанавливаем текст ошибки
@@ -4846,9 +4842,9 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4866,8 +4862,8 @@ namespace io {
 										// Выполняем чтение данных из TCP/IP сокета
 										const ssize_t bytes = ::recvfrom(
 											client->transfer.fd,
-											client->transfer.input.data.get(),
-											client->transfer.input.size, 0,
+											buffer,
+											AWH_MAX_EVENT_BUFFER_SIZE, 0,
 											reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
 											&client->endpoint.size
 										);
@@ -4919,9 +4915,9 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 											// Формируем положительный результат
 											return true;
 										// Если произошёл дисконнект
@@ -4938,8 +4934,8 @@ namespace io {
 										// Выполняем чтение данных из TCP/IP сокета
 										const ssize_t bytes = ::recvfrom(
 											client->transfer.fd,
-											client->transfer.input.data.get(),
-											client->transfer.input.size, 0,
+											buffer,
+											AWH_MAX_EVENT_BUFFER_SIZE, 0,
 											reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
 											&client->endpoint.size
 										);
@@ -4984,9 +4980,9 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr)
 													// Вывзываем функцию обратного вызова для вывода полученных данных
-													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dst, reinterpret_cast <const char *> (client->transfer.input.data.get()), static_cast <size_t> (bytes));
+											} else const_cast <io_t *> (io)->send(client->transfer.dst, buffer, static_cast <size_t> (bytes));
 											// Формируем положительный результат
 											return true;
 										// Если произошёл дисконнект
@@ -5052,6 +5048,8 @@ namespace io {
 							server_t * server = awh_cast <server_t *> (node);
 							// Если событие чтения разрешено
 							if(server->transfer.actions & action::READ){
+								// Буфер для временного хранения данных
+								char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 								/**
 								 * Определяем семейство события
 								 */
@@ -5324,8 +5322,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									const ssize_t bytes = ::recvfrom(
 										server->transfer.fd,
-										server->transfer.input.data.get(),
-										server->transfer.input.size, 0,
+										buffer,
+										AWH_MAX_EVENT_BUFFER_SIZE, 0,
 										reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
 										&server->endpoint.size
 									);
@@ -5371,9 +5369,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(server->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(server->transfer.dst, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(server->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Заполняем структуру клиента нулями после того как извлекли данные
 										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 									}
@@ -5382,8 +5380,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									const ssize_t bytes = ::recvfrom(
 										server->transfer.fd,
-										server->transfer.input.data.get(),
-										server->transfer.input.size, 0,
+										buffer,
+										AWH_MAX_EVENT_BUFFER_SIZE, 0,
 										reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
 										&server->endpoint.size
 									);
@@ -5422,9 +5420,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(server->callbacks.read != nullptr)
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(server->transfer.dst, reinterpret_cast <const char *> (server->transfer.input.data.get()), static_cast <size_t> (bytes));
+										} else const_cast <io_t *> (io)->send(server->transfer.dst, buffer, static_cast <size_t> (bytes));
 										// Заполняем структуру клиента нулями после того как извлекли данные
 										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 									}
@@ -5483,7 +5481,7 @@ namespace io {
 					// Если событие записи разрешено
 					if(ipc->transfer.actions & action::WRITE){
 						// Если есть данные для отправки в сокет
-						if(!ipc->transfer.output.empty()){
+						if(!ipc->transfer.queue.empty()){
 							/**
 							 * Определяем тип сокета
 							 */
@@ -5497,9 +5495,9 @@ namespace io {
 										// Для семейства межпроцессных соединений
 										case static_cast <uint8_t> (event::family_t::PIPE): {
 											// Определяем размер отправляемых данных
-											const size_t size = (ipc->transfer.output.size() - ipc->transfer.offset);
+											const size_t size = (ipc->transfer.queue.size() - ipc->transfer.offset);
 											// Выполняем отправку данных в PIPE сокет
-											const ssize_t bytes = ::write(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.output.data()) + ipc->transfer.offset, size);
+											const ssize_t bytes = ::write(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()) + ipc->transfer.offset, size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -5590,9 +5588,9 @@ namespace io {
 								// Для типа сокета STREAM
 								case static_cast <uint8_t> (event::type_t::STREAM): {
 									// Определяем размер отправляемых данных
-									const size_t size = (ipc->transfer.output.size() - ipc->transfer.offset);
+									const size_t size = (ipc->transfer.queue.size() - ipc->transfer.offset);
 									// Выполняем отправку данных в TCP/IP сокет
-									const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.output.data()) + ipc->transfer.offset, size, 0);
+									const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()) + ipc->transfer.offset, size, 0);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
@@ -5658,7 +5656,7 @@ namespace io {
 								// Для типа сокета DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 									// Выполняем отправку данных в TCP/IP сокет
-									const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.output.data()), ipc->transfer.output.size(), 0);
+									const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), ipc->transfer.queue.size(), 0);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
@@ -5718,10 +5716,10 @@ namespace io {
 							// Сбрасываем смещение передачи данных
 							ipc->transfer.offset = 0;
 							// Удаляем запись из очереди отправленных данных
-							ipc->transfer.output.pop();
+							ipc->transfer.queue.pop();
 						}
 						// Если в очереди данных больше не осталось данных для отправки
-						if(ipc->transfer.output.empty()){
+						if(ipc->transfer.queue.empty()){
 							// Выполняем блокировку потоков
 							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
@@ -5748,7 +5746,7 @@ namespace io {
 					// Если событие записи разрешено
 					if(peer->transfer.actions & action::WRITE){
 						// Если есть данные для отправки в сокет
-						if(!peer->transfer.output.empty()){
+						if(!peer->transfer.queue.empty()){
 							/**
 							 * Определяем тип сокета
 							 */
@@ -5756,9 +5754,9 @@ namespace io {
 								// Для типа сокета STREAM
 								case static_cast <uint8_t> (event::type_t::STREAM): {
 									// Определяем размер отправляемых данных
-									const size_t size = (peer->transfer.output.size() - peer->transfer.offset);
+									const size_t size = (peer->transfer.queue.size() - peer->transfer.offset);
 									// Выполняем отправку данных в TCP/IP сокет
-									const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()) + peer->transfer.offset, size, 0);
+									const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()) + peer->transfer.offset, size, 0);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
@@ -5856,8 +5854,8 @@ namespace io {
 											// Выполняем отправку данных в TCP/IP сокет
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
-												reinterpret_cast <const uint8_t *> (peer->transfer.output.data()),
-												peer->transfer.output.size(),
+												reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()),
+												peer->transfer.queue.size(),
 												nullptr, 0,
 												peer->transfer.sctp.info.sinfo_ppid,
 												peer->transfer.sctp.info.sinfo_flags,
@@ -5866,13 +5864,13 @@ namespace io {
 												peer->transfer.sctp.info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()), peer->transfer.output.size(), 0);
+										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), 0);
 									/**
 									 * Если это другая операционная система
 									 */
 									#else
 										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.output.data()), peer->transfer.output.size(), 0);
+										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), 0);
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -5933,10 +5931,10 @@ namespace io {
 							// Сбрасываем смещение передачи данных
 							peer->transfer.offset = 0;
 							// Удаляем запись из очереди отправленных данных
-							peer->transfer.output.pop();
+							peer->transfer.queue.pop();
 						}
 						// Если в очереди данных больше не осталось данных для отправки
-						if(peer->transfer.output.empty()){
+						if(peer->transfer.queue.empty()){
 							// Выполняем блокировку потоков
 							const locker_t lock(::local::mtx);
 							// Добавляем новое событие в список изменений
@@ -5982,7 +5980,7 @@ namespace io {
 						// Если татус события просто запись данных в сокет
 						} else {
 							// Если есть данные для отправки в сокет
-							if(!client->transfer.output.empty()){
+							if(!client->transfer.queue.empty()){
 								/**
 								 * Определяем тип сокета
 								*/
@@ -5990,9 +5988,9 @@ namespace io {
 									// Для типа сокета STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM): {
 										// Определяем размер отправляемых данных
-										const size_t size = (client->transfer.output.size() - client->transfer.offset);
+										const size_t size = (client->transfer.queue.size() - client->transfer.offset);
 										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()) + client->transfer.offset, size, 0);
+										const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()) + client->transfer.offset, size, 0);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -6090,8 +6088,8 @@ namespace io {
 												// Выполняем отправку данных в TCP/IP сокет
 												bytes = ::sctp_sendmsg(
 													client->transfer.fd,
-													reinterpret_cast <const uint8_t *> (client->transfer.output.data()),
-													client->transfer.output.size(),
+													reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+													client->transfer.queue.size(),
 													nullptr, 0,
 													client->transfer.sctp.info.sinfo_ppid,
 													client->transfer.sctp.info.sinfo_flags,
@@ -6100,13 +6098,13 @@ namespace io {
 													client->transfer.sctp.info.sinfo_context
 												);
 											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
 										/**
 										 * Если это другая операционная система
 										 */
 										#else
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
 										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
@@ -6166,7 +6164,7 @@ namespace io {
 										// Если подключение установлено
 										if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.output.data()), client->transfer.output.size(), 0);
+											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -6224,8 +6222,8 @@ namespace io {
 											// Выполняем отправку данных в UDP сокет
 											const ssize_t bytes = ::sendto(
 												client->transfer.fd,
-												reinterpret_cast <const uint8_t *> (client->transfer.output.data()),
-												client->transfer.output.size(), 0,
+												reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+												client->transfer.queue.size(), 0,
 												reinterpret_cast <struct sockaddr *> (&client->endpoint.server),
 												client->endpoint.size
 											);
@@ -6289,10 +6287,10 @@ namespace io {
 								// Сбрасываем смещение передачи данных
 								client->transfer.offset = 0;
 								// Удаляем запись из очереди отправленных данных
-								client->transfer.output.pop();
+								client->transfer.queue.pop();
 							}
 							// Если в очереди данных больше не осталось данных для отправки
-							if(client->transfer.output.empty()){
+							if(client->transfer.queue.empty()){
 								// Выполняем блокировку потоков
 								const locker_t lock(::local::mtx);
 								// Добавляем новое событие в список изменений
@@ -6337,12 +6335,12 @@ namespace io {
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Если есть данные для отправки в сокет
-								if(!server->transfer.output.empty()){
+								if(!server->transfer.queue.empty()){
 									// Выполняем отправку данных в UDP сокет
 									const ssize_t bytes = ::sendto(
 										server->transfer.fd,
-										reinterpret_cast <const uint8_t *> (server->transfer.output.data()),
-										server->transfer.output.size(), 0,
+										reinterpret_cast <const uint8_t *> (server->transfer.queue.data()),
+										server->transfer.queue.size(), 0,
 										reinterpret_cast <struct sockaddr *> (&server->endpoint.client),
 										server->endpoint.size
 									);
@@ -6399,10 +6397,10 @@ namespace io {
 									// Сбрасываем смещение передачи данных
 									server->transfer.offset = 0;
 									// Удаляем запись из очереди отправленных данных
-									server->transfer.output.pop();
+									server->transfer.queue.pop();
 								}
 								// Если в очереди данных больше не осталось данных для отправки
-								if(server->transfer.output.empty()){
+								if(server->transfer.queue.empty()){
 									// Выполняем блокировку потоков
 									const locker_t lock(::local::mtx);
 									// Добавляем новое событие в список изменений
@@ -7407,17 +7405,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::PENDING, std::memory_order_release);
 						// Если файловый дескриптор межпроцессного взаимодействия существует
 						if(node->transfer.fd != net::invalid_socket_t){
-							// Если буфер на чтение не создан
-							if(node->transfer.input.data == nullptr){
-								// Если семейство события является PIPE
-								if(node->state.family == event::family_t::PIPE)
-									// Устанавливаем размер буфера на чтение
-									node->transfer.input.size = 0x1000;
-								// Устанавливаем размер буфера на чтение
-								else node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-								// Выполняем создание нового буфера на чтение
-								node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-							}
 							/**
 							 * Определяем тип сокета
 							 */
@@ -7548,13 +7535,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						node->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если файловый дескриптор клиента существует
 						if((node->transfer.fd != net::invalid_socket_t) && (node->target != nullptr)){
-							// Если буфер на чтение не создан
-							if(node->transfer.input.data == nullptr){
-								// Устанавливаем размер буфера на чтение
-								node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-								// Выполняем создание нового буфера на чтение
-								node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-							}
 							/**
 							 * Определяем тип приведения события
 							 */
@@ -9477,13 +9457,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		::exit(EXIT_FAILURE);
 																	}
 																}
-																// Если буфер на чтение не создан
-																if(node->transfer.input.data == nullptr){
-																	// Устанавливаем размер буфера на чтение
-																	node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-																	// Выполняем создание нового буфера на чтение
-																	node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-																}
 															} break;
 															// Для неизвестного типа сокета
 															default: {
@@ -9724,21 +9697,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															}
 															// Выходим из приложения
 															::exit(EXIT_FAILURE);
-														}
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (node->state.type)){
-															// Для типа сокета DATAGRAM
-															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																// Если буфер на чтение не создан
-																if(node->transfer.input.data == nullptr){
-																	// Устанавливаем размер буфера на чтение
-																	node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-																	// Выполняем создание нового буфера на чтение
-																	node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-																}
-															} break;
 														}{
 															// Выполняем блокировку потоков
 															const locker_t lock(::local::mtx);
@@ -9952,21 +9910,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															}
 															// Выходим из приложения
 															::exit(EXIT_FAILURE);
-														}
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (node->state.type)){
-															// Для типа сокета DATAGRAM
-															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																// Если буфер на чтение не создан
-																if(node->transfer.input.data == nullptr){
-																	// Устанавливаем размер буфера на чтение
-																	node->transfer.input.size = this->_eth.bufferSize(node->transfer.fd, net::socket_event_t::READ);
-																	// Выполняем создание нового буфера на чтение
-																	node->transfer.input.data = make_unique <uint8_t []> (node->transfer.input.size);
-																}
-															} break;
 														}{
 															// Выполняем блокировку потоков
 															const locker_t lock(::local::mtx);
@@ -23902,7 +23845,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если сокет является неблокирующим
 											if(ipc->state.options & event::options::NOIOBLOCK){
 												// Если очередь передачи данных пустая
-												if(ipc->transfer.output.empty()){
+												if(ipc->transfer.queue.empty()){
 													// Выполняем отправку данных в TCP/IP сокет
 													const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 													// Если данные отправлены успешно
@@ -23913,7 +23856,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку уникальным мютексом
 																const locker_t lock(ipc->transfer.mtx);
 																// Сохраняем оставшиеся данные для последующей отправки
-																ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+																ipc->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
 																// Увеличиваем смещение передачи данных
 																ipc->transfer.offset = 0;
 															}{
@@ -23945,7 +23888,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку уникальным мютексом
 																const locker_t lock(ipc->transfer.mtx);
 																// Сохраняем оставшиеся данные для последующей отправки
-																ipc->transfer.output.push(data, size);
+																ipc->transfer.queue.push(data, size);
 																// Увеличиваем смещение передачи данных
 																ipc->transfer.offset = 0;
 															}{
@@ -24012,7 +23955,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(ipc->transfer.mtx);
 														// Копим данные для дальнейшей отправки
-														ipc->transfer.output.push(data, size);
+														ipc->transfer.queue.push(data, size);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
@@ -24148,7 +24091,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(ipc->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(ipc->transfer.output.empty()){
+										if(ipc->transfer.queue.empty()){
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
@@ -24159,7 +24102,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(ipc->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														ipc->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+														ipc->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
 														// Увеличиваем смещение передачи данных
 														ipc->transfer.offset = 0;
 													}{
@@ -24191,7 +24134,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(ipc->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														ipc->transfer.output.push(data, size);
+														ipc->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														ipc->transfer.offset = 0;
 													}{
@@ -24258,7 +24201,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(ipc->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												ipc->transfer.output.push(data, size);
+												ipc->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
@@ -24398,7 +24341,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(ipc->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(ipc->transfer.output.empty()){
+										if(ipc->transfer.queue.empty()){
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
@@ -24415,7 +24358,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(ipc->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														ipc->transfer.output.push(data, size);
+														ipc->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														ipc->transfer.offset = 0;
 													}{
@@ -24482,7 +24425,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(ipc->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												ipc->transfer.output.push(data, size);
+												ipc->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
@@ -24604,7 +24547,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(peer->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(peer->transfer.output.empty()){
+										if(peer->transfer.queue.empty()){
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
@@ -24615,7 +24558,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(peer->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														peer->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+														peer->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
 														// Увеличиваем смещение передачи данных
 														peer->transfer.offset = 0;
 													}{
@@ -24663,7 +24606,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(peer->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														peer->transfer.output.push(data, size);
+														peer->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														peer->transfer.offset = 0;
 													}{
@@ -24746,7 +24689,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(peer->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												peer->transfer.output.push(data, size);
+												peer->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
@@ -24896,7 +24839,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(peer->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(peer->transfer.output.empty()){
+										if(peer->transfer.queue.empty()){
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -24938,7 +24881,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(peer->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														peer->transfer.output.push(data, size);
+														peer->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														peer->transfer.offset = 0;
 													}{
@@ -25021,7 +24964,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(peer->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												peer->transfer.output.push(data, size);
+												peer->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
@@ -25205,7 +25148,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(client->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(client->transfer.output.empty()){
+										if(client->transfer.queue.empty()){
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
 											// Если данные отправлены успешно
@@ -25216,7 +25159,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(client->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data + bytes, size - static_cast <size_t> (bytes));
+														client->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
 														// Увеличиваем смещение передачи данных
 														client->transfer.offset = 0;
 													}{
@@ -25264,7 +25207,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(client->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data, size);
+														client->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														client->transfer.offset = 0;
 													}{
@@ -25347,7 +25290,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(client->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												client->transfer.output.push(data, size);
+												client->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
@@ -25497,7 +25440,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(client->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(client->transfer.output.empty()){
+										if(client->transfer.queue.empty()){
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -25539,7 +25482,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(client->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.output.push(data, size);
+														client->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														client->transfer.offset = 0;
 													}{
@@ -25622,7 +25565,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(client->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												client->transfer.output.push(data, size);
+												client->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
@@ -26117,7 +26060,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является неблокирующим
 										if(client->state.options & event::options::NOIOBLOCK){
 											// Если очередь передачи данных пустая
-											if(client->transfer.output.empty()){
+											if(client->transfer.queue.empty()){
 												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
 												// Если данные отправлены успешно
@@ -26134,7 +26077,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку уникальным мютексом
 															const locker_t lock(client->transfer.mtx);
 															// Сохраняем оставшиеся данные для последующей отправки
-															client->transfer.output.push(data, size);
+															client->transfer.queue.push(data, size);
 															// Увеличиваем смещение передачи данных
 															client->transfer.offset = 0;
 														}{
@@ -26217,7 +26160,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выполняем блокировку уникальным мютексом
 													const locker_t lock(client->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													client->transfer.output.push(data, size);
+													client->transfer.queue.push(data, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
@@ -26366,7 +26309,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является неблокирующим
 										if(client->state.options & event::options::NOIOBLOCK){
 											// Если очередь передачи данных пустая
-											if(client->transfer.output.empty()){
+											if(client->transfer.queue.empty()){
 												// Выполняем отправку данных в UDP сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
@@ -26383,7 +26326,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку уникальным мютексом
 															const locker_t lock(client->transfer.mtx);
 															// Сохраняем оставшиеся данные для последующей отправки
-															client->transfer.output.push(data, size);
+															client->transfer.queue.push(data, size);
 															// Увеличиваем смещение передачи данных
 															client->transfer.offset = 0;
 														}{
@@ -26466,7 +26409,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выполняем блокировку уникальным мютексом
 													const locker_t lock(client->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													client->transfer.output.push(data, size);
+													client->transfer.queue.push(data, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
@@ -26848,7 +26791,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет является неблокирующим
 									if(server->state.options & event::options::NOIOBLOCK){
 										// Если очередь передачи данных пустая
-										if(server->transfer.output.empty()){
+										if(server->transfer.queue.empty()){
 											// Выполняем отправку данных в UDP сокет
 											const ssize_t bytes = ::sendto(server->transfer.fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.client), server->endpoint.size);
 											// Если данные отправлены успешно
@@ -26865,7 +26808,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку уникальным мютексом
 														const locker_t lock(server->transfer.mtx);
 														// Сохраняем оставшиеся данные для последующей отправки
-														server->transfer.output.push(data, size);
+														server->transfer.queue.push(data, size);
 														// Увеличиваем смещение передачи данных
 														server->transfer.offset = 0;
 													}{
@@ -26932,7 +26875,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку уникальным мютексом
 												const locker_t lock(server->transfer.mtx);
 												// Копим данные для дальнейшей отправки
-												server->transfer.output.push(data, size);
+												server->transfer.queue.push(data, size);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(server->callbacks.write != nullptr)
@@ -28166,7 +28109,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 						// Для семейства межпроцессных соединений
 						case static_cast <uint8_t> (event::family_t::PIPE):
 							// Извлекаем размер буфера на чтение и запись
-							return ipc->transfer.input.size;
+							return 0x1000;
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -28436,47 +28379,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 					 */
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
-						case static_cast <uint8_t> (event::family_t::PIPE): {
+						case static_cast <uint8_t> (event::family_t::PIPE):
 							// Устанавливаем результат выполнения операции
 							result = true;
-							/**
-							 * Определяем тип действия события
-							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
-									// Устанавливаем размер буфера на чтение
-									ipc->transfer.input.size = 0x1000;
-									// Выполняем создание нового буфера на чтение
-									ipc->transfer.input.data = make_unique <uint8_t []> (ipc->transfer.input.size);
-								} break;
-								// Если действие не определено
-								default: {
-									// Устанавливаем текст ошибки
-									const string error = "Buffer size can only be set for read action on inter-process communication events";
-									// Если установлена функция обратного вызова
-									if(ipc->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INVALID, error);
-									// Если функция обратного вызова для вывода события установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-										#endif
-									}
-								}
-							}
-						} break;
+						break;
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -28488,17 +28394,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
+								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(ipc->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size));
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										ipc->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										ipc->transfer.input.data = make_unique <uint8_t []> (ipc->transfer.input.size);
-									}
-								} break;
+									result = (this->_eth.bufferSize(ipc->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
@@ -28527,17 +28426,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
+								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(peer->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size));
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										peer->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										peer->transfer.input.data = make_unique <uint8_t []> (peer->transfer.input.size);
-									}
-								} break;
+									result = (this->_eth.bufferSize(peer->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
@@ -28562,17 +28454,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
+								case static_cast <uint8_t> (event::action_t::READ):
 									// Извлекаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ);
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										client->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										client->transfer.input.data = make_unique <uint8_t []> (client->transfer.input.size);
-									}
-								} break;
+									result = (this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ) > 0);
+								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Извлекаем размер буфера для записи
@@ -28591,17 +28476,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
+								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size));
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										client->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										client->transfer.input.data = make_unique <uint8_t []> (client->transfer.input.size);
-									}
-								} break;
+									result = (this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
@@ -28630,17 +28508,10 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 							 */
 							switch(static_cast <uint8_t> (action)){
 								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ): {
+								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(server->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size));
-									// Если установка размера буфера прошла успешно
-									if((result = (length > 0))){
-										// Устанавливаем размер буфера на чтение
-										server->transfer.input.size = static_cast <size_t> (length);
-										// Выполняем создание нового буфера на чтение
-										server->transfer.input.data = make_unique <uint8_t []> (server->transfer.input.size);
-									}
-								} break;
+									result = (this->_eth.bufferSize(server->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
