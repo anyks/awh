@@ -198,10 +198,10 @@ namespace {
 	 *
 	 */
 	typedef struct Transfer {
+		size_t offset;    // Смещение передачи данных
 		event::id_t dst;  // Идентификатор события принимающей стороны
 		net::socket_t fd; // Файловый дескриптор сервиса
 		uint16_t actions; // Флаги активированных событий файла
-		size_t offset;    // Смещение передачи данных
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -220,8 +220,8 @@ namespace {
 		 * @param log объект работы с логами
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
-		 dst(0), fd(net::invalid_socket_t),
-		 actions(action::NONE), offset(0), queue(fmk, log) {}
+		 offset(0), dst(0), fd(net::invalid_socket_t),
+		 actions(action::NONE), queue(fmk, log) {}
 	} transfer_t;
 	/**
 	 * @brief Структура таймера
