@@ -146,8 +146,6 @@ namespace {
 	typedef struct Buffer {
 		// Размер буфера данных
 		size_t size;
-		// Смещение передачи данных
-		size_t offset;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		// Указатель на буфер данных
@@ -157,8 +155,7 @@ namespace {
 		 *
 		 */
 		explicit Buffer() noexcept :
-		 size(0x1000), offset(0),
-		 data(make_unique <uint8_t []> (0x1000)) {}
+		 size(0x4000), data(make_unique <uint8_t []> (0x4000)) {}
 	} buffer_t;
 
 	/**
@@ -2230,10 +2227,6 @@ bool awh::TransportLayerSecurity::bufferSize(const id_t id, const size_t size) n
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
 				const locker_t lock(member->mtx);
-				// Сбрасываем смещение буфера приёма данных
-				member->transfer.input.offset = 0;
-				// Сбрасываем смещение буфера передачи данных
-				member->transfer.output.offset = 0;
 				// Устанавливаем размер буфера приёма данных
 				member->transfer.input.size = size;
 				// Устанавливаем размер буфера передачи данных

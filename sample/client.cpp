@@ -150,8 +150,8 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			// if(io.target(eid, "198.18.0.205")){ // VPN
-			if(io.target(eid, "74.125.205.102")){
+			if(io.target(eid, "198.18.0.35")){ // VPN
+			// if(io.target(eid, "74.125.205.102")){
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
