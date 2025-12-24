@@ -69,6 +69,8 @@ TEST_P(QueueParameterizedFixture, QueueTest){
 		size_t number = 0;
 		// Копируем данные из очереди в число
 		::memcpy(&number, this->_queue->data(), this->_queue->size());
+		// Устанавливаем смещение чтения данных
+		this->_queue->commit(this->_queue->size());
 		// Удаляем запись из очереди
 		this->_queue->pop();
 		// Проверяем что извлечённое число совпадает с добавленным

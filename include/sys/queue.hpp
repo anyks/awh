@@ -102,6 +102,9 @@ namespace awh {
 			// Объект диапазонов записей
 			range_t _range;
 		private:
+			// Смещение для чтения данных
+			size_t _offset;
+		private:
 			// Буфер данных выделенной памяти
 			vector <uint8_t> _buffer;
 		private:
@@ -146,7 +149,7 @@ namespace awh {
 			/**
 			 * @brief Метод получения размера добавленных данных
 			 *
-			 * @return размер всех добавленных данных
+			 * @return размер добавленных данных
 			 */
 			size_t size() const noexcept;
 		public:
@@ -163,6 +166,13 @@ namespace awh {
 			 * @return указатель на элемент очереди
 			 */
 			const void * data() const noexcept;
+		public:
+			/**
+			 * @brief Метод фиксации прочитанного размера данных
+			 *
+			 * @param size размер данных для фиксации
+			 */
+			void commit(const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки на заполненность очереди
