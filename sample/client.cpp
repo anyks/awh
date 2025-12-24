@@ -55,6 +55,7 @@ int32_t main(int32_t argc, char * argv[]){
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
 	io.port(eid, 443);
+	// io.port(eid, 8006);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Флаг завершения работы
@@ -66,10 +67,23 @@ int32_t main(int32_t argc, char * argv[]){
 		// tls.alpn(tid, map <int8_t, string> {{0,"http/1.1"},{1,"h2"},{2,"h3"}}, 2);
 		// Устанавливаем файл центра сертификации TLS
 		tls.ca(tid, "../sh/certificates", "ca.pem");
+		// Включаем проверку имени хоста TLS
+		// tls.validateHostname(tid, false);
+		// Устанавливаем имя хоста TLS
+		// tls.setHostname(tid, "contms.ru");
+		tls.setHostname(tid, "www.google.com");
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
 			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!! " << (u_short) tls.alpn(id) << endl;
+			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
+			cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
+			cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+			cout << "Версия OpenSSL: " << tls.version() << endl << endl;
+			cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;
+			cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
+			cout << "CRL Info: " << tls.crlInfo(id) << endl << endl;
+			cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
+
 			// Текст запроса к серверу
 			const string request =
 				"GET / HTTP/1.1\r\n"
@@ -157,6 +171,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
+			// if(io.target(eid, "198.18.0.23")){ // contms.ru VPN
 			if(io.target(eid, "198.18.0.35")){ // VPN
 			// if(io.target(eid, "74.125.205.102")){
 				// Устанавливаем функцию обратного вызова на событие таймера

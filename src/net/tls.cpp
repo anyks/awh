@@ -197,7 +197,7 @@ namespace {
 		 *
 		 */
 		explicit State() noexcept :
-		 handshake(false), certificate(false) {}
+		 handshake(false), certificate(true) {}
 	} __attribute__((packed)) state_t;
 
 	/**
@@ -354,7 +354,7 @@ namespace ssl {
 					// Зануляем буфер данных
 					::memset(buffer, 0, sizeof(buffer));
 					// Получаем сообщение об ошибке
-					::ERR_error_string_n(::ERR_get_error(), buffer, sizeof(buffer));
+					::ERR_error_string_n(error, buffer, sizeof(buffer));
 					// Если результат уже сформирован
 					if(!result.empty())
 						// Добавляем разделитель
@@ -1222,13 +1222,59 @@ namespace verify {
 		return result;
 	}
 	/**
+	 * @brief Функция обратного вызова для проверки валидности сертификата
+	 *
+	 * @param ok    результат получения сертификата
+	 * @param store хранилище сертификатов
+	 * @return      результат проверки
+	 */
+	static int32_t certificate(const int32_t ok, X509_STORE_CTX * store) noexcept {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Если хранилище сертификатов передано верное
+			if(store != nullptr){
+				// Выполняем извлечение сертификата
+				X509 * x509 = ::X509_STORE_CTX_get_current_cert(store);
+				// Если сертификат получен
+				if(x509 != nullptr){
+					// Буфер данных для получения данных
+					char buffer[256];
+					// Выводим начальный разделитель
+					printf("------------------------------------------------------------\n\n");
+					// Выводим заголовок
+					printf("Current certificate verification:\n");
+					// Получаем название сертификата
+					::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+					// Выводим название сертификата
+					printf("Subject: %s\n", buffer);
+					// Получаем эмитента выпустившего сертификат
+					::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+					// Выводим эмитента сертификата
+					printf("Issuer: %s\n", buffer);
+					// Выводим информацию о ошибке
+					printf("Error: %s\n", ::X509_verify_cert_error_string(::X509_STORE_CTX_get_error(store)));
+					// Выводим информацию об успешной проверке
+					printf("Status: Certificate verified successfully at depth %d\n", ::X509_STORE_CTX_get_error_depth(store));
+					// Выводим конечный разделитель
+					printf("\n------------------------------------------------------------\n\n");
+				}
+			}
+		#endif
+		// Выводим результат
+		return ok;
+	}
+	/**
 	 * @brief Функция обратного вызова для проверки валидности хоста
 	 *
-	 * @param x509 данные сертификата
-	 * @param ctx  передаваемый контекст
-	 * @return     результат проверки
+	 * @param store хранилище сертификатов
+	 * @param ctx   передаваемый контекст
+	 * @return      результат проверки
 	 */
 	static int32_t hostname(X509_STORE_CTX * store, void * ctx) noexcept {
+		// Результат проверки домена
+		int32_t result = 0;
 		// Если объекты переданы верно
 		if((store != nullptr) && (ctx != nullptr)){
 			// Получаем объект уровня защищённых сокетов
@@ -1236,146 +1282,164 @@ namespace verify {
 			// Если проверка сертификата не требуется
 			if(!member->state.certificate)
 				// Выводим сообщение, что проверка пройдена
-				return 1;
-			// Ошибка проверки сертификата
-			string status = "X509VerifyCertFailed";
-			// Результат проверки домена
-			validate_t validate = validate_t::Error;
-			// Запрашиваем данные сертификата
-			X509 * x509 = ::X509_STORE_CTX_get_current_cert(store);
+				return ::verify::certificate(1, store);
 			// Если проверка сертификата прошла удачно
-			if(::X509_verify_cert(store) == 1){
-				// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-				validate = ::verify::validateHostname(member->host.name, x509);
-				/**
-				 * Определяем полученную ошибку
-				 */
-				switch(static_cast <uint8_t> (validate)){
-					// Если домен найден в записях сертификата
-					case static_cast <uint8_t> (validate_t::MatchFound):
-						// Устанавливаем статус проверки
-						status = "MatchFound";
-					break;
-					// Если домен не найден в записях сертификата
-					case static_cast <uint8_t> (validate_t::MatchNotFound):
-						// Устанавливаем статус проверки
-						status = "MatchNotFound";
-					break;
-					// Если в сертификате отсутствует SAN
-					case static_cast <uint8_t> (validate_t::NoSANPresent):
-						// Устанавливаем статус проверки
-						status = "NoSANPresent";
-					break;
-					// Если сертификат имеет неверный формат
-					case static_cast <uint8_t> (validate_t::MalformedCertificate):
-						// Устанавливаем статус проверки
-						status = "MalformedCertificate";
-					break;
-					// Если произошла ошибка при проверке
-					case static_cast <uint8_t> (validate_t::Error):
-						// Устанавливаем статус проверки
-						status = "Error";
-					break;
-					// В иных случаях
-					default: status = "WTF!";
-				}
-			}
-			// Буфер данных сертификатов из хранилища
-			char buffer[256];
-			// Заполняем структуру нулями
-			::memset(buffer, 0, sizeof(buffer));
-			// Запрашиваем имя домена
-			::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
-			// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-			if(validate == validate_t::MatchFound){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Получаем объект логирования
-					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
-					// Выводим в лог сообщение
-					log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.name.c_str(), buffer);
-				#endif
-				// Выводим сообщение, что проверка пройдена
-				return 1;
-			// Если ресурс не найден тогда выводим сообщение об ошибке
-			} else {
-				// Если функция обратного вызова ошибки установлена
-				if(member->callback.error != nullptr){
-					// Выполняем получение идентификатора контекста TLS
-					const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
-					// Получаем объект фреймворка
-					awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
-					// Вызываем функцию обратного вызова ошибки
-					member->callback.error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", status.c_str(), member->host.name.c_str(), buffer)));
-				// Если функция обратного вызова ошибки не установлена
-				} else {
-					// Получаем объект логирования
-					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
-					#endif
+			if((result = ::X509_verify_cert(store)) != 1){
+				// Если произошла ошибка несоответствия имени хоста
+				if(::X509_STORE_CTX_get_error(store) == X509_V_ERR_HOSTNAME_MISMATCH){
+					// Запрашиваем данные сертификата
+					X509 * x509 = ::X509_STORE_CTX_get_current_cert(store);
+					// Если данные сертификата не получены
+					if(x509 == nullptr){
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr){
+							// Выполняем получение идентификатора контекста TLS
+							const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+							// Получаем объект фреймворка
+							awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, "Certificate is not found in store"));
+						// Если функция обратного вызова ошибки не установлена
+						} else {
+							// Получаем объект логирования
+							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug("Certificate is not found in store", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								log->print("Certificate is not found in store", awh::log_t::flag_t::WARNING);
+							#endif
+						}
+					// Если данные сертификата получены
+					} else {
+						// Ошибка проверки сертификата
+						string status = "X509VerifyCertFailed";
+						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
+						validate_t validate = ::verify::validateHostname(member->host.name, x509);
+						/**
+						 * Определяем полученную ошибку
+						 */
+						switch(static_cast <uint8_t> (validate)){
+							// Если домен найден в записях сертификата
+							case static_cast <uint8_t> (validate_t::MatchFound):
+								// Устанавливаем статус проверки
+								status = "MatchFound";
+							break;
+							// Если домен не найден в записях сертификата
+							case static_cast <uint8_t> (validate_t::MatchNotFound):
+								// Устанавливаем статус проверки
+								status = "MatchNotFound";
+							break;
+							// Если в сертификате отсутствует SAN
+							case static_cast <uint8_t> (validate_t::NoSANPresent):
+								// Устанавливаем статус проверки
+								status = "NoSANPresent";
+							break;
+							// Если сертификат имеет неверный формат
+							case static_cast <uint8_t> (validate_t::MalformedCertificate):
+								// Устанавливаем статус проверки
+								status = "MalformedCertificate";
+							break;
+							// Если произошла ошибка при проверке
+							case static_cast <uint8_t> (validate_t::Error):
+								// Устанавливаем статус проверки
+								status = "Error";
+							break;
+							// В иных случаях
+							default: status = "WTF!";
+						}
+						// Получаем имя эмитента выпустившего сертификат
+						X509_NAME * name = ::X509_get_issuer_name(x509);
+						// Если имя эмитента не получено
+						if(name == nullptr){
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr){
+								// Выполняем получение идентификатора контекста TLS
+								const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+								// Получаем объект фреймворка
+								awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, awh::tls_t::error_t::CRITICAL, ::ssl::error(id, "Certificate issuer name is not found"));
+							// Если функция обратного вызова ошибки не установлена
+							} else {
+								// Получаем объект логирования
+								awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Certificate issuer name is not found", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Certificate issuer name is not found", awh::log_t::flag_t::WARNING);
+								#endif
+							}
+						// Если имя эмитента получено
+						} else {
+							// Буфер данных сертификатов из хранилища
+							char buffer[256];
+							// Заполняем структуру нулями
+							::memset(buffer, 0, sizeof(buffer));
+							// Запрашиваем имя домена
+							::X509_NAME_oneline(name, buffer, sizeof(buffer));
+							// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
+							if((result = static_cast <int32_t> (validate == validate_t::MatchFound))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Получаем объект логирования
+									awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+									// Выводим в лог сообщение
+									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.name.c_str(), buffer);
+								#endif
+							// Если ресурс не найден тогда выводим сообщение об ошибке
+							} else {
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr){
+									// Выполняем получение идентификатора контекста TLS
+									const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+									// Получаем объект фреймворка
+									awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", status.c_str(), member->host.name.c_str(), buffer)));
+								// Если функция обратного вызова ошибки не установлена
+								} else {
+									// Получаем объект логирования
+									awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s for hostname '%s' [%s]", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s for hostname '%s' [%s]", awh::log_t::flag_t::WARNING, status.c_str(), member->host.name.c_str(), buffer);
+									#endif
+								}
+							}
+						}
+					}
 				}
 			}
 		}
-		// Выводим сообщение, что проверка не пройдена
-		return 0;
-	}
-	/**
-	 * @brief Функция обратного вызова для проверки валидности сертификата
-	 *
-	 * @param ok   результат получения сертификата
-	 * @param x509 данные сертификата
-	 * @return     результат проверки
-	 */
-	static int32_t certificate(const int32_t ok, X509_STORE_CTX * x509) noexcept {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Если проверка не выполнена
-			if(!ok){
-				// Получаем данные ошибки
-				int32_t error = ::X509_STORE_CTX_get_error(x509);
-				// Получаем глубину ошибки
-				int32_t depth = ::X509_STORE_CTX_get_error_depth(x509);
-				// Выполняем извлечение сертификата
-				X509 * cert = ::X509_STORE_CTX_get_current_cert(x509);
-				// Буфер данных для получения данных
-				char buffer[256];
-				// Выводим начальный разделитель
-				printf("------------------------------------------------------------\n\n");
-				// Выводим заголовок
-				printf("Current certificate verification:\n");
-				// Получаем название сертификата
-				::X509_NAME_oneline(::X509_get_subject_name(cert), buffer, sizeof(buffer));
-				// Выводим название сертификата
-				printf("Subject: %s\n", buffer);
-				// Получаем эмитента выпустившего сертификат
-				::X509_NAME_oneline(::X509_get_issuer_name(cert), buffer, sizeof(buffer));
-				// Выводим эмитента сертификата
-				printf("Issuer: %s\n", buffer);
-				// Выводим информацию о ошибке
-				printf("Error: %s\n", ::X509_verify_cert_error_string(error));
-				// Выводим конечный разделитель
-				printf("\n------------------------------------------------------------\n\n");
-				// Очищаем объект сертификата
-				// ::X509_free(cert);
-			}
-		#endif
 		// Выводим результат
-		return ok;
+		return result;
 	}
 };
 
@@ -2298,7 +2362,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 				// Получаем код ошибки
 				const int32_t error = ::SSL_get_error(member->ssl, handshake);
 				// Если ошибка не связана с необходимостью повторного чтения или записи
-				if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+				if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
@@ -2342,7 +2406,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 							// Выходим из цикла
 							break;
 						// Если функция обратного вызова чтения данных установлена
-						else if((result = (member->callback.read != nullptr)))
+						else if(member->callback.read != nullptr)
 							// Вызываем функцию обратного вызова чтения данных
 							member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
 					}
@@ -2776,7 +2840,7 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 					// Выполняем блокировку потоков
 					const locker_t lock(member->mtx);
 					// Устанавливаем все основные алгоритмы шифрования
-					if(::SSL_CTX_set_cipher_list(member->ctx, result.c_str()) != 1){
+					if(::SSL_set_cipher_list(member->ssl, result.c_str()) != 1){
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
@@ -2973,7 +3037,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 				// Выполняем блокировку потоков
 				const locker_t lock(member->mtx);
 				// Если приватный ключ не может быть установлен
-				if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+				if(::SSL_use_PrivateKey_file(member->ssl, filename.c_str(), SSL_FILETYPE_PEM) != 1){
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
@@ -2998,7 +3062,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 					return;
 				}
 				// Если приватный ключ недействителен
-				if(::SSL_CTX_check_private_key(member->ctx) != 1){
+				if(::SSL_check_private_key(member->ssl) != 1){
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
@@ -3069,7 +3133,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Если сертификат не устанавливается
-						if(::SSL_CTX_use_certificate_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+						if(::SSL_use_certificate_file(member->ssl, filename.c_str(), SSL_FILETYPE_PEM) != 1){
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
@@ -3095,7 +3159,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Если сертификат не устанавливается
-						if(::SSL_CTX_use_certificate_chain_file(member->ctx, filename.c_str()) != 1){
+						if(::SSL_use_certificate_chain_file(member->ssl, filename.c_str()) != 1){
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
