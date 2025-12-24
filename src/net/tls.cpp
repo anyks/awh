@@ -199,12 +199,15 @@ namespace {
 		tls_t::write_callback_t write;
 		// Функция обратного вызова получения ошибок
 		tls_t::error_callback_t error;
+		// Функция обратного вызова завершения рукопожатия
+		tls_t::handshake_callback_t handshake;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Callback() noexcept :
-		 read(nullptr), write(nullptr), error(nullptr) {}
+		 read(nullptr), write(nullptr),
+		 error(nullptr), handshake(nullptr) {}
 	} callback_t;
 
 	/**
@@ -2404,35 +2407,14 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 	try {
 		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
-		// Выполняем блокировку потоков
-		const locker_t lock(member->mtx);
 		// Если рукопожатие ещё не выполнено
 		if(!(result = member->handshake)){
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Выполняем TLS рукопожатие
 			const int32_t handshake = ::SSL_do_handshake(member->ssl);
-			// Если рукопожатие выполнено успешно
-			if((result = member->handshake = (handshake == 1))){
-				// Количество прочитанных данных
-				int32_t bytes = 0;
-				// Количество ожидающих данных для чтения
-				size_t pending = 0;
-				/**
-				 * Читаем все ожидающие данные из BIO буфера записи
-				 */
-				while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
-					// Читаем данные из BIO буфера записи
-					bytes = ::BIO_read(member->wbio, member->transfer.output.data.get(), static_cast <size_t> (::min(pending, member->transfer.output.size)));
-					// Если данные не прочитаны
-					if(bytes <= 0)
-						// Выходим из цикла
-						break;
-					// Если функция обратного вызова чтения данных установлена
-					else if(member->callback.read != nullptr)
-						// Вызываем функцию обратного вызова чтения данных
-						member->callback.read(id, event_t::ENCRYPTION, member->transfer.output.data.get(), static_cast <size_t> (bytes));
-				}
 			// Если рукопожатие не выполнено
-			} else {
+			if(!(result = member->handshake = (handshake == 1))){
 				// Получаем код ошибки
 				const int32_t error = ::SSL_get_error(member->ssl, handshake);
 				// Если ошибка не связана с необходимостью повторного чтения или записи
@@ -2461,9 +2443,38 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 							this->_log->print("%s", log_t::flag_t::CRITICAL, buffer);
 						#endif
 					}
+				// Если ошибка связана с необходимостью повторного чтения или записи
+				} else {
+					// Выполняем блокировку потоков
+					const locker_t lock(member->transfer.output.mtx);
+					// Количество прочитанных данных
+					int32_t bytes = 0;
+					// Количество ожидающих данных для чтения
+					size_t pending = 0;
+					/**
+					 * Читаем все ожидающие данные из BIO буфера записи
+					 */
+					while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
+						// Читаем данные из BIO буфера записи
+						bytes = ::BIO_read(member->wbio, member->transfer.output.data.get(), static_cast <size_t> (::min(pending, member->transfer.output.size)));
+						// Если данные не прочитаны
+						if(bytes <= 0)
+							// Выходим из цикла
+							break;
+						// Если функция обратного вызова чтения данных установлена
+						else if((result = (member->callback.read != nullptr)))
+							// Вызываем функцию обратного вызова чтения данных
+							member->callback.read(id, event_t::ENCRYPTION, member->transfer.output.data.get(), static_cast <size_t> (bytes));
+					}
 				}
+				// Выводим результат
+				return result;
 			}
 		}
+		// Если рукопожатие выполнено успешно
+		if(member->callback.handshake != nullptr)
+			// Вызываем функцию обратного вызова успешного выполнения рукопожатия
+			member->callback.handshake(id);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2504,114 +2515,139 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 		if((buffer != nullptr) && (size > 0)){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
-			// Выполняем блокировку потоков
-			const locker_t lock(member->mtx);
-			/**
-			 * Для операционной системы Linux или FreeBSD
-			 */
-			#if __linux__ || __FreeBSD__
-				// Если протокол интернета установлен как SCTP
-				if(member->proto == event::protocol_t::SCTP){
-					// Создаём объект получения информационных событий
-					struct bio_dgram_sctp_sndinfo info;
-					// Выполняем зануление объекта информационного события
-					::memset(&info, 0, sizeof(info));
-					// Выполняем установку события
-					::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
-				}
-			#endif
-			// Выполняем запись данных в защищённый сокет
-			int32_t bytes = ::SSL_write(member->ssl, buffer, static_cast <int32_t> (size));
-			// Если данные не записаны
-			if(!(result = (bytes > 0))){
-				// Получаем код ошибки
-				const int32_t error = ::SSL_get_error(member->ssl, bytes);
-				// Если ошибка не связана с необходимостью повторного чтения или записи
-				if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
-					// Если функция обратного вызова ошибки установлена
-					if(member->callback.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, ::ssl::error(id));
-					// Если функция обратного вызова ошибки не установлена
-					else {
-						// Буфер данных для получения сообщения об ошибке
-						char buffer[256];
-						// Получаем сообщение об ошибке
-						::ERR_error_string_n(::ERR_get_error(), buffer, sizeof(buffer));
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, buffer);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, buffer);
-						#endif
-					}
-				}
-			// Если данные записаны удачно
-			} else {
-				// Если функция обратного вызова записи данных установлена
-				if(member->callback.write != nullptr)
-					// Вызываем функцию обратного вызова записи данных
-					member->callback.write(id, event_t::ENCRYPTION, static_cast <size_t> (bytes));
+			// Если рукопожатие выполнено успешно
+			if(member->handshake){
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				/**
-				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+				 * Для операционной системы Linux или FreeBSD
 				 */
-				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
+				#if __linux__ || __FreeBSD__
 					// Если протокол интернета установлен как SCTP
-					if((member->proto == event::protocol_t::SCTP) && (::SSL_get_error(member->ssl, bytes) == SSL_ERROR_NONE)){
-						/**
-						 * Определяем узел события к которому относится контекст TLS
-						 */
-						switch(static_cast <uint8_t> (member->node)){
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Создаём объект получения информационных событий
-								struct bio_dgram_sctp_sndinfo info;
-								// Выполняем зануление объекта информационного события
-								::memset(&info, 0, sizeof(info));
-								// Выполняем извлечение события
-								::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
-								// Выводим в лог информационное сообщение
-								this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, bytes, info.snd_sid, info.snd_ppid);
-							} break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Создаём объект получения информационных событий
-								struct bio_dgram_sctp_rcvinfo info;
-								// Выполняем зануление объекта информационного события
-								::memset(&info, 0, sizeof(info));
-								// Выполняем извлечение события
-								::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
-								// Выводим в лог информационное сообщение
-								this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, bytes, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
-							} break;
-						}
+					if(member->proto == event::protocol_t::SCTP){
+						// Создаём объект получения информационных событий
+						struct bio_dgram_sctp_sndinfo info;
+						// Выполняем зануление объекта информационного события
+						::memset(&info, 0, sizeof(info));
+						// Выполняем установку события
+						::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
 					}
 				#endif
-				// Количество ожидающих данных для чтения
-				size_t pending = 0;
-				// Выполняем блокировку потоков
-				const locker_t lock(member->transfer.output.mtx);
-				/**
-				 * Читаем все ожидающие данные из BIO буфера записи
-				 */
-				while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
-					// Читаем данные из BIO буфера записи
-					bytes = ::BIO_read(member->wbio, member->transfer.output.data.get(), static_cast <size_t> (::min(pending, member->transfer.output.size)));
-					// Если данные не прочитаны
-					if(bytes <= 0)
-						// Выходим из цикла
-						break;
-					// Если функция обратного вызова чтения данных установлена
-					else if(member->callback.read != nullptr)
-						// Вызываем функцию обратного вызова чтения данных
-						member->callback.read(id, event_t::ENCRYPTION, member->transfer.output.data.get(), static_cast <size_t> (bytes));
+				// Выполняем запись данных в защищённый сокет
+				int32_t bytes = ::SSL_write(member->ssl, buffer, static_cast <int32_t> (size));
+				// Если данные не записаны
+				if(!(result = (bytes > 0))){
+					// Получаем код ошибки
+					const int32_t error = ::SSL_get_error(member->ssl, bytes);
+					// Если ошибка не связана с необходимостью повторного чтения или записи
+					if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, ::ssl::error(id));
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							// Буфер данных для получения сообщения об ошибке
+							char buffer[256];
+							// Получаем сообщение об ошибке
+							::ERR_error_string_n(::ERR_get_error(), buffer, sizeof(buffer));
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, buffer);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, buffer);
+							#endif
+						}
+					}
+				// Если данные записаны удачно
+				} else {
+					// Если функция обратного вызова записи данных установлена
+					if(member->callback.write != nullptr)
+						// Вызываем функцию обратного вызова записи данных
+						member->callback.write(id, event_t::ENCRYPTION, static_cast <size_t> (bytes));
+					/**
+					 * Если операционной системой является Linux или FreeBSD и включён режим отладки
+					 */
+					#if (__linux__ || __FreeBSD__) && DEBUG_MODE
+						// Если протокол интернета установлен как SCTP
+						if((member->proto == event::protocol_t::SCTP) && (::SSL_get_error(member->ssl, bytes) == SSL_ERROR_NONE)){
+							/**
+							 * Определяем узел события к которому относится контекст TLS
+							 */
+							switch(static_cast <uint8_t> (member->node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём объект получения информационных событий
+									struct bio_dgram_sctp_sndinfo info;
+									// Выполняем зануление объекта информационного события
+									::memset(&info, 0, sizeof(info));
+									// Выполняем извлечение события
+									::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
+									// Выводим в лог информационное сообщение
+									this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, bytes, info.snd_sid, info.snd_ppid);
+								} break;
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									// Создаём объект получения информационных событий
+									struct bio_dgram_sctp_rcvinfo info;
+									// Выполняем зануление объекта информационного события
+									::memset(&info, 0, sizeof(info));
+									// Выполняем извлечение события
+									::BIO_ctrl(member->wbio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
+									// Выводим в лог информационное сообщение
+									this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, bytes, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+								} break;
+							}
+						}
+					#endif
+					// Количество ожидающих данных для чтения
+					size_t pending = 0;
+					// Выполняем блокировку потоков
+					const locker_t lock(member->transfer.output.mtx);
+					/**
+					 * Читаем все ожидающие данные из BIO буфера записи
+					 */
+					while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
+						// Читаем данные из BIO буфера записи
+						bytes = ::BIO_read(member->wbio, member->transfer.output.data.get(), static_cast <size_t> (::min(pending, member->transfer.output.size)));
+						// Если данные не прочитаны
+						if(bytes <= 0)
+							// Выходим из цикла
+							break;
+						// Если функция обратного вызова чтения данных установлена
+						else if(member->callback.read != nullptr)
+							// Вызываем функцию обратного вызова чтения данных
+							member->callback.read(id, event_t::ENCRYPTION, member->transfer.output.data.get(), static_cast <size_t> (bytes));
+					}
+				}
+			// Если рукопожатие не выполнено
+			} else {
+				// Если функция обратного вызова ошибки установлена
+				if(member->callback.error != nullptr)
+					// Вызываем функцию обратного вызова ошибки
+					member->callback.error(id, error_t::WARNING, "Handshake has not yet been completed");
+				// Если функция обратного вызова ошибки не установлена
+				else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Handshake has not yet been completed", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Handshake has not yet been completed", log_t::flag_t::WARNING);
+					#endif
 				}
 			}
 		}
@@ -2681,26 +2717,30 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 						this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, bytes, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 					}
 				#endif
-				// Выполняем блокировку потоков
-				const locker_t lock(member->transfer.input.mtx);
-				/**
-				 * Читаем все доступные данные из защищённого сокета
-				 */
-				do {
-					// Читаем данные из защищённого сокета
-					bytes = ::SSL_read(member->ssl, member->transfer.input.data.get(), static_cast <int32_t> (member->transfer.input.size));
-					// Если данные не прочитаны
-					if(bytes <= 0)
-						// Выходим из цикла
-						break;
-					// Если функция обратного вызова чтения данных установлена
-					else if(member->callback.read != nullptr)
-						// Вызываем функцию обратного вызова чтения данных
-						member->callback.read(id, event_t::DECRYPTION, member->transfer.input.data.get(), static_cast <size_t> (bytes));
-				/**
-				 * Пока есть ожидающие данные для чтения
-				 */
-				} while(::SSL_has_pending(member->ssl));
+				// Если рукопожатие ещё не выполнено
+				if(!member->handshake)
+					// Выполняем рукопожатие TLS
+					return this->handshake(id);
+				// Если рукопожатие выполнено успешно
+				else {
+					// Выполняем блокировку потоков
+					const locker_t lock(member->transfer.input.mtx);
+					/**
+					 * Читаем все доступные данные из защищённого сокета
+					 */
+					while((::BIO_ctrl_pending(member->rbio) > 0) || ::SSL_has_pending(member->ssl)){
+						// Читаем данные из защищённого сокета
+						bytes = ::SSL_read(member->ssl, member->transfer.input.data.get(), static_cast <int32_t> (member->transfer.input.size));
+						// Если данные не прочитаны
+						if(bytes <= 0)
+							// Выходим из цикла
+							break;
+						// Если функция обратного вызова чтения данных установлена
+						else if(member->callback.read != nullptr)
+							// Вызываем функцию обратного вызова чтения данных
+							member->callback.read(id, event_t::DECRYPTION, member->transfer.input.data.get(), static_cast <size_t> (bytes));
+					}
+				}
 			// Если данные не записаны полностью
 			} else {
 				// Если функция обратного вызова ошибки установлена
@@ -3514,6 +3554,47 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
 		if((result = (i != ::__awh_ssl_ids__.end())))
 			// Устанавливаем функцию обратного вызова получения ошибок
 			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->callback.error = ::move(callback);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем отрицательный результат
+	return result;
+}
+/**
+ * @brief Метод установки функции обратного вывода выполнения рукопожатия
+ *
+ * @param id       идентификатор события
+ * @param callback объект функции обратного вызова
+ * @return         результат установки функции обратного вызова
+ */
+bool awh::TransportLayerSecurity::on(const id_t id, handshake_callback_t callback) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if((result = (i != ::__awh_ssl_ids__.end())))
+			// Устанавливаем функцию обратного вызова выполнения рукопожатия
+			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->callback.handshake = ::move(callback);
 	/**
 	 * Если возникает ошибка
 	 */

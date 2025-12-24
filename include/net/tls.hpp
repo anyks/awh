@@ -63,6 +63,10 @@ namespace awh {
 			using id_t = uint64_t;
 		public:
 			/**
+			 * Функция обратного вызова срабатывающая при успешном завершении рукопожатия
+			 */
+			using handshake_callback_t = std::function <void (const id_t)>;
+			/**
 			 * Функция обратного вызова срабатывающая при ошибке события
 			 */
 			using error_callback_t = std::function <void (const id_t, const error_t, const string &)>;
@@ -289,6 +293,14 @@ namespace awh {
 			 * @return         результат установки функции обратного вызова
 			 */
 			bool on(const id_t id, error_callback_t callback) noexcept;
+			/**
+			 * @brief Метод установки функции обратного вывода выполнения рукопожатия
+			 *
+			 * @param id       идентификатор события
+			 * @param callback объект функции обратного вызова
+			 * @return         результат установки функции обратного вызова
+			 */
+			bool on(const id_t id, handshake_callback_t callback) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления контекста TLS
