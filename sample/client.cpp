@@ -64,6 +64,8 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем ALPN протоколы TLS
 		tls.alpn(tid, map <int8_t, string> {{0,"http/1.1"}}, 0);
 		// tls.alpn(tid, map <int8_t, string> {{0,"http/1.1"},{1,"h2"},{2,"h3"}}, 2);
+		// Устанавливаем файл центра сертификации TLS
+		tls.ca(tid, "../sh/certificates", "ca.pem");
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
 			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол

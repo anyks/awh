@@ -184,6 +184,23 @@ namespace {
 	} alpn_t;
 
 	/**
+	 * @brief Структура состояния
+	 *
+	 */
+	typedef struct State {
+		// Флаг выполнения рукопожатия SSL
+		bool handshake;
+		// Флаг выполнения проверки сертификата
+		bool certificate;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit State() noexcept :
+		 handshake(false), certificate(false) {}
+	} __attribute__((packed)) state_t;
+
+	/**
 	 * @brief Структура обратных вызовов
 	 *
 	 */
@@ -206,7 +223,7 @@ namespace {
 	} callback_t;
 
 	/**
-	 * @brief Класс участника уровня защищённых сокетов
+	 * @brief Класс участника обмена защищёнными данными
 	 *
 	 */
 	typedef class Member {
@@ -225,12 +242,12 @@ namespace {
 			alpn_t alpn;
 			// Объект хоста
 			host_t host;
+			// Объект состояния
+			state_t state;
 			// Объект печенок SSL
 			cookie_t cookie;
 			// Объект обратных вызовов
 			callback_t callback;
-			// Флаг выполнения рукопожатия SSL
-			bool handshake;
 			// Тип узла события
 			event::node_t node;
 			// Тип протокола события
@@ -275,9 +292,9 @@ namespace {
 	 *
 	 */
 	Member::Member() noexcept :
-	 ssl(nullptr), rbio(nullptr),
-	 wbio(nullptr), ctx(nullptr),
-	 crl(nullptr), handshake(false),
+	 ssl(nullptr),
+	 rbio(nullptr), wbio(nullptr),
+	 ctx(nullptr), crl(nullptr),
 	 node(event::node_t::NONE),
 	 proto(event::protocol_t::NONE) {}
 	/**
@@ -571,15 +588,15 @@ namespace ssl {
 				 */
 				while((ctx = ::CertEnumCertificatesInStore(sys, ctx))){
 					// Выполняем создание сертификата
-					X509 * cert = X509_new();
+					X509 * x509 = X509_new();
 					// Если сертификат создан удачно
-					if((result = (cert != nullptr))){
+					if((result = (x509 != nullptr))){
 						// Получаем объект закодированного сертификата
 						const BYTE * encoded = ctx->pbCertEncoded;
 						// Добавляем сертификат в стор
-						::X509_STORE_add_cert(store, ::d2i_X509(&cert, reinterpret_cast <const uint8_t **> (&encoded), ctx->cbCertEncoded));
+						::X509_STORE_add_cert(store, ::d2i_X509(&x509, reinterpret_cast <const uint8_t **> (&encoded), ctx->cbCertEncoded));
 						// Очищаем выделенную память
-						::X509_free(cert);
+						::X509_free(x509);
 					// Если сертификат не создан
 					} else {
 						// Если функция обратного вызова ошибки установлена
@@ -1211,29 +1228,25 @@ namespace verify {
 	 * @param ctx  передаваемый контекст
 	 * @return     результат проверки
 	 */
-	static int32_t hostname(X509_STORE_CTX * x509, void * ctx) noexcept {
+	static int32_t hostname(X509_STORE_CTX * store, void * ctx) noexcept {
 		// Если объекты переданы верно
-		if((x509 != nullptr) && (ctx != nullptr)){
-			// Буфер данных сертификатов из хранилища
-			char buffer[256];
-			// Заполняем структуру нулями
-			::memset(buffer, 0, sizeof(buffer));
+		if((store != nullptr) && (ctx != nullptr)){
+			// Получаем объект уровня защищённых сокетов
+			::member_t * member = reinterpret_cast <::member_t *> (ctx);
+			// Если проверка сертификата не требуется
+			if(!member->state.certificate)
+				// Выводим сообщение, что проверка пройдена
+				return 1;
 			// Ошибка проверки сертификата
 			string status = "X509VerifyCertFailed";
-			// Выполняем проверку сертификата
-			const int32_t ok = ::X509_verify_cert(x509);
-			// Запрашиваем данные сертификата
-			X509 * cert = ::X509_STORE_CTX_get_current_cert(x509);
 			// Результат проверки домена
 			validate_t validate = validate_t::Error;
-			// Получаем объект SSL
-			SSL * ssl = reinterpret_cast <SSL *> (ctx);
-			// Получаем объект уровня защищённых сокетов
-			::member_t * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+			// Запрашиваем данные сертификата
+			X509 * x509 = ::X509_STORE_CTX_get_current_cert(store);
 			// Если проверка сертификата прошла удачно
-			if(ok){
+			if(::X509_verify_cert(store) == 1){
 				// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-				validate = ::verify::validateHostname(member->host.name, cert);
+				validate = ::verify::validateHostname(member->host.name, x509);
 				/**
 				 * Определяем полученную ошибку
 				 */
@@ -1267,10 +1280,12 @@ namespace verify {
 					default: status = "WTF!";
 				}
 			}
+			// Буфер данных сертификатов из хранилища
+			char buffer[256];
+			// Заполняем структуру нулями
+			::memset(buffer, 0, sizeof(buffer));
 			// Запрашиваем имя домена
-			::X509_NAME_oneline(::X509_get_subject_name(cert), buffer, sizeof(buffer));
-			// Очищаем выделенную память
-			// ::X509_free(cert);
+			::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 			// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 			if(validate == validate_t::MatchFound){
 				/**
@@ -1278,7 +1293,7 @@ namespace verify {
 				 */
 				#if DEBUG_MODE
 					// Получаем объект логирования
-					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
 					// Выводим в лог сообщение
 					log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.name.c_str(), buffer);
 				#endif
@@ -1291,13 +1306,13 @@ namespace verify {
 					// Выполняем получение идентификатора контекста TLS
 					const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
 					// Получаем объект фреймворка
-					awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[1]));
+					awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
 					// Вызываем функцию обратного вызова ошибки
 					member->callback.error(id, awh::tls_t::error_t::WARNING, ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", status.c_str(), member->host.name.c_str(), buffer)));
 				// Если функция обратного вызова ошибки не установлена
 				} else {
 					// Получаем объект логирования
-					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1843,7 +1858,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				return false;
 			}
 			// Получить хранилище CA из SSL_CTX
-			X509_STORE * store = ::SSL_CTX_get_cert_store(::SSL_get_SSL_CTX(member->ssl));
+			X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 			// Создать контекст проверки
 			X509_STORE_CTX * ctx = ::X509_STORE_CTX_new();
 			// Если контекст не создан
@@ -2009,6 +2024,8 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
 			const locker_t lock(member->mtx);
+			// Устанавливаем режим проверки сертификата
+			member->state.certificate = mode;
 			/**
 			 * Определяем узел события к которому относится контекст TLS
 			 */
@@ -2016,36 +2033,20 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если нужно произвести проверку
-					if(mode){
-						// Выполняем проверку сертификата
-						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
-						// Выполняем проверку всех дочерних сертификатов
-						::SSL_CTX_set_cert_verify_callback(member->ctx, &::verify::hostname, member->ssl);
-						// Устанавливаем глубину проверки
-						::SSL_CTX_set_verify_depth(member->ctx, 4);
-					// Запрещаем выполнять првоерку доменного имени
-					} else {
-						// Устанавливаем проверку сертификата сервера
-						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER, nullptr);
-						// Отключаем проверку сертификата сервера
-						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_NONE, nullptr);
-					}
+					if(member->state.certificate)
+						// Активируем проверку сертификата сервера
+						::SSL_set_verify(member->ssl, SSL_VERIFY_PEER, &::verify::certificate);
+					// Деактивируем проверку сертификата сервера
+					else ::SSL_set_verify(member->ssl, SSL_VERIFY_NONE, nullptr);
 				} break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Если нужно произвести проверку
-					if(mode){
-						// Устанавливаем глубину проверки
-						::SSL_CTX_set_verify_depth(member->ctx, 2);
+					if(member->state.certificate)
 						// Выполняем проверку сертификата клиента
-						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &::verify::certificate);
+						::SSL_set_verify(member->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &::verify::certificate);
 					// Запрещаем выполнять првоерку доменного имени
-					} else {
-						// Устанавливаем проверку сертификата сервера
-						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER, nullptr);
-						// Отключаем проверку сертификата сервера
-						::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_NONE, nullptr);
-					}
+					else ::SSL_set_verify(member->ssl, SSL_VERIFY_NONE, nullptr);
 				} break;
 			}
 		}
@@ -2287,13 +2288,13 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 		// Если рукопожатие ещё не выполнено
-		if(!(result = member->handshake)){
+		if(!(result = member->state.handshake)){
 			// Выполняем блокировку потоков
 			const locker_t lock(member->mtx);
 			// Выполняем TLS рукопожатие
 			const int32_t handshake = ::SSL_do_handshake(member->ssl);
 			// Если рукопожатие не выполнено
-			if(!(result = member->handshake = (handshake == 1))){
+			if(!(result = member->state.handshake = (handshake == 1))){
 				// Получаем код ошибки
 				const int32_t error = ::SSL_get_error(member->ssl, handshake);
 				// Если ошибка не связана с необходимостью повторного чтения или записи
@@ -2425,7 +2426,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если рукопожатие выполнено успешно
-			if(member->handshake){
+			if(member->state.handshake){
 				// Выполняем блокировку потоков
 				const locker_t lock(member->mtx);
 				/**
@@ -2627,7 +2628,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 					}
 				#endif
 				// Если рукопожатие ещё не выполнено
-				if(!member->handshake)
+				if(!member->state.handshake)
 					// Выполняем рукопожатие TLS
 					return this->handshake(id);
 				// Если рукопожатие выполнено успешно
@@ -3160,12 +3161,14 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 			const locker_t lock(member->mtx);
 			// Если адрес файла центра сертификации не пустой
 			if(!filename.empty()){
-				// Выполняем проверку
-				if(::SSL_CTX_load_verify_locations(member->ctx, filename.c_str(), nullptr) != 1){
+				// Создаём новое хранилище
+				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
+				// Если хранилище не создано
+				if(store == nullptr){
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "SSL verify locations is not allow"));
+						member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "Get x509 store is not found"));
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -3173,22 +3176,48 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+							this->_log->debug("Get x509 store is not found", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+							this->_log->print("Get x509 store is not found", log_t::flag_t::CRITICAL);
 						#endif
 					}
 					// Выходим из функции
 					return;
 				}
-				// Выполняем установку CRL-файла сертификата
-				::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.c_str()));
-			// Устанавливаем пути по умолчанию для проверки сертификатов
-			} else ::SSL_CTX_set_default_verify_paths(member->ctx);
+				// Загружаем местоположение центра сертификации
+				if(::X509_STORE_load_locations(store, filename.c_str(), nullptr) != 1){
+					// Если функция обратного вызова ошибки установлена
+					if(member->callback.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "CA-file is not loaded"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("CA-file is not loaded", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("CA-file is not loaded", log_t::flag_t::CRITICAL);
+						#endif
+					}
+					// handle error
+					return;
+				}
+				// Если узел является сервером
+				if(member->node == event::node_t::SERVER)
+					// Выполняем установку CRL-файла сертификата
+					::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(filename.c_str()));
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -3231,33 +3260,35 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 			const locker_t lock(member->mtx);
 			// Если название файла центра сертификации не пустое
 			if(!file.empty()){
+				// Создаём новое хранилище
+				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
+				// Если хранилище не создано
+				if(store == nullptr){
+					// Если функция обратного вызова ошибки установлена
+					if(member->callback.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "Get x509 store is not found"));
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Get x509 store is not found", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Get x509 store is not found", log_t::flag_t::CRITICAL);
+						#endif
+					}
+					// Выходим из функции
+					return;
+				}
 				// Если каталог сертификатов передан
 				if(!dir.empty()){
-					// Выполняем проверку
-					if(::SSL_CTX_load_verify_locations(member->ctx, file.c_str(), dir.c_str()) != 1){
-						// Если функция обратного вызова ошибки установлена
-						if(member->callback.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "SSL verify locations is not allow"));
-						// Если функция обратного вызова ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
-							#endif
-						}
-						// Выходим из функции
-						return;
-					}
 					// Полный адрес файла центра сертификации
 					string filename = "";
 					// Если последний символ каталога является разделителем
@@ -3266,16 +3297,12 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 						filename = ::move(this->_fmk->format("%s%s", dir.c_str(), file.c_str()));
 					// Формируем полный адрес файла центра сертификации
 					else filename = ::move(this->_fmk->format("%s%s%s", dir.c_str(), AWH_FS_SEPARATOR, file.c_str()));
-					// Выполняем установку CRL-файла сертификата
-					::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.c_str()));
-				// Если каталог сертификатов не передан
-				} else {
-					// Выполняем проверку
-					if(::SSL_CTX_load_verify_locations(member->ctx, file.c_str(), nullptr) != 1){
+					// Загружаем местоположение центра сертификации
+					if(::X509_STORE_load_locations(store, filename.c_str(), nullptr) != 1){
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "SSL verify locations is not allow"));
+							member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "CA-file is not loaded"));
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -3283,58 +3310,53 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("SSL verify locations is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, file), log_t::flag_t::CRITICAL);
+								this->_log->debug("CA-file is not loaded", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
 							/**
 							* Если режим отладки не включён
 							*/
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
+								this->_log->print("CA-file is not loaded", log_t::flag_t::CRITICAL);
 							#endif
 						}
-						// Выходим из функции
+						// handle error
 						return;
 					}
-					// Выполняем установку CRL-файла сертификата
-					::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(file.c_str()));
-				}
-			// Если адрес файла центра сертификации не передан
-			} else {
-				// Получаем данные стора
-				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
-				/**
-				 * Для операционной системы MS Windows
-				 */
-				#if _WIN32 || _WIN64
-					// Проверяем существует ли путь
-					if(!::ssl::addCertToStore(store, "CA", member) ||
-					   !::ssl::addCertToStore(store, "ROOT", member) ||
-					   !::ssl::addCertToStore(store, "AuthRoot", member))
-						// Выходим из функции
+					// Если узел является сервером
+					if(member->node == event::node_t::SERVER)
+						// Выполняем установку CRL-файла сертификата
+						::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(filename.c_str()));
+				// Если каталог сертификатов не передан
+				} else {
+					// Загружаем местоположение центра сертификации
+					if(::X509_STORE_load_locations(store, file.c_str(), nullptr) != 1){
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "CA-file is not loaded"));
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("CA-file is not loaded", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("CA-file is not loaded", log_t::flag_t::CRITICAL);
+							#endif
+						}
+						// handle error
 						return;
-				#endif
-				// Если стор не устанавливается, тогда выводим ошибку
-				if(::X509_STORE_set_default_paths(store) == 0){
-					// Если функция обратного вызова ошибки установлена
-					if(member->callback.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, ::ssl::error(id, "Set default paths for x509 store is not allow"));
-					// Если функция обратного вызова ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Set default paths for x509 store is not allow", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL);
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
-						#endif
 					}
+					// Если узел является сервером
+					if(member->node == event::node_t::SERVER)
+						// Выполняем установку CRL-файла сертификата
+						::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(file.c_str()));
 				}
 			}
 		}
@@ -3436,46 +3458,15 @@ void awh::TransportLayerSecurity::alpn(const id_t id, const map <int8_t, string>
 					member->alpn.id = static_cast <uint8_t> (aid);
 				// Если идентификатор выбранного ALPN-протокола не передан
 				else member->alpn.id = member->alpn.ids.front();
-				/**
-				 * Определяем узел события к которому относится контекст TLS
-				 */
-				switch(static_cast <uint8_t> (member->node)){
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						/**
-						 * @brief собран без следующих переговорщиков по протоколам
-						 *
-						 */
-						#ifndef OPENSSL_NO_NEXTPROTONEG
-							// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
-							::SSL_CTX_set_next_proto_select_cb(member->ctx, &::ssl::clientNextProtoSelect, member);
-						#endif // !OPENSSL_NO_NEXTPROTONEG
-						/**
-						 * Если версия OpenSSL соответствует или выше версии 1.0.2
-						 */
-						#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-							// Выполняем установку доступных протоколов передачи данных
-							::SSL_set_alpn_protos(member->ssl, member->alpn.buffer.data(), static_cast <uint32_t> (member->alpn.buffer.size()));
-						#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						/**
-						 * @brief собран без следующих переговорщиков по протоколам
-						 *
-						 */
-						#ifndef OPENSSL_NO_NEXTPROTONEG
-							// Выполняем установку функцию обратного вызова при выборе следующего протокола
-							::SSL_CTX_set_next_protos_advertised_cb(member->ctx, &::ssl::nextProto, member);
-						#endif // !OPENSSL_NO_NEXTPROTONEG
-						/**
-						 * Если версия OpenSSL соответствует или выше версии 1.0.2
-						 */
-						#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-							// Устанавливаем функцию обратного вызова для переключения протокола на другой
-							::SSL_CTX_set_alpn_select_cb(member->ctx, &::ssl::serverNextProtoSelect, member);
-						#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-					} break;
+				// Если узел является клиентом
+				if(member->node == event::node_t::CLIENT){
+					/**
+					 * Если версия OpenSSL соответствует или выше версии 1.0.2
+					 */
+					#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+						// Выполняем установку доступных протоколов передачи данных
+						::SSL_set_alpn_protos(member->ssl, member->alpn.buffer.data(), static_cast <uint32_t> (member->alpn.buffer.size()));
+					#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 				}
 			}
 		}
@@ -3931,16 +3922,77 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Выходим
 					return 0;
 				}
-				// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-				::SSL_CTX_set_mode((* ret.first)->ctx, SSL_MODE_RELEASE_BUFFERS);
-				// Устанавливаем проверку сертификата сервера
-				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER, nullptr);
-				// Отключаем проверку сертификата сервера
-				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_NONE, nullptr);
-				// Устанавливаем пути по умолчанию для проверки сертификатов
-				::SSL_CTX_set_default_verify_paths((* ret.first)->ctx);
+				// Получаем данные стора
+				X509_STORE * store = ::SSL_CTX_get_cert_store((* ret.first)->ctx);
+				// Если стор не получен
+				if(store == nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Get x509 store is failed", __PRETTY_FUNCTION__, std::make_tuple(
+							static_cast <uint16_t> (node),
+							static_cast <uint16_t> (proto)
+						), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Get x509 store is failed", log_t::flag_t::WARNING);
+					#endif
+				// Если стор получен
+				} else {
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if _WIN32 || _WIN64
+						// Проверяем существует ли путь
+						if(!::ssl::addCertToStore(store, "CA", (* ret.first).get()) ||
+						   !::ssl::addCertToStore(store, "ROOT", (* ret.first).get()) ||
+						   !::ssl::addCertToStore(store, "AuthRoot", (* ret.first).get()))
+							// Выходим из функции
+							return;
+					#endif
+					// Если стор не устанавливается, тогда выводим ошибку
+					if(::X509_STORE_set_default_paths(store) == 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set default paths for x509 store is not allow", __PRETTY_FUNCTION__, std::make_tuple(
+								static_cast <uint16_t> (node),
+								static_cast <uint16_t> (proto)
+							), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				}
 				// Устанавливаем, что мы должны читать как можно больше входных байтов
 				::SSL_CTX_set_read_ahead((* ret.first)->ctx, 1);
+				// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+				::SSL_CTX_set_mode((* ret.first)->ctx, SSL_MODE_RELEASE_BUFFERS);
+				// Устанавливаем пути по умолчанию для проверки сертификатов
+				::SSL_CTX_set_default_verify_paths((* ret.first)->ctx);
+				// Устанавливаем проверку сертификата сервера
+				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER, &::verify::certificate);
+				// Выполняем проверку всех дочерних сертификатов
+				::SSL_CTX_set_cert_verify_callback((* ret.first)->ctx, &::verify::hostname, (* ret.first).get());
+				/**
+				 * @brief собран без следующих переговорщиков по протоколам
+				 *
+				 */
+				#ifndef OPENSSL_NO_NEXTPROTONEG
+					// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
+					::SSL_CTX_set_next_proto_select_cb((* ret.first)->ctx, &::ssl::clientNextProtoSelect, (* ret.first).get());
+				#endif // !OPENSSL_NO_NEXTPROTONEG
 				// Создаем SSL объект
 				(* ret.first)->ssl = ::SSL_new((* ret.first)->ctx);
 				// Если объект не создан
@@ -4297,6 +4349,61 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Выходим
 					return 0;
 				}
+				// Получаем данные стора
+				X509_STORE * store = ::SSL_CTX_get_cert_store((* ret.first)->ctx);
+				// Если стор не получен
+				if(store == nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Get x509 store is failed", __PRETTY_FUNCTION__, std::make_tuple(
+							static_cast <uint16_t> (node),
+							static_cast <uint16_t> (proto)
+						), log_t::flag_t::WARNING);
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Get x509 store is failed", log_t::flag_t::WARNING);
+					#endif
+				// Если стор получен
+				} else {
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if _WIN32 || _WIN64
+						// Проверяем существует ли путь
+						if(!::ssl::addCertToStore(store, "CA", (* ret.first).get()) ||
+						   !::ssl::addCertToStore(store, "ROOT", (* ret.first).get()) ||
+						   !::ssl::addCertToStore(store, "AuthRoot", (* ret.first).get()))
+							// Выходим из функции
+							return;
+					#endif
+					// Если стор не устанавливается, тогда выводим ошибку
+					if(::X509_STORE_set_default_paths(store) == 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set default paths for x509 store is not allow", __PRETTY_FUNCTION__, std::make_tuple(
+								static_cast <uint16_t> (node),
+								static_cast <uint16_t> (proto)
+							), log_t::flag_t::CRITICAL);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				}
+				// Устанавливаем, что мы должны читать как можно больше входных байтов
+				::SSL_CTX_set_read_ahead((* ret.first)->ctx, 1);
 				// Устанавливаем флаг quiet shutdown
 				// ::SSL_CTX_set_quiet_shutdown((* ret.first)->ctx, 1);
 				// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
@@ -4305,12 +4412,10 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				// ::SSL_CTX_set_session_cache_mode((* ret.first)->ctx, SSL_SESS_CACHE_OFF);
 				// Запускаем кэширование
 				::SSL_CTX_set_session_cache_mode((* ret.first)->ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+				// Устанавливаем пути по умолчанию для проверки сертификатов
+				::SSL_CTX_set_default_verify_paths((* ret.first)->ctx);
 				// Устанавливаем проверку сертификата сервера
-				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER, nullptr);
-				// Отключаем проверку сертификата сервера
-				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_NONE, nullptr);
-				// Устанавливаем, что мы должны читать как можно больше входных байтов
-				::SSL_CTX_set_read_ahead((* ret.first)->ctx, 1);
+				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &::verify::certificate);
 				/**
 				 * Определяем тип протокола подключения
 				 */
@@ -4332,6 +4437,21 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						::SSL_CTX_set_stateless_cookie_generate_cb((* ret.first)->ctx, &::cookie::generateStateless);
 					} break;
 				}
+				/**
+				 * @brief собран без следующих переговорщиков по протоколам
+				 *
+				 */
+				#ifndef OPENSSL_NO_NEXTPROTONEG
+					// Выполняем установку функцию обратного вызова при выборе следующего протокола
+					::SSL_CTX_set_next_protos_advertised_cb((* ret.first)->ctx, &::ssl::nextProto, (* ret.first).get());
+				#endif // !OPENSSL_NO_NEXTPROTONEG
+				/**
+				 * Если версия OpenSSL соответствует или выше версии 1.0.2
+				 */
+				#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+					// Устанавливаем функцию обратного вызова для переключения протокола на другой
+					::SSL_CTX_set_alpn_select_cb((* ret.first)->ctx, &::ssl::serverNextProtoSelect, (* ret.first).get());
+				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Создаем SSL объект
 				(* ret.first)->ssl = ::SSL_new((* ret.first)->ctx);
 				// Если объект не создан
