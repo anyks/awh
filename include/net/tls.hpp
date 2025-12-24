@@ -16,6 +16,11 @@
 #define __AWH_SSL_ENGINE__
 
 /**
+ * Стандартные модули
+ */
+#include <map>
+
+/**
  * Наши модули
  */
 #include "addr.hpp"
@@ -78,18 +83,6 @@ namespace awh {
 			 * Функция обратного вызова срабатывающая при чтении
 			 */
 			using read_callback_t = std::function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
-		public:
-			/**
-			 * Основные поддерживаемые Application-Layer Protocol Negotiation (ALPN) протоколы
-			 */
-			enum class alpn_t : uint8_t {
-				NONE  = 0x00, // Протокол не установлен
-				RAW   = 0x01, // Протокол является бинарным
-				SPDY  = 0x02, // Протокол соответствует SPDY
-				HTTP  = 0x03, // Протокол соответствует HTTP/1.1
-				HTTP2 = 0x04, // Протокол соответствует HTTP/2.0
-				HTTP3 = 0x05  // Протокол соответствует HTTP/3.0
-			};
 		private:
 			// Объект работы с IP-адресами
 			net_addr_t _addr;
@@ -105,14 +98,6 @@ namespace awh {
 			 * @return версия протокола TLS
 			 */
 			string version() const noexcept;
-		public:
-			/**
-			 * @brief Метод извлечения активного протокола
-			 *
-			 * @param id идентификатор события
-			 * @return   метод активного протокола
-			 */
-			alpn_t alpn(const id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения общей информации о TLS соединении
@@ -261,6 +246,22 @@ namespace awh {
 			void ca(const id_t id, const string & dir, const string & file = "") noexcept;
 		public:
 			/**
+			 * @brief Метод извлечения активного протокола
+			 *
+			 * @param id идентификатор события
+			 * @return   метод активного протокола
+			 */
+			int8_t alpn(const id_t id) const noexcept;
+			/**
+			 * @brief Метод установки поддерживаемых ALPN-протоколов
+			 *
+			 * @param id   идентификатор события
+			 * @param alpn список поддерживаемых ALPN-протоколов
+			 * @param aid  идентификатор выбранного ALPN-протокола
+			 */
+			void alpn(const id_t id, const map <int8_t, string> & alpn, const int8_t aid = -1) noexcept;
+		public:
+			/**
 			 * @brief Метод установки функции обратного вывода получения данных
 			 *
 			 * @param id       идентификатор события
@@ -305,10 +306,9 @@ namespace awh {
 			 *
 			 * @param node  тип узла события
 			 * @param proto тип протокола события
-			 * @param alpn  поддерживаемый ALPN-протокол
 			 * @return      идентификатор контекста TLS
 			 */
-			id_t create(const event::node_t node, const event::protocol_t proto, const alpn_t alpn = alpn_t::NONE) noexcept;
+			id_t create(const event::node_t node, const event::protocol_t proto) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

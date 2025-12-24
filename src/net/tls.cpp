@@ -166,6 +166,24 @@ namespace {
 	} host_t;
 
 	/**
+	 * @brief Структура ALPN-протоколов
+	 *
+	 */
+	typedef struct ALPN {
+		// Идентификатор выбранного ALPN-протокола
+		int8_t id;
+		// Список идентификаторов поддерживаемых ALPN-протоколов
+		vector <int8_t> ids;
+		// Буфер ALPN-протоколов
+		vector <uint8_t> buffer;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ALPN() noexcept : id(-1) {}
+	} alpn_t;
+
+	/**
 	 * @brief Структура обратных вызовов
 	 *
 	 */
@@ -203,6 +221,8 @@ namespace {
 			SSL_CTX * ctx;
 			// Объект CRL-файла сертификата
 			X509_CRL * crl;
+			// Объект ALPN-протоколов
+			alpn_t alpn;
 			// Объект хоста
 			host_t host;
 			// Объект печенок SSL
@@ -211,14 +231,10 @@ namespace {
 			callback_t callback;
 			// Флаг выполнения рукопожатия SSL
 			bool handshake;
-			// Активный ALPN-протокол
-			tls_t::alpn_t alpn;
 			// Тип узла события
 			event::node_t node;
 			// Тип протокола события
 			event::protocol_t proto;
-			// Список поддерживаемых ALPN-протоколов
-			vector <uint8_t> support;
 			// Итератор уровня защищённых сокетов
 			members_t::iterator iterator;
 			// Мьютекс для синхронизации потоков
@@ -262,7 +278,6 @@ namespace {
 	 ssl(nullptr), rbio(nullptr),
 	 wbio(nullptr), ctx(nullptr),
 	 crl(nullptr), handshake(false),
-	 alpn(tls_t::alpn_t::NONE),
 	 node(event::node_t::NONE),
 	 proto(event::protocol_t::NONE) {}
 	/**
@@ -283,32 +298,6 @@ namespace {
 			// Удаляем объект SSL контекста
 			::SSL_CTX_free(this->ctx);
 	}
-};
-
-/**
- * Инкапсулируем ALPN-протоколы в пространство имён
- */
-namespace alpn {
-	/**
-	 * Идентификатор протокола HTTP/2.0
-	 */
-	static constexpr char HTTP2[] = "\x2h2";
-	/**
-	 * Идентификатор протокола HTTP/3.0
-	 */
-	static constexpr char HTTP3[] = "\x2h3";
-	/**
-	 * Идентификатор протокола SPDY
-	 */
-	static constexpr char SPDY[] = "\x6spdy/1";
-	/**
-	 * Идентификатор протокола HTTP/1.0
-	 */
-	static constexpr char HTTP[] = "\x6http/1";
-	/*
-	 * Идентификатор протокола HTTP/1.1
-	 */
-	static constexpr char HTTP1_1[] = "\x8http/1.1";
 };
 
 /**
@@ -398,11 +387,11 @@ namespace ssl {
 	 * @param keySize размер ключа для копирования
 	 * @return        результат переключения протокола
 	 */
-	static bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, const char * key, uint32_t keySize) noexcept {
+	static bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, const uint8_t inSize, const uint8_t * key, const uint8_t keySize) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Выполняем перебор всех данных в входящем буфере
-		for(uint32_t i = 0; (i + keySize) <= inSize; i += (uint32_t) (in[i] + 1)){
+		for(uint8_t i = 0; (i + keySize) <= inSize; i += static_cast <uint8_t> (in[i] + 1)){
 			// Если данные ключа скопированны удачно
 			if((result = (::memcmp(&in[i], key, keySize) == 0))){
 				// Выполняем установку размеров исходящего буфера
@@ -436,9 +425,9 @@ namespace ssl {
 				// Получаем объект контекста модуля
 				::member_t * ctx = reinterpret_cast <::member_t *> (ctx);
 				// Выполняем установку буфера данных
-				(* data) = ctx->support.data();
+				(* data) = ctx->alpn.buffer.data();
 				// Выполняем установку размер буфера данных протокола
-				(* len) = static_cast <uint32_t> (ctx->support.size());
+				(* len) = static_cast <uint32_t> (ctx->alpn.buffer.size());
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
 			}
@@ -461,20 +450,23 @@ namespace ssl {
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
 				::member_t * ctx = reinterpret_cast <::member_t *> (ctx);
-				// Если протокол переключить получилось на HTTP/2
-				if(::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP3, static_cast <uint32_t> (::alpn::HTTP3[0])))
-					// Выводим результат
-					return SSL_TLSEXT_ERR_OK;
-				// Если протокол переключить получилось на HTTP/2
-				else if(::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP2, static_cast <uint32_t> (::alpn::HTTP2[0])))
-					// Выводим результат
-					return SSL_TLSEXT_ERR_OK;
-				// Если протокол переключить не получилось
-				else {
-					// Выполняем переключение протокола обратно на HTTP/1.1
-					::ssl::selectProto(out, outSize, in, inSize, ::alpn::HTTP1_1, static_cast <uint32_t> (::alpn::HTTP1_1[0]));
-					// Выполняем переключение протокола на HTTP/1.1
-					ctx->alpn = tls_t::alpn_t::HTTP;
+				// Размер и индекс протокола
+				uint8_t size = 0, index = 0;
+				// Выполняем перебор всех поддерживаемых протоколов
+				for(uint8_t i = 0; i < ctx->alpn.buffer.size(); i++){
+					// Получаем размер протокола
+					size = ctx->alpn.buffer[i];
+					// Если протокол переключить получилось на HTTP/2
+					if(::ssl::selectProto(out, outSize, in, static_cast <uint8_t> (inSize), &ctx->alpn.buffer[i], size + 1)){
+						// Выполняем переключение протокола на HTTP/1.1
+						ctx->alpn.id = ctx->alpn.ids[index];
+						// Выводим результат
+						return SSL_TLSEXT_ERR_OK;
+					}
+					// Переходим к следующему протоколу
+					i += size;
+					// Увеличиваем индекс протокола
+					index++;
 				}
 			}
 			// Выводим результат
@@ -501,20 +493,23 @@ namespace ssl {
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
 				::member_t * ctx = reinterpret_cast <::member_t *> (ctx);
-				// Если протокол переключить получилось на HTTP/2
-				if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP3, static_cast <uint32_t> (::alpn::HTTP3[0])))
-					// Выводим результат
-					return SSL_TLSEXT_ERR_OK;
-				// Если протокол переключить получилось на HTTP/2
-				else if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP2, static_cast <uint32_t> (::alpn::HTTP2[0])))
-					// Выводим результат
-					return SSL_TLSEXT_ERR_OK;
-				// Если протокол переключить не получилось
-				else {
-					// Выполняем переключение протокола обратно на HTTP/1.1
-					::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, ::alpn::HTTP1_1, static_cast <uint32_t> (::alpn::HTTP1_1[0]));
-					// Выполняем переключение протокола на HTTP/1.1
-					ctx->alpn = tls_t::alpn_t::HTTP;
+				// Размер и индекс протокола
+				uint8_t size = 0, index = 0;
+				// Выполняем перебор всех поддерживаемых протоколов
+				for(uint8_t i = 0; i < ctx->alpn.buffer.size(); i++){
+					// Получаем размер протокола
+					size = ctx->alpn.buffer[i];
+					// Если протокол переключить получилось на HTTP/2
+					if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, static_cast <uint8_t> (inSize), &ctx->alpn.buffer[i], size + 1)){
+						// Выполняем переключение протокола на HTTP/1.1
+						ctx->alpn.id = ctx->alpn.ids[index];
+						// Выводим результат
+						return SSL_TLSEXT_ERR_OK;
+					}
+					// Переходим к следующему протоколу
+					i += size;
+					// Увеличиваем индекс протокола
+					index++;
 				}
 			}
 			// Выводим результат
@@ -1377,40 +1372,6 @@ namespace verify {
 string awh::TransportLayerSecurity::version() const noexcept {
 	// Возвращаем версию OpenSSL
 	return ::OpenSSL_version(OPENSSL_VERSION);
-}
-/**
- * @brief Метод извлечения активного протокола
- *
- * @param id идентификатор события
- * @return   метод активного протокола
- */
-awh::TransportLayerSecurity::alpn_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем извлечение активного протокола
-		return reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->alpn;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем значение по умолчанию
-	return alpn_t::NONE;
 }
 /**
  * @brief Метод получения общей информации о TLS соединении
@@ -2387,6 +2348,36 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 				}
 				// Выводим результат
 				return result;
+			}
+		}
+		// Если узел является клиентом
+		if(member->node == event::node_t::CLIENT){
+			// Длина извлекаемого протокола
+			uint32_t length = 0;
+			// Название извлекаемого протокола
+			const uint8_t * proto = nullptr;
+			// Выполняем извлечение активного протокола
+			::SSL_get0_alpn_selected(member->ssl, &proto, &length);
+			// Размер и индекс протокола
+			uint8_t size = 0, index = 0;
+			// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
+			for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
+				// Извлекаем размер протокола
+				size = member->alpn.buffer[i];
+				// Если размер протокола совпадает с длиной извлекаемого протокола
+				if(size == static_cast <uint8_t> (length)){
+					// Если протокол совпадает с извлекаемым протоколом
+					if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
+						// Устанавливаем активный протокол
+						member->alpn.id = member->alpn.ids[index];
+						// Выход из цикла
+						break;
+					}
+				}
+				// Смещаем индекс на размер протокола
+				i += size;
+				// Увеличиваем индекс протокола
+				index++;
 			}
 		}
 		// Если рукопожатие выполнено успешно
@@ -3367,6 +3358,147 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 	}
 }
 /**
+ * @brief Метод извлечения активного протокола
+ *
+ * @param id идентификатор события
+ * @return   метод активного протокола
+ */
+int8_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if(i != ::__awh_ssl_ids__.end())
+			// Выполняем извлечение активного протокола
+			return reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->alpn.id;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return -1;
+}
+/**
+ * @brief Метод установки поддерживаемых ALPN-протоколов
+ *
+ * @param id   идентификатор события
+ * @param alpn список поддерживаемых ALPN-протоколов
+ * @param aid  идентификатор выбранного ALPN-протокола
+ */
+void awh::TransportLayerSecurity::alpn(const id_t id, const map <int8_t, string> & alpn, const int8_t aid) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если список поддерживаемых ALPN-протоколов не пустой
+		if(!alpn.empty()){
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			auto i = ::__awh_ssl_ids__.find(id);
+			// Если идентификатор контекста TLS найден
+			if(i != ::__awh_ssl_ids__.end()){
+				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
+				member->alpn.ids.clear();
+				// Выполняем сброс буфера поддерживаемых ALPN-протоколов
+				member->alpn.buffer.clear();
+				/**
+				 * Выполняем перебор всего списка поддерживаемых ALPN-протоколов
+				 */
+				for(const auto & item : alpn){
+					// Добавляем идентификатор протокола в список поддерживаемых протоколов
+					member->alpn.ids.push_back(item.first);
+					// Добавляем в буфер длину названия протокола
+					member->alpn.buffer.push_back(static_cast <uint8_t> (item.second.size()));
+					// Добавляем в буфер название протокола
+					member->alpn.buffer.insert(member->alpn.buffer.end(), item.second.begin(), item.second.end());
+				}
+				// Если идентификатор выбранного ALPN-протокола передан
+				if(aid != -1)
+					// Устанавливаем выбранный ALPN-протокол
+					member->alpn.id = static_cast <uint8_t> (aid);
+				// Если идентификатор выбранного ALPN-протокола не передан
+				else member->alpn.id = member->alpn.ids.front();
+				/**
+				 * Определяем узел события к которому относится контекст TLS
+				 */
+				switch(static_cast <uint8_t> (member->node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						/**
+						 * @brief собран без следующих переговорщиков по протоколам
+						 *
+						 */
+						#ifndef OPENSSL_NO_NEXTPROTONEG
+							// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
+							::SSL_CTX_set_next_proto_select_cb(member->ctx, &::ssl::clientNextProtoSelect, member);
+						#endif // !OPENSSL_NO_NEXTPROTONEG
+						/**
+						 * Если версия OpenSSL соответствует или выше версии 1.0.2
+						 */
+						#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+							// Выполняем установку доступных протоколов передачи данных
+							::SSL_set_alpn_protos(member->ssl, member->alpn.buffer.data(), static_cast <uint32_t> (member->alpn.buffer.size()));
+						#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						/**
+						 * @brief собран без следующих переговорщиков по протоколам
+						 *
+						 */
+						#ifndef OPENSSL_NO_NEXTPROTONEG
+							// Выполняем установку функцию обратного вызова при выборе следующего протокола
+							::SSL_CTX_set_next_protos_advertised_cb(member->ctx, &::ssl::nextProto, member);
+						#endif // !OPENSSL_NO_NEXTPROTONEG
+						/**
+						 * Если версия OpenSSL соответствует или выше версии 1.0.2
+						 */
+						#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+							// Устанавливаем функцию обратного вызова для переключения протокола на другой
+							::SSL_CTX_set_alpn_select_cb(member->ctx, &::ssl::serverNextProtoSelect, member);
+						#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alpn.size(), static_cast <int16_t> (aid)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод установки функции обратного вывода получения данных
  *
  * @param id       идентификатор события
@@ -3578,10 +3710,9 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
  *
  * @param node  тип узла события
  * @param proto тип протокола события
- * @param alpn  поддерживаемый ALPN-протокол
  * @return      идентификатор контекста TLS
  */
-awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const event::node_t node, const event::protocol_t proto, const alpn_t alpn) noexcept {
+awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const event::node_t node, const event::protocol_t proto) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**
@@ -3592,8 +3723,6 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 		const locker_t lock(::__awh_ssl_mtx__);
 		// Создаём новый уровень защищённых сокетов и добавляем его в контейнер
 		auto ret = ::__awh_ssl_members__.emplace(::make_unique <::member_t> ());
-		// Устанавливаем поддерживаемый ALPN-протокол
-		(* ret.first)->alpn = alpn;
 		// Устанавливаем тип узла события
 		(* ret.first)->node = node;
 		// Устанавливаем тип протокола события
@@ -3653,8 +3782,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Context SSL is not initialization: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -3717,8 +3845,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								"Set SSL CURVEs list failed: %s", __PRETTY_FUNCTION__,
 								std::make_tuple(
 									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto),
-									static_cast <uint16_t> (alpn)
+									static_cast <uint16_t> (proto)
 								), log_t::flag_t::CRITICAL, buffer
 							);
 						/**
@@ -3754,8 +3881,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								"Set new SSL CURVE name failed: %s", __PRETTY_FUNCTION__,
 								std::make_tuple(
 									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto),
-									static_cast <uint16_t> (alpn)
+									static_cast <uint16_t> (proto)
 								), log_t::flag_t::CRITICAL, buffer
 							);
 						/**
@@ -3775,66 +3901,6 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Выполняем очистку объекта кривой
 					::EC_KEY_free(ecdh);
 				#endif
-				/**
-				 * Определяем поддерживаемый ALPN-протокол
-				 */
-				switch(static_cast <uint8_t> (alpn)){
-					// Если протокол соответствует SPDY
-					case static_cast <uint8_t> (alpn_t::SPDY): {
-						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-					// Если протокол соответствует HTTP/1.1
-					case static_cast <uint8_t> (alpn_t::HTTP): {
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-					// Если протокол соответствует HTTP/2.0
-					case static_cast <uint8_t> (alpn_t::HTTP2): {
-						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
-						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-					// Если протокол соответствует HTTP/3.0
-					case static_cast <uint8_t> (alpn_t::HTTP3): {
-						// Устанавливаем идентификатор протокола HTTP/3
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP3, ::alpn::HTTP3 + (static_cast <uint16_t> (::alpn::HTTP3[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
-						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-				}
-				/**
-				 * @brief собран без следующих переговорщиков по протоколам
-				 *
-				 */
-				#ifndef OPENSSL_NO_NEXTPROTONEG
-					// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
-					::SSL_CTX_set_next_proto_select_cb((* ret.first)->ctx, &::ssl::clientNextProtoSelect, (* ret.first).get());
-				#endif // !OPENSSL_NO_NEXTPROTONEG
-				/**
-				 * Если версия OpenSSL соответствует или выше версии 1.0.2
-				 */
-				#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-					// Выполняем установку доступных протоколов передачи данных
-					::SSL_CTX_set_alpn_protos((* ret.first)->ctx, (* ret.first)->support.data(), static_cast <uint32_t> ((* ret.first)->support.size()));
-				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Устанавливаем все основные алгоритмы шифрования
 				if(::SSL_CTX_set_cipher_list((* ret.first)->ctx, ::__awh_ssl_ciphers__.c_str()) != 1){
 					// Буфер данных для получения сообщения об ошибке
@@ -3850,8 +3916,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Set SSL ciphers: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -3893,8 +3958,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Could not create TLS session object: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -3934,8 +3998,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Create BIO is failed: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4019,8 +4082,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Context SSL is not initialization: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4085,8 +4147,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Set SSL ciphers: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4120,8 +4181,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								"Set SSL CURVEs list failed: %s", __PRETTY_FUNCTION__,
 								std::make_tuple(
 									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto),
-									static_cast <uint16_t> (alpn)
+									static_cast <uint16_t> (proto)
 								), log_t::flag_t::CRITICAL, buffer
 							);
 						/**
@@ -4157,8 +4217,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								"Set new SSL CURVE name failed: %s", __PRETTY_FUNCTION__,
 								std::make_tuple(
 									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto),
-									static_cast <uint16_t> (alpn)
+									static_cast <uint16_t> (proto)
 								), log_t::flag_t::CRITICAL, buffer
 							);
 						/**
@@ -4178,66 +4237,6 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Выполняем очистку объекта кривой
 					::EC_KEY_free(ecdh);
 				#endif
-				/**
-				 * Определяем поддерживаемый ALPN-протокол
-				 */
-				switch(static_cast <uint8_t> (alpn)){
-					// Если протокол соответствует SPDY
-					case static_cast <uint8_t> (alpn_t::SPDY): {
-						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-					// Если протокол соответствует HTTP/1.1
-					case static_cast <uint8_t> (alpn_t::HTTP): {
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-					// Если протокол соответствует HTTP/2.0
-					case static_cast <uint8_t> (alpn_t::HTTP2): {
-						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
-						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-					// Если протокол соответствует HTTP/3.0
-					case static_cast <uint8_t> (alpn_t::HTTP3): {
-						// Устанавливаем идентификатор протокола HTTP/3
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP3, ::alpn::HTTP3 + (static_cast <uint16_t> (::alpn::HTTP3[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/2
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP2, ::alpn::HTTP2 + (static_cast <uint16_t> (::alpn::HTTP2[0]) + 1));
-						// Устанавливаем идентификатор протокола SPDY/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::SPDY, ::alpn::SPDY + (static_cast <uint16_t> (::alpn::SPDY[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP, ::alpn::HTTP + (static_cast <uint16_t> (::alpn::HTTP[0]) + 1));
-						// Устанавливаем идентификатор протокола HTTP/1.1
-						(* ret.first)->support.insert((* ret.first)->support.end(), ::alpn::HTTP1_1, ::alpn::HTTP1_1 + (static_cast <uint16_t> (::alpn::HTTP1_1[0]) + 1));
-					} break;
-				}
-				/**
-				 * @brief собран без следующих переговорщиков по протоколам
-				 *
-				 */
-				#ifndef OPENSSL_NO_NEXTPROTONEG
-					// Выполняем установку функцию обратного вызова при выборе следующего протокола
-					::SSL_CTX_set_next_protos_advertised_cb((* ret.first)->ctx, &::ssl::nextProto, (* ret.first).get());
-				#endif // !OPENSSL_NO_NEXTPROTONEG
-				/**
-				 * Если версия OpenSSL соответствует или выше версии 1.0.2
-				 */
-				#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-					// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
-					::SSL_CTX_set_alpn_select_cb((* ret.first)->ctx, &::ssl::serverNextProtoSelect, (* ret.first).get());
-				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Выполняем установку идентификатора сессии
 				if(::SSL_CTX_set_session_id_context((* ret.first)->ctx, reinterpret_cast <const uint8_t *> (&result), sizeof(result)) != 1){
 					// Буфер данных для получения сообщения об ошибке
@@ -4253,8 +4252,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Failed to set session ID: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4284,8 +4282,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Set SSL ECDH: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4352,8 +4349,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Could not create TLS session object: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4393,8 +4389,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							"Create BIO is failed: %s", __PRETTY_FUNCTION__,
 							std::make_tuple(
 								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto),
-								static_cast <uint16_t> (alpn)
+								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, buffer
 						);
 					/**
@@ -4444,8 +4439,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						"Invalid event node type", __PRETTY_FUNCTION__,
 						std::make_tuple(
 							static_cast <uint16_t> (node),
-							static_cast <uint16_t> (proto),
-							static_cast <uint16_t> (alpn)
+							static_cast <uint16_t> (proto)
 						), log_t::flag_t::WARNING
 					);
 				/**
@@ -4470,8 +4464,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				"%s", __PRETTY_FUNCTION__,
 				std::make_tuple(
 					static_cast <uint16_t> (node),
-					static_cast <uint16_t> (proto),
-					static_cast <uint16_t> (alpn)
+					static_cast <uint16_t> (proto)
 				), log_t::flag_t::CRITICAL, error.what()
 			);
 		/**

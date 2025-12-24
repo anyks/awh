@@ -61,8 +61,13 @@ int32_t main(int32_t argc, char * argv[]){
 		bool stop = false;
 		// Регистрируем объект транспортного уровня безопасности
 		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::TCP);
+		// Устанавливаем ALPN протоколы TLS
+		tls.alpn(tid, map <int8_t, string> {{0,"http/1.1"}}, 0);
+		// tls.alpn(tid, map <int8_t, string> {{0,"http/1.1"},{1,"h2"},{2,"h3"}}, 2);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
+			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!! " << (u_short) tls.alpn(id) << endl;
 			// Текст запроса к серверу
 			const string request =
 				"GET / HTTP/1.1\r\n"
