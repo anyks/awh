@@ -69,7 +69,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Включаем проверку имени хоста TLS
 		tls.validateHostname(tid, false);
 		// Устанавливаем имя хоста TLS
-		// tls.hostname(tid, "contms.ru");
+		tls.hostname(tid, "contms.ru");
 		// Устанавливаем клиентский сертификат TLS
 		tls.certificate(tid, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS

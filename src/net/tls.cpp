@@ -242,6 +242,8 @@ namespace {
 			X509_CRL * crl;
 			// Объект состояния
 			uint8_t state;
+			// Идентификатор узла-приёмника
+			uint64_t dest;
 			// Объект ALPN-протоколов
 			alpn_t alpn;
 			// Объект хоста
@@ -296,7 +298,8 @@ namespace {
 	Member::Member() noexcept :
 	 ssl(nullptr),
 	 rbio(nullptr), wbio(nullptr),
-	 ctx(nullptr), crl(nullptr), state(0),
+	 ctx(nullptr), crl(nullptr),
+	 state(0), dest(0),
 	 node(event::node_t::NONE),
 	 proto(event::protocol_t::NONE) {}
 	/**
@@ -324,17 +327,13 @@ namespace {
  */
 namespace state {
 	/**
-	 * Флаг активации режима подмены сертификатов
-	 */
-	static constexpr uint8_t SPLICE_MODE = 0x01;
-	/**
 	 * Флаг выполненного рукопожатия TLS
 	 */
-	static constexpr uint8_t HANDSHAKE_MODE = 0x02;
+	static constexpr uint8_t HANDSHAKE_MODE = 0x01;
 	/**
 	 * Флаг проверки имени хоста сервера
 	 */
-	static constexpr uint8_t CERTIFICATE_VERIFY = 0x04;
+	static constexpr uint8_t CERTIFICATE_VERIFY = 0x02;
 };
 
 /**
@@ -798,7 +797,7 @@ namespace cookie {
 	 */
 	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
-		auto * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Если печенки еще не проинициализированны
 		if(!member->cookie.initialized){
 			// Выполняем произвольно генерацию байт в буфере печенок
@@ -930,7 +929,7 @@ namespace cookie {
 	 */
 	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
-		auto * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Если печенки не проинициализированы, значит куки не валидные
 		if(!member->cookie.initialized)
 			// Выходим из функции
@@ -1126,19 +1125,33 @@ namespace verify {
 	 * @param ctx контекст модуля
 	 * @return    результат обработки
 	 */
-	static int32_t matchSNI(SSL * ssl, int32_t * al, void * ctx) noexcept {
+	static int32_t matchSNI([[maybe_unused]] SSL * ssl, int32_t * al, void * ctx) noexcept {
+		// Результат работы функции
+		int32_t result = SSL_TLSEXT_ERR_NOACK;
 		// Получаем название хоста (SNI) от клиента
 		const char * sni = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+		// Получаем объект контекста модуля
+		auto member = reinterpret_cast <::member_t *> (ctx);
+		// Если идентификатор узла-приёмника установлен
+		if(member->dest > 0){
+			// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
+			auto i = ::__awh_ssl_ids__.find(member->dest);
+			// Если идентификатор контекста TLS найден
+			if(i != ::__awh_ssl_ids__.end()){
+				// Выполняем подмену сертификата на основной
+				::SSL_set_SSL_CTX(ssl, reinterpret_cast <::member_t *> (static_cast <uintptr_t> (member->dest))->ctx);
+				// Устанавливаем результат обработки
+				result = SSL_TLSEXT_ERR_OK;
+			}
+		}
 		// Если SNI получен
 		if(sni != nullptr){
 			// Сохраняем полученное имя хоста
-			reinterpret_cast <::member_t *> (ctx)->host.name = sni;
-			// Выводим результат обработки
-			return SSL_TLSEXT_ERR_OK;
+			member->host.name = sni;
+			// Устанавливаем результат обработки
+			result = SSL_TLSEXT_ERR_OK;
 		// Если SNI не получен
-		} else {
-			// Получаем объект контекста модуля
-			auto member = reinterpret_cast <::member_t *> (ctx);
+		} else if(result == SSL_TLSEXT_ERR_NOACK) {
 			// Выполняем получение идентификатора контекста TLS
 			const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
 			// Получаем текст ошибки
@@ -1167,7 +1180,7 @@ namespace verify {
 			}
 		}
 		// Выводим результат
-		return SSL_TLSEXT_ERR_NOACK;
+		return result;
 	}
 	/**
 	 * @brief Функция проверки доменного имени по шаблону
@@ -2295,38 +2308,41 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 				const locker_t lock(member->mtx);
 				// Устанавливаем хост для уровня защищённых сокетов
 				member->host.name = hostname;
-				// Устанавливаем имя хоста для SNI расширения
-				::SSL_set_tlsext_host_name(member->ssl, member->host.name.c_str());
-				/**
-				 * Если версия OpenSSL соответствует или выше версии 1.1.1
-				 */
-				#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-					// Устанавливаем имя хоста для проверки
-					::SSL_set1_host(member->ssl, member->host.name.c_str());
-				#endif
-				// Активируем верификацию доменного имени
-				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), member->host.name.c_str(), 0) != 1){
-					// Получаем текст ошибки
-					const string error = ::ssl::error(id, "Host SSL verification failed");
-					// Если функция обратного вызова ошибки установлена
-					if(member->callback.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
-					// Если функция обратного вызова ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.c_str());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
+				// Если узел является клиентом
+				if(member->node == event::node_t::CLIENT){
+					// Устанавливаем имя хоста для SNI расширения
+					::SSL_set_tlsext_host_name(member->ssl, member->host.name.c_str());
+					/**
+					 * Если версия OpenSSL соответствует или выше версии 1.1.1
+					 */
+					#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+						// Устанавливаем имя хоста для проверки
+						::SSL_set1_host(member->ssl, member->host.name.c_str());
+					#endif
+					// Активируем верификацию доменного имени
+					if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), member->host.name.c_str(), 0) != 1){
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Host SSL verification failed");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
 					}
 				}
 			}
@@ -2349,6 +2365,55 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+}
+/**
+ * @brief Метод перемещения данных между узлами TLS
+ *
+ * @param tid  идентификатор узла-источника
+ * @param dest идентификатор узла-приёмника
+ * @return     результат выполнения перемещения
+ */
+bool awh::TransportLayerSecurity::splice(const id_t tid, const id_t dest) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(tid);
+		// Если идентификатор контекста TLS найден
+		if(i != ::__awh_ssl_ids__.end()){
+			// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
+			auto i = ::__awh_ssl_ids__.find(dest);
+			// Если идентификатор контекста TLS найден
+			if(i != ::__awh_ssl_ids__.end()){
+				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (tid));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
+				// Устанавливаем идентификатор узла-приёмника
+				member->dest = dest;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tid, dest), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем отрицательный результат
+	return false;
 }
 /**
  * @brief Метод установки адреса и порта отдалённого узла

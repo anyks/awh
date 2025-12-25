@@ -20673,9 +20673,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 /**
  * @brief Метод перемещения данных между событиями
  *
- * @param eid идентификатор события-источника
+ * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
- * @return    результат выполнения перемещения
+ * @return     результат выполнения перемещения
  */
 bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**

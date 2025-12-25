@@ -166,6 +166,15 @@ namespace awh {
 			void hostname(const id_t id, const string & hostname) noexcept;
 		public:
 			/**
+			 * @brief Метод перемещения данных между узлами TLS
+			 *
+			 * @param tid  идентификатор узла-источника
+			 * @param dest идентификатор узла-приёмника
+			 * @return     результат выполнения перемещения
+			 */
+			bool splice(const id_t tid, const id_t dest) noexcept;
+		public:
+			/**
 			 * @brief Метод установки адреса и порта отдалённого узла
 			 *
 			 * @param id   идентификатор события

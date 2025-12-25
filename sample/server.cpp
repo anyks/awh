@@ -56,8 +56,6 @@ int32_t main(int32_t argc, char * argv[]){
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
-		// Флаг выполнения рукопожатия TLS
-		bool handshake = false;
 		// Регистрируем объект транспортного уровня безопасности
 		tls_t::id_t tid = tls.create(event::node_t::SERVER, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
@@ -71,12 +69,11 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем приватный ключ TLS
 		tls.privateKey(tid, "../sh/certificates/server/key.pem");
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		tls.on(tid, [&handshake, &tls, &log](const tls_t::id_t id) noexcept -> void {
-			// Устанавливаем флаг выполнения рукопожатия TLS
-			handshake = true;
+		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
 			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
 			cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
+			cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.hostname(id) << endl << endl;
 			cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 			cout << "Версия OpenSSL: " << tls.version() << endl << endl;
 			cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;

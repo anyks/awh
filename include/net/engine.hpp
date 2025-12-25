@@ -210,11 +210,11 @@ namespace awh {
 			/**
 			 * @brief Метод перемещения данных между событиями
 			 *
-			 * @param eid идентификатор события-источника
-			 * @param dst идентификатор события-приёмника
-			 * @return    результат выполнения перемещения
+			 * @param eid  идентификатор события-источника
+			 * @param dest идентификатор события-приёмника
+			 * @return     результат выполнения перемещения
 			 */
-			virtual bool splice(const event::id_t eid, const event::id_t dst) noexcept = 0;
+			virtual bool splice(const event::id_t eid, const event::id_t dest) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения информационных метаданных SCTP сообщения
