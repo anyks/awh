@@ -149,13 +149,21 @@ namespace awh {
 			 * @param mode режим проверки хоста сервера
 			 */
 			void validateHostname(const id_t id, const bool mode) noexcept;
+		public:
+			/**
+			 * @brief Метод получения имени хоста сервера
+			 *
+			 * @param id идентификатор события
+			 * @return   имя хоста сервера
+			 */
+			string hostname(const id_t id) const noexcept;
 			/**
 			 * @brief Метод установки имени хоста сервера
 			 *
 			 * @param id       идентификатор события
 			 * @param hostname имя хоста сервера
 			 */
-			void setHostname(const id_t id, const string & hostname) noexcept;
+			void hostname(const id_t id, const string & hostname) noexcept;
 		public:
 			/**
 			 * @brief Метод установки адреса и порта отдалённого узла

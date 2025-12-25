@@ -240,12 +240,12 @@ namespace {
 			SSL_CTX * ctx;
 			// Объект CRL-файла сертификата
 			X509_CRL * crl;
+			// Объект состояния
+			uint8_t state;
 			// Объект ALPN-протоколов
 			alpn_t alpn;
 			// Объект хоста
 			host_t host;
-			// Объект состояния
-			state_t state;
 			// Объект печенок SSL
 			cookie_t cookie;
 			// Объект обратных вызовов
@@ -296,7 +296,7 @@ namespace {
 	Member::Member() noexcept :
 	 ssl(nullptr),
 	 rbio(nullptr), wbio(nullptr),
-	 ctx(nullptr), crl(nullptr),
+	 ctx(nullptr), crl(nullptr), state(0),
 	 node(event::node_t::NONE),
 	 proto(event::protocol_t::NONE) {}
 	/**
@@ -317,6 +317,24 @@ namespace {
 			// Удаляем объект SSL контекста
 			::SSL_CTX_free(this->ctx);
 	}
+};
+
+/**
+ * Инкапсулируем статические типы данных в пространство имён
+ */
+namespace state {
+	/**
+	 * Флаг активации режима подмены сертификатов
+	 */
+	static constexpr uint8_t SPLICE_MODE = 0x01;
+	/**
+	 * Флаг выполненного рукопожатия TLS
+	 */
+	static constexpr uint8_t HANDSHAKE_MODE = 0x02;
+	/**
+	 * Флаг проверки имени хоста сервера
+	 */
+	static constexpr uint8_t CERTIFICATE_VERIFY = 0x04;
 };
 
 /**
@@ -780,7 +798,7 @@ namespace cookie {
 	 */
 	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
-		::member_t * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		auto * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Если печенки еще не проинициализированны
 		if(!member->cookie.initialized){
 			// Выполняем произвольно генерацию байт в буфере печенок
@@ -912,7 +930,7 @@ namespace cookie {
 	 */
 	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
-		::member_t * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		auto * member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Если печенки не проинициализированы, значит куки не валидные
 		if(!member->cookie.initialized)
 			// Выходим из функции
@@ -1099,6 +1117,57 @@ namespace verify {
 		}
 		// Выводим результат
 		return result;
+	}
+	/**
+	 * @brief Функция обработки SNI от клиента
+	 *
+	 * @param ssl объект SSL
+	 * @param al  указатель на код ошибки
+	 * @param ctx контекст модуля
+	 * @return    результат обработки
+	 */
+	static int32_t matchSNI(SSL * ssl, int32_t * al, void * ctx) noexcept {
+		// Получаем название хоста (SNI) от клиента
+		const char * sni = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+		// Если SNI получен
+		if(sni != nullptr){
+			// Сохраняем полученное имя хоста
+			reinterpret_cast <::member_t *> (ctx)->host.name = sni;
+			// Выводим результат обработки
+			return SSL_TLSEXT_ERR_OK;
+		// Если SNI не получен
+		} else {
+			// Получаем объект контекста модуля
+			auto member = reinterpret_cast <::member_t *> (ctx);
+			// Выполняем получение идентификатора контекста TLS
+			const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+			// Получаем текст ошибки
+			const string error = ::ssl::error(id, "SNI is not set by client");
+			// Если функция обратного вызова ошибки установлена
+			if(member->callback.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки
+				member->callback.error(id, awh::tls_t::error_t::WARNING, error);
+			// Если функция обратного вызова ошибки не установлена
+			else {
+				// Получаем объект логирования
+				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
+				#endif
+			}
+		}
+		// Выводим результат
+		return SSL_TLSEXT_ERR_NOACK;
 	}
 	/**
 	 * @brief Функция проверки доменного имени по шаблону
@@ -1290,7 +1359,7 @@ namespace verify {
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::member_t *> (ctx);
 			// Если проверка сертификата не требуется
-			if(!member->state.certificate)
+			if(!(member->state & state::CERTIFICATE_VERIFY))
 				// Выводим сообщение, что проверка пройдена
 				return ::verify::certificate(1, store);
 			// Если проверка сертификата прошла удачно
@@ -2116,8 +2185,12 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
 			const locker_t lock(member->mtx);
-			// Устанавливаем режим проверки сертификата
-			member->state.certificate = mode;
+			// Если режим проверки хоста суревра установлен
+			if(mode)
+				// Устанавливаем режим проверки сертификата
+				member->state |= state::CERTIFICATE_VERIFY;
+			// Снимаем режим проверки сертификата
+			else member->state &= ~state::CERTIFICATE_VERIFY;
 			/**
 			 * Определяем узел события к которому относится контекст TLS
 			 */
@@ -2125,7 +2198,7 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если нужно произвести проверку
-					if(member->state.certificate)
+					if(member->state & state::CERTIFICATE_VERIFY)
 						// Активируем проверку сертификата сервера
 						::SSL_set_verify(member->ssl, SSL_VERIFY_PEER, &::verify::certificate);
 					// Деактивируем проверку сертификата сервера
@@ -2134,7 +2207,7 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Если нужно произвести проверку
-					if(member->state.certificate)
+					if(member->state & state::CERTIFICATE_VERIFY)
 						// Выполняем проверку сертификата клиента
 						::SSL_set_verify(member->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &::verify::certificate);
 					// Запрещаем выполнять првоерку доменного имени
@@ -2162,12 +2235,50 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 	}
 }
 /**
+ * @brief Метод получения имени хоста сервера
+ *
+ * @param id идентификатор события
+ * @return   имя хоста сервера
+ */
+string awh::TransportLayerSecurity::hostname(const id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if(i != ::__awh_ssl_ids__.end())
+			// Выполняем извлечение имени хоста сервера
+			return reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->host.name;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем пустую строку
+	return "";
+}
+/**
  * @brief Метод установки имени хоста сервера
  *
  * @param id       идентификатор события
  * @param hostname имя хоста сервера
  */
-void awh::TransportLayerSecurity::setHostname(const id_t id, const string & hostname) noexcept {
+void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostname) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -2386,13 +2497,13 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 		// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 		// Если рукопожатие ещё не выполнено
-		if(!(result = member->state.handshake)){
+		if(!(result = (member->state & state::HANDSHAKE_MODE))){
 			// Выполняем блокировку потоков
 			const locker_t lock(member->mtx);
 			// Выполняем TLS рукопожатие
 			const int32_t handshake = ::SSL_do_handshake(member->ssl);
 			// Если рукопожатие не выполнено
-			if(!(result = member->state.handshake = (handshake == 1))){
+			if(!(result = (handshake == 1))){
 				// Получаем код ошибки
 				const int32_t error = ::SSL_get_error(member->ssl, handshake);
 				// Если ошибка не связана с необходимостью повторного чтения или записи
@@ -2446,41 +2557,43 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 				// Выводим результат
 				return result;
 			}
-		}
-		// Если узел является клиентом
-		if(member->node == event::node_t::CLIENT){
-			// Длина извлекаемого протокола
-			uint32_t length = 0;
-			// Название извлекаемого протокола
-			const uint8_t * proto = nullptr;
-			// Выполняем извлечение активного протокола
-			::SSL_get0_alpn_selected(member->ssl, &proto, &length);
-			// Размер и индекс протокола
-			uint8_t size = 0, index = 0;
-			// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
-			for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
-				// Извлекаем размер протокола
-				size = member->alpn.buffer[i];
-				// Если размер протокола совпадает с длиной извлекаемого протокола
-				if(size == static_cast <uint8_t> (length)){
-					// Если протокол совпадает с извлекаемым протоколом
-					if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
-						// Устанавливаем активный протокол
-						member->alpn.id = member->alpn.ids[index];
-						// Выход из цикла
-						break;
+			// Устанавливаем режим выполненного рукопожатия
+			member->state |= state::HANDSHAKE_MODE;
+			// Если узел является клиентом
+			if(member->node == event::node_t::CLIENT){
+				// Длина извлекаемого протокола
+				uint32_t length = 0;
+				// Название извлекаемого протокола
+				const uint8_t * proto = nullptr;
+				// Выполняем извлечение активного протокола
+				::SSL_get0_alpn_selected(member->ssl, &proto, &length);
+				// Размер и индекс протокола
+				uint8_t size = 0, index = 0;
+				// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
+				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
+					// Извлекаем размер протокола
+					size = member->alpn.buffer[i];
+					// Если размер протокола совпадает с длиной извлекаемого протокола
+					if(size == static_cast <uint8_t> (length)){
+						// Если протокол совпадает с извлекаемым протоколом
+						if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
+							// Устанавливаем активный протокол
+							member->alpn.id = member->alpn.ids[index];
+							// Выход из цикла
+							break;
+						}
 					}
+					// Смещаем индекс на размер протокола
+					i += size;
+					// Увеличиваем индекс протокола
+					index++;
 				}
-				// Смещаем индекс на размер протокола
-				i += size;
-				// Увеличиваем индекс протокола
-				index++;
 			}
+			// Если рукопожатие выполнено успешно
+			if(member->callback.handshake != nullptr)
+				// Вызываем функцию обратного вызова успешного выполнения рукопожатия
+				member->callback.handshake(id);
 		}
-		// Если рукопожатие выполнено успешно
-		if(member->callback.handshake != nullptr)
-			// Вызываем функцию обратного вызова успешного выполнения рукопожатия
-			member->callback.handshake(id);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2522,7 +2635,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если рукопожатие выполнено успешно
-			if(member->state.handshake){
+			if(member->state & state::HANDSHAKE_MODE){
 				// Выполняем блокировку потоков
 				const locker_t lock(member->mtx);
 				/**
@@ -2724,7 +2837,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 					}
 				#endif
 				// Если рукопожатие ещё не выполнено
-				if(!member->state.handshake)
+				if(!(member->state & state::HANDSHAKE_MODE))
 					// Выполняем рукопожатие TLS
 					result = this->handshake(id);
 				// Если у нас есть подготовленные данные для чтения
@@ -4547,6 +4660,10 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Устанавливаем функцию обратного вызова для переключения протокола на другой
 					::SSL_CTX_set_alpn_select_cb((* ret.first)->ctx, &::ssl::serverNextProtoSelect, (* ret.first).get());
 				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+				// Устанавливаем функцию обратного вызова для обработки SNI
+				::SSL_CTX_set_tlsext_servername_callback((* ret.first)->ctx, &::verify::matchSNI);
+				// Устанавливаем аргумент функции обратного вызова для обработки SNI
+				::SSL_CTX_set_tlsext_servername_arg((* ret.first)->ctx, (* ret.first).get());
 				// Создаем SSL объект
 				(* ret.first)->ssl = ::SSL_new((* ret.first)->ctx);
 				// Если объект не создан

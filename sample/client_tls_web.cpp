@@ -70,8 +70,8 @@ int32_t main(int32_t argc, char * argv[]){
 		// Включаем проверку имени хоста TLS
 		// tls.validateHostname(tid, false);
 		// Устанавливаем имя хоста TLS
-		// tls.setHostname(tid, "contms.ru");
-		tls.setHostname(tid, "www.google.com");
+		// tls.hostname(tid, "contms.ru");
+		tls.hostname(tid, "www.google.com");
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
 			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
