@@ -271,8 +271,10 @@ int32_t main(int32_t argc, char * argv[]){
 				if(io.options(cid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
 					cout << " Выполнено подключение: " << io.address(cid, event::address_t::IPV4) << ":" << io.port(cid) << endl;
+					// Регистрируем объект транспортного уровня безопасности
+					tls_t::id_t tid2 = tls.create(event::node_t::SERVER, event::protocol_t::TCP);
 					// Устанавливаем клиента TLS для события
-					tls.peer(tid, io.address(cid, event::address_t::IPV4), io.port(cid));
+					tls.peer(tid2, io.address(cid, event::address_t::IPV4), io.port(cid));
 					// Регистрируем функцию обратного вызова на чтение данных TLS
 					tls.on(tid, [cid, &tls, &io, &log](const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 						/**
@@ -380,12 +382,14 @@ int32_t main(int32_t argc, char * argv[]){
 							break;
 						}
 					});
+					// Копируем настройки TLS из основного контекста TLS
+					tls.splice(tid2, tid);
 					// Если рукопожатие TLS успешно
-					if(tls.handshake(tid))
+					if(tls.handshake(tid2))
 						// Выводим сообщение о начале рукопожатия TLS
-						log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, tid);
+						log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, tid2);
 					// Если рукопожатие TLS не выполнено
-					else log.print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
+					else log.print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid2);
 				// Выводим сообщение об ошибке установки опций события
 				} else cout << " Ошибка установки опций события!" << endl;
 			}));
