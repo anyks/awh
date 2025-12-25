@@ -15,6 +15,7 @@
 /**
  * Стандартные модули
  */
+#include <map>
 #include <ctime>
 #include <atomic>
 #include <memory>
@@ -108,20 +109,30 @@ namespace {
 	 */
 	bool __awh_ssl_initialized__ = false;
 	/**
-	 * @brief Глобальный набор идентификаторов контекстов TLS
-	 *
-	 */
-	unordered_set <uint64_t> __awh_ssl_ids__;
-	/**
-	 * @brief Мьютекс для синхронизации потоков
-	 *
-	 */
-	awh::lock_state_t <mutex> __awh_ssl_mtx__;
-	/**
 	 * @brief Индексы для хранения состояний проверки куков
 	 *
 	 */
 	int32_t __awh_ssl_index__[3] = {-1, -1, -1};
+	/**
+	 * @brief Мьютекс для синхронизации потоков сплайса контекстов TLS
+	 *
+	 */
+	awh::lock_state_t <mutex> __awh_ssl_splice_mtx__;
+	/**
+	 * @brief Мьютекс для синхронизации потоков участников
+	 *
+	 */
+	awh::lock_state_t <mutex> __awh_ssl_members_mtx__;
+	/**
+	 * @brief Глобальный набор идентификаторов контекстов TLS
+	 *
+	 */
+	unordered_set <awh::tls_t::id_t> __awh_ssl_ids__;
+	/**
+	 * @brief Глобальная карта сплайса контекстов TLS
+	 *
+	 */
+	map <pair <awh::event::protocol_t, string>, awh::tls_t::id_t> __awh_ssl_splice_map_;
 };
 
 /**
@@ -242,8 +253,6 @@ namespace {
 			X509_CRL * crl;
 			// Объект состояния
 			uint8_t state;
-			// Идентификатор узла-приёмника
-			uint64_t dest;
 			// Объект ALPN-протоколов
 			alpn_t alpn;
 			// Объект хоста
@@ -287,7 +296,7 @@ namespace {
 	 */
 	void Member::erase(members_t & members) noexcept {
 		// Выполняем блокировку потоков
-		const locker_t lock(::__awh_ssl_mtx__);
+		const locker_t lock(::__awh_ssl_members_mtx__);
 		// Удаляем уровень защищённых сокетов из контейнера
 		members.erase(this->iterator);
 	}
@@ -296,10 +305,9 @@ namespace {
 	 *
 	 */
 	Member::Member() noexcept :
-	 ssl(nullptr),
-	 rbio(nullptr), wbio(nullptr),
-	 ctx(nullptr), crl(nullptr),
-	 state(0), dest(0),
+	 ssl(nullptr), rbio(nullptr),
+	 wbio(nullptr), ctx(nullptr),
+	 crl(nullptr), state(0),
 	 node(event::node_t::NONE),
 	 proto(event::protocol_t::NONE) {}
 	/**
@@ -331,9 +339,13 @@ namespace state {
 	 */
 	static constexpr uint8_t HANDSHAKE_MODE = 0x01;
 	/**
+	 * Флаг мультисертификатов
+	 */
+	static constexpr uint8_t MULTICERT_MODE = 0x02;
+	/**
 	 * Флаг проверки имени хоста сервера
 	 */
-	static constexpr uint8_t CERTIFICATE_VERIFY = 0x02;
+	static constexpr uint8_t CERTIFICATE_VERIFY = 0x04;
 };
 
 /**
@@ -459,7 +471,7 @@ namespace ssl {
 			// Если объекты переданы верно
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
-				auto member = reinterpret_cast <::member_t *> (ctx);
+				auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 				// Выполняем установку буфера данных
 				(* data) = member->alpn.buffer.data();
 				// Выполняем установку размер буфера данных протокола
@@ -487,7 +499,7 @@ namespace ssl {
 				// Размер и индекс протокола
 				uint8_t size = 0, index = 0;
 				// Получаем объект контекста модуля
-				auto member = reinterpret_cast <::member_t *> (ctx);
+				auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 				// Выполняем перебор всех поддерживаемых протоколов
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
@@ -530,7 +542,7 @@ namespace ssl {
 				// Размер и индекс протокола
 				uint8_t size = 0, index = 0;
 				// Получаем объект контекста модуля
-				auto member = reinterpret_cast <::member_t *> (ctx);
+				auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 				// Выполняем перебор всех поддерживаемых протоколов
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
@@ -1132,26 +1144,31 @@ namespace verify {
 		const char * sni = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 		// Получаем объект контекста модуля
 		auto member = reinterpret_cast <::member_t *> (ctx);
-		// Если идентификатор узла-приёмника установлен
-		if(member->dest > 0){
-			// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(member->dest);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
-				// Выполняем подмену сертификата на основной
-				::SSL_set_SSL_CTX(ssl, reinterpret_cast <::member_t *> (static_cast <uintptr_t> (member->dest))->ctx);
+		// Если SNI получен
+		if(sni != nullptr){
+			// Если установлен режим работы с несколькими сертификатами TLS
+			if(member->state & state::MULTICERT_MODE){
+				// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
+				auto i = ::__awh_ssl_splice_map_.find(make_pair(member->proto, string{sni}));
+				// Если запись найдена
+				if(i != ::__awh_ssl_splice_map_.end()){
+					// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
+					if(::__awh_ssl_ids__.find(i->second) != ::__awh_ssl_ids__.end()){
+						// Выполняем подмену сертификата на основной
+						::SSL_set_SSL_CTX(ssl, reinterpret_cast <::member_t *> (static_cast <uintptr_t> (i->second))->ctx);
+						// Устанавливаем результат обработки
+						result = SSL_TLSEXT_ERR_OK;
+					}
+				}
+			// Если режим работы с несколькими сертификатами TLS не установлен
+			} else {
+				// Сохраняем полученное имя хоста
+				member->host.name = sni;
 				// Устанавливаем результат обработки
 				result = SSL_TLSEXT_ERR_OK;
 			}
-		}
-		// Если SNI получен
-		if(sni != nullptr){
-			// Сохраняем полученное имя хоста
-			member->host.name = sni;
-			// Устанавливаем результат обработки
-			result = SSL_TLSEXT_ERR_OK;
 		// Если SNI не получен
-		} else if(result == SSL_TLSEXT_ERR_NOACK) {
+		} else {
 			// Выполняем получение идентификатора контекста TLS
 			const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
 			// Получаем текст ошибки
@@ -1372,9 +1389,21 @@ namespace verify {
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::member_t *> (ctx);
 			// Если проверка сертификата не требуется
-			if(!(member->state & state::CERTIFICATE_VERIFY))
-				// Выводим сообщение, что проверка пройдена
-				return ::verify::certificate(1, store);
+			if(!(member->state & state::CERTIFICATE_VERIFY)){
+				/**
+				 * Определяем узел события к которому относится контекст TLS
+				 */
+				switch(static_cast <uint8_t> (member->node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Выводим сообщение, что проверка пройдена
+						return ::verify::certificate(1, store);
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Выводим сообщение, что проверка пройдена
+						return 1;
+				}
+			}
 			// Если проверка сертификата прошла удачно
 			if((result = ::X509_verify_cert(store)) != 1){
 				// Если произошла ошибка несоответствия имени хоста
@@ -1562,9 +1591,7 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если версия OpenSSL не соответствует указанной при сборке
@@ -1658,22 +1685,65 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 			}
 			// Если объект подключения создан и сертификат передан
 			if(member->ssl != nullptr){
-				// Выполняем получение сертификата сервера
-				X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
-				// Если сертификат сервера получен
-				if(x509 != nullptr){
-					// Буфер данных для получения данных
-					char buffer[256];
-					// Получаем название сертификата
-					::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
-					// Формируем результат
-					result = ::move(this->_fmk->format("%sPeer certificates:\nSubject: %s\n", result.c_str(), buffer));
-					// Получаем эмитента выпустившего сертификат
-					::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
-					// Формируем результат
-					result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
-					// Выводим параметры шифрования
-					result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+				/**
+				 * Определяем узел события к которому относится контекст TLS
+				 */
+				switch(static_cast <uint8_t> (member->node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Буфер данных для получения данных
+						char buffer[256];
+						// Выполняем получение сертификата сервера
+						X509 * x509 = ::SSL_get_certificate(member->ssl);
+						// Если сертификат сервера получен
+						if(x509 != nullptr){
+							// Получаем название сертификата
+							::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+							// Формируем результат
+							result = ::move(this->_fmk->format("%sClient peer certificates:\nSubject: %s\n", result.c_str(), buffer));
+							// Получаем эмитента выпустившего сертификат
+							::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+							// Формируем результат
+							result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+							// Выводим параметры шифрования
+							result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+						}
+						// Выполняем получение сертификата сервера
+						x509 = ::SSL_get_peer_certificate(member->ssl);
+						// Если сертификат сервера получен
+						if(x509 != nullptr){
+							// Получаем название сертификата
+							::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+							// Формируем результат
+							result = ::move(this->_fmk->format("%s\nServer peer certificates:\nSubject: %s\n", result.c_str(), buffer));
+							// Получаем эмитента выпустившего сертификат
+							::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+							// Формируем результат
+							result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+							// Выводим параметры шифрования
+							result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Выполняем получение сертификата сервера
+						X509 * x509 = ::SSL_get_certificate(member->ssl);
+						// Если сертификат сервера получен
+						if(x509 != nullptr){
+							// Буфер данных для получения данных
+							char buffer[256];
+							// Получаем название сертификата
+							::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+							// Формируем результат
+							result = ::move(this->_fmk->format("%sPeer certificates:\nSubject: %s\n", result.c_str(), buffer));
+							// Получаем эмитента выпустившего сертификат
+							::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+							// Формируем результат
+							result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+							// Выводим параметры шифрования
+							result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+						}
+					} break;
 				}
 			}
 			// Если объект CRL-файла сертификата создан
@@ -1781,9 +1851,7 @@ string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end())
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end())
 			// Выполняем извлечение информации о шифре
 			return ::SSL_CIPHER_get_name(::SSL_get_current_cipher(reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->ssl));
 	/**
@@ -1821,25 +1889,49 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
-			// Получить сертификат клиента (на сервере) или сервера (на клиенте)
-			X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
-			// Если сертификат получен
-			if(x509 != nullptr){
-				// Буфер данных для получения данных
-				char buffer[256];
-				// Получаем название сертификата
-				::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
-				// Формируем результат
-				result = ::move(this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer));
-				// Получаем эмитента выпустившего сертификат
-				::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
-				// Формируем результат
-				result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+			/**
+			 * Определяем узел события к которому относится контекст TLS
+			 */
+			switch(static_cast <uint8_t> (member->node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получить сертификат клиента (на сервере) или сервера (на клиенте)
+					X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
+					// Если сертификат получен
+					if(x509 != nullptr){
+						// Буфер данных для получения данных
+						char buffer[256];
+						// Получаем название сертификата
+						::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+						// Формируем результат
+						result = ::move(this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer));
+						// Получаем эмитента выпустившего сертификат
+						::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+						// Формируем результат
+						result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Выполняем получение сертификата сервера
+					X509 * x509 = ::SSL_get_certificate(member->ssl);
+					// Если сертификат сервера получен
+					if(x509 != nullptr){
+						// Буфер данных для получения данных
+						char buffer[256];
+						// Получаем название сертификата
+						::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+						// Формируем результат
+						result = ::move(this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer));
+						// Получаем эмитента выпустившего сертификат
+						::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+						// Формируем результат
+						result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+					}
+				} break;
 			}
 		}
 	/**
@@ -1877,9 +1969,7 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Если объект CRL-файла сертификата создан
@@ -1987,9 +2077,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Шаг 1: Получить сертификат
@@ -2191,9 +2279,7 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
@@ -2248,6 +2334,110 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 	}
 }
 /**
+ * @brief Метод получения режима работы TLS
+ *
+ * @param id идентификатор события
+ * @return   режим работы TLS
+ */
+awh::TransportLayerSecurity::mode_t awh::TransportLayerSecurity::mode(const id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Если установлен режим работы с несколькими сертификатами TLS
+			if(reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->state & state::MULTICERT_MODE)
+				// Возвращаем режим работы с несколькими сертификатами TLS
+				return mode_t::MULTICERT;
+			// Возвращаем режим работы с одним сертификатом TLS
+			else return mode_t::UNICERT;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем режим работы TLS по умолчанию
+	return mode_t::NONE;
+}
+/**
+ * @brief Метод установки режима работы TLS
+ *
+ * @param id   идентификатор события
+ * @param mode режим работы TLS
+ */
+void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
+			/**
+			 * Определяем режим работы TLS
+			 */
+			switch(static_cast <uint8_t> (mode)){
+				// Если режим работы с одним сертификатом TLS
+				case static_cast <uint8_t> (mode_t::UNICERT): {
+					// Снимаем режим работы с несколькими сертификатами TLS
+					member->state &= ~state::MULTICERT_MODE;
+					// Если название хоста уже установлено
+					if(!member->host.name.empty()){
+						// Выполняем блокировку глобальных потоков
+						const locker_t lock(::__awh_ssl_splice_mtx__);
+						// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
+						auto i = ::__awh_ssl_splice_map_.find(make_pair(member->proto, member->host.name));
+						// Если запись найдена
+						if(i != ::__awh_ssl_splice_map_.end())
+							// Удаляем старую запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
+							::__awh_ssl_splice_map_.erase(i);
+					}
+				} break;
+				// Если режим работы с несколькими сертификатами TLS
+				case static_cast <uint8_t> (mode_t::MULTICERT):
+					// Устанавливаем режим работы с несколькими сертификатами TLS
+					member->state |= state::MULTICERT_MODE;
+				break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод получения имени хоста сервера
  *
  * @param id идентификатор события
@@ -2259,9 +2449,7 @@ string awh::TransportLayerSecurity::hostname(const id_t id) const noexcept {
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end())
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end())
 			// Выполняем извлечение имени хоста сервера
 			return reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->host.name;
 	/**
@@ -2299,52 +2487,76 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 		// Если имя хоста сервера не пустое
 		if(!hostname.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
 				const locker_t lock(member->mtx);
+				/**
+				 * Определяем узел события к которому относится контекст TLS
+				 */
+				switch(static_cast <uint8_t> (member->node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Устанавливаем имя хоста для SNI расширения
+						::SSL_set_tlsext_host_name(member->ssl, hostname.c_str());
+						/**
+						 * Если версия OpenSSL соответствует или выше версии 1.1.1
+						 */
+						#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+							// Устанавливаем имя хоста для проверки
+							::SSL_set1_host(member->ssl, hostname.c_str());
+						#endif
+						// Активируем верификацию доменного имени
+						if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), hostname.c_str(), 0) != 1){
+							// Получаем текст ошибки
+							const string error = ::ssl::error(id, "Host SSL verification failed");
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, error_t::CRITICAL, error);
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.c_str());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+								#endif
+							}
+							// Выходим из функции
+							return;
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Если установлен режим работы с несколькими сертификатами TLS
+						if(member->state & state::MULTICERT_MODE){
+							// Выполняем блокировку глобальных потоков
+							const locker_t lock(::__awh_ssl_splice_mtx__);
+							// Если название хоста уже установлено
+							if(!member->host.name.empty()){
+								// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
+								auto i = ::__awh_ssl_splice_map_.find(make_pair(member->proto, member->host.name));
+								// Если запись найдена
+								if(i != ::__awh_ssl_splice_map_.end())
+									// Удаляем старую запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
+									::__awh_ssl_splice_map_.erase(i);
+							}
+							// Добавляем новую запись в глобальную карту сопоставления имён хостов и идентификаторов узлов TLS
+							::__awh_ssl_splice_map_.emplace(make_pair(member->proto, hostname), id);
+						}
+					} break;
+				}
 				// Устанавливаем хост для уровня защищённых сокетов
 				member->host.name = hostname;
-				// Если узел является клиентом
-				if(member->node == event::node_t::CLIENT){
-					// Устанавливаем имя хоста для SNI расширения
-					::SSL_set_tlsext_host_name(member->ssl, member->host.name.c_str());
-					/**
-					 * Если версия OpenSSL соответствует или выше версии 1.1.1
-					 */
-					#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-						// Устанавливаем имя хоста для проверки
-						::SSL_set1_host(member->ssl, member->host.name.c_str());
-					#endif
-					// Активируем верификацию доменного имени
-					if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), member->host.name.c_str(), 0) != 1){
-						// Получаем текст ошибки
-						const string error = ::ssl::error(id, "Host SSL verification failed");
-						// Если функция обратного вызова ошибки установлена
-						if(member->callback.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, error);
-						// Если функция обратного вызова ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.c_str());
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-							#endif
-						}
-					}
-				}
 			}
 		}
 	/**
@@ -2367,55 +2579,6 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 	}
 }
 /**
- * @brief Метод перемещения данных между узлами TLS
- *
- * @param tid  идентификатор узла-источника
- * @param dest идентификатор узла-приёмника
- * @return     результат выполнения перемещения
- */
-bool awh::TransportLayerSecurity::splice(const id_t tid, const id_t dest) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(tid);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
-			// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(dest);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
-				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (tid));
-				// Выполняем блокировку потоков
-				const locker_t lock(member->mtx);
-				// Устанавливаем идентификатор узла-приёмника
-				member->dest = dest;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tid, dest), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем отрицательный результат
-	return false;
-}
-/**
  * @brief Метод установки адреса и порта отдалённого узла
  *
  * @param id   идентификатор события
@@ -2431,9 +2594,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 		// Если IP-адрес сервера не пустой и порт сервера задан верно
 		if((!ip.empty()) && (port > 0)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
@@ -2984,15 +3145,13 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Устанавливаем режим безопасности потоков
 			member->mtx.enabled = (mode == event::mode_t::ENABLED);
 			// Устанавливаем глобальный режим безопасности потоков
-			::__awh_ssl_mtx__.enabled = (mode == event::mode_t::ENABLED);
+			::__awh_ssl_members_mtx__.enabled = (mode == event::mode_t::ENABLED);
 		}
 	/**
 	 * Если возникает ошибка
@@ -3027,9 +3186,7 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 		// Если список алгоритмов шифрования не пустой
 		if(!ciphers.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Результирующая строка алгоритмов шифрования
 				string result = "";
 				// Формируем строку алгоритмов шифрования
@@ -3108,63 +3265,118 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 		// Если адрес файла сертификата не пустой
 		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
 				const locker_t lock(member->mtx);
-				// Если приватный ключ не может быть установлен
-				if(::SSL_use_PrivateKey_file(member->ssl, filename.c_str(), SSL_FILETYPE_PEM) != 1){
-					// Получаем текст ошибки
-					const string error = ::ssl::error(id, "Private key cannot be set");
-					// Если функция обратного вызова ошибки установлена
-					if(member->callback.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
-					// Если функция обратного вызова ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
+				// Если установлен режим работы с несколькими сертификатами TLS
+				if(member->state & state::MULTICERT_MODE){
+					// Если приватный ключ не может быть установлен
+					if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Private key cannot be set");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+						// Выходим
+						return;
 					}
-					// Выходим
-					return;
-				}
-				// Если приватный ключ недействителен
-				if(::SSL_check_private_key(member->ssl) != 1){
-					// Получаем текст ошибки
-					const string error = ::ssl::error(id, "Private key is not valid");
-					// Если функция обратного вызова ошибки установлена
-					if(member->callback.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
-					// Если функция обратного вызова ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
+					// Если приватный ключ недействителен
+					if(::SSL_CTX_check_private_key(member->ctx) != 1){
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Private key is not valid");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+					}
+				// Если режим работы с несколькими сертификатами TLS не установлен
+				} else {
+					// Если приватный ключ не может быть установлен
+					if(::SSL_use_PrivateKey_file(member->ssl, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Private key cannot be set");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+						// Выходим
+						return;
+					}
+					// Если приватный ключ недействителен
+					if(::SSL_check_private_key(member->ssl) != 1){
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Private key is not valid");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
 					}
 				}
 			}
@@ -3202,9 +3414,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 		// Если адрес файла сертификата не пустой
 		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
@@ -3243,29 +3453,59 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Если сертификат не устанавливается
-						if(::SSL_use_certificate_chain_file(member->ssl, filename.c_str()) != 1){
-							// Получаем текст ошибки
-							const string error = ::ssl::error(id, "Certificate cannot be set");
-							// Если функция обратного вызова ошибки установлена
-							if(member->callback.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
-								/**
-								* Если режим отладки не включён
-								*/
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-								#endif
+						// Если установлен режим работы с несколькими сертификатами TLS
+						if(member->state & state::MULTICERT_MODE){
+							// Если сертификат не устанавливается
+							if(::SSL_CTX_use_certificate_chain_file(member->ctx, filename.c_str()) != 1){
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "Certificate cannot be set");
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, error_t::CRITICAL, error);
+								// Если функция обратного вызова ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							}
+						// Если режим работы с несколькими сертификатами TLS не установлен
+						} else {
+							// Если сертификат не устанавливается
+							if(::SSL_use_certificate_chain_file(member->ssl, filename.c_str()) != 1){
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "Certificate cannot be set");
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, error_t::CRITICAL, error);
+								// Если функция обратного вызова ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
 							}
 						}
 					} break;
@@ -3305,9 +3545,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 		// Если адрес файла сертификата не пустой
 		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
@@ -3436,9 +3674,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
@@ -3539,9 +3775,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end()){
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
@@ -3685,9 +3919,7 @@ uint8_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end())
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end())
 			// Выполняем извлечение активного протокола
 			return reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->alpn.id;
 	/**
@@ -3725,11 +3957,11 @@ void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & al
 		// Если список поддерживаемых ALPN-протоколов не пустой
 		if(!alpn.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			auto i = ::__awh_ssl_ids__.find(id);
-			// Если идентификатор контекста TLS найден
-			if(i != ::__awh_ssl_ids__.end()){
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+				// Выполняем блокировку потоков
+				const locker_t lock(member->mtx);
 				// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
 				member->alpn.ids.clear();
 				// Выполняем сброс буфера поддерживаемых ALPN-протоколов
@@ -3793,11 +4025,14 @@ bool awh::TransportLayerSecurity::on(const id_t id, read_callback_t callback) no
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if((result = (i != ::__awh_ssl_ids__.end())))
+		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Устанавливаем функцию обратного вызова получения данных
-			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->callback.read = ::move(callback);
+			member->callback.read = ::move(callback);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3834,11 +4069,14 @@ bool awh::TransportLayerSecurity::on(const id_t id, write_callback_t callback) n
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if((result = (i != ::__awh_ssl_ids__.end())))
+		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Устанавливаем функцию обратного вызова передачи данных
-			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->callback.write = ::move(callback);
+			member->callback.write = ::move(callback);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3875,11 +4113,14 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if((result = (i != ::__awh_ssl_ids__.end())))
+		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Устанавливаем функцию обратного вызова получения ошибок
-			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->callback.error = ::move(callback);
+			member->callback.error = ::move(callback);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3916,11 +4157,14 @@ bool awh::TransportLayerSecurity::on(const id_t id, handshake_callback_t callbac
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
-		// Если идентификатор контекста TLS найден
-		if((result = (i != ::__awh_ssl_ids__.end())))
+		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
 			// Устанавливаем функцию обратного вызова выполнения рукопожатия
-			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->callback.handshake = ::move(callback);
+			member->callback.handshake = ::move(callback);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3961,8 +4205,21 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 		if((result = (i != ::__awh_ssl_ids__.end()))){
 			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
 			::__awh_ssl_ids__.erase(i);
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Если название хоста уже установлено
+			if(!member->host.name.empty()){
+				// Выполняем блокировку глобальных потоков
+				const locker_t lock(::__awh_ssl_splice_mtx__);
+				// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
+				auto i = ::__awh_ssl_splice_map_.find(make_pair(member->proto, member->host.name));
+				// Если запись найдена
+				if(i != ::__awh_ssl_splice_map_.end())
+					// Удаляем старую запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
+					::__awh_ssl_splice_map_.erase(i);
+			}
 			// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-			reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->erase(::__awh_ssl_members__);
+			member->erase(::__awh_ssl_members__);
 		}
 	/**
 	 * Если возникает ошибка
@@ -4000,7 +4257,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 	 */
 	try {
 		// Выполняем блокировку потоков
-		const locker_t lock(::__awh_ssl_mtx__);
+		const locker_t lock(::__awh_ssl_members_mtx__);
 		// Создаём новый уровень защищённых сокетов и добавляем его в контейнер
 		auto ret = ::__awh_ssl_members__.emplace(::make_unique <::member_t> ());
 		// Устанавливаем тип узла события
@@ -4700,8 +4957,6 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						// Выполняем генерацию файлов печенок
 						::SSL_CTX_set_cookie_generate_cb((* ret.first)->ctx, &::cookie::generate);
 					} break;
-					// Если протокол подключения TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP):
 					// Если протокол подключения SCTP
 					case static_cast <uint8_t> (event::protocol_t::SCTP): {
 						// Выполняем проверку файлов печенок

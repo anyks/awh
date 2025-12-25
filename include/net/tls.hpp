@@ -39,6 +39,14 @@ namespace awh {
 	typedef class TransportLayerSecurity {
 		public:
 			/**
+			 * Режимы работы TLS
+			 */
+			enum class mode_t : uint8_t {
+				NONE      = 0x00, // Режим не установлен
+				UNICERT   = 0x01, // Режим единственного сертификата
+				MULTICERT = 0x02  // Режим мультисертификатов
+			};
+			/**
 			 * Флаги типов ошибок TLS
 			 */
 			enum class error_t : uint8_t {
@@ -151,6 +159,21 @@ namespace awh {
 			void validateHostname(const id_t id, const bool mode) noexcept;
 		public:
 			/**
+			 * @brief Метод получения режима работы TLS
+			 *
+			 * @param id идентификатор события
+			 * @return   режим работы TLS
+			 */
+			mode_t mode(const id_t id) const noexcept;
+			/**
+			 * @brief Метод установки режима работы TLS
+			 *
+			 * @param id   идентификатор события
+			 * @param mode режим работы TLS
+			 */
+			void mode(const id_t id, const mode_t mode) noexcept;
+		public:
+			/**
 			 * @brief Метод получения имени хоста сервера
 			 *
 			 * @param id идентификатор события
@@ -164,15 +187,6 @@ namespace awh {
 			 * @param hostname имя хоста сервера
 			 */
 			void hostname(const id_t id, const string & hostname) noexcept;
-		public:
-			/**
-			 * @brief Метод перемещения данных между узлами TLS
-			 *
-			 * @param tid  идентификатор узла-источника
-			 * @param dest идентификатор узла-приёмника
-			 * @return     результат выполнения перемещения
-			 */
-			bool splice(const id_t tid, const id_t dest) noexcept;
 		public:
 			/**
 			 * @brief Метод установки адреса и порта отдалённого узла

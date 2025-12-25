@@ -63,13 +63,13 @@ int32_t main(int32_t argc, char * argv[]){
 		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
 		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"}});
-		// tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"},{1,"h2"},{2,"h3"}});
+		// tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
 		tls.ca(tid, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
 		tls.validateHostname(tid, false);
 		// Устанавливаем имя хоста TLS
-		tls.hostname(tid, "contms.ru");
+		tls.hostname(tid, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
 		tls.certificate(tid, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
