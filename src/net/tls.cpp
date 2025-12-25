@@ -660,10 +660,10 @@ namespace ssl {
 		static void notifications(BIO * bio, void * ctx, void * buffer) noexcept {
 			// Если данные переданы
 			if((bio != nullptr) && (ctx != nullptr) && (buffer != nullptr)){
-				// Создаём объект событий SCTP
-				union sctp_notification * snp = reinterpret_cast <union sctp_notification *> (buffer);
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::member_t *> (ctx);
+				// Создаём объект событий SCTP
+				union sctp_notification * snp = reinterpret_cast <union sctp_notification *> (buffer);
 				// Получаем объект логирования
 				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
 				/**

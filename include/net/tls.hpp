@@ -51,9 +51,9 @@ namespace awh {
 			 *
 			 */
 			enum class event_t : uint8_t {
-				NONE        = 0x00, // Событие не установлено
-				ENCRYPTION  = 0x01, // Событие шифрования данных
-				DECRYPTION  = 0x02  // Событие расшифровки данных
+				NONE       = 0x00, // Событие не установлено
+				ENCRYPTION = 0x01, // Событие шифрования данных
+				DECRYPTION = 0x02  // Событие расшифровки данных
 			};
 		public:
 			/**
