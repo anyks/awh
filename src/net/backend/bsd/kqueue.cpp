@@ -2683,6 +2683,8 @@ namespace io {
 						peer->state.type = node->state.type;
 						// Устанавливаем семейство события
 						peer->state.family = node->state.family;
+						// Устанавливаем тип адреса события
+						peer->state.address = node->state.address;
 						// Устанавливаем протокол сокета
 						peer->state.protocol = node->state.protocol;
 						// Если протокол интернета установлен как SCTP

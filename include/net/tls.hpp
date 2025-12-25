@@ -16,11 +16,6 @@
 #define __AWH_SSL_ENGINE__
 
 /**
- * Стандартные модули
- */
-#include <map>
-
-/**
  * Наши модули
  */
 #include "addr.hpp"
@@ -60,6 +55,17 @@ namespace awh {
 				ENCRYPTION  = 0x01, // Событие шифрования данных
 				DECRYPTION  = 0x02  // Событие расшифровки данных
 			};
+		public:
+			/**
+			 * @brief Структура ALPN-протокола
+			 *
+			 */
+			typedef struct ALPN {
+				// Идентификатор ALPN-протокола
+				uint8_t id = 0;
+				// Название ALPN-протокола
+				string protocol = "";
+			} alpn_t;
 		public:
 			/**
 			 * @brief Тип идентификатора события
@@ -106,15 +112,6 @@ namespace awh {
 			 * @return   общая информация о TLS соединении
 			 */
 			string info(const id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод получения информации о списке отзыва сертификатов
-			 *
-			 * @param id идентификатор события
-			 * @return   информация о списке отзыва сертификатов
-			 */
-			string crlInfo(const id_t id) const noexcept;
-		public:
 			/**
 			 * @brief Метод получения информации о шифре
 			 *
@@ -122,7 +119,6 @@ namespace awh {
 			 * @return   информация о шифре
 			 */
 			string cipherInfo(const id_t id) const noexcept;
-		public:
 			/**
 			 * @brief Метод получения информации о сертификате
 			 *
@@ -130,6 +126,13 @@ namespace awh {
 			 * @return   информация о сертификате
 			 */
 			string certificateInfo(const id_t id) const noexcept;
+			/**
+			 * @brief Метод получения информации о списке отзыва сертификатов
+			 *
+			 * @param id идентификатор события
+			 * @return   информация о списке отзыва сертификатов
+			 */
+			string certificateRevocationListInfo(const id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки валидности сертификата
@@ -208,13 +211,6 @@ namespace awh {
 			void ciphers(const id_t id, const vector <string> & ciphers) noexcept;
 		public:
 			/**
-			 * @brief Метод установки списка отзыва сертификатов
-			 *
-			 * @param id       идентификатор события
-			 * @param filename адрес файла списка отзыва сертификатов
-			 */
-			void crl(const id_t id, const string & filename) noexcept;
-			/**
 			 * @brief Метод установки приватного ключа клиента
 			 *
 			 * @param id       идентификатор события
@@ -228,6 +224,13 @@ namespace awh {
 			 * @param filename адрес файла клиентского сертификата
 			 */
 			void certificate(const id_t id, const string & filename) noexcept;
+			/**
+			 * @brief Метод установки списка отзыва сертификатов
+			 *
+			 * @param id       идентификатор события
+			 * @param filename адрес файла списка отзыва сертификатов
+			 */
+			void certificateRevocationList(const id_t id, const string & filename) noexcept;
 		public:
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации
@@ -251,15 +254,14 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   метод активного протокола
 			 */
-			int8_t alpn(const id_t id) const noexcept;
+			uint8_t alpn(const id_t id) const noexcept;
 			/**
 			 * @brief Метод установки поддерживаемых ALPN-протоколов
 			 *
 			 * @param id   идентификатор события
 			 * @param alpn список поддерживаемых ALPN-протоколов
-			 * @param aid  идентификатор выбранного ALPN-протокола
 			 */
-			void alpn(const id_t id, const map <int8_t, string> & alpn, const int8_t aid = -1) noexcept;
+			void alpn(const id_t id, const vector <alpn_t> & alpn) noexcept;
 		public:
 			/**
 			 * @brief Метод установки функции обратного вывода получения данных
