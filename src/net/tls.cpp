@@ -454,7 +454,7 @@ namespace ssl {
 			return SSL_TLSEXT_ERR_NOACK;
 		}
 		/**
-		 * @brief Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
+		 * @brief Функция обратного вызова клиента для расширения ALPN TLS
 		 *
 		 * @param ssl     объект SSL
 		 * @param out     буфер исходящего протокола
@@ -475,9 +475,9 @@ namespace ssl {
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
 					size = member->alpn.buffer[i];
-					// Если протокол переключить получилось на HTTP/2
+					// Выполняем выбор протокола из входящего буфера
 					if(::ssl::selectProto(out, outSize, in, static_cast <uint8_t> (inSize), &member->alpn.buffer[i], size + 1)){
-						// Выполняем переключение протокола на HTTP/1.1
+						// Выполняем переключение на выбранный протокол
 						member->alpn.id = member->alpn.ids[index];
 						// Выводим результат
 						return SSL_TLSEXT_ERR_OK;
@@ -497,7 +497,7 @@ namespace ssl {
 	 */
 	#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 		/**
-		 * @brief Функция обратного вызова сервера для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
+		 * @brief Функция обратного вызова сервера для расширения ALPN TLS
 		 *
 		 * @param ssl     объект SSL
 		 * @param out     буфер исходящего протокола
@@ -518,9 +518,9 @@ namespace ssl {
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
 					size = member->alpn.buffer[i];
-					// Если протокол переключить получилось на HTTP/2
+					// Выполняем выбор протокола из входящего буфера
 					if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, static_cast <uint8_t> (inSize), &member->alpn.buffer[i], size + 1)){
-						// Выполняем переключение протокола на HTTP/1.1
+						// Выполняем переключение на выбранный протокол
 						member->alpn.id = member->alpn.ids[index];
 						// Выводим результат
 						return SSL_TLSEXT_ERR_OK;
