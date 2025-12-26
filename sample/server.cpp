@@ -246,8 +246,12 @@ int32_t main(int32_t argc, char * argv[]){
 						cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
 						cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
 						cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
+						// Выводим данные сертификата TLS
+						cout << "Certificate data:\n" << tls.extract(id) << endl << endl;
 						// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 						log.print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log_t::flag_t::INFO, id, tls.alpn(id));
+						// Выводим информацию о TLS соединении
+						cout << tls.print(id) << endl;
 						// Устанавливаем функцию обратного вызова на общее событие
 						io.on(cid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 							/**

@@ -122,6 +122,21 @@ namespace awh {
 			string version() const noexcept;
 		public:
 			/**
+			 * @brief Метод печати информации о TLS сертификате
+			 *
+			 * @param id идентификатор события
+			 * @return   информация о TLS сертификате
+			 */
+			string print(const id_t id) const noexcept;
+			/**
+			 * @brief Метод извлечения сертификата TLS
+			 *
+			 * @param id идентификатор события
+			 * @return   активный протокол
+			 */
+			string extract(const id_t id) const noexcept;
+		public:
+			/**
 			 * @brief Метод получения общей информации о TLS соединении
 			 *
 			 * @param id идентификатор события

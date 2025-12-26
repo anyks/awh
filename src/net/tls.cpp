@@ -1578,6 +1578,271 @@ string awh::TransportLayerSecurity::version() const noexcept {
 	return ::OpenSSL_version(OPENSSL_VERSION);
 }
 /**
+ * @brief Метод извлечения сертификата TLS
+ *
+ * @param id идентификатор события
+ * @return   активный протокол
+ */
+string awh::TransportLayerSecurity::extract(const id_t id) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Объект SSL сертификата
+			X509 * x509 = nullptr;
+			/**
+			 * Определяем узел события к которому относится контекст TLS
+			 */
+			switch(static_cast <uint8_t> (member->node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выполняем получение сертификата сервера
+					x509 = ::SSL_get_peer_certificate(member->ssl);
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выполняем получение сертификата сервера
+					x509 = ::SSL_get_certificate(member->ssl);
+				break;
+			}
+			// Если сертификат сервера получен
+			if(x509 != nullptr){
+				// Создаём объект BIO для записи сертификата
+				BIO * bio = ::BIO_new(::BIO_s_mem());
+				// Записываем сертификат в PEM формате в объект BIO
+				::PEM_write_bio_X509(bio, x509);
+				// Буффер для получения данных
+				char * buffer = nullptr;
+				// Извлекаем данные сертификата из BIO
+				const long size = ::BIO_get_mem_data(bio, &buffer);
+				// Если сертификат извлечён удачно
+				if(size > 0)
+					// Записываем результат
+					result.assign(buffer, static_cast <size_t> (size));
+				// Освобождаем объект BIO
+				::BIO_free(bio);
+				// Если узел является клиентом
+				if(member->node == event::node_t::CLIENT)
+					// Освобождаем объект сертификата
+					::X509_free(x509);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод печати информации о TLS сертификате
+ *
+ * @param id идентификатор события
+ * @return   информация о TLS сертификате
+ */
+string awh::TransportLayerSecurity::print(const id_t id) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Объект SSL сертификата
+			X509 * x509 = nullptr;
+			/**
+			 * Определяем узел события к которому относится контекст TLS
+			 */
+			switch(static_cast <uint8_t> (member->node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выполняем получение сертификата сервера
+					x509 = ::SSL_get_peer_certificate(member->ssl);
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выполняем получение сертификата сервера
+					x509 = ::SSL_get_certificate(member->ssl);
+				break;
+			}
+			// Если сертификат сервера получен
+			if(x509 != nullptr){
+				// Буфер данных для получения данных
+				char buffer[256];
+				// Добавляем заголовок цепочки сертификатов
+				result.append("---\nCertificate chain\n");
+				// Получаем эмитента субъекта сертификата
+				::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+				// Добавляем информацию о субъекте сертификата
+				result.append(this->_fmk->format(" 0 s:%s\n", buffer));
+				// Получаем эмитента выпустившего сертификат
+				::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+				// Добавляем информацию об эмитенте сертификата
+				result.append(this->_fmk->format("   i:%s\n", buffer));
+				// Извлекаем объект публичного ключа сертификата
+				EVP_PKEY * pubkey = ::X509_get0_pubkey(x509);
+				// Получаем тип публичного ключа
+				const int32_t pkeyType = ::EVP_PKEY_base_id(pubkey);
+				// Строковое представление публичного ключа
+				string pkey = "";
+				/**
+				 * Определяем тип публичного ключа
+				 */
+				switch(pkeyType){
+					// Если тип ключа RSA
+					case EVP_PKEY_RSA:
+						// Устанавливаем строковое представление ключа
+						pkey = "RSA";
+					break;
+					// Если тип ключа EC
+					case EVP_PKEY_EC:
+						// Устанавливаем строковое представление ключа
+						pkey = "EC";
+					break;
+					// Если тип ключа DSA
+					case EVP_PKEY_DSA:
+						// Устанавливаем строковое представление ключа
+						pkey = "DSA";
+					break;
+					// Если тип ключа DH
+					case EVP_PKEY_DH:
+						// Устанавливаем строковое представление ключа
+						pkey = "DH";
+					break;
+					// Если тип ключа ED25519
+					case EVP_PKEY_ED25519:
+						// Устанавливаем строковое представление ключа
+						pkey = "ED25519";
+					break;
+					// Если тип ключа ED448
+					case EVP_PKEY_ED448:
+						// Устанавливаем строковое представление ключа
+						pkey = "ED448";
+					break;
+					// Если тип ключа X25519
+					case EVP_PKEY_X25519:
+						// Устанавливаем строковое представление ключа
+						pkey = "X25519";
+					break;
+					// Если тип ключа X448
+					case EVP_PKEY_X448:
+						// Устанавливаем строковое представление ключа
+						pkey = "X448";
+					break;
+					// В иных случаях
+					default:
+						// Устанавливаем строковое представление ключа
+						pkey = "unknown";
+				}
+				// Добавляем информацию об алгоритме ключа и подписи
+				result.append(this->_fmk->format("   a:PKEY: %s, %d (bit); sigalg: %s\n", pkey.c_str(), ::EVP_PKEY_bits(pubkey), ::OBJ_nid2ln(::X509_get_signature_nid(x509))));
+				// Буферы для сроков действия
+				char bufferBefore[64], bufferAfter[64];
+				// Извлекаем объект срока окончания действия сертификата
+				const ASN1_TIME * after = ::X509_get0_notAfter(x509);
+				// Извлекаем объект срока начала действия сертификата
+				const ASN1_TIME * before = ::X509_get0_notBefore(x509);
+				// Создаём объект BIO для записи срока действия сертификата
+				BIO * bio = ::BIO_new(::BIO_s_mem());
+				// Извлекаем срока начала действия сертификата
+				::ASN1_TIME_print(bio, before);
+				// Извлекаем данные срока начала действия сертификата
+				int32_t length = ::BIO_gets(bio, bufferBefore, sizeof(bufferBefore));
+				// Выполняем сброс BIO
+				BIO_reset(bio);
+				// Извлекаем срока окончания действия сертификата
+				::ASN1_TIME_print(bio, after);
+				// Извлекаем данные срока окончания действия сертификата
+				length = ::BIO_gets(bio, bufferAfter, sizeof(bufferAfter));
+				// Выполняем сброс BIO
+				BIO_reset(bio);
+				// Добавляем информацию о сроках действия сертификата
+				result.append(this->_fmk->format("   v:NotBefore: %s; NotAfter: %s\n", bufferBefore, bufferAfter));
+				// Записываем сертификат в PEM формате в объект BIO
+				::PEM_write_bio_X509(bio, x509);
+				// Буффер для получения данных
+				char * certificate = nullptr;
+				// Извлекаем данные сертификата из BIO
+				const long size = ::BIO_get_mem_data(bio, &certificate);
+				// Если сертификат извлечён удачно
+				if(size > 0)
+					// Записываем результат
+					result.append(certificate, static_cast <size_t> (size));
+				// Освобождаем объект BIO
+				::BIO_free(bio);
+				// Добавляем заголовок сертификата сервера
+				result.append("---\nServer certificate\n");
+				// Получаем эмитента субъекта сертификата
+				::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
+				// Добавляем информацию о субъекте сертификата
+				result.append(this->_fmk->format("subject=%s\n", buffer));
+				// Получаем эмитента выпустившего сертификат
+				::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
+				// Добавляем информацию об эмитенте сертификата
+				result.append(this->_fmk->format("issuer=%s\n", buffer));
+				// Добавляем разделитель
+				result.append("---\n");
+				// Добавляем информацию о параметрах соединения
+				result.append(this->_fmk->format("New, %s, Cipher is %s\n", ::SSL_get_version(member->ssl), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+				// Добавляем информацию о протоколе
+				result.append(this->_fmk->format("Protocol: %s\n", ::SSL_get_version(member->ssl)));
+				// Добавляем информацию о публичном ключе сервера
+				result.append(this->_fmk->format("Server public key is %d bit\n", ::EVP_PKEY_bits(pubkey)));
+				// Извлекаем результат верификации
+				const long verify = ::SSL_get_verify_result(member->ssl);
+				// Добавляем информацию о результате верификации
+				result.append(this->_fmk->format("Verify return code: %d (%s)\n", verify, ::X509_verify_cert_error_string(verify)));
+				// Если узел является клиентом
+				if(member->node == event::node_t::CLIENT)
+					// Освобождаем объект сертификата
+					::X509_free(x509);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод получения общей информации о TLS соединении
  *
  * @param id идентификатор события
@@ -1722,6 +1987,8 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 							result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
 							// Выводим параметры шифрования
 							result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+							// Освобождаем объект сертификата
+							::X509_free(x509);
 						}
 					} break;
 					// Если узел является сервером
@@ -1912,6 +2179,8 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 						::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 						// Формируем результат
 						result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+						// Освобождаем объект сертификата
+						::X509_free(x509);
 					}
 				} break;
 				// Если узел является сервером
@@ -2243,6 +2512,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 					// Если размер имени и dns имя совпадает
 					ok = ::verify::certHostcheck(member->host.name, buffer);
 			}
+			// Освобождаем объект сертификата
+			::X509_free(x509);
 			// Возвращаем результат проверки
 			return ok;
 		}
