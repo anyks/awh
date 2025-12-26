@@ -425,6 +425,624 @@ namespace ssl {
 		return result;
 	}
 	/**
+	 * @brief Функция обратного вызова сообщений SSL
+	 *
+	 * @param write  флаг записи сообщения
+	 * @param version версия протокола
+	 * @param type    тип сообщения
+	 * @param buffer  буфер сообщения
+	 * @param size    размер буфера сообщения
+	 * @param ssl     объект SSL
+	 * @param ctx     передаваемый контекст
+	 */
+	static void message(int32_t write, [[maybe_unused]] int32_t version, int32_t type, const void * buffer, size_t size, SSL * ssl, [[maybe_unused]] void * ctx) noexcept {
+		// Если тип сообщения является рукопожатием SSL
+		if(type == SSL3_RT_HANDSHAKE){
+			// Получаем объект контекста модуля
+			auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+			/**
+			 * Обрабатываем тип сообщения рукопожатия SSL
+			 */
+			switch (reinterpret_cast <const uint8_t *> (buffer)[0]){
+				// Если сообщение является ClientHello
+				case SSL3_MT_CLIENT_HELLO: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientHello", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientHello", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является ServerHello
+				case SSL3_MT_SERVER_HELLO: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHello", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHello", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является Certificate
+				case SSL3_MT_CERTIFICATE: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "Certificate", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Certificate", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является HelloRequest
+				case SSL3_MT_HELLO_REQUEST: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloRequest", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloRequest", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является NewSessionTicket
+				case SSL3_MT_NEWSESSION_TICKET: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "NewSessionTicket", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "NewSessionTicket", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является EndOfEarlyData
+				case SSL3_MT_END_OF_EARLY_DATA: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "EndOfEarlyData", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "EndOfEarlyData", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является EncryptedExtensions
+				case SSL3_MT_ENCRYPTED_EXTENSIONS: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "EncryptedExtensions", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "EncryptedExtensions", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является ServerKeyExchange
+				case SSL3_MT_SERVER_KEY_EXCHANGE: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerKeyExchange", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerKeyExchange", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является CertificateRequest
+				case SSL3_MT_CERTIFICATE_REQUEST: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateRequest", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateRequest", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является ServerHelloDone
+				case SSL3_MT_SERVER_DONE: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHelloDone", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHelloDone", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является CertificateVerify
+				case SSL3_MT_CERTIFICATE_VERIFY: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateVerify", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateVerify", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является ClientKeyExchange
+				case SSL3_MT_CLIENT_KEY_EXCHANGE: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientKeyExchange", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientKeyExchange", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является CertificateURL
+				case SSL3_MT_CERTIFICATE_URL: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateURL", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateURL", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является CertificateStatus
+				case SSL3_MT_CERTIFICATE_STATUS: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateStatus", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateStatus", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является SupplementalData
+				case SSL3_MT_SUPPLEMENTAL_DATA: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "SupplementalData", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "SupplementalData", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является KeyUpdate
+				case SSL3_MT_KEY_UPDATE: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "KeyUpdate", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "KeyUpdate", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является CompressedCertificate
+				case SSL3_MT_COMPRESSED_CERTIFICATE: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CompressedCertificate", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CompressedCertificate", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является HelloVerifyRequest
+				case DTLS1_MT_HELLO_VERIFY_REQUEST: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloVerifyRequest", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloVerifyRequest", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является MessageHash
+				case SSL3_MT_MESSAGE_HASH: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "MessageHash", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "MessageHash", size);
+							break;
+						}
+					#endif
+				} break;
+				// Если сообщение является Finished
+				case SSL3_MT_FINISHED: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "Finished", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Finished", size);
+							break;
+						}
+					#endif
+					// Если рукопожатие ещё не выполнено
+					if(!(member->state & state::HANDSHAKE_MODE)){
+						// Устанавливаем режим выполненного рукопожатия
+						member->state |= state::HANDSHAKE_MODE;
+						// Если узел является клиентом
+						if(member->node == event::node_t::CLIENT){
+							// Длина извлекаемого протокола
+							uint32_t length = 0;
+							// Название извлекаемого протокола
+							const uint8_t * proto = nullptr;
+							// Выполняем извлечение активного протокола
+							::SSL_get0_alpn_selected(member->ssl, &proto, &length);
+							// Размер и индекс протокола
+							uint8_t size = 0, index = 0;
+							// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
+							for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
+								// Извлекаем размер протокола
+								size = member->alpn.buffer[i];
+								// Если размер протокола совпадает с длиной извлекаемого протокола
+								if(size == static_cast <uint8_t> (length)){
+									// Если протокол совпадает с извлекаемым протоколом
+									if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
+										// Устанавливаем активный протокол
+										member->alpn.id = member->alpn.ids[index];
+										// Выход из цикла
+										break;
+									}
+								}
+								// Смещаем индекс на размер протокола
+								i += size;
+								// Увеличиваем индекс протокола
+								index++;
+							}
+						}
+						// Если рукопожатие выполнено успешно
+						if(member->callback.handshake != nullptr)
+							// Вызываем функцию обратного вызова успешного выполнения рукопожатия
+							member->callback.handshake(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member)));
+					}
+				} break;
+				/**
+				 * @brief собран без следующих переговорщиков по протоколам
+				 *
+				 */
+				#ifndef OPENSSL_NO_NEXTPROTONEG
+					// Если сообщение является NextProto
+					case SSL3_MT_NEXT_PROTO: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Получаем объект логирования
+							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+							/**
+							 * Определяем узел события к которому относится контекст TLS
+							 */
+							switch(static_cast <uint8_t> (member->node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Выводим сообщение об ошибке
+									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "NextProto", size);
+								break;
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER):
+									// Выводим сообщение об ошибке
+									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "NextProto", size);
+								break;
+							}
+						#endif
+					} break;
+				#endif
+				// Если сообщение является иным типом рукопожатия SSL
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Получаем объект логирования
+						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[2]));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "Handshake", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Выводим сообщение об ошибке
+								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Handshake", size);
+							break;
+						}
+					#endif
+				}
+			}
+		}
+	}
+	/**
 	 * @brief Функция выполнения выбора протокола
 	 *
 	 * @param out     буфер назначения
@@ -3037,99 +3655,66 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 		if(!(result = (member->state & state::HANDSHAKE_MODE))){
 			// Выполняем блокировку потоков
 			const locker_t lock(member->mtx);
-			// Выполняем TLS рукопожатие
-			const int32_t handshake = ::SSL_do_handshake(member->ssl);
-			// Если рукопожатие не выполнено
-			if(!(result = (handshake == 1))){
-				// Получаем код ошибки
-				const int32_t error = ::SSL_get_error(member->ssl, handshake);
-				// Если ошибка не связана с необходимостью повторного чтения или записи
-				if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
-					// Получаем текст ошибки
-					const string error = ::ssl::error(id, "SSL handshake failed");
-					// Если функция обратного вызова ошибки установлена
-					if(member->callback.error != nullptr)
-						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
-					// Если функция обратного вызова ошибки не установлена
-					else {
+			// Если рукопожатие ещё не завершено
+			if(::SSL_is_init_finished(member->ssl) != 1){
+				// Выполняем TLS рукопожатие
+				const int32_t handshake = ::SSL_do_handshake(member->ssl);
+				// Если рукопожатие не выполнено
+				if(!(result = (handshake == 1))){
+					// Получаем код ошибки
+					const int32_t error = ::SSL_get_error(member->ssl, handshake);
+					// Если ошибка не связана с необходимостью повторного чтения или записи
+					if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "SSL handshake failed");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CRITICAL, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+					// Если ошибка связана с необходимостью повторного чтения или записи
+					} else {
+						// Количество прочитанных данных
+						int32_t bytes = 0;
+						// Количество ожидающих данных для чтения
+						size_t pending = 0;
+						// Буфер данных для чтения
+						uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 						/**
-						 * Если включён режим отладки
+						 * Читаем все ожидающие данные из BIO буфера записи
 						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
-					}
-				// Если ошибка связана с необходимостью повторного чтения или записи
-				} else {
-					// Количество прочитанных данных
-					int32_t bytes = 0;
-					// Количество ожидающих данных для чтения
-					size_t pending = 0;
-					// Буфер данных для чтения
-					uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
-					/**
-					 * Читаем все ожидающие данные из BIO буфера записи
-					 */
-					while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
-						// Читаем данные из BIO буфера записи
-						bytes = ::BIO_read(member->wbio, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-						// Если данные не прочитаны
-						if(bytes <= 0)
-							// Выходим из цикла
-							break;
-						// Если функция обратного вызова чтения данных установлена
-						else if(member->callback.read != nullptr)
-							// Вызываем функцию обратного вызова чтения данных
-							member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
-					}
-				}
-				// Выводим результат
-				return result;
-			}
-			// Устанавливаем режим выполненного рукопожатия
-			member->state |= state::HANDSHAKE_MODE;
-			// Если узел является клиентом
-			if(member->node == event::node_t::CLIENT){
-				// Длина извлекаемого протокола
-				uint32_t length = 0;
-				// Название извлекаемого протокола
-				const uint8_t * proto = nullptr;
-				// Выполняем извлечение активного протокола
-				::SSL_get0_alpn_selected(member->ssl, &proto, &length);
-				// Размер и индекс протокола
-				uint8_t size = 0, index = 0;
-				// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
-				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
-					// Извлекаем размер протокола
-					size = member->alpn.buffer[i];
-					// Если размер протокола совпадает с длиной извлекаемого протокола
-					if(size == static_cast <uint8_t> (length)){
-						// Если протокол совпадает с извлекаемым протоколом
-						if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
-							// Устанавливаем активный протокол
-							member->alpn.id = member->alpn.ids[index];
-							// Выход из цикла
-							break;
+						while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
+							// Читаем данные из BIO буфера записи
+							bytes = ::BIO_read(member->wbio, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+							// Если данные не прочитаны
+							if(bytes <= 0)
+								// Выходим из цикла
+								break;
+							// Если функция обратного вызова чтения данных установлена
+							else if(member->callback.read != nullptr)
+								// Вызываем функцию обратного вызова чтения данных
+								member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
 						}
 					}
-					// Смещаем индекс на размер протокола
-					i += size;
-					// Увеличиваем индекс протокола
-					index++;
+					// Выводим результат
+					return result;
 				}
 			}
-			// Если рукопожатие выполнено успешно
-			if(member->callback.handshake != nullptr)
-				// Вызываем функцию обратного вызова успешного выполнения рукопожатия
-				member->callback.handshake(id);
 		}
 	/**
 	 * Если возникает ошибка
@@ -4712,7 +5297,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						case static_cast <uint8_t> (event::protocol_t::UDP):
 						// Если протокол подключения SCTP
 						case static_cast <uint8_t> (event::protocol_t::SCTP):
-							// Устанавливаем режим клиента для контекста TLS
+							// Устанавливаем режим клиента для контекста DTLS
 							(* ret.first)->ctx = ::SSL_CTX_new(::DTLS_client_method());
 						break;
 						// Если протокол подключения TCP
@@ -4725,8 +5310,21 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				 * Для операционной системы Linux
 				 */
 				#else
-					// Устанавливаем режим клиента для контекста TLS
-					(* ret.first)->ctx = ::SSL_CTX_new(::TLS_client_method());
+					/**
+					 * Определяем тип протокола подключения
+					 */
+					switch(static_cast <uint8_t> (proto)){
+						// Если протокол подключения UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+							// Устанавливаем режим клиента для контекста DTLS
+							(* ret.first)->ctx = ::SSL_CTX_new(::DTLS_client_method());
+						break;
+						// Если протокол подключения TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP):
+							// Устанавливаем режим клиента для контекста TLS
+							(* ret.first)->ctx = ::SSL_CTX_new(::TLS_client_method());
+						break;
+					}
 				#endif
 				// Если контекст не создан
 				if((* ret.first)->ctx == nullptr){
@@ -4781,10 +5379,25 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					SSL_OP_SINGLE_DH_USE |    // Свежие DH-ключи (для DHE)
 					SSL_OP_SINGLE_ECDH_USE    // Свежие ECDH-ключи (для ECDHE)
 				);
-				// Устанавливаем минимально-возможную версию TLS
-				::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
-				// Устанавливаем максимально-возможную версию TLS
-				::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+				/**
+				 * Определяем тип протокола подключения
+				 */
+				switch(static_cast <uint8_t> (proto)){
+					// Если протокол подключения UDP
+					case static_cast <uint8_t> (event::protocol_t::UDP): {
+						// Устанавливаем минимально-возможную версию DTLS
+						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+						// Устанавливаем максимально-возможную версию DTLS
+						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+					} break;
+					// Если протокол подключения TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP): {
+						// Устанавливаем минимально-возможную версию TLS
+						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+						// Устанавливаем максимально-возможную версию TLS
+						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+					} break;
+				}
 				/**
 				 * Если версия OpenSSL соответствует или выше версии 3.0.0
 				 */
@@ -4884,6 +5497,10 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Выходим
 					return 0;
 				}
+				// Устанавливаем функцию обратного вызова для обработки сообщений TLS
+				::SSL_CTX_set_msg_callback((* ret.first)->ctx, &::ssl::message);
+				// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
+				::SSL_CTX_set_msg_callback_arg((* ret.first)->ctx, (* ret.first).get());
 				// Получаем данные стора
 				X509_STORE * store = ::SSL_CTX_get_cert_store((* ret.first)->ctx);
 				// Если стор не получен
@@ -4951,14 +5568,17 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				::SSL_CTX_set_verify((* ret.first)->ctx, SSL_VERIFY_PEER, &::verify::certificate);
 				// Выполняем проверку всех дочерних сертификатов
 				::SSL_CTX_set_cert_verify_callback((* ret.first)->ctx, &::verify::hostname, (* ret.first).get());
-				/**
-				 * @brief собран без следующих переговорщиков по протоколам
-				 *
-				 */
-				#ifndef OPENSSL_NO_NEXTPROTONEG
-					// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
-					::SSL_CTX_set_next_proto_select_cb((* ret.first)->ctx, &::ssl::clientNextProtoSelect, (* ret.first).get());
-				#endif // !OPENSSL_NO_NEXTPROTONEG
+				// Если протокол подключения TCP
+				if(proto == event::protocol_t::TCP){
+					/**
+					 * @brief собран без следующих переговорщиков по протоколам
+					 *
+					 */
+					#ifndef OPENSSL_NO_NEXTPROTONEG
+						// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
+						::SSL_CTX_set_next_proto_select_cb((* ret.first)->ctx, &::ssl::clientNextProtoSelect, (* ret.first).get());
+					#endif // !OPENSSL_NO_NEXTPROTONEG
+				}
 				// Создаем SSL объект
 				(* ret.first)->ssl = ::SSL_new((* ret.first)->ctx);
 				// Если объект не создан
@@ -5035,6 +5655,12 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					// Выходим
 					return 0;
 				}
+				// Если протокол подключения UDP
+				if(proto == event::protocol_t::UDP){
+					// Устанавливаем MTU (обычно 1200–1400 для UDP)
+					::BIO_ctrl((* ret.first)->rbio, BIO_CTRL_DGRAM_SET_MTU, 1200, nullptr);
+					::BIO_ctrl((* ret.first)->wbio, BIO_CTRL_DGRAM_SET_MTU, 1200, nullptr);
+				}
 				// Привязываем объекты BIO к SSL объекту
 				::SSL_set_bio((* ret.first)->ssl, (* ret.first)->rbio, (* ret.first)->wbio);
 				// Устанавливаем режим клиента для SSL объекта
@@ -5078,8 +5704,21 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				 * Для операционной системы Linux
 				 */
 				#else
-					// Устанавливаем режим сервера для контекста TLS
-					(* ret.first)->ctx = ::SSL_CTX_new(::TLS_server_method());
+					/**
+					 * Определяем тип протокола подключения
+					 */
+					switch(static_cast <uint8_t> (proto)){
+						// Если протокол подключения UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+							// Устанавливаем режим клиента для контекста DTLS
+							(* ret.first)->ctx = ::SSL_CTX_new(::DTLS_server_method());
+						break;
+						// Если протокол подключения TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP):
+							// Устанавливаем режим клиента для контекста TLS
+							(* ret.first)->ctx = ::SSL_CTX_new(::TLS_server_method());
+						break;
+					}
 				#endif
 				// Если контекст не создан
 				if((* ret.first)->ctx == nullptr){
@@ -5140,10 +5779,29 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					SSL_OP_SINGLE_DH_USE |    // Свежие DH-ключи (для DHE)
 					SSL_OP_SINGLE_ECDH_USE    // Свежие ECDH-ключи (для ECDHE)
 				);
-				// Устанавливаем минимально-возможную версию TLS
-				::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
-				// Устанавливаем максимально-возможную версию TLS
-				::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+				/**
+				 * Определяем тип протокола подключения
+				 */
+				switch(static_cast <uint8_t> (proto)){
+					// Если протокол подключения UDP
+					case static_cast <uint8_t> (event::protocol_t::UDP): {
+						// Устанавливаем минимально-возможную версию DTLS
+						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+						// Устанавливаем максимально-возможную версию DTLS
+						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+					} break;
+					// Если протокол подключения TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP): {
+						// Устанавливаем минимально-возможную версию TLS
+						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+						// Устанавливаем максимально-возможную версию TLS
+						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+					} break;
+				}
+				// Устанавливаем функцию обратного вызова для обработки сообщений TLS
+				::SSL_CTX_set_msg_callback((* ret.first)->ctx, &::ssl::message);
+				// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
+				::SSL_CTX_set_msg_callback_arg((* ret.first)->ctx, (* ret.first).get());
 				// Устанавливаем все основные алгоритмы шифрования
 				if(::SSL_CTX_set_cipher_list((* ret.first)->ctx, ::__awh_ssl_ciphers__.c_str()) != 1){
 					// Получаем текст ошибки
@@ -5483,6 +6141,12 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					(* ret.first)->erase(::__awh_ssl_members__);
 					// Выходим
 					return 0;
+				}
+				// Если протокол подключения UDP
+				if(proto == event::protocol_t::UDP){
+					// Устанавливаем MTU (обычно 1200–1400 для UDP)
+					::BIO_ctrl((* ret.first)->rbio, BIO_CTRL_DGRAM_SET_MTU, 1200, nullptr);
+					::BIO_ctrl((* ret.first)->wbio, BIO_CTRL_DGRAM_SET_MTU, 1200, nullptr);
 				}
 				// Привязываем объекты BIO к SSL объекту
 				::SSL_set_bio((* ret.first)->ssl, (* ret.first)->rbio, (* ret.first)->wbio);
