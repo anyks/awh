@@ -1578,89 +1578,12 @@ string awh::TransportLayerSecurity::version() const noexcept {
 	return ::OpenSSL_version(OPENSSL_VERSION);
 }
 /**
- * @brief Метод извлечения сертификата TLS
+ * @brief Метод получения общей информации о TLS соединении
  *
  * @param id идентификатор события
- * @return   активный протокол
+ * @return   общая информация о TLS соединении
  */
-string awh::TransportLayerSecurity::extract(const id_t id) const noexcept {
-	// Результат работы функции
-	string result = "";
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
-			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
-			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
-			// Объект SSL сертификата
-			X509 * x509 = nullptr;
-			/**
-			 * Определяем узел события к которому относится контекст TLS
-			 */
-			switch(static_cast <uint8_t> (member->node)){
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Выполняем получение сертификата сервера
-					x509 = ::SSL_get_peer_certificate(member->ssl);
-				break;
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Выполняем получение сертификата сервера
-					x509 = ::SSL_get_certificate(member->ssl);
-				break;
-			}
-			// Если сертификат сервера получен
-			if(x509 != nullptr){
-				// Создаём объект BIO для записи сертификата
-				BIO * bio = ::BIO_new(::BIO_s_mem());
-				// Записываем сертификат в PEM формате в объект BIO
-				::PEM_write_bio_X509(bio, x509);
-				// Буффер для получения данных
-				char * buffer = nullptr;
-				// Извлекаем данные сертификата из BIO
-				const long size = ::BIO_get_mem_data(bio, &buffer);
-				// Если сертификат извлечён удачно
-				if(size > 0)
-					// Записываем результат
-					result.assign(buffer, static_cast <size_t> (size));
-				// Освобождаем объект BIO
-				::BIO_free(bio);
-				// Если узел является клиентом
-				if(member->node == event::node_t::CLIENT)
-					// Освобождаем объект сертификата
-					::X509_free(x509);
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод печати информации о TLS сертификате
- *
- * @param id идентификатор события
- * @return   информация о TLS сертификате
- */
-string awh::TransportLayerSecurity::print(const id_t id) const noexcept {
+string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -1692,6 +1615,8 @@ string awh::TransportLayerSecurity::print(const id_t id) const noexcept {
 			if(x509 != nullptr){
 				// Буфер данных для получения данных
 				char buffer[256];
+				// Если всё хорошо, формируем версию OpenSSL
+				result.append(this->_fmk->format("Using %s\n\n", ::OpenSSL_version(OPENSSL_VERSION)));
 				// Добавляем заголовок цепочки сертификатов
 				result.append("---\nCertificate chain\n");
 				// Получаем эмитента субъекта сертификата
@@ -1843,12 +1768,12 @@ string awh::TransportLayerSecurity::print(const id_t id) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения общей информации о TLS соединении
+ * @brief Метод получения информации о одноразовом узле TLS
  *
  * @param id идентификатор события
- * @return   общая информация о TLS соединении
+ * @return   информация о одноразовом узле TLS
  */
-string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
+string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2311,6 +2236,83 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 					result.assign(data, length);
 				// Выполняем очистку BIO
 				::BIO_free(bio);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод извлечения сертификата TLS
+ *
+ * @param id идентификатор события
+ * @return   активный протокол
+ */
+string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Объект SSL сертификата
+			X509 * x509 = nullptr;
+			/**
+			 * Определяем узел события к которому относится контекст TLS
+			 */
+			switch(static_cast <uint8_t> (member->node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выполняем получение сертификата сервера
+					x509 = ::SSL_get_peer_certificate(member->ssl);
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выполняем получение сертификата сервера
+					x509 = ::SSL_get_certificate(member->ssl);
+				break;
+			}
+			// Если сертификат сервера получен
+			if(x509 != nullptr){
+				// Создаём объект BIO для записи сертификата
+				BIO * bio = ::BIO_new(::BIO_s_mem());
+				// Записываем сертификат в PEM формате в объект BIO
+				::PEM_write_bio_X509(bio, x509);
+				// Буффер для получения данных
+				char * buffer = nullptr;
+				// Извлекаем данные сертификата из BIO
+				const long size = ::BIO_get_mem_data(bio, &buffer);
+				// Если сертификат извлечён удачно
+				if(size > 0)
+					// Записываем результат
+					result.assign(buffer, static_cast <size_t> (size));
+				// Освобождаем объект BIO
+				::BIO_free(bio);
+				// Если узел является клиентом
+				if(member->node == event::node_t::CLIENT)
+					// Освобождаем объект сертификата
+					::X509_free(x509);
 			}
 		}
 	/**
@@ -4688,6 +4690,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 		(* ret.first)->mtx.enabled = false;
 		// Сохраняем итератор уровня защищённых сокетов
 		(* ret.first)->iterator = ret.first;
+		// Устанавливаем режим проверки сертификата
+		(* ret.first)->state |= state::CERTIFICATE_VERIFY;
 		// Выполняем получение идентификатора контекста TLS
 		result = static_cast <uint64_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 		/**

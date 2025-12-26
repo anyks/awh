@@ -54,7 +54,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.port(eid, 443);
+	// io.port(eid, 8006);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Флаг завершения работы
@@ -62,18 +63,15 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем объект транспортного уровня безопасности
 		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"}});
-		// tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"},{2,"h3"}});
+		tls.alpn(tid, vector <tls_t::alpn_t> {{5,"http/1.1"}});
+		// tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"},{1,"h2"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
 		tls.ca(tid, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		tls.validateHostname(tid, false);
+		// tls.validateHostname(tid, false);
 		// Устанавливаем имя хоста TLS
-		tls.hostname(tid, "anyks.com");
-		// Устанавливаем клиентский сертификат TLS
-		tls.certificate(tid, "../sh/certificates/client/cert.pem");
-		// Устанавливаем приватный ключ TLS
-		tls.privateKey(tid, "../sh/certificates/client/key.pem");
+		// tls.hostname(tid, "contms.ru");
+		tls.hostname(tid, "www.google.com");
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
 			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
@@ -85,10 +83,8 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
 			cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
 			cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
-			// Выводим данные сертификата TLS
-			cout << "Certificate data:\n" << tls.extract(id) << endl << endl;
 			// Выводим информацию о TLS соединении
-			cout << tls.print(id) << endl;
+			cout << tls.peerInfo(id) << endl;
 			// Текст запроса к серверу
 			const string request =
 				"GET / HTTP/1.1\r\n"
@@ -168,7 +164,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -176,7 +172,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "127.0.0.1")){
+			// if(io.target(eid, "198.18.0.23")){ // contms.ru VPN
+			if(io.target(eid, "198.18.0.35")){ // VPN
+			// if(io.target(eid, "74.125.205.102")){
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -405,7 +403,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем таймаут события на чтение
-				// io.timeout(eid, event::action_t::READ, 3000);
+				io.timeout(eid, event::action_t::READ, 3000);
 				// Устанавливаем таймаут события на запись
 				io.timeout(eid, event::action_t::WRITE, 3000);
 				// Устанавливаем таймаут события на подключение

@@ -83,7 +83,8 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
 			cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
 			cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
-
+			// Выводим информацию о TLS соединении
+			cout << tls.peerInfo(id) << endl;
 			// Текст запроса к серверу
 			const string request =
 				"GET / HTTP/1.1\r\n"

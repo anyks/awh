@@ -122,27 +122,19 @@ namespace awh {
 			string version() const noexcept;
 		public:
 			/**
-			 * @brief Метод печати информации о TLS сертификате
-			 *
-			 * @param id идентификатор события
-			 * @return   информация о TLS сертификате
-			 */
-			string print(const id_t id) const noexcept;
-			/**
-			 * @brief Метод извлечения сертификата TLS
-			 *
-			 * @param id идентификатор события
-			 * @return   активный протокол
-			 */
-			string extract(const id_t id) const noexcept;
-		public:
-			/**
 			 * @brief Метод получения общей информации о TLS соединении
 			 *
 			 * @param id идентификатор события
 			 * @return   общая информация о TLS соединении
 			 */
 			string info(const id_t id) const noexcept;
+			/**
+			 * @brief Метод получения информации о одноразовом узле TLS
+			 *
+			 * @param id идентификатор события
+			 * @return   информация о одноразовом узле TLS
+			 */
+			string peerInfo(const id_t id) const noexcept;
 			/**
 			 * @brief Метод получения информации о шифре
 			 *
@@ -164,6 +156,14 @@ namespace awh {
 			 * @return   информация о списке отзыва сертификатов
 			 */
 			string certificateRevocationListInfo(const id_t id) const noexcept;
+		public:
+			/**
+			 * @brief Метод извлечения сертификата TLS
+			 *
+			 * @param id идентификатор события
+			 * @return   активный протокол
+			 */
+			string certificateExtract(const id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки валидности сертификата
