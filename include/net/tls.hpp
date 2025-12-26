@@ -47,6 +47,14 @@ namespace awh {
 				MULTICERT = 0x02  // Режим мультисертификатов
 			};
 			/**
+			 * Флаги типов файлов TLS
+			 */
+			enum class type_t : uint8_t {
+				NONE = 0x00, // Тип не установлен
+				PEM  = 0x01, // Формат PEM
+				ASN1 = 0x02, // Формат ASN1
+			};
+			/**
 			 * Флаги типов ошибок TLS
 			 */
 			enum class error_t : uint8_t {
@@ -199,6 +207,14 @@ namespace awh {
 			bool peer(const id_t id, const string & ip, const uint16_t port) noexcept;
 		public:
 			/**
+			 * @brief Метод завершения TLS соединения
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения завершения
+			 */
+			bool shutdown(const id_t id) noexcept;
+		public:
+			/**
 			 * @brief Метод выполнения TLS рукопожатия
 			 *
 			 * @param id идентификатор события
@@ -242,26 +258,19 @@ namespace awh {
 			void ciphers(const id_t id, const vector <string> & ciphers) noexcept;
 		public:
 			/**
-			 * @brief Метод установки приватного ключа клиента
+			 * @brief Метод извлечения активного протокола
 			 *
-			 * @param id       идентификатор события
-			 * @param filename адрес файла приватного ключа клиента
+			 * @param id идентификатор события
+			 * @return   метод активного протокола
 			 */
-			void privateKey(const id_t id, const string & filename) noexcept;
+			uint8_t alpn(const id_t id) const noexcept;
 			/**
-			 * @brief Метод установки клиентского сертификата
+			 * @brief Метод установки поддерживаемых ALPN-протоколов
 			 *
-			 * @param id       идентификатор события
-			 * @param filename адрес файла клиентского сертификата
+			 * @param id   идентификатор события
+			 * @param alpn список поддерживаемых ALPN-протоколов
 			 */
-			void certificate(const id_t id, const string & filename) noexcept;
-			/**
-			 * @brief Метод установки списка отзыва сертификатов
-			 *
-			 * @param id       идентификатор события
-			 * @param filename адрес файла списка отзыва сертификатов
-			 */
-			void certificateRevocationList(const id_t id, const string & filename) noexcept;
+			void alpn(const id_t id, const vector <alpn_t> & alpn) noexcept;
 		public:
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации
@@ -280,19 +289,44 @@ namespace awh {
 			void ca(const id_t id, const string & dir, const string & file = "") noexcept;
 		public:
 			/**
-			 * @brief Метод извлечения активного протокола
+			 * @brief Метод установки списка отзыва сертификатов
 			 *
-			 * @param id идентификатор события
-			 * @return   метод активного протокола
+			 * @param id       идентификатор события
+			 * @param filename адрес файла списка отзыва сертификатов
 			 */
-			uint8_t alpn(const id_t id) const noexcept;
+			void certificateRevocationList(const id_t id, const string & filename) noexcept;
 			/**
-			 * @brief Метод установки поддерживаемых ALPN-протоколов
+			 * @brief Метод установки приватного ключа клиента
 			 *
-			 * @param id   идентификатор события
-			 * @param alpn список поддерживаемых ALPN-протоколов
+			 * @param id       идентификатор события
+			 * @param filename адрес файла приватного ключа клиента
+			 * @param type     тип файла приватного ключа клиента
 			 */
-			void alpn(const id_t id, const vector <alpn_t> & alpn) noexcept;
+			void privateKey(const id_t id, const string & filename, const type_t type = type_t::PEM) noexcept;
+			/**
+			 * @brief Метод установки клиентского сертификата
+			 *
+			 * @param id       идентификатор события
+			 * @param filename адрес файла клиентского сертификата
+			 * @param type     тип файла клиентского сертификата
+			 */
+			void certificate(const id_t id, const string & filename, const type_t type = type_t::PEM) noexcept;
+		public:
+			/**
+			 * @brief Метод удаления контекста TLS
+			 *
+			 * @param id идентификатор контекста TLS
+			 * @return   результат выполнения удаления
+			 */
+			bool destroy(const id_t id) noexcept;
+			/**
+			 * @brief Метод создания контекста TLS
+			 *
+			 * @param node  тип узла события
+			 * @param proto тип протокола события
+			 * @return      идентификатор контекста TLS
+			 */
+			id_t create(const event::node_t node, const event::protocol_t proto) noexcept;
 		public:
 			/**
 			 * @brief Метод установки функции обратного вывода получения данных
@@ -326,22 +360,6 @@ namespace awh {
 			 * @return         результат установки функции обратного вызова
 			 */
 			bool on(const id_t id, handshake_callback_t callback) noexcept;
-		public:
-			/**
-			 * @brief Метод удаления контекста TLS
-			 *
-			 * @param id идентификатор контекста TLS
-			 * @return   результат выполнения удаления
-			 */
-			bool destroy(const id_t id) noexcept;
-			/**
-			 * @brief Метод создания контекста TLS
-			 *
-			 * @param node  тип узла события
-			 * @param proto тип протокола события
-			 * @return      идентификатор контекста TLS
-			 */
-			id_t create(const event::node_t node, const event::protocol_t proto) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
