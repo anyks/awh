@@ -943,45 +943,6 @@ namespace ssl {
 							break;
 						}
 					#endif
-					// Если рукопожатие ещё не выполнено
-					if(!(member->state & state::HANDSHAKE_MODE)){
-						// Устанавливаем режим выполненного рукопожатия
-						member->state |= state::HANDSHAKE_MODE;
-						// Если узел является клиентом
-						if(member->node == event::node_t::CLIENT){
-							// Длина извлекаемого протокола
-							uint32_t length = 0;
-							// Название извлекаемого протокола
-							const uint8_t * proto = nullptr;
-							// Выполняем извлечение активного протокола
-							::SSL_get0_alpn_selected(member->ssl, &proto, &length);
-							// Размер и индекс протокола
-							uint8_t size = 0, index = 0;
-							// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
-							for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
-								// Извлекаем размер протокола
-								size = member->alpn.buffer[i];
-								// Если размер протокола совпадает с длиной извлекаемого протокола
-								if(size == static_cast <uint8_t> (length)){
-									// Если протокол совпадает с извлекаемым протоколом
-									if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
-										// Устанавливаем активный протокол
-										member->alpn.id = member->alpn.ids[index];
-										// Выход из цикла
-										break;
-									}
-								}
-								// Смещаем индекс на размер протокола
-								i += size;
-								// Увеличиваем индекс протокола
-								index++;
-							}
-						}
-						// Если рукопожатие выполнено успешно
-						if(member->callback.handshake != nullptr)
-							// Вызываем функцию обратного вызова успешного выполнения рукопожатия
-							member->callback.handshake(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member)));
-					}
 				} break;
 				/**
 				 * @brief собран без следующих переговорщиков по протоколам
@@ -3470,6 +3431,71 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 	}
 }
 /**
+ * @brief Метод повторной передачи данных
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения повторной передачи
+ */
+bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Выполняем блокировку потоков
+			const locker_t lock(member->mtx);
+			// Выполняем повторную передачу данных для DTLS/QUIC
+			if(::SSL_handle_events(member->ssl) == 1){
+				// Количество прочитанных данных
+				int32_t bytes = 0;
+				// Количество ожидающих данных для чтения
+				size_t pending = 0;
+				// Буфер данных для чтения
+				uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
+				/**
+				 * Читаем все ожидающие данные из BIO буфера записи
+				 */
+				while((pending = ::BIO_ctrl_pending(member->wbio)) > 0){
+					// Читаем данные из BIO буфера записи
+					bytes = ::BIO_read(member->wbio, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+					// Если данные не прочитаны
+					if(bytes <= 0)
+						// Выходим из цикла
+						break;
+					// Если функция обратного вызова чтения данных установлена
+					else if((result = (member->callback.read != nullptr)))
+						// Вызываем функцию обратного вызова чтения данных
+						member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Метод установки адреса и порта отдалённого узла
  *
  * @param id   идентификатор события
@@ -3715,6 +3741,42 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 					return result;
 				}
 			}
+			// Устанавливаем режим выполненного рукопожатия
+			member->state |= state::HANDSHAKE_MODE;
+			// Если узел является клиентом
+			if(member->node == event::node_t::CLIENT){
+				// Длина извлекаемого протокола
+				uint32_t length = 0;
+				// Название извлекаемого протокола
+				const uint8_t * proto = nullptr;
+				// Выполняем извлечение активного протокола
+				::SSL_get0_alpn_selected(member->ssl, &proto, &length);
+				// Размер и индекс протокола
+				uint8_t size = 0, index = 0;
+				// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
+				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
+					// Извлекаем размер протокола
+					size = member->alpn.buffer[i];
+					// Если размер протокола совпадает с длиной извлекаемого протокола
+					if(size == static_cast <uint8_t> (length)){
+						// Если протокол совпадает с извлекаемым протоколом
+						if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
+							// Устанавливаем активный протокол
+							member->alpn.id = member->alpn.ids[index];
+							// Выход из цикла
+							break;
+						}
+					}
+					// Смещаем индекс на размер протокола
+					i += size;
+					// Увеличиваем индекс протокола
+					index++;
+				}
+			}
+			// Если рукопожатие выполнено успешно
+			if(member->callback.handshake != nullptr)
+				// Вызываем функцию обратного вызова успешного выполнения рукопожатия
+				member->callback.handshake(id);
 		}
 	/**
 	 * Если возникает ошибка

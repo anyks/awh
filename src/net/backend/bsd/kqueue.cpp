@@ -2588,8 +2588,12 @@ namespace io {
 					// Выходим из функции
 					return false;
 				}
+				
+				
 				// Заполняем структуру клиента нулями
-				::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
+				// ::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
+				
+				
 				/**
 				 * Определяем тип сокета
 				 */
@@ -5376,8 +5380,12 @@ namespace io {
 												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(server->transfer.dest, buffer, static_cast <size_t> (bytes));
+										
+										
 										// Заполняем структуру клиента нулями после того как извлекли данные
-										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+										// ::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+
+
 									}
 								// Если событие является блокирующим
 								} else {
@@ -5427,8 +5435,10 @@ namespace io {
 												server->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(server->transfer.dest, buffer, static_cast <size_t> (bytes));
+										
+										
 										// Заполняем структуру клиента нулями после того как извлекли данные
-										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+										// ::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 									}
 								}
 								// Формируем положительный результат

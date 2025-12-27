@@ -86,6 +86,12 @@ int32_t main(int32_t argc, char * argv[]){
 			log.print("Рукопожатие DTLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log_t::flag_t::INFO, id, tls.alpn(id));
 			// Выводим информацию о DTLS соединении
 			cout << tls.peerInfo(id) << endl;
+			// Выполняем повторную передачу данных TLS
+			if(tls.retransmit(id))
+				// Выводим сообщение об успешной повторной передаче данных TLS
+				log.print("Успешно выполнена повторная передача данных TLS: ID=%" PRIu64 "", log_t::flag_t::INFO, id);
+			// Выводим сообщение об ошибке повторной передачи данных TLS
+			else log.print("Ошибка повторной передачи данных TLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, id);
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок DTLS
 		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept -> void {
