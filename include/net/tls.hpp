@@ -212,14 +212,6 @@ namespace awh {
 			void hostname(const id_t id, const string & hostname) noexcept;
 		public:
 			/**
-			 * @brief Метод повторной передачи данных
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения повторной передачи
-			 */
-			bool retransmit(const id_t id) noexcept;
-		public:
-			/**
 			 * @brief Метод установки адреса и порта отдалённого узла
 			 *
 			 * @param id   идентификатор события
@@ -244,6 +236,14 @@ namespace awh {
 			 * @return   результат выполнения рукопожатия
 			 */
 			bool handshake(const id_t id) noexcept;
+		public:
+			/**
+			 * @brief Метод повторной передачи данных
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения повторной передачи
+			 */
+			bool retransmit(const id_t id) noexcept;
 		public:
 			/**
 			 * @brief Метод шифрования данных
