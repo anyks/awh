@@ -150,8 +150,8 @@ int32_t main(int32_t argc, char * argv[]){
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Выводим сообщение о переподключении события
 					log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-					// Задержка перед ответом 5 секунд
-					::sleep(5);
+					// Задержка перед ответом 1 секунду
+					::sleep(1);
 					// Ограничиваем количество эхо-ответов
 					if(count++ < 5){
 						// Отправляем данные обратно клиенту
@@ -289,11 +289,9 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем таймаут события на чтение
-				// io.timeout(eid, event::action_t::READ, 3000);
+				io.timeout(eid, event::action_t::READ, 10000);
 				// Устанавливаем таймаут события на запись
-				// io.timeout(eid, event::action_t::WRITE, 3000);
-				// Устанавливаем таймаут события на подключение
-				// io.timeout(eid, event::action_t::CONNECT, 5000);
+				io.timeout(eid, event::action_t::WRITE, 6000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Текст исходящего сообщения

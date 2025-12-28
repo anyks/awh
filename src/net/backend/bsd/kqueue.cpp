@@ -2438,6 +2438,18 @@ namespace io {
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							client->callbacks.status(client->id, event::status_t::DESTROYED);
+						// Если сокет является UNIX-доменным датаграммным сокетом
+						if((client->state.family == event::family_t::UDS) && (client->state.type == event::type_t::DATAGRAM)){
+							// Извлекаем файл сокета клиента
+							const string & address = ::fs::unixSocketAddress(
+								::trust_cast <struct sockaddr_un> (client->endpoint.client),
+								(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+							);
+							// Если адрес получен
+							if(!address.empty())
+								// Удаляем файл сокета клиента
+								::unlink(address.c_str());
+						}
 					// Если режим постоянного подключения установлен
 					} else return false;
 				} break;
@@ -2456,6 +2468,18 @@ namespace io {
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
 						server->callbacks.status(server->id, event::status_t::DESTROYED);
+					// Если сокет является UNIX-доменным датаграммным сокетом
+					if(server->state.family == event::family_t::UDS){
+						// Извлекаем файл сокета клиента
+						const string & address = ::fs::unixSocketAddress(
+							::trust_cast <struct sockaddr_un> (server->endpoint.server),
+							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+						);
+						// Если адрес получен
+						if(!address.empty())
+							// Удаляем файл сокета клиента
+							::unlink(address.c_str());
+					}
 				} break;
 			}{
 				// Выполняем блокировку потоков
@@ -4460,9 +4484,14 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(peer->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(peer->callbacks.read != nullptr)
+											if(peer->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4551,9 +4580,14 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(peer->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(peer->callbacks.read != nullptr)
+											if(peer->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4631,9 +4665,14 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(peer->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(peer->callbacks.read != nullptr)
+											if(peer->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												peer->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4806,9 +4845,14 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr)
+											if(client->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4897,9 +4941,14 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr)
+											if(client->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -4977,9 +5026,14 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr)
+											if(client->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 									// Если произошёл дисконнект
@@ -5186,9 +5240,14 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr)
+												if(client->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -5243,9 +5302,14 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr)
+												if(client->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 										// Если произошёл дисконнект
@@ -5566,9 +5630,16 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(i->second->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(i->second->callbacks.read != nullptr)
+											if(i->second->callbacks.read != nullptr){
+												// Запоминаем идентификатор ноды
+												const event::id_t nid = i->second->id;
 												// Вывзываем функцию обратного вызова для вывода полученных данных
-												i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												i->second->callbacks.read(nid, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды или идентификатор сервера не найдены, тогда просто выходим
+												if((::__awh_nodes__.find(nid) == ::__awh_nodes__.end()) || (::__awh_nodes__.find(id) == ::__awh_nodes__.end()))
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (bytes));
 										// Если сокет является неблокирующим
@@ -6007,9 +6078,16 @@ namespace io {
 										// Регистрируем сессию источника по идентификатору источника
 										::__awh_origin_sessions__.emplace(sid, awh_cast <origin_t *> (ret.first->second.get()));
 										// Если установлена функция обратного вызова
-										if(server->callbacks.origin != nullptr)
+										if(server->callbacks.origin != nullptr){
+											// Запоминаем идентификатор сервера
+											const event::id_t sid = server->id;
 											// Вызываем функцию обратного вызова ошибки события
 											server->callbacks.origin(server->id, id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+											// Если идентификатор ноды или идентификатор сервера не найдены, тогда просто выходим
+											if((::__awh_nodes__.find(id) == ::__awh_nodes__.end()) || (::__awh_nodes__.find(sid) == ::__awh_nodes__.end()))
+												// Формируем отрицательный результат
+												return false;
+										}
 										// Если дескриптор сокета инициализирован
 										if(::__awh_kq__ != net::invalid_socket_t){
 											// Выполняем поиск идентификатора события
@@ -8862,82 +8940,90 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												case static_cast <uint8_t> (event::type_t::SEQPACKET):
 												// Для типа сокета DATAGRAM
 												case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-													
-													#ifdef __AWH_TEST__
-													
-													// Создаём объект подключения для клиента
-													struct sockaddr_un client;
-													// Создаём объект подключения для сервера
-													struct sockaddr_un server;
-													// Зануляем изначальную структуру данных клиента
-													::memset(&client, 0, sizeof(client));
-													// Зануляем изначальную структуру данных сервера
-													::memset(&server, 0, sizeof(server));
-													// Устанавливаем размер объекта подключения
-													node->endpoint.size = sizeof(struct sockaddr_un);
 													// Получаем объект хоста клиента
-													net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (node->target.get());
+													net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (client->target.get());
 													// Получаем адрес сокета клиента
 													const string & unixsocket = awh_cast <net::addr_fs_t *> (remote->path.get())->address;
 													// Если адрес сокета клиента не пустой
-													if(!unixsocket.empty()){
+													if(!unixsocket.empty() && (unixsocket.length() < sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path))){
+														// Устанавливаем размер объекта подключения
+														client->endpoint.size = sizeof(struct sockaddr_un);
+														// Зануляем изначальную структуру данных клиента
+														::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.client), 0, client->endpoint.size);
+														// Зануляем изначальную структуру данных сервера
+														::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server), 0, client->endpoint.size);
 														/**
 														 * Определяем тип сокета
 														 */
-														switch(static_cast <uint8_t> (node->state.type)){
+														switch(static_cast <uint8_t> (client->state.type)){
 															// Для типа сокета STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM):
 															// Для типа сокета SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 																// Устанавливаем протокол интернета
-																server.sun_family = AF_UNIX;
+																::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для сервера
-																::memset(&server.sun_path, 0, sizeof(server.sun_path));
+																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
 																// Копируем адрес сокета сервера
-																::strncpy(server.sun_path, unixsocket.c_str(), unixsocket.length());
-																// Выполняем копирование объект подключения сервера в сторейдж
-																::memcpy(&node->endpoint.server, &server, sizeof(server));
+																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 															} break;
 															// Для типа сокета DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем протокол интернета для клиента
-																client.sun_family = AF_UNIX;
+																::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_family = AF_UNIX;
 																// Устанавливаем протокол интернета для сервера
-																server.sun_family = AF_UNIX;
+																::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для клиента
-																::memset(&client.sun_path, 0, sizeof(client.sun_path));
+																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
 																// Очищаем всю структуру для сервера
-																::memset(&server.sun_path, 0, sizeof(server.sun_path));
+																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
+																// Копируем адрес сокета сервера
+																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																// Получаем путь к файлу unix-сокета
+																string fullpath = "", sockname = "";
 																// Выполняем поиск последнего слеша разделителя
 																const size_t pos = unixsocket.rfind("/");
 																// Если разделитель найден
 																if(pos != string::npos){
 																	// Получаем название файла unix-сокета
-																	const string name = ::move(unixsocket.substr(pos + 1));
-																	// Получаем путь к файлу unix-сокета
-																	const string path = ::move(unixsocket.substr(0, pos + 1));
+																	sockname = ::move(unixsocket.substr(pos + 1));
+																	// Устанавливаем полный путь к файлу unix-сокета
+																	fullpath = ::move(unixsocket.substr(0, pos + 1));
+																// Если разделитель не найден
+																} else {
+																	// Устанавливаем название файла unix-сокета
+																	sockname = unixsocket;
+																	// Выделяем память под полный путь
+																	fullpath.resize(PATH_MAX);
+																	// Получаем полный путь к текущей директории
+																	if(::realpath(".", fullpath.data()) != nullptr){
+																		// Корректируем размер строки
+																		fullpath.resize(::strlen(fullpath.c_str()));
+																		// Добавляем слеш в конец пути
+																		fullpath.append(1, '/');
+																	// Устанавливаем полный путь к файлу unix-сокета
+																	} else fullpath = "./";
+																}
+																// Индекс цикла подбора временного файла
+																size_t index = 0;
+																// Название временного файла unix-сокета
+																string filename = "";
+																// Файловый дескриптор временного файла unix-сокета
+																net::socket_t fd = net::invalid_socket_t;
+																/**
+																 * Цикл подбора временного файла unix-сокета
+																 */
+																for(;;){
 																	// Создаём адрес unix-сокета клиента
-																	const string clientName = ::move(this->_fmk->format("%sc_%s", path.c_str(), name.c_str()));
-																	// Создаём адрес unix-сокета сервера
-																	const string serverName = ::move(this->_fmk->format("%ss_%s", path.c_str(), name.c_str()));
-																	// Удаляем файл клиентского сокета
-																	::unlink(clientName.c_str());
-																	// Копируем адрес сокета сервера
-																	::strncpy(server.sun_path, serverName.c_str(), sizeof(server.sun_path));
-																	// Выполняем копирование объект подключения сервера в сторейдж
-																	::memcpy(&node->endpoint.server, &server, sizeof(server));
-																	// Копируем адрес сокета клиента
-																	::strncpy(client.sun_path, clientName.c_str(), sizeof(client.sun_path));
-																	// Выполняем копирование объект подключения клиента в сторейдж
-																	::memcpy(&node->endpoint.client, &client, sizeof(client));
-																	// Получаем размер объекта сокета
-																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(client.sun_path));
-																	// Выполняем бинд на сокет
-																	if(::bind(node->transfer.fd, &::trust_cast <struct sockaddr> (node->endpoint.client), size) < 0){
+																	filename = ::move(this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str()));
+																	// Если длина имени файла превышает допустимую
+																	if(filename.length() > sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)){
+																		// Устанавливаем текст ошибки
+																		const string error = this->_fmk->format("Unix-socket file \"%s\" name is too long", filename.c_str());
 																		// Если установлена функция обратного вызова
-																		if(node->callbacks.error != nullptr)
+																		if(client->callbacks.error != nullptr)
 																			// Вызываем функцию обратного вызова ошибки события
-																			node->callbacks.error(node->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																			client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
 																		// Если функция обратного вызова вывода ошибки не установлена
 																		else {
 																			/**
@@ -8945,7 +9031,78 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																			 */
 																			#if DEBUG_MODE
 																				// Выводим сообщение об ошибке
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node->transfer.fd, unixsocket, clientName, serverName), log_t::flag_t::WARNING, ::strerror(errno));
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																			/**
+																			 * Если режим отладки не включён
+																			 */
+																			#else
+																				// Выводим сообщение об ошибке
+																				this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																			#endif
+																		}
+																		// Выходим из функции с ошибкой
+																		return result;
+																	}
+																	// O_CREAT | O_EXCL — гарантирует, что файл не существовал ранее
+																	fd = ::open(filename.c_str(), O_CREAT | O_EXCL | O_RDWR, 0600);
+																	// Если файл не создан
+																	if(fd == net::invalid_socket_t){
+																		// Если ошибка связана с уже существующим файлом
+																		if(errno == EEXIST){
+																			// Увеличиваем индекс цикла подбора временного файла
+																			index++;
+																			// Имя занято — пробуем следующий номер
+																			continue;
+																		// Если ошибка связана с другой проблемой
+																		} else {
+																			// Устанавливаем текст ошибки
+																			const string error = this->_fmk->format("Unix-socket file \"%s\" could not be created", filename.c_str());
+																			// Если установлена функция обратного вызова
+																			if(client->callbacks.error != nullptr)
+																				// Вызываем функцию обратного вызова ошибки события
+																				client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+																			// Если функция обратного вызова вывода ошибки не установлена
+																			else {
+																				/**
+																				 * Если включён режим отладки
+																				 */
+																				#if DEBUG_MODE
+																					// Выводим сообщение об ошибке
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																				/**
+																				 * Если режим отладки не включён
+																				 */
+																				#else
+																					// Выводим сообщение об ошибке
+																					this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																				#endif
+																			}
+																			// Выходим из функции с ошибкой
+																			return result;
+																		}
+																	}
+																	// Закрываем файловый дескриптор временного файла unix-сокета
+																	::close(fd);
+																	// Удаляем созданный временный файл unix-сокета
+																	::unlink(filename.c_str());
+																	// Копируем адрес сокета клиента
+																	::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path), filename.length()));
+																	// Получаем размер объекта сокета
+																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
+																	// Выполняем бинд на сокет
+																	if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), size) < 0){
+																		// Если установлена функция обратного вызова
+																		if(client->callbacks.error != nullptr)
+																			// Вызываем функцию обратного вызова ошибки события
+																			client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																		// Если функция обратного вызова вывода ошибки не установлена
+																		else {
+																			/**
+																			 * Если включён режим отладки
+																			 */
+																			#if DEBUG_MODE
+																				// Выводим сообщение об ошибке
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, unixsocket, filename), log_t::flag_t::WARNING, ::strerror(errno));
 																			/**
 																			 * Если режим отладки не включён
 																			 */
@@ -8954,11 +9111,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																			#endif
 																		}
-																		// Снимаем флаг ожидания подключения
-																		node->state.status.store(event::status_t::NONE, std::memory_order_release);
-																		// Выходим из функции с ошибкой
-																		return result;
+																		// Если ошибка не связана с уже существующим файлом (его мог создать другой клиент)
+																		if(errno != EEXIST)
+																			// Удаляем созданный временный файл unix-сокета
+																			::unlink(filename.c_str());
+																		// Увеличиваем индекс цикла подбора временного файла
+																		index++;
+																		// Продолжаем цикл подбора временного файла
+																		continue;
 																	}
+																	// Выходим из цикла подбора временного файла
+																	break;
 																}
 															} break;
 															// Для неизвестного типа сокета
@@ -8966,9 +9129,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																// Устанавливаем текст ошибки
 																const string error = "An event for a Unix event cannot be commit because it has an invalid initialization type";
 																// Если установлена функция обратного вызова
-																if(node->callbacks.error != nullptr)
+																if(client->callbacks.error != nullptr)
 																	// Вызываем функцию обратного вызова ошибки события
-																	node->callbacks.error(node->id, event::error_t::EVENT_FAIL, error);
+																	client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
 																// Если функция обратного вызова вывода ошибки не установлена
 																else {
 																	/**
@@ -8986,7 +9149,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																	#endif
 																}
 																// Снимаем флаг ожидания подключения
-																node->state.status.store(event::status_t::NONE, std::memory_order_release);
+																client->state.status.store(event::status_t::NONE, std::memory_order_release);
 																// Выходим из функции с ошибкой
 																return result;
 															}
@@ -8996,9 +9159,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Устанавливаем текст ошибки
 														const string error = "Unix-socket address is not set";
 														// Если установлена функция обратного вызова
-														if(node->callbacks.error != nullptr)
+														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															node->callbacks.error(node->id, event::error_t::INVALID_ADDRESS, error);
+															client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -9016,7 +9179,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															#endif
 														}
 														// Снимаем флаг ожидания подключения
-														node->state.status.store(event::status_t::NONE, std::memory_order_release);
+														client->state.status.store(event::status_t::NONE, std::memory_order_release);
 														// Выходим из функции с ошибкой
 														return result;
 													}{
@@ -9029,39 +9192,39 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
-															if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK))
+															if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, node);
+															else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Устанавливаем событие на запись но отключаем его
-															EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, node);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 															// Устанавливаем количество событий
 															ret.first->second.count = 2;
 															// Устанавливаем индекс текущего элемента
 															ret.first->second.index = (::local::change.size() - 2);
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
-															node->transfer.actions |= action::READ;
+															client->transfer.actions |= action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
-															node->transfer.actions |= action::WRITE;
+															client->transfer.actions |= action::WRITE;
 															// Устанавливаем флаг разрешающий закрытие сокета
-															node->transfer.actions |= action::CLOSE;
+															client->transfer.actions |= action::CLOSE;
 															// Устанавливаем флаг разрешающий выполнять подключение к серверу
-															node->transfer.actions |= action::CONNECT;
+															client->transfer.actions |= action::CONNECT;
 															// Устанавливаем флаг разрешающий выполнять переподключение к серверу
-															node->transfer.actions |= action::RECONNECT;
+															client->transfer.actions |= action::RECONNECT;
 															// Устанавливаем флаг разрешающий выполнять отключение от сервера
-															node->transfer.actions |= action::DISCONNECT;
+															client->transfer.actions |= action::DISCONNECT;
 														// Событие не может быть зафиксированно повторно
 														} else {
 															// Устанавливаем текст ошибки
 															const string error = "An event for a Unix event cannot be commit because it is already registered";
 															// Если установлена функция обратного вызова
-															if(node->callbacks.error != nullptr)
+															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																node->callbacks.error(node->id, event::error_t::ALREADY_EXISTS, error);
+																client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
 															// Если функция обратного вызова вывода ошибки не установлена
 															else {
 																/**
@@ -9080,8 +9243,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															}
 														}
 													}
-
-													#endif
 												} break;
 												// Для других типов сокетов
 												default: {
@@ -10297,7 +10458,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													// Получаем адрес сокета сервера
 													const string & unixsocket = awh_cast <net::addr_fs_t *> (host->path.get())->address;
 													// Если адрес сокета сервера не пустой
-													if(!unixsocket.empty()){
+													if(!unixsocket.empty() && (unixsocket.length() < sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))){
 														// Устанавливаем размер объекта подключения
 														server->endpoint.size = sizeof(struct sockaddr_un);
 														// Зануляем изначальную структуру данных клиента
@@ -10326,7 +10487,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Копируем адрес сокета сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), unixsocket.length());
+																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд на сокет
@@ -10365,47 +10526,43 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_path));
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
-																// Выполняем поиск последнего слеша разделителя
-																const size_t pos = unixsocket.rfind("/");
-																// Если разделитель найден
-																if(pos != string::npos){
-																	// Получаем название файла unix-сокета
-																	const string name = ::move(unixsocket.substr(pos + 1));
-																	// Получаем путь к файлу unix-сокета
-																	const string path = ::move(unixsocket.substr(0, pos + 1));
-																	// Создаём адрес unix-сокета сервера
-																	const string serverName = ::move(this->_fmk->format("%ss_%s", path.c_str(), name.c_str()));
-																	// Удаляем файл серверного сокета
-																	::unlink(serverName.c_str());
-																	// Копируем адрес сокета сервера
-																	::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, serverName.c_str(), sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
-																	// Получаем размер объекта сокета
-																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
-																	// Выполняем бинд на сокет
-																	if(::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) < 0){
-																		// Если установлена функция обратного вызова
-																		if(server->callbacks.error != nullptr)
-																			// Вызываем функцию обратного вызова ошибки события
-																			server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-																		// Если функция обратного вызова для вывода события установлена
-																		else {
-																			/**
-																			 * Если включён режим отладки
-																			 */
-																			#if DEBUG_MODE
-																				// Выводим сообщение об ошибке
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, unixsocket, serverName), log_t::flag_t::CRITICAL, ::strerror(errno));
-																			/**
-																			 * Если режим отладки не включён
-																			 */
-																			#else
-																				// Выводим сообщение об ошибке
-																				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-																			#endif
-																		}
-																		// Выходим из приложения
-																		::exit(EXIT_FAILURE);
+																// Структура статистики файла
+																struct stat info;
+																// Выполняем извлечение данных статистики
+																if(::stat(unixsocket.c_str(), &info) == 0){
+																	// Если файл сокета существует и это действительно сокет
+																	if(S_ISSOCK(info.st_mode))
+																		// Удаляем файл сокета
+																		::unlink(unixsocket.c_str());
+																}
+																// Копируем адрес сокета сервера
+																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
+																// Получаем размер объекта сокета
+																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																// Выполняем бинд на сокет
+																if(::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) < 0){
+																	// Если установлена функция обратного вызова
+																	if(server->callbacks.error != nullptr)
+																		// Вызываем функцию обратного вызова ошибки события
+																		server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																	// Если функция обратного вызова для вывода события установлена
+																	else {
+																		/**
+																		 * Если включён режим отладки
+																		 */
+																		#if DEBUG_MODE
+																			// Выводим сообщение об ошибке
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, unixsocket, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
+																		/**
+																		 * Если режим отладки не включён
+																		 */
+																		#else
+																			// Выводим сообщение об ошибке
+																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																		#endif
 																	}
+																	// Выходим из приложения
+																	::exit(EXIT_FAILURE);
 																}
 															} break;
 															// Для неизвестного типа сокета
