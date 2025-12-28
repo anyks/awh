@@ -612,6 +612,13 @@ namespace awh {
 			 */
 			void on(const event::id_t id, const event::callback::accept_t & cb) noexcept;
 			/**
+			 * @brief Методы установки функции обратного вызова срабатывающая при принятии первых событий однорангового узла-источника
+			 *
+			 * @param id идентификатор события
+			 * @param cb объект обратного вызова события
+			 */
+			void on(const event::id_t id, const event::callback::origin_t & cb) noexcept;
+			/**
 			 * @brief Методы установки функции обратного вызова на подключение события
 			 *
 			 * @param id идентификатор события

@@ -401,19 +401,18 @@ namespace awh {
 		 *
 		 */
 		typedef struct ServerCallbacks : public callbacks_t {
-			// Обратный вызов при чтении события
-			event::callback::read_t read;
-			// Обратный вызов при записи события
-			event::callback::write_t write;
 			// Обратный вызов при получении общего события
 			event::callback::event_t event;
 			// Обратный вызов при принятии события
 			event::callback::accept_t accept;
+			// Обратный вызов при принятии первых событий однорангового узла-источника
+			event::callback::origin_t origin;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit ServerCallbacks() noexcept : accept(nullptr) {}
+			explicit ServerCallbacks() noexcept :
+			 event(nullptr), accept(nullptr), origin(nullptr) {}
 		} server_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов клиента
@@ -433,7 +432,8 @@ namespace awh {
 			 *
 			 */
 			explicit ClientCallbacks() noexcept :
-			 read(nullptr), write(nullptr), connect(nullptr) {}
+			 read(nullptr), write(nullptr),
+			 event(nullptr), connect(nullptr) {}
 		} client_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов подключённого клиента
@@ -450,7 +450,8 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit PeerCallbacks() noexcept : read(nullptr), write(nullptr) {}
+			explicit PeerCallbacks() noexcept :
+			 read(nullptr), write(nullptr), event(nullptr) {}
 		} peer_callbacks_t;
 		/**
 		 * @brief Структура узла события

@@ -66,12 +66,13 @@ namespace awh {
 			DIR       = 0x02, // Узел директории в файловой системе
 			FILE      = 0x03, // Узел файла в файловой системе
 			PEER      = 0x04, // Одноранговый узел
-			NOTIFY    = 0x05, // Узел уведомления
-			CLIENT    = 0x06, // Узел клиента
-			SERVER    = 0x07, // Узел сервера
-			TIMEOUT   = 0x08, // Узел таймаута времени
-			INTERVAL  = 0x09, // Узел интервала времени
-			MULTICAST = 0x0A  // Узел multicast группы
+			ORIGIN    = 0x05, // Исходящий узел
+			NOTIFY    = 0x06, // Узел уведомления
+			CLIENT    = 0x07, // Узел клиента
+			SERVER    = 0x08, // Узел сервера
+			TIMEOUT   = 0x09, // Узел таймаута времени
+			INTERVAL  = 0x0A, // Узел интервала времени
+			MULTICAST = 0x0B  // Узел multicast группы
 		};
 		/**
 		 * @brief Типы виртуальных узлов
@@ -381,6 +382,10 @@ namespace awh {
 			 * Функция обратного вызова срабатывающая при ошибке события
 			 */
 			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
+			/**
+			 * Функция обратного вызова срабатывающая при принятии первых событий однорангового узла-источника
+			 */
+			using origin_t = std::function <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)>;
 			/**
 			 * Функция обратного вызова срабатывающая при изменении каталога
 			 */
