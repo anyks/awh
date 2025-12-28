@@ -5571,6 +5571,30 @@ namespace io {
 												i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (bytes));
+										// Если сокет является неблокирующим
+										if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
+											// Если необходимо установить таймаут на чтение данных
+											auto j= i->second->timeouts.find(event::action_t::READ);
+											// Если таймаут на подключение найден
+											if((j != i->second->timeouts.end()) && (j->second > 0)){
+												// Активируем таймаут события
+												i->second->timeout = j->first;
+												// Выполняем блокировку потоков
+												const locker_t lock(::local::mtx);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, i->second);
+												// Создаём объект промежуточного звена
+												auto ret = ::local::evaccs.emplace(i->second->id, ::local::evacc_t{});
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::local::change.size() - 1);
+												// Увеличиваем количество событий
+												ret.first->second.count++;
+											}
+										}
 									}
 									// Заполняем структуру клиента нулями после того как извлекли данные
 									::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
@@ -6000,54 +6024,52 @@ namespace io {
 												origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 												// Устанавливаем статус события в состояние ожидания
 												origin->state.status.store(event::status_t::PENDING, std::memory_order_release);
-												{
-													// Выполняем блокировку потоков
-													const locker_t lock(::local::mtx);
-													// Создаём объект промежуточного звена
-													auto ret = ::local::evaccs.emplace(origin->id, ::local::evacc_t{});
-													// Если событие успешно добавлено
-													if(ret.second){
-														// Если необходимо установить таймаут на получение данных
-														auto i = origin->timeouts.find(event::action_t::READ);
-														// Если таймаут на получение данных найден
-														if((i != origin->timeouts.end()) && (i->second > 0)){
-															// Если сокет является неблокирующим
-															if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
-																// Активируем таймаут события
-																origin->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
-																// Увеличиваем количество событий
-																ret.first->second.count = 1;
-																// Устанавливаем индекс текущего элемента
-																ret.first->second.index = (::local::change.size() - 1);
+												// Если сокет является неблокирующим
+												if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+													// Если необходимо установить таймаут на получение данных
+													auto i = origin->timeouts.find(event::action_t::READ);
+													// Если таймаут на получение данных найден
+													if((i != origin->timeouts.end()) && (i->second > 0)){
+														// Активируем таймаут события
+														origin->timeout = i->first;
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на получение данных
+														EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(origin->id, ::local::evacc_t{});
+														// Если событие успешно добавлено
+														if(ret.second){
+															// Увеличиваем количество событий
+															ret.first->second.count = 1;
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+														// Событие не может быть зафиксированно повторно
+														} else {
+															// Устанавливаем текст ошибки
+															const string error = "An event for a peer event cannot be commit because it is already registered";
+															// Если установлена функция обратного вызова
+															if(server->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+																#endif
 															}
-														}
-													// Событие не может быть зафиксированно повторно
-													} else {
-														// Устанавливаем текст ошибки
-														const string error = "An event for a peer event cannot be commit because it is already registered";
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
 														}
 													}
 												}
@@ -6433,6 +6455,50 @@ namespace io {
 											}
 											// Формируем положительный результат
 											return true;
+										// Если есть данные для отправки в сокет
+										} else if(!peer->transfer.queue.empty()) {
+											// Если таймаут установлен на запись
+											if(peer->timeout == event::action_t::WRITE){
+												// Выполняем проверку на наличие таймаута для события записи
+												auto i = peer->timeouts.find(event::action_t::WRITE);
+												// Если нужный нам таймаут найден
+												if((i != peer->timeouts.end()) && (i->second > 0)){
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Активируем таймаут события
+													peer->timeout = i->first;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+												// Если нужный нам таймаут не найден
+												} else {
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Деактивируем таймаут события
+													peer->timeout = event::action_t::NONE;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Снимаем таймаут на получение данных
+													EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
+												}
+											}
 										}
 									// Если мы отправили не все данные
 									} else if(bytes == -1) {
@@ -6518,6 +6584,51 @@ namespace io {
 										if(peer->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+										// Если есть данные для отправки в сокет
+										if(!peer->transfer.queue.empty()){
+											// Если таймаут установлен на запись
+											if(peer->timeout == event::action_t::WRITE){
+												// Выполняем проверку на наличие таймаута для события записи
+												auto i = peer->timeouts.find(event::action_t::WRITE);
+												// Если нужный нам таймаут найден
+												if((i != peer->timeouts.end()) && (i->second > 0)){
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Активируем таймаут события
+													peer->timeout = i->first;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
+												// Если нужный нам таймаут не найден
+												} else {
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(peer->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Деактивируем таймаут события
+													peer->timeout = event::action_t::NONE;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Снимаем таймаут на получение данных
+													EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE, 0, 0, peer);
+												}
+											}
+										}
 									// Если мы отправили не все данные
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
@@ -6665,6 +6776,50 @@ namespace io {
 												}
 												// Формируем положительный результат
 												return true;
+											// Если есть данные для отправки в сокет
+											} else if(!client->transfer.queue.empty()) {
+												// Если таймаут установлен на запись
+												if(client->timeout == event::action_t::WRITE){
+													// Выполняем проверку на наличие таймаута для события записи
+													auto i = client->timeouts.find(event::action_t::WRITE);
+													// Если нужный нам таймаут найден
+													if((i != client->timeouts.end()) && (i->second > 0)){
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+														// Активируем таймаут события
+														client->timeout = i->first;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на получение данных
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													// Если нужный нам таймаут не найден
+													} else {
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+														// Деактивируем таймаут события
+														client->timeout = event::action_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Снимаем таймаут на получение данных
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+													}
+												}
 											}
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
@@ -6750,6 +6905,51 @@ namespace io {
 											if(client->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Если есть данные для отправки в сокет
+											if(!client->transfer.queue.empty()){
+												// Если таймаут установлен на запись
+												if(client->timeout == event::action_t::WRITE){
+													// Выполняем проверку на наличие таймаута для события записи
+													auto i = client->timeouts.find(event::action_t::WRITE);
+													// Если нужный нам таймаут найден
+													if((i != client->timeouts.end()) && (i->second > 0)){
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+														// Активируем таймаут события
+														client->timeout = i->first;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на получение данных
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+													// Если нужный нам таймаут не найден
+													} else {
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+														// Деактивируем таймаут события
+														client->timeout = event::action_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Снимаем таймаут на получение данных
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+													}
+												}
+											}
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -6809,6 +7009,51 @@ namespace io {
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если есть данные для отправки в сокет
+												if(!client->transfer.queue.empty()){
+													// Если таймаут установлен на запись
+													if(client->timeout == event::action_t::WRITE){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+														}
+													}
+												}
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
@@ -6871,6 +7116,51 @@ namespace io {
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если есть данные для отправки в сокет
+												if(!client->transfer.queue.empty()){
+													// Если таймаут установлен на запись
+													if(client->timeout == event::action_t::WRITE){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+														}
+													}
+												}
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
@@ -7054,6 +7344,72 @@ namespace io {
 										if(session.second->callbacks.write != nullptr)
 											// Вывзываем функцию обратного вызова для вывода записанных данных
 											session.second->callbacks.write(session.second->id, static_cast <size_t> (bytes));
+										// Если есть данные для отправки в сокет
+										if(!session.second->transfer.queue.empty()){
+											// Если таймаут установлен на запись
+											if(session.second->timeout == event::action_t::WRITE){
+												// Выполняем проверку на наличие таймаута для события записи
+												auto i = session.second->timeouts.find(event::action_t::WRITE);
+												// Если нужный нам таймаут найден
+												if((i != session.second->timeouts.end()) && (i->second > 0)){
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(session.second->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Активируем таймаут события
+													session.second->timeout = i->first;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, session.second);
+												// Если нужный нам таймаут не найден
+												} else {
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(session.second->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Деактивируем таймаут события
+													session.second->timeout = event::action_t::NONE;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Снимаем таймаут на получение данных
+													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE, 0, 0, session.second);
+												}
+											}
+										// Если в очереди данных больше не осталось данных для отправки
+										} else {
+											// Если таймаут установлен на запись
+											if(session.second->timeout == event::action_t::WRITE){
+												// Выполняем блокировку потоков
+												const locker_t lock(::local::mtx);
+												// Создаём объект промежуточного звена
+												auto ret = ::local::evaccs.emplace(session.second->id, ::local::evacc_t{});
+												// Устанавливаем количество событий
+												ret.first->second.count++;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::local::change.size() - 1);
+												// Деактивируем таймаут события
+												session.second->timeout = event::action_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Снимаем таймаут на получение данных
+												EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE, 0, 0, session.second);
+											}
+										}
 									// Если мы отправили не все данные
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
@@ -26916,59 +27272,113 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									}
 									// Если сокет является неблокирующим
 									if(origin->state.options & event::options::NOIOBLOCK){
-										// Выполняем отправку данных в UDP сокет
-										const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-										// Если данные отправлены успешно
-										if((result = (bytes > 0))){
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(origin->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
-												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-										// Если мы отправили не все данные
-										} else if(bytes == -1) {
-											// Если нам нужно повторить попытку позже
-											if(errno == EAGAIN){
+										// Если очередь передачи данных пустая
+										if(origin->transfer.queue.empty()){
+											// Выполняем отправку данных в UDP сокет
+											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											// Если данные отправлены успешно
+											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, 0);
-												// Выходим из функции
-												return result;
-											// Если произошла ошибка при отправке данных
-											} else {
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(origin->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+											// Если мы отправили не все данные
+											} else if(bytes == -1) {
+												// Если нам нужно повторить попытку позже
+												if(errno == EAGAIN){
+													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t lock(origin->transfer.mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														origin->transfer.queue.push(data, size);
+													}{
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Активируем событие на запись для клиентского сокета
+														EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, origin);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+														// Если таймаут не установлен
+														if(origin->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = origin->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != origin->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																origin->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+															}
+														}
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(origin->callbacks.write != nullptr)
+														// Вывзываем функцию обратного вызова для вывода записанных данных
+														origin->callbacks.write(origin->id, 0);
+													// Выходим из функции
+													return result;
+												// Если произошла ошибка при отправке данных
+												} else {
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(origin->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выходим из функции
+													return result;
 												}
+											// Если произошёл дисконнект
+											} else {
+												// Выполняем обработку закрытия подключения
+												if(io::close(origin, this->_log))
+													// Выполняем удаление узла
+													io::destroy(origin, this->_log);
 												// Выходим из функции
 												return result;
 											}
-										// Если произошёл дисконнект
+										// Если очередь передачи данных не пуста
 										} else {
-											// Выполняем обработку закрытия подключения
-											if(io::close(origin, this->_log))
-												// Выполняем удаление узла
-												io::destroy(origin, this->_log);
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t lock(origin->transfer.mtx);
+												// Копим данные для дальнейшей отправки
+												origin->transfer.queue.push(data, size);
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(origin->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												origin->callbacks.write(origin->id, 0);
 											// Выходим из функции
-											return result;
+											return true;
 										}
 									// Если сокет является полублокирующим
 									} else if(origin->state.options & event::options::SMIOBLOCK) {
@@ -27132,6 +27542,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
 															ret.first->second.index = (::local::change.size() - 1);
+														// Если таймаут не установлен
+														if(origin->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = origin->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != origin->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																origin->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+															}
+														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
@@ -27387,6 +27813,22 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(ret.second)
 															// Устанавливаем индекс текущего элемента
 															ret.first->second.index = (::local::change.size() - 1);
+														// Если таймаут не установлен
+														if(origin->timeout == event::action_t::NONE){
+															// Выполняем проверку на наличие таймаута для события записи
+															auto i = origin->timeouts.find(event::action_t::WRITE);
+															// Если нужный нам таймаут найден
+															if((i != origin->timeouts.end()) && (i->second > 0)){
+																// Устанавливаем количество событий
+																ret.first->second.count++;
+																// Активируем таймаут события
+																origin->timeout = i->first;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на получение данных
+																EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+															}
+														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
@@ -33107,10 +33549,10 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 									auto k = origin->timeouts.find(action);
 									// Если нужный нам таймаут найден
 									if((k != origin->timeouts.end()) && (k->second > 0)){
-										// Выполняем блокировку потоков
-										const locker_t lock(::local::mtx);
 										// Деактивируем таймаут события
 										origin->timeout = event::action_t::NONE;
+										// Выполняем блокировку потоков
+										const locker_t lock(::local::mtx);
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных

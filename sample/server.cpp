@@ -54,7 +54,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::KEEPALIVE))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -493,7 +493,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			// io.timeout(eid, event::action_t::READ, 5000);
+			io.timeout(eid, event::action_t::READ, 6000);
+			// Устанавливаем таймаут события на запись
+			io.timeout(eid, event::action_t::WRITE, 6000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid))
 				/**
