@@ -112,7 +112,7 @@ int32_t main(int32_t argc, char * argv[]){
 							log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
 						break;
 						// Если статус запуска события
-						case static_cast <uint8_t> (event::status_t::RUNNING):
+						case static_cast <uint8_t> (event::status_t::LAUNCHED):
 							// Выводим сообщение о запуске события
 							log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
 						break;
@@ -348,7 +348,7 @@ int32_t main(int32_t argc, char * argv[]){
 							log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
 						break;
 						// Если статус запуска события
-						case static_cast <uint8_t> (event::status_t::RUNNING):
+						case static_cast <uint8_t> (event::status_t::LAUNCHED):
 							// Выводим сообщение о запуске события
 							log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
 						break;

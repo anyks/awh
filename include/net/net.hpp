@@ -315,6 +315,7 @@ namespace awh {
 			event::address_t address;             // Флаг адреса события
 			event::protocol_t protocol;           // Флаг протокола события
 			std::atomic <event::status_t> status; // Флаг статуса события
+			std::atomic <event::status_t> oldset; // Флаг старого статуса события
 			/**
 			 * @brief Оператор присваивания
 			 *
@@ -336,6 +337,7 @@ namespace awh {
 					this->address  = state.address;
 					this->protocol = state.protocol;
 					this->status.store(state.status.load());
+					this->oldset.store(state.oldset.load());
 				}
 				// Возвращаем ссылку на объект состояния события
 				return (* this);
@@ -353,7 +355,8 @@ namespace awh {
 			 family(event::family_t::NONE),
 			 address(event::address_t::NONE),
 			 protocol(event::protocol_t::NONE),
-			 status(event::status_t::NONE) {}
+			 status(event::status_t::NONE),
+			 oldset(event::status_t::NONE) {}
 		} __attribute__((packed)) state_t;
 		/**
 		 * @brief Структура обратных вызовов события

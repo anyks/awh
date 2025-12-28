@@ -1366,7 +1366,7 @@ namespace io {
 									// Если событие переподключения к серверу разрешено
 									if(client->transfer.actions & action::RECONNECT){
 										// Если клиент не подразумевает переподключение
-										if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING)
+										if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
 											// Выводим результат выполнения функции
 											return true;
 										// Время задержки таймаута
@@ -2433,7 +2433,7 @@ namespace io {
 					}
 					// Если режим постоянного подключения не установлен
 					if(!(client->state.options & event::options::KEEPALIVE) ||
-					    (client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING)){
+					    (client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)){
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
@@ -4868,41 +4868,129 @@ namespace io {
 							} break;
 							// Для типа сокета SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Если событие является неблокирующим
-								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__
-										// Количество прочитанных байт
-										ssize_t bytes = 0;
-										// Если протокол интернета установлен как SCTP
-										if(client->state.protocol == event::protocol_t::SCTP)
-											// Выполняем чтение данных из SCTP-сокета
-											bytes = ::sctp_recvmsg(
-												client->transfer.fd,
-												buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-												nullptr, nullptr,
-												&client->transfer.sctp.info,
-												&client->transfer.sctp.flags
-											);
-										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
-									#endif
-									// Если мы получили ошибку
-									if(bytes < 0){
-										// Если нам нужно повторить попытку позже
-										if(errno == EAGAIN)
-											// Выходим из цикла
-											break;
-										// Если мы получили другую ошибку
-										else {
+								// Если клиент находится в состоянии подключено
+								if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+									// Если событие является неблокирующим
+									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(client->state.protocol == event::protocol_t::SCTP)
+												// Выполняем чтение данных из SCTP-сокета
+												bytes = ::sctp_recvmsg(
+													client->transfer.fd,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+													nullptr, nullptr,
+													&client->transfer.sctp.info,
+													&client->transfer.sctp.flags
+												);
+											// Выполняем чтение данных из TCP/IP сокета
+											else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем чтение данных из TCP/IP сокета
+											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										#endif
+										// Если мы получили ошибку
+										if(bytes < 0){
+											// Если нам нужно повторить попытку позже
+											if(errno == EAGAIN)
+												// Выходим из цикла
+												break;
+											// Если мы получили другую ошибку
+											else {
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+												// Выполняем обработку закрытия подключения
+												if(io::close(node, log))
+													// Выполняем удаление узла
+													io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
+											}
+										// Если мы получили данные из сокета
+										} else if(bytes > 0) {
+											// Если функция обратного вызова для вывода события установлена
+											if(client->callbacks.event != nullptr)
+												// Вызываем функцию обратного вызова флаг события
+												client->callbacks.event(id, event::action_t::READ);
+											// Если идентификатор события для передачи данных не установлен
+											if(client->transfer.dest == 0){
+												// Если функция обратного вызова для вывода прочитанных данных установлена
+												if(client->callbacks.read != nullptr){
+													// Вывзываем функцию обратного вызова для вывода полученных данных
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
+											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
+									// Если событие является блокирующим
+									} else {
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(client->state.protocol == event::protocol_t::SCTP)
+												// Выполняем чтение данных из SCTP-сокета
+												bytes = ::sctp_recvmsg(
+													client->transfer.fd,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+													nullptr, nullptr,
+													&client->transfer.sctp.info,
+													&client->transfer.sctp.flags
+												);
+											// Выполняем чтение данных из TCP/IP сокета
+											else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем чтение данных из TCP/IP сокета
+											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										#endif
+										// Если мы получили ошибку
+										if(bytes < 0){
 											// Устанавливаем текст ошибки
 											const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
 											// Если установлена функция обратного вызова
@@ -4931,119 +5019,236 @@ namespace io {
 												io::destroy(node, log);
 											// Формируем отрицательный результат
 											return false;
+										// Если мы получили данные из сокета
+										} else if(bytes > 0) {
+											// Если функция обратного вызова для вывода события установлена
+											if(client->callbacks.event != nullptr)
+												// Вызываем функцию обратного вызова флаг события
+												client->callbacks.event(id, event::action_t::READ);
+											// Если идентификатор события для передачи данных не установлен
+											if(client->transfer.dest == 0){
+												// Если функция обратного вызова для вывода прочитанных данных установлена
+												if(client->callbacks.read != nullptr){
+													// Вывзываем функцию обратного вызова для вывода полученных данных
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
+											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
 										}
-									// Если мы получили данные из сокета
-									} else if(bytes > 0) {
-										// Если функция обратного вызова для вывода события установлена
-										if(client->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(id, event::action_t::READ);
-										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.dest == 0){
-											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr){
-												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-												// Если идентификатор ноды не найден, тогда просто выходим
-												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
-													// Формируем отрицательный результат
-													return false;
-											}
-										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
-									// Если произошёл дисконнект
-									} else {
-										// Выполняем обработку закрытия подключения
-										if(io::close(node, log))
-											// Выполняем удаление узла
-											io::destroy(node, log);
-										// Формируем отрицательный результат
-										return false;
 									}
-								// Если событие является блокирующим
-								} else {
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__
-										// Количество прочитанных байт
-										ssize_t bytes = 0;
-										// Если протокол интернета установлен как SCTP
-										if(client->state.protocol == event::protocol_t::SCTP)
-											// Выполняем чтение данных из SCTP-сокета
-											bytes = ::sctp_recvmsg(
+								// Если клиент находится в запущенном состоянии
+								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+									// Если событие является неблокирующим
+									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(client->state.protocol == event::protocol_t::SCTP)
+												// Выполняем чтение данных из SCTP-сокета
+												bytes = ::sctp_recvmsg(
+													client->transfer.fd,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													&client->endpoint.size,
+													&client->transfer.sctp.info,
+													&client->transfer.sctp.flags
+												);
+											// Выполняем чтение данных из TCP/IP сокета
+											else bytes = ::recvfrom(
 												client->transfer.fd,
-												buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-												nullptr, nullptr,
-												&client->transfer.sctp.info,
-												&client->transfer.sctp.flags
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&client->endpoint.size
 											);
-										// Выполняем чтение данных из TCP/IP сокета
-										else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
-									#endif
-									// Если мы получили ошибку
-									if(bytes < 0){
-										// Устанавливаем текст ошибки
-										const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
-										// Если установлена функция обратного вызова
-										if(client->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
-										}
-										// Выполняем обработку закрытия подключения
-										if(io::close(node, log))
-											// Выполняем удаление узла
-											io::destroy(node, log);
-										// Формируем отрицательный результат
-										return false;
-									// Если мы получили данные из сокета
-									} else if(bytes > 0) {
-										// Если функция обратного вызова для вывода события установлена
-										if(client->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова флаг события
-											client->callbacks.event(id, event::action_t::READ);
-										// Если идентификатор события для передачи данных не установлен
-										if(client->transfer.dest == 0){
-											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr){
-												// Вывзываем функцию обратного вызова для вывода полученных данных
-												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-												// Если идентификатор ноды не найден, тогда просто выходим
-												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
-													// Формируем отрицательный результат
-													return false;
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем чтение данных из UDP-сокета
+											const ssize_t bytes = ::recvfrom(
+												client->transfer.fd,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&client->endpoint.size
+											);
+										#endif
+										// Если мы получили ошибку
+										if(bytes < 0){
+											// Если нам нужно повторить попытку позже
+											if(errno == EAGAIN)
+												// Формируем отрицательный результат
+												return false;
+											// Если мы получили другую ошибку
+											else {
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+												// Выполняем обработку закрытия подключения
+												if(io::close(node, log))
+													// Выполняем удаление узла
+													io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
 											}
-										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
-									// Если произошёл дисконнект
+										// Если мы получили данные из сокета
+										} else if(bytes > 0) {
+											// Если функция обратного вызова для вывода события установлена
+											if(client->callbacks.event != nullptr)
+												// Вызываем функцию обратного вызова флаг события
+												client->callbacks.event(id, event::action_t::READ);
+											// Если идентификатор события для передачи данных не установлен
+											if(client->transfer.dest == 0){
+												// Если функция обратного вызова для вывода прочитанных данных установлена
+												if(client->callbacks.read != nullptr){
+													// Вывзываем функцию обратного вызова для вывода полученных данных
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
+											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
+									// Если событие является блокирующим
 									} else {
-										// Выполняем обработку закрытия подключения
-										if(io::close(node, log))
-											// Выполняем удаление узла
-											io::destroy(node, log);
-										// Формируем отрицательный результат
-										return false;
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(client->state.protocol == event::protocol_t::SCTP)
+												// Выполняем чтение данных из SCTP-сокета
+												bytes = ::sctp_recvmsg(
+													client->transfer.fd,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													&client->endpoint.size,
+													&client->transfer.sctp.info,
+													&client->transfer.sctp.flags
+												);
+											// Выполняем чтение данных из TCP/IP сокета
+											else bytes = ::recvfrom(
+												client->transfer.fd,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&client->endpoint.size
+											);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем чтение данных из UDP-сокета
+											const ssize_t bytes = ::recvfrom(
+												client->transfer.fd,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&client->endpoint.size
+											);
+										#endif
+										// Если мы получили ошибку
+										if(bytes < 0){
+											// Устанавливаем текст ошибки
+											const string error = fmk->format("Failed to receive data for client: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										// Если мы получили данные из сокета
+										} else if(bytes > 0) {
+											// Если функция обратного вызова для вывода события установлена
+											if(client->callbacks.event != nullptr)
+												// Вызываем функцию обратного вызова флаг события
+												client->callbacks.event(id, event::action_t::READ);
+											// Если идентификатор события для передачи данных не установлен
+											if(client->transfer.dest == 0){
+												// Если функция обратного вызова для вывода прочитанных данных установлена
+												if(client->callbacks.read != nullptr){
+													// Вывзываем функцию обратного вызова для вывода полученных данных
+													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
+											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											if(io::close(node, log))
+												// Выполняем удаление узла
+												io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
+										}
 									}
 								}
 							} break;
@@ -5104,13 +5309,16 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr)
+											if(client->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
-										// Формируем положительный результат
-										return true;
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -5168,13 +5376,16 @@ namespace io {
 										// Если идентификатор события для передачи данных не установлен
 										if(client->transfer.dest == 0){
 											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(client->callbacks.read != nullptr)
+											if(client->callbacks.read != nullptr){
 												// Вывзываем функцию обратного вызова для вывода полученных данных
 												client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды не найден, тогда просто выходим
+												if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+													// Формируем отрицательный результат
+													return false;
+											}
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
-										// Формируем положительный результат
-										return true;
 									// Если произошёл дисконнект
 									} else {
 										// Выполняем обработку закрытия подключения
@@ -5188,7 +5399,7 @@ namespace io {
 							} break;
 							// Для типа сокета DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-								// Если подключение установлено
+								// Если клиент находится в состоянии подключено
 								if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
@@ -5323,7 +5534,7 @@ namespace io {
 										}
 									}
 								// Если клиент находится в запущенном состоянии
-								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) {
+								} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
 										// Выполняем чтение данных из UDP-сокета
@@ -5379,13 +5590,16 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr)
+												if(client->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
-											// Формируем положительный результат
-											return true;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5443,13 +5657,16 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr)
+												if(client->callbacks.read != nullptr){
 													// Вывзываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды не найден, тогда просто выходим
+													if(::__awh_nodes__.find(id) == ::__awh_nodes__.end())
+														// Формируем отрицательный результат
+														return false;
+												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
-											// Формируем положительный результат
-											return true;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5490,252 +5707,137 @@ namespace io {
 				} break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
-					/**
-					 * Определяем тип сокета
-					 */
-					switch(static_cast <uint8_t> (node->state.type)){
-						// Для типа сокета STREAM
-						case static_cast <uint8_t> (event::type_t::STREAM):
-						// Для типа сокета SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET): { // !!!!!!!!!!!!!!!!!! СДЕЛАТЬ ДВА РЕЖИМА ДЛЯ SERVER И LISTENER !!!!!!!!!!!!!!!!
-							// Получаем текущее значение объекта сервера
-							server_t * server = awh_cast <server_t *> (node);
-							// Если событие чтения разрешено
-							if(server->actions & action::READ)
-								// Выполняем принятие нового подключения
-								return io::accept(server, eth, fmk, log);
-						} break;
-						// Для типа сокета RAW
-						case static_cast <uint8_t> (event::type_t::RAW):
-						// Для типа сокета DATAGRAM
-						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-							// Получаем текущее значение объекта сервера
-							server_t * server = awh_cast <server_t *> (node);
-							// Если событие чтения разрешено
-							if(server->actions & action::READ){
-								// Колчество прочитанных байт
-								ssize_t bytes = 0;
-								// Буфер для временного хранения данных
-								char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
-								// Если событие является неблокирующим
-								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
-									// Выполняем чтение данных из UDP-сокета
-									bytes = ::recvfrom(
-										server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
-										&::trust_cast <struct sockaddr> (server->endpoint.client),
-										&server->endpoint.size
-									);
-									// Если мы получили ошибку
-									if(bytes < 0){
-										// Если нам нужно повторить попытку позже
-										if(errno == EAGAIN)
-											// Формируем отрицательный результат
-											return true;
-										// Если мы получили другую ошибку
-										else {
-											// Устанавливаем текст ошибки
-											const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
-											// Если установлена функция обратного вызова
-											if(server->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-										}
-										// Выходим из функции
-										return true;
-									}
-								// Если событие является блокирующим
-								} else {
-									// Выполняем чтение данных из UDP-сокета
-									bytes = ::recvfrom(
-										server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
-										&::trust_cast <struct sockaddr> (server->endpoint.client),
-										&server->endpoint.size
-									);
-									// Если мы получили ошибку
-									if(bytes < 0){
-										// Устанавливаем текст ошибки
-										const string error = fmk->format("Failed to receive data for peer: %s", ::strerror(errno));
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
-										}
-										// Выходим из функции
-										return true;
-									}
+					// Если активирован режим прослушивания
+					if(node->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING){
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (node->state.type)){
+							// Для типа сокета STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Получаем текущее значение объекта сервера
+								server_t * server = awh_cast <server_t *> (node);
+								// Если событие чтения разрешено
+								if(server->actions & action::READ)
+									// Выполняем принятие нового подключения
+									return io::accept(server, eth, fmk, log);
+							} break;
+							// Для остальных типов сокетов
+							default: {
+								// Получаем текущее значение объекта сервера
+								server_t * server = awh_cast <server_t *> (node);
+								// Устанавливаем текст ошибки
+								const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
 								}
-								// Идентификатор сессии источника
-								origin_id_t sid;
-								/**
-								 * Определяем семейство события
-								 */
-								switch(static_cast <uint8_t> (server->state.family)){
-									// Для семейства UNIX-доменных сокетов
-									case static_cast <uint8_t> (event::family_t::UDS):
-										// Формируем идентификатор источника
-										sid.from(::trust_cast <struct sockaddr_un> (server->endpoint.client));
-									break;
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Формируем идентификатор источника
-										sid.from(::trust_cast <struct sockaddr_in> (server->endpoint.client));
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Формируем идентификатор источника
-										sid.from(::trust_cast <struct sockaddr_in6> (server->endpoint.client));
-									break;
-								}
-								// Ищем сессию по идентификатору источника
-								auto i = ::__awh_origin_sessions__.find(sid);
-								// Если сессия найдена
-								if(i != ::__awh_origin_sessions__.end()){
-									// Если событие находится не в состоянии паузы
-									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-										// Если функция обратного вызова для вывода события установлена
-										if(i->second->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова флаг события
-											i->second->callbacks.event(i->second->id, event::action_t::READ);
-										// Если идентификатор события для передачи данных не установлен
-										if(i->second->transfer.dest == 0){
-											// Если функция обратного вызова для вывода прочитанных данных установлена
-											if(i->second->callbacks.read != nullptr){
-												// Запоминаем идентификатор ноды
-												const event::id_t nid = i->second->id;
-												// Вывзываем функцию обратного вызова для вывода полученных данных
-												i->second->callbacks.read(nid, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-												// Если идентификатор ноды или идентификатор сервера не найдены, тогда просто выходим
-												if((::__awh_nodes__.find(nid) == ::__awh_nodes__.end()) || (::__awh_nodes__.find(id) == ::__awh_nodes__.end()))
-													// Формируем отрицательный результат
-													return false;
-											}
-										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (bytes));
-										// Если сокет является неблокирующим
-										if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
-											// Если необходимо установить таймаут на чтение данных
-											auto j= i->second->timeouts.find(event::action_t::READ);
-											// Если таймаут на подключение найден
-											if((j != i->second->timeouts.end()) && (j->second > 0)){
-												// Активируем таймаут события
-												i->second->timeout = j->first;
-												// Выполняем блокировку потоков
-												const locker_t lock(::local::mtx);
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, i->second);
-												// Создаём объект промежуточного звена
-												auto ret = ::local::evaccs.emplace(i->second->id, ::local::evacc_t{});
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::local::change.size() - 1);
-												// Увеличиваем количество событий
-												ret.first->second.count++;
-											}
-										}
-									}
-									// Заполняем структуру клиента нулями после того как извлекли данные
-									::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
-								// Если клиент ранее ещё ничего не присылал
-								} else {
-									// Если событие принятия подключения разрешено
-									if(server->actions & action::ACCEPT){
-										// Если количество текущих подключений уже максимальное
-										if(server->backlog.count == server->backlog.max){
-											// Если установлена функция обратного вызова
-											if(server->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об отмене подключения
-												server->callbacks.status(server->id, event::status_t::CANCELLED);
-											// Выходим из функции
-											return true;
-										}
-										// Выполняем создание нового объекта однорангового узла-источника
-										unique_ptr <origin_t> origin = make_unique <origin_t> (server->backlog.count, fmk, log);
-										// Устанавливаем файловый дескриптор сокета
-										origin->transfer.fd = server->fd;
-										// Устанавливаем тип узла
-										origin->state.node = event::node_t::ORIGIN;
-										// Устанавливаем тип сокета
-										origin->state.type = server->state.type;
-										// Устанавливаем семейство события
-										origin->state.family = server->state.family;
-										// Устанавливаем тип адреса события
-										origin->state.address = server->state.address;
-										// Устанавливаем параметры события
-										origin->state.options = server->state.options;
-										// Устанавливаем протокол сокета
-										origin->state.protocol = server->state.protocol;
-										// Если протокол интернета установлен как SCTP
-										if(origin->state.protocol == event::protocol_t::SCTP)
-											// Выполняем активацию событий SCTP
-											eth->sctp(origin->transfer.fd, origin->state.type);
-										// Устанавливаем размер объекта подключения клиента
-										origin->endpoint.size = server->endpoint.size;
-										// Выполняем копирование объект подключения клиента в сторейдж
-										::memcpy(&origin->endpoint.client, &server->endpoint.client, origin->endpoint.size);
-										// Заполняем структуру клиента нулями после того как извлекли данные
-										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
-										// Выполняем инициализацию объекта MAC-адреса
-										origin->mac = make_unique <net::addr_mac_t> ();
-										/**
-										 * Определяем семейство события
-										 */
-										switch(static_cast <uint8_t> (origin->state.family)){
-											// Для семейства UNIX-доменных сокетов
-											case static_cast <uint8_t> (event::family_t::UDS): {
-												// Получаем путь UDS-сокета сервера к которому мы подключились
-												string address = ::move(::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size));
-												// Если адрес UDS-сокета не пустой
-												if(!address.empty()){
-													// Выполняем инициализацию объекта хоста UDS-сокета
-													origin->remote = make_unique <net::attr_uds_t> ();
-													// Получаем объект хоста UDS-сокета
-													net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
-													// Выполняем инициализацию объекта адреса файловой системы
-													remote->path = make_unique <net::addr_fs_t> ();
-													// Устанавливаем адрес файловой системы
-													awh_cast <net::addr_fs_t *> (remote->path.get())->address = ::move(address);
-												// Если адрес UDS-сокета пустой
-												} else {
+							}
+						}
+					// Если сервер находится в запущенном состоянии
+					} else if(node->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (node->state.type)){
+							// Для типа сокета RAW
+							case static_cast <uint8_t> (event::type_t::RAW):
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Получаем текущее значение объекта сервера
+								server_t * server = awh_cast <server_t *> (node);
+								// Если событие чтения разрешено
+								if(server->actions & action::READ){
+									// Колчество прочитанных байт
+									ssize_t bytes = 0;
+									// Буфер для временного хранения данных
+									char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (node->state.type)){
+										// Для типа сокета RAW
+										case static_cast <uint8_t> (event::type_t::RAW):
+										// Для типа сокета DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если событие является неблокирующим
+											if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
+												// Выполняем чтение данных из UDP-сокета
+												bytes = ::recvfrom(
+													server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													&::trust_cast <struct sockaddr> (server->endpoint.client),
+													&server->endpoint.size
+												);
+												// Если мы получили ошибку
+												if(bytes < 0){
+													// Если нам нужно повторить попытку позже
+													if(errno == EAGAIN)
+														// Формируем отрицательный результат
+														return true;
+													// Если мы получили другую ошибку
+													else {
+														// Устанавливаем текст ошибки
+														const string error = fmk->format("Failed to receive data for origin: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(server->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+													}
+													// Выходим из функции
+													return true;
+												}
+											// Если событие является блокирующим
+											} else {
+												// Выполняем чтение данных из UDP-сокета
+												bytes = ::recvfrom(
+													server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													&::trust_cast <struct sockaddr> (server->endpoint.client),
+													&server->endpoint.size
+												);
+												// Если мы получили ошибку
+												if(bytes < 0){
 													// Устанавливаем текст ошибки
-													const string error = "Server's Unix socket address is corrupted";
+													const string error = fmk->format("Failed to receive data for origin: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+														server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -5743,55 +5845,414 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
 													// Выходим из функции
 													return true;
 												}
-											} break;
-											// Для семейства IPv4
-											case static_cast <uint8_t> (event::family_t::IPV4): {
-												// Выполняем инициализацию объекта хоста IPv4-адреса
-												origin->remote = make_unique <net::attr_net_t> ();
-												// Получаем объект хоста IPv4-адреса
-												net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
-												// Выполняем инициализацию объекта IP-адреса
-												remote->ip = make_unique <net::addr_net_ipv4_t> ();
-												// Устанавливаем порт
-												remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
-												// Устанавливаем IP-адрес
-												awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-												// Устанавливаем полученный IP-адрес во временный объект
-												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-												// Выполняем извлечение сетевых параметров
-												eth->fillsource(event::node_t::PEER, source);
-												// Если чёрный или белый список адресов не пустой
-												if(!server->blacklist.empty() || !server->whitelist.empty()){
+											}
+										} break;
+										// Для типа сокета SEQPACKET
+										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											// Если событие является неблокирующим
+											if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(server->state.protocol == event::protocol_t::SCTP)
+														// Выполняем чтение данных из SCTP-сокета
+														bytes = ::sctp_recvmsg(
+															server->fd,
+															buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+															&::trust_cast <struct sockaddr> (server->endpoint.client),
+															&server->endpoint.size,
+															&server->transfer.sctp.info,
+															&server->transfer.sctp.flags
+														);
+													// Выполняем чтение данных из TCP/IP сокета
+													else bytes = ::recvfrom(
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														&::trust_cast <struct sockaddr> (server->endpoint.client),
+														&server->endpoint.size
+													);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем чтение данных из UDP-сокета
+													bytes = ::recvfrom(
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														&::trust_cast <struct sockaddr> (server->endpoint.client),
+														&server->endpoint.size
+													);
+												#endif
+												// Если мы получили ошибку
+												if(bytes < 0){
+													// Если нам нужно повторить попытку позже
+													if(errno == EAGAIN)
+														// Формируем отрицательный результат
+														return true;
+													// Если мы получили другую ошибку
+													else {
+														// Устанавливаем текст ошибки
+														const string error = fmk->format("Failed to receive data for origin: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(server->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+													}
+													// Выходим из функции
+													return true;
+												}
+											// Если событие является блокирующим
+											} else {
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(server->state.protocol == event::protocol_t::SCTP)
+														// Выполняем чтение данных из SCTP-сокета
+														bytes = ::sctp_recvmsg(
+															server->fd,
+															buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+															&::trust_cast <struct sockaddr> (server->endpoint.client),
+															&server->endpoint.size,
+															&server->transfer.sctp.info,
+															&server->transfer.sctp.flags
+														);
+													// Выполняем чтение данных из TCP/IP сокета
+													else bytes = ::recvfrom(
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														&::trust_cast <struct sockaddr> (server->endpoint.client),
+														&server->endpoint.size
+													);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем чтение данных из UDP-сокета
+													bytes = ::recvfrom(
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														&::trust_cast <struct sockaddr> (server->endpoint.client),
+														&server->endpoint.size
+													);
+												#endif
+												// Если мы получили ошибку
+												if(bytes < 0){
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Failed to receive data for origin: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выходим из функции
+													return true;
+												}
+											}
+										} break;
+									}
+									// Идентификатор сессии источника
+									origin_id_t sid;
+									/**
+									 * Определяем семейство события
+									 */
+									switch(static_cast <uint8_t> (server->state.family)){
+										// Для семейства UNIX-доменных сокетов
+										case static_cast <uint8_t> (event::family_t::UDS):
+											// Формируем идентификатор источника
+											sid.from(::trust_cast <struct sockaddr_un> (server->endpoint.client));
+										break;
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Формируем идентификатор источника
+											sid.from(::trust_cast <struct sockaddr_in> (server->endpoint.client));
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Формируем идентификатор источника
+											sid.from(::trust_cast <struct sockaddr_in6> (server->endpoint.client));
+										break;
+									}
+									// Ищем сессию по идентификатору источника
+									auto i = ::__awh_origin_sessions__.find(sid);
+									// Если сессия найдена
+									if(i != ::__awh_origin_sessions__.end()){
+										// Если событие находится не в состоянии паузы
+										if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+											// Если функция обратного вызова для вывода события установлена
+											if(i->second->callbacks.event != nullptr)
+												// Вызываем функцию обратного вызова флаг события
+												i->second->callbacks.event(i->second->id, event::action_t::READ);
+											// Если идентификатор события для передачи данных не установлен
+											if(i->second->transfer.dest == 0){
+												// Если функция обратного вызова для вывода прочитанных данных установлена
+												if(i->second->callbacks.read != nullptr){
+													// Запоминаем идентификатор ноды
+													const event::id_t nid = i->second->id;
+													// Вывзываем функцию обратного вызова для вывода полученных данных
+													i->second->callbacks.read(nid, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+													// Если идентификатор ноды или идентификатор сервера не найдены, тогда просто выходим
+													if((::__awh_nodes__.find(nid) == ::__awh_nodes__.end()) || (::__awh_nodes__.find(id) == ::__awh_nodes__.end()))
+														// Формируем отрицательный результат
+														return false;
+												}
+											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+											} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если сокет является неблокирующим
+											if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
+												// Если необходимо установить таймаут на чтение данных
+												auto j= i->second->timeouts.find(event::action_t::READ);
+												// Если таймаут на подключение найден
+												if((j != i->second->timeouts.end()) && (j->second > 0)){
+													// Активируем таймаут события
+													i->second->timeout = j->first;
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, i->second);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(i->second->id, ::local::evacc_t{});
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+													// Увеличиваем количество событий
+													ret.first->second.count++;
+												}
+											}
+										}
+										// Заполняем структуру клиента нулями после того как извлекли данные
+										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+									// Если клиент ранее ещё ничего не присылал
+									} else {
+										// Если событие принятия подключения разрешено
+										if(server->actions & action::ACCEPT){
+											// Если количество текущих подключений уже максимальное
+											if(server->backlog.count == server->backlog.max){
+												// Если установлена функция обратного вызова
+												if(server->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об отмене подключения
+													server->callbacks.status(server->id, event::status_t::CANCELLED);
+												// Выходим из функции
+												return true;
+											}
+											// Выполняем создание нового объекта однорангового узла-источника
+											unique_ptr <origin_t> origin = make_unique <origin_t> (server->backlog.count, fmk, log);
+											// Устанавливаем файловый дескриптор сокета
+											origin->transfer.fd = server->fd;
+											// Устанавливаем тип узла
+											origin->state.node = event::node_t::ORIGIN;
+											// Устанавливаем тип сокета
+											origin->state.type = server->state.type;
+											// Устанавливаем семейство события
+											origin->state.family = server->state.family;
+											// Устанавливаем тип адреса события
+											origin->state.address = server->state.address;
+											// Устанавливаем параметры события
+											origin->state.options = server->state.options;
+											// Устанавливаем протокол сокета
+											origin->state.protocol = server->state.protocol;
+											// Если протокол интернета установлен как SCTP
+											if(origin->state.protocol == event::protocol_t::SCTP)
+												// Выполняем активацию событий SCTP
+												eth->sctp(origin->transfer.fd, origin->state.type);
+											// Устанавливаем размер объекта подключения клиента
+											origin->endpoint.size = server->endpoint.size;
+											// Выполняем копирование объект подключения клиента в сторейдж
+											::memcpy(&origin->endpoint.client, &server->endpoint.client, origin->endpoint.size);
+											// Заполняем структуру клиента нулями после того как извлекли данные
+											::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+											// Выполняем инициализацию объекта MAC-адреса
+											origin->mac = make_unique <net::addr_mac_t> ();
+											/**
+											 * Определяем семейство события
+											 */
+											switch(static_cast <uint8_t> (origin->state.family)){
+												// Для семейства UNIX-доменных сокетов
+												case static_cast <uint8_t> (event::family_t::UDS): {
+													// Получаем путь UDS-сокета сервера к которому мы подключились
+													string address = ::move(::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size));
+													// Если адрес UDS-сокета не пустой
+													if(!address.empty()){
+														// Выполняем инициализацию объекта хоста UDS-сокета
+														origin->remote = make_unique <net::attr_uds_t> ();
+														// Получаем объект хоста UDS-сокета
+														net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
+														// Выполняем инициализацию объекта адреса файловой системы
+														remote->path = make_unique <net::addr_fs_t> ();
+														// Устанавливаем адрес файловой системы
+														awh_cast <net::addr_fs_t *> (remote->path.get())->address = ::move(address);
+													// Если адрес UDS-сокета пустой
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = "Server's Unix socket address is corrupted";
+														// Если установлена функция обратного вызова
+														if(server->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return true;
+													}
+												} break;
+												// Для семейства IPv4
+												case static_cast <uint8_t> (event::family_t::IPV4): {
+													// Выполняем инициализацию объекта хоста IPv4-адреса
+													origin->remote = make_unique <net::attr_net_t> ();
+													// Получаем объект хоста IPv4-адреса
+													net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+													// Выполняем инициализацию объекта IP-адреса
+													remote->ip = make_unique <net::addr_net_ipv4_t> ();
+													// Устанавливаем порт
+													remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
+													// Устанавливаем IP-адрес
+													awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный IP-адрес во временный объект
 													awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 													// Выполняем извлечение сетевых параметров
 													eth->fillsource(event::node_t::PEER, source);
-													// Если MAC-адрес успешно получен
-													if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-														// Устанавливаем полученный MAC-адрес в объект события
-														server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-														// Получаем MAC-адрес для проверки
-														string mac = ::move(static_cast <string> (server->addr));
+													// Если чёрный или белый список адресов не пустой
+													if(!server->blacklist.empty() || !server->whitelist.empty()){
+														// Временный объект для извлечения сетевого интерфейса
+														net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+														// Устанавливаем полученный IP-адрес во временный объект
+														awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+														// Выполняем извлечение сетевых параметров
+														eth->fillsource(event::node_t::PEER, source);
+														// Если MAC-адрес успешно получен
+														if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+															// Устанавливаем полученный MAC-адрес в объект события
+															server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+															// Получаем MAC-адрес для проверки
+															string mac = ::move(static_cast <string> (server->addr));
+															// Если адрес находится в чёрном списке
+															if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+																// Устанавливаем текст ошибки
+																const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+																// Если установлена функция обратного вызова
+																if(server->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
+																// Если функция обратного вызова для вывода события установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+																	#endif
+																}
+																// Формируем положительный результат
+																return true;
+															}
+															// Если в белом списке нет адреса
+															if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+																// Устанавливаем текст ошибки
+																const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+																// Если установлена функция обратного вызова
+																if(server->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
+																// Если функция обратного вызова для вывода события установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+																	#endif
+																}
+																// Формируем положительный результат
+																return true;
+															}
+														}
+														// Устанавливаем полученный IP-адрес
+														server->addr.v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+														// Получаем IP-адрес для проверки
+														string ip = ::move(static_cast <string> (server->addr));
 														// Если адрес находится в чёрном списке
-														if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+														if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+															const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
@@ -5816,9 +6277,9 @@ namespace io {
 															return true;
 														}
 														// Если в белом списке нет адреса
-														if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+														if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
 															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+															const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
@@ -5843,98 +6304,98 @@ namespace io {
 															return true;
 														}
 													}
-													// Устанавливаем полученный IP-адрес
-													server->addr.v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Получаем IP-адрес для проверки
-													string ip = ::move(static_cast <string> (server->addr));
-													// Если адрес находится в чёрном списке
-													if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
+													// Копируем MAC-адрес из временного объекта
+													origin->mac = ::move(source.mac);
+												} break;
+												// Для семейства IPv6
+												case static_cast <uint8_t> (event::family_t::IPV6): {
+													// Выполняем инициализацию объекта хоста IPv6-адреса
+													origin->remote = make_unique <net::attr_net_t> ();
+													// Получаем объект хоста IPv6-адреса
+													net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+													// Выполняем инициализацию объекта IP-адреса
+													remote->ip = make_unique <net::addr_net_ipv6_t> ();
+													// Устанавливаем порт
+													remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
+													// Устанавливаем IP-адрес
+													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+													// Временный объект для извлечения сетевого интерфейса
+													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+													// Устанавливаем полученный IP-адрес во временный объект
+													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+													// Выполняем извлечение сетевых параметров
+													eth->fillsource(event::node_t::PEER, source);
+													// Если чёрный или белый список адресов не пустой
+													if(!server->blacklist.empty() || !server->whitelist.empty()){
+														// Если MAC-адрес успешно получен
+														if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+															// Устанавливаем полученный MAC-адрес в объект события
+															origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+															// Получаем MAC-адрес для проверки
+															string mac = ::move(static_cast <string> (origin->addr));
+															// Если адрес находится в чёрном списке
+															if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+																// Устанавливаем текст ошибки
+																const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+																// Если установлена функция обратного вызова
+																if(server->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+																// Если функция обратного вызова для вывода события установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+																	#endif
+																}
+																// Выходим из функции
+																return true;
+															}
+															// Если в белом списке нет адреса
+															if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+																// Устанавливаем текст ошибки
+																const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+																// Если установлена функция обратного вызова
+																if(server->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
+																// Если функция обратного вызова для вывода события установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+																	#endif
+																}
+																// Выходим из функции
+																return true;
+															}
 														}
-														// Формируем положительный результат
-														return true;
-													}
-													// Если в белом списке нет адреса
-													if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Формируем положительный результат
-														return true;
-													}
-												}
-												// Копируем MAC-адрес из временного объекта
-												origin->mac = ::move(source.mac);
-											} break;
-											// Для семейства IPv6
-											case static_cast <uint8_t> (event::family_t::IPV6): {
-												// Выполняем инициализацию объекта хоста IPv6-адреса
-												origin->remote = make_unique <net::attr_net_t> ();
-												// Получаем объект хоста IPv6-адреса
-												net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
-												// Выполняем инициализацию объекта IP-адреса
-												remote->ip = make_unique <net::addr_net_ipv6_t> ();
-												// Устанавливаем порт
-												remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
-												// Устанавливаем IP-адрес
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-												// Устанавливаем полученный IP-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-												// Выполняем извлечение сетевых параметров
-												eth->fillsource(event::node_t::PEER, source);
-												// Если чёрный или белый список адресов не пустой
-												if(!server->blacklist.empty() || !server->whitelist.empty()){
-													// Если MAC-адрес успешно получен
-													if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-														// Устанавливаем полученный MAC-адрес в объект события
-														origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-														// Получаем MAC-адрес для проверки
-														string mac = ::move(static_cast <string> (origin->addr));
+														// Устанавливаем полученный IP-адрес
+														origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
+														// Получаем IP-адрес для проверки
+														string ip = ::move(static_cast <string> (origin->addr));
 														// Если адрес находится в чёрном списке
-														if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+														if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+															const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
@@ -5959,9 +6420,9 @@ namespace io {
 															return true;
 														}
 														// Если в белом списке нет адреса
-														if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+														if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
 															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+															const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
@@ -5986,191 +6447,160 @@ namespace io {
 															return true;
 														}
 													}
-													// Устанавливаем полученный IP-адрес
-													origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
-													// Получаем IP-адрес для проверки
-													string ip = ::move(static_cast <string> (origin->addr));
-													// Если адрес находится в чёрном списке
-													if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return true;
-													}
-													// Если в белом списке нет адреса
-													if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
-														// Устанавливаем текст ошибки
-														const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return true;
-													}
-												}
-												// Копируем MAC-адрес из временного объекта
-												origin->mac = ::move(source.mac);
-											} break;
-										}
-										// Извлекаем параметры таймаутов для нового подключения
-										origin->timeouts = server->timeouts;
-										// Увеличиваем текущее количество подключений
-										origin->peers++;
-										// Если установлена функция обратного вызова
-										if(server->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова флаг события
-											server->callbacks.event(server->id, event::action_t::ACCEPT);
-										// Если установлена функция обратного вызова
-										if(server->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об принятии подключения
-											server->callbacks.status(server->id, event::status_t::ACCEPTED);
-										// Устанавливаем флаг разрешающий выполнять чтение из сокета
-										origin->transfer.actions |= action::READ;
-										// Устанавливаем флаг разрешающий выполнять запись в сокет
-										origin->transfer.actions |= action::WRITE;
-										// Устанавливаем флаг разрешающий закрытие сокета
-										origin->transfer.actions |= action::CLOSE;
-										// Устанавливаем флаг разрешающий выполнять отключение от сервера
-										origin->transfer.actions |= action::DISCONNECT;
-										// Выполняем блокировку потоков
-										const locker_t lock(::__awh_mtx__);
-										// Выполняем создание события
-										auto ret = ::__awh_nodes__.emplace(io::identifier(), ::move(origin));
-										// Получаем идентификатор только что добавленного узла
-										const event::id_t id = ret.first->first;
-										// Регистрируем сессию источника по идентификатору источника
-										::__awh_origin_sessions__.emplace(sid, awh_cast <origin_t *> (ret.first->second.get()));
-										// Если установлена функция обратного вызова
-										if(server->callbacks.origin != nullptr){
-											// Запоминаем идентификатор сервера
-											const event::id_t sid = server->id;
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.origin(server->id, id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-											// Если идентификатор ноды или идентификатор сервера не найдены, тогда просто выходим
-											if((::__awh_nodes__.find(id) == ::__awh_nodes__.end()) || (::__awh_nodes__.find(sid) == ::__awh_nodes__.end()))
-												// Формируем отрицательный результат
-												return false;
-										}
-										// Если дескриптор сокета инициализирован
-										if(::__awh_kq__ != net::invalid_socket_t){
-											// Выполняем поиск идентификатора события
-											auto i = ::__awh_nodes__.find(id);
-											// Если идентификатор события найден и событие не подлежит уничтожению
-											if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-												// Получаем текущее значение объекта однорангового узла-источника
-												origin_t * origin = awh_cast <origin_t *> (i->second.get());
-												// Устанавливаем идентификатор объекта однорангового узла-источника
-												origin->id = id;
-												// Активируем или деактивируем работу мютексов для передачи данных
-												origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-												// Устанавливаем статус события в состояние ожидания
-												origin->state.status.store(event::status_t::PENDING, std::memory_order_release);
-												// Если сокет является неблокирующим
-												if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
-													// Если необходимо установить таймаут на получение данных
-													auto i = origin->timeouts.find(event::action_t::READ);
-													// Если таймаут на получение данных найден
-													if((i != origin->timeouts.end()) && (i->second > 0)){
-														// Активируем таймаут события
-														origin->timeout = i->first;
-														// Выполняем блокировку потоков
-														const locker_t lock(::local::mtx);
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
-														// Создаём объект промежуточного звена
-														auto ret = ::local::evaccs.emplace(origin->id, ::local::evacc_t{});
-														// Если событие успешно добавлено
-														if(ret.second){
-															// Увеличиваем количество событий
-															ret.first->second.count = 1;
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::local::change.size() - 1);
-														// Событие не может быть зафиксированно повторно
-														} else {
-															// Устанавливаем текст ошибки
-															const string error = "An event for a peer event cannot be commit because it is already registered";
-															// Если установлена функция обратного вызова
-															if(server->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																#endif
-															}
-														}
-													}
-												}
-												// Выводим положительный результат
-												return true;
+													// Копируем MAC-адрес из временного объекта
+													origin->mac = ::move(source.mac);
+												} break;
 											}
-										// Если событие нужно уничтожить
-										} else {
+											// Извлекаем параметры таймаутов для нового подключения
+											origin->timeouts = server->timeouts;
+											// Увеличиваем текущее количество подключений
+											origin->peers++;
+											// Если установлена функция обратного вызова
+											if(server->callbacks.event != nullptr)
+												// Вызываем функцию обратного вызова флаг события
+												server->callbacks.event(server->id, event::action_t::ACCEPT);
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об принятии подключения
+												server->callbacks.status(server->id, event::status_t::ACCEPTED);
+											// Устанавливаем флаг разрешающий выполнять чтение из сокета
+											origin->transfer.actions |= action::READ;
+											// Устанавливаем флаг разрешающий выполнять запись в сокет
+											origin->transfer.actions |= action::WRITE;
+											// Устанавливаем флаг разрешающий закрытие сокета
+											origin->transfer.actions |= action::CLOSE;
+											// Устанавливаем флаг разрешающий выполнять отключение от сервера
+											origin->transfer.actions |= action::DISCONNECT;
 											// Выполняем блокировку потоков
 											const locker_t lock(::__awh_mtx__);
-											// Выполняем поиск идентификатора события
-											auto i = ::__awh_nodes__.find(id);
-											// Если идентификатор события найден
-											if(i != ::__awh_nodes__.end())
-												// Удаляем только что добавленный узел
-												::__awh_nodes__.erase(i);
-											// Выводим отрицательный результат
-											return false;
+											// Выполняем создание события
+											auto ret = ::__awh_nodes__.emplace(io::identifier(), ::move(origin));
+											// Получаем идентификатор только что добавленного узла
+											const event::id_t id = ret.first->first;
+											// Регистрируем сессию источника по идентификатору источника
+											::__awh_origin_sessions__.emplace(sid, awh_cast <origin_t *> (ret.first->second.get()));
+											// Если установлена функция обратного вызова
+											if(server->callbacks.origin != nullptr){
+												// Запоминаем идентификатор сервера
+												const event::id_t sid = server->id;
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.origin(server->id, id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+												// Если идентификатор ноды или идентификатор сервера не найдены, тогда просто выходим
+												if((::__awh_nodes__.find(id) == ::__awh_nodes__.end()) || (::__awh_nodes__.find(sid) == ::__awh_nodes__.end()))
+													// Формируем отрицательный результат
+													return false;
+											}
+											// Если дескриптор сокета инициализирован
+											if(::__awh_kq__ != net::invalid_socket_t){
+												// Выполняем поиск идентификатора события
+												auto i = ::__awh_nodes__.find(id);
+												// Если идентификатор события найден и событие не подлежит уничтожению
+												if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+													// Получаем текущее значение объекта однорангового узла-источника
+													origin_t * origin = awh_cast <origin_t *> (i->second.get());
+													// Устанавливаем идентификатор объекта однорангового узла-источника
+													origin->id = id;
+													// Активируем или деактивируем работу мютексов для передачи данных
+													origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+													// Устанавливаем статус события в состояние ожидания
+													origin->state.status.store(event::status_t::PENDING, std::memory_order_release);
+													// Если сокет является неблокирующим
+													if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+														// Если необходимо установить таймаут на получение данных
+														auto i = origin->timeouts.find(event::action_t::READ);
+														// Если таймаут на получение данных найден
+														if((i != origin->timeouts.end()) && (i->second > 0)){
+															// Активируем таймаут события
+															origin->timeout = i->first;
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(origin->id, ::local::evacc_t{});
+															// Если событие успешно добавлено
+															if(ret.second){
+																// Увеличиваем количество событий
+																ret.first->second.count = 1;
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Событие не может быть зафиксированно повторно
+															} else {
+																// Устанавливаем текст ошибки
+																const string error = "An event for a peer event cannot be commit because it is already registered";
+																// Если установлена функция обратного вызова
+																if(server->callbacks.error != nullptr)
+																	// Вызываем функцию обратного вызова ошибки события
+																	server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+																// Если функция обратного вызова для вывода события установлена
+																else {
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, id), log_t::flag_t::CRITICAL, error.c_str());
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+																	#endif
+																}
+															}
+														}
+													}
+													// Выводим положительный результат
+													return true;
+												}
+											// Если событие нужно уничтожить
+											} else {
+												// Выполняем блокировку потоков
+												const locker_t lock(::__awh_mtx__);
+												// Выполняем поиск идентификатора события
+												auto i = ::__awh_nodes__.find(id);
+												// Если идентификатор события найден
+												if(i != ::__awh_nodes__.end())
+													// Удаляем только что добавленный узел
+													::__awh_nodes__.erase(i);
+												// Выводим отрицательный результат
+												return false;
+											}
 										}
 									}
+									// Формируем положительный результат
+									return true;
 								}
-								// Формируем положительный результат
-								return true;
+							} break;
+							// Для остальных типов сокетов
+							default: {
+								// Получаем текущее значение объекта сервера
+								server_t * server = awh_cast <server_t *> (node);
+								// Устанавливаем текст ошибки
+								const string error = "Only RAW, DATAGRAM and SEQPACKET socket types are supported for server nodes";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
 							}
 						}
 					}
@@ -6634,7 +7064,7 @@ namespace io {
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
-										if(node->state.protocol == event::protocol_t::SCTP)
+										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
@@ -6948,116 +7378,127 @@ namespace io {
 									} break;
 									// Для типа сокета SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(node->state.protocol == event::protocol_t::SCTP)
+										// Если клиент находится в состоянии подключено
+										if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+														client->transfer.queue.size(),
+														nullptr, 0,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
-													client->transfer.fd,
-													reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
-													client->transfer.queue.size(),
-													nullptr, 0,
-													client->transfer.sctp.info.sinfo_ppid,
-													client->transfer.sctp.info.sinfo_flags,
-													client->transfer.sctp.info.sinfo_stream,
-													client->transfer.sctp.info.sinfo_timetolive,
-													client->transfer.sctp.info.sinfo_context
-												);
-											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
-										#endif
-										// Если данные отправлены успешно
-										if(bytes > 0){
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(client->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
-												client->callbacks.write(client->id, static_cast <size_t> (bytes));
-											// Если есть данные для отправки в сокет
-											if(!client->transfer.queue.empty()){
-												// Если таймаут установлен на запись
-												if(client->timeout == event::action_t::WRITE){
-													// Выполняем проверку на наличие таймаута для события записи
-													auto i = client->timeouts.find(event::action_t::WRITE);
-													// Если нужный нам таймаут найден
-													if((i != client->timeouts.end()) && (i->second > 0)){
-														// Выполняем блокировку потоков
-														const locker_t lock(::local::mtx);
-														// Создаём объект промежуточного звена
-														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::local::change.size() - 1);
-														// Активируем таймаут события
-														client->timeout = i->first;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-													// Если нужный нам таймаут не найден
-													} else {
-														// Выполняем блокировку потоков
-														const locker_t lock(::local::mtx);
-														// Создаём объект промежуточного звена
-														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::local::change.size() - 1);
-														// Деактивируем таймаут события
-														client->timeout = event::action_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Снимаем таймаут на получение данных
-														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+												else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
+											#endif
+											// Если данные отправлены успешно
+											if(bytes > 0){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если есть данные для отправки в сокет
+												if(!client->transfer.queue.empty()){
+													// Если таймаут установлен на запись
+													if(client->timeout == event::action_t::WRITE){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+														}
 													}
 												}
-											}
-										// Если мы отправили не все данные
-										} else if(bytes == -1) {
-											// Если нам нужно повторить попытку позже
-											if(errno == EAGAIN)
-												// Формируем положительный результат
-												return true;
-											// Если произошла ошибка при отправке данных
-											else {
-												// Устанавливаем текст ошибки
-												const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
+											// Если мы отправили не все данные
+											} else if(bytes == -1) {
+												// Если нам нужно повторить попытку позже
+												if(errno == EAGAIN)
+													// Формируем положительный результат
+													return true;
+												// Если произошла ошибка при отправке данных
 												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выполняем обработку закрытия подключения
+													if(io::close(node, log))
+														// Выполняем удаление узла
+														io::destroy(node, log);
+													// Формируем отрицательный результат
+													return false;
 												}
+											// Если произошёл дисконнект
+											} else {
 												// Выполняем обработку закрытия подключения
 												if(io::close(node, log))
 													// Выполняем удаление узла
@@ -7065,19 +7506,152 @@ namespace io {
 												// Формируем отрицательный результат
 												return false;
 											}
-										// Если произошёл дисконнект
-										} else {
-											// Выполняем обработку закрытия подключения
-											if(io::close(node, log))
-												// Выполняем удаление узла
-												io::destroy(node, log);
-											// Формируем отрицательный результат
-											return false;
+										// Если клиент находится в запущенном состоянии
+										} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+														client->transfer.queue.size(),
+														&::trust_cast <struct sockaddr> (client->endpoint.server),
+														client->endpoint.size,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::sendto(
+													client->transfer.fd,
+													reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+													client->transfer.queue.size(), 0,
+													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													client->endpoint.size
+												);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в UDP сокет
+												const ssize_t bytes = ::sendto(
+													client->transfer.fd,
+													reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+													client->transfer.queue.size(), 0,
+													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													client->endpoint.size
+												);
+											#endif
+											// Если данные отправлены успешно
+											if(bytes > 0){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если есть данные для отправки в сокет
+												if(!client->transfer.queue.empty()){
+													// Если таймаут установлен на запись
+													if(client->timeout == event::action_t::WRITE){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE, 0, 0, client);
+														}
+													}
+												}
+											// Если мы отправили не все данные
+											} else if(bytes == -1) {
+												// Если нам нужно повторить попытку позже
+												if(errno == EAGAIN)
+													// Формируем положительный результат
+													return true;
+												// Если произошла ошибка при отправке данных
+												else {
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выполняем обработку закрытия подключения
+													if(io::close(node, log))
+														// Выполняем удаление узла
+														io::destroy(node, log);
+													// Формируем отрицательный результат
+													return false;
+												}
+											// Если произошёл дисконнект
+											} else {
+												// Выполняем обработку закрытия подключения
+												if(io::close(node, log))
+													// Выполняем удаление узла
+													io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
+											}
 										}
 									} break;
 									// Для типа сокета DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Если подключение установлено
+										// Если клиент находится в состоянии подключено
 										if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
@@ -7179,7 +7753,7 @@ namespace io {
 												return false;
 											}
 										// Если клиент находится в запущенном состоянии
-										} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) {
+										} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
 											// Выполняем отправку данных в UDP сокет
 											const ssize_t bytes = ::sendto(
 												client->transfer.fd,
@@ -7364,13 +7938,25 @@ namespace io {
 														session.second->transfer.sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(session.second->transfer.fd, reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()), session.second->transfer.queue.size(), 0);
+												else bytes = bytes = ::sendto(
+													session.second->transfer.fd,
+													reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()),
+													session.second->transfer.queue.size(), 0,
+													&::trust_cast <struct sockaddr> (session.second->endpoint.client),
+													session.second->endpoint.size
+												);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::send(session.second->transfer.fd, reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()), session.second->transfer.queue.size(), 0);
+												bytes = ::sendto(
+													session.second->transfer.fd,
+													reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()),
+													session.second->transfer.queue.size(), 0,
+													&::trust_cast <struct sockaddr> (session.second->endpoint.client),
+													session.second->endpoint.size
+												);
 											#endif
 										} break;
 										// Для типа сокета DATAGRAM
@@ -8028,7 +8614,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 		if(i != ::__awh_nodes__.end()){
 			// Если событие ещё не инициализированно или клонированно от другого события
 			if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE) ||
-			   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::ACCEPTED)){
+			   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::CLONED)){
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -8037,8 +8623,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Выполняем извлечение текущего значения объекта пользовательского события
 						user_t * user = awh_cast <user_t *> (i->second.get());
-						// Устанавливаем статус события в состояние ожидания
-						user->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Устанавливаем статус события в состояние инициализировано
+						user->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::local::mtx);
@@ -8049,7 +8635,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем пользовательское событие
-								EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, user);
+								EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR | EV_DISABLE, NOTE_FFNOP, 0, user);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
@@ -8085,8 +8671,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::TIMEOUT): {
 						// Выполняем извлечение текущего значения объекта таймера
 						timer_t * timer = awh_cast <timer_t *> (i->second.get());
-						// Устанавливаем статус события в состояние ожидания
-						timer->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Устанавливаем статус события в состояние инициализировано
+						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::local::mtx);
@@ -8097,7 +8683,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
@@ -8133,8 +8719,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Выполняем извлечение текущего значения объекта таймера
 						timer_t * timer = awh_cast <timer_t *> (i->second.get());
-						// Устанавливаем статус события в состояние ожидания
-						timer->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Устанавливаем статус события в состояние инициализировано
+						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						{
 							// Выполняем блокировку потоков
 							const locker_t lock(::local::mtx);
@@ -8145,7 +8731,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
@@ -8181,8 +8767,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
 						dir_t * dir = awh_cast <dir_t *> (i->second.get());
-						// Устанавливаем статус события в состояние ожидания
-						dir->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Устанавливаем статус события в состояние инициализировано
+						dir->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если путь к директории существует
 						if(dir->path != nullptr){
 							// Получаем адрес каталога
@@ -8233,7 +8819,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на отслеживание изменения каталога
-											EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, dir);
+											EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, dir);
 											// Устанавливаем количество событий
 											ret.first->second.count = 1;
 											// Устанавливаем индекс текущего элемента
@@ -8360,8 +8946,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
 						file_t * file = awh_cast <file_t *> (i->second.get());
-						// Устанавливаем статус события в состояние ожидания
-						file->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Устанавливаем статус события в состояние инициализировано
+						file->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если путь к файлу существует
 						if(file->path != nullptr){
 							// Получаем адрес файла
@@ -8381,7 +8967,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на отслеживание изменения файла
-										EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, file);
+										EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, file);
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
@@ -8512,8 +9098,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
-						// Устанавливаем статус события в состояние ожидания
-						ipc->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						// Устанавливаем статус события в состояние инициализировано
+						ipc->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если файловый дескриптор межпроцессного взаимодействия существует
 						if(ipc->transfer.fd != net::invalid_socket_t){
 							/**
@@ -8539,9 +9125,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Если сокет является неблокирующим
 										if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK))
 											// Устанавливаем событие на чтение и активируем его
-											EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, ipc);
+											EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, ipc);
 										// Устанавливаем событие на чтение и активируем его
-										else EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, ipc);
+										else EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, ipc);
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
@@ -8658,8 +9244,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Устанавливаем статус события в состояние подключения
-											client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 											// Если адрес целевой машины указан
 											if(client->target != nullptr){
 												// Устанавливаем размер структуры для целевой машины
@@ -8718,9 +9302,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Если сокет является неблокирующим
 														if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, client);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, client);
+														else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 														// Устанавливаем количество событий
 														ret.first->second.count = 1;
 														// Устанавливаем индекс текущего элемента
@@ -8789,8 +9373,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Устанавливаем статус события в состояние подключения
-											client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 											// Если адрес целевой машины указан
 											if(client->target != nullptr){
 												// Устанавливаем размер структуры для целевой машины
@@ -8849,9 +9431,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Если сокет является неблокирующим
 														if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, client);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, client);
 														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, client);
+														else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
 														// Устанавливаем количество событий
 														ret.first->second.count = 1;
 														// Устанавливаем индекс текущего элемента
@@ -10325,8 +10907,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									switch(static_cast <uint8_t> (server->state.family)){
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Устанавливаем статус события в состояние подключения
-											server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
 												// Запоминаем размер структуры
@@ -10379,8 +10959,6 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Устанавливаем статус события в состояние подключения
-											server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
 												// Запоминаем размер структуры
@@ -10632,33 +11210,12 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														if((result = ret.second)){
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
-															/**
-															 * Определяем тип сокета
-															 */
-															switch(static_cast <uint8_t> (server->state.type)){
-																// Для типа сокета STREAM
-																case static_cast <uint8_t> (event::type_t::STREAM):
-																// Для типа сокета SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																	// Если сокет является неблокирующим
-																	if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
-																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
-																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
-																} break;
-																// Для типа сокета DATAGRAM
-																case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																	// Устанавливаем статус события в состояние подключения
-																	server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-																	// Если сокет является неблокирующим
-																	if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
-																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, server);
-																	// Устанавливаем событие на чтение но отключаем его
-																	else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD, 0, 0, server);
-																} break;
-															}
+															// Если сокет является неблокирующим
+															if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+															// Устанавливаем событие на чтение но отключаем его
+															else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 															// Устанавливаем количество событий
 															ret.first->second.count = 1;
 															// Устанавливаем индекс текущего элемента
@@ -10805,33 +11362,12 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															if((result = ret.second)){
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
-																/**
-																 * Определяем тип сокета
-																 */
-																switch(static_cast <uint8_t> (server->state.type)){
-																	// Для типа сокета STREAM
-																	case static_cast <uint8_t> (event::type_t::STREAM):
-																	// Для типа сокета SEQPACKET
-																	case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																		// Если сокет является неблокирующим
-																		if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
-																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
-																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
-																	} break;
-																	// Для типа сокета DATAGRAM
-																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																		// Устанавливаем статус события в состояние подключения
-																		server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-																		// Если сокет является неблокирующим
-																		if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
-																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, server);
-																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD, 0, 0, server);
-																	} break;
-																}
+																// Если сокет является неблокирующим
+																if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+																	// Устанавливаем событие на чтение но отключаем его
+																	EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+																// Устанавливаем событие на чтение но отключаем его
+																else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 																// Устанавливаем количество событий
 																ret.first->second.count = 1;
 																// Устанавливаем индекс текущего элемента
@@ -11010,33 +11546,12 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															if((result = ret.second)){
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
-																/**
-																 * Определяем тип сокета
-																 */
-																switch(static_cast <uint8_t> (server->state.type)){
-																	// Для типа сокета STREAM
-																	case static_cast <uint8_t> (event::type_t::STREAM):
-																	// Для типа сокета SEQPACKET
-																	case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																		// Если сокет является неблокирующим
-																		if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
-																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
-																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
-																	} break;
-																	// Для типа сокета DATAGRAM
-																	case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-																		// Устанавливаем статус события в состояние подключения
-																		server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-																		// Если сокет является неблокирующим
-																		if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
-																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, server);
-																		// Устанавливаем событие на чтение но отключаем его
-																		else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD, 0, 0, server);
-																	} break;
-																}
+																// Если сокет является неблокирующим
+																if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+																	// Устанавливаем событие на чтение но отключаем его
+																	EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, server);
+																// Устанавливаем событие на чтение но отключаем его
+																else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
 																// Устанавливаем количество событий
 																ret.first->second.count = 1;
 																// Устанавливаем индекс текущего элемента
@@ -16432,8 +16947,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
 								awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Возвращаем идентификатор созданного события
@@ -16484,8 +16999,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Возвращаем идентификатор созданного события
 								return ret.first->first;
 							}
@@ -16532,8 +17047,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Выполняем инициализацию объекта адреса файловой системы
 								awh_cast <dir_t *> (ret.first->second.get())->path = make_unique <net::addr_fs_t> ();
 								// Возвращаем идентификатор созданного события
@@ -16582,8 +17097,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Выполняем инициализацию объекта адреса файловой системы
 								awh_cast <file_t *> (ret.first->second.get())->path = make_unique <net::addr_fs_t> ();
 								// Возвращаем идентификатор созданного события
@@ -16640,8 +17155,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										ret.first->second->state.type = i->second->state.type;
 										// Устанавливаем флаг семейства сокета
 										ret.first->second->state.family = i->second->state.family;
-										// Устанавливаем статус события в состояние ожидания
-										ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+										// Устанавливаем статус события в состояние клонированно
+										ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 										// Получаем текущее значение однорангового узла получающего параметры
 										peer_t * second = awh_cast <peer_t *> (ret.first->second.get());
 										// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -16775,8 +17290,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										ret.first->second->state.type = i->second->state.type;
 										// Устанавливаем флаг семейства сокета
 										ret.first->second->state.family = i->second->state.family;
-										// Устанавливаем статус события в состояние ожидания
-										ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+										// Устанавливаем статус события в состояние клонированно
+										ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 										// Результат создания события
 										bool result = true;
 										// Получаем текущее значение однорангового узла получающего параметры
@@ -17223,8 +17738,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										ret.first->second->state.type = i->second->state.type;
 										// Устанавливаем флаг семейства сокета
 										ret.first->second->state.family = i->second->state.family;
-										// Устанавливаем статус события в состояние ожидания
-										ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+										// Устанавливаем статус события в состояние клонированно
+										ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 										// Получаем текущее значение однорангового узла получающего параметры
 										origin_t * second = awh_cast <origin_t *> (ret.first->second.get());
 										// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -17353,8 +17868,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 										ret.first->second->state.type = i->second->state.type;
 										// Устанавливаем флаг семейства сокета
 										ret.first->second->state.family = i->second->state.family;
-										// Устанавливаем статус события в состояние ожидания
-										ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+										// Устанавливаем статус события в состояние клонированно
+										ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 										// Результат создания события
 										bool result = true;
 										// Получаем текущее значение однорангового узла получающего параметры
@@ -17733,8 +18248,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
 								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								/**
@@ -17947,8 +18462,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Активируем или деактивируем работу мютексов для передачи данных
 								awh_cast <client_t *> (ret.first->second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Результат создания события
@@ -18778,8 +19293,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -18982,8 +19497,8 @@ awh::event::id_t awh::IO::event(const event::id_t id, const event::node_t node, 
 								ret.first->second->state.type = i->second->state.type;
 								// Устанавливаем флаг семейства сокета
 								ret.first->second->state.family = i->second->state.family;
-								// Устанавливаем статус события в состояние ожидания
-								ret.first->second->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+								// Устанавливаем статус события в состояние клонированно
+								ret.first->second->state.status.store(event::status_t::CLONED, std::memory_order_release);
 								// Результат создания события
 								bool result = true;
 								/**
@@ -23850,6 +24365,301 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 	#endif
 }
 /**
+ * @brief Метод запуска события
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения запуска
+ */
+bool awh::IO::launch(const event::id_t id) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			// Если событие уже инициализированно
+			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
+						// Устанавливаем статус события в состояние ожидания
+						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::local::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count++;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::local::change.size() - 1);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Активируем событие на запись для клиентского сокета
+							EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ENABLE, 0, 0, i->second.get());
+						}
+						// Выводим положительный результат
+						return true;
+					}
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
+						// Устанавливаем статус события в состояние ожидания
+						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::local::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count++;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::local::change.size() - 1);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Активируем событие на запись для клиентского сокета
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE, 0, 0, i->second.get());
+						}
+						// Выводим положительный результат
+						return true;
+					}
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR):
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Устанавливаем статус события в состояние ожидания
+						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::local::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count++;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::local::change.size() - 1);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если узел является директорией
+								case static_cast <uint8_t> (event::node_t::DIR): {
+									// Получаем текущее значение объекта директории
+									dir_t * dir = awh_cast <dir_t *> (i->second.get());
+									// Активируем событие на запись для клиентского сокета
+									EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ENABLE, 0, 0, dir);
+								} break;
+								// Если узел является файловой системой
+								case static_cast <uint8_t> (event::node_t::FILE): {
+									// Получаем текущее значение объекта файловой системы
+									file_t * file = awh_cast <file_t *> (i->second.get());
+									// Активируем событие на запись для клиентского сокета
+									EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ENABLE, 0, 0, file);
+								} break;
+							}
+						}
+						// Выводим положительный результат
+						return true;
+					}
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Устанавливаем статус события в состояние ожидания
+						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						{
+							// Выполняем блокировку потоков
+							const locker_t lock(::local::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count++;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::local::change.size() - 1);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Получаем текущее значение объекта межпроцессного взаимодействия
+							ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+							// Активируем событие на запись для клиентского сокета
+							EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, ipc);
+						}
+						// Выводим положительный результат
+						return true;
+					}
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Устанавливаем статус события в состояние подключения
+						i->second->state.status.store(event::status_t::LAUNCHED, std::memory_order_release);
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (i->second->state.type)){
+							// Для типа сокета RAW
+							case static_cast <uint8_t> (event::type_t::RAW):
+							// Для типа сокета DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM):
+							// Для типа сокета SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Выполняем блокировку потоков
+								const locker_t lock(::local::mtx);
+								// Создаём объект промежуточного звена
+								auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+								// Устанавливаем количество событий
+								ret.first->second.count++;
+								// Если событие успешно добавлено
+								if(ret.second)
+									// Устанавливаем индекс текущего элемента
+									ret.first->second.index = (::local::change.size() - 1);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * client = awh_cast <client_t *> (i->second.get());
+										// Активируем событие на чтение для клиентского сокета
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
+										// Если необходимо установить таймаут на чтение данных с сервера
+										auto j = client->timeouts.find(event::action_t::READ);
+										// Если таймаут на чтение данных найден
+										if((j != client->timeouts.end()) && (j->second > 0)){
+											// Если сокет является неблокирующим
+											if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+												// Активируем таймаут события
+												client->timeout = j->first;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, client);
+												// Увеличиваем количество событий
+												ret.first->second.count++;
+											// Если сокет является блокирующим
+											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+										}
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * server = awh_cast <server_t *> (i->second.get());
+										// Активируем событие на запись для клиентского сокета
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
+									} break;
+								}
+								// Выводим положительный результат
+								return true;
+							}
+							// Для остальных типов сокетов
+							default: {
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										client_t * client = awh_cast <client_t *> (i->second.get());
+										// Устанавливаем текст ошибки
+										const string error = "Only RAW, DATAGRAM, and SEQPACKET socket types are supported for client nodes";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Снимаем флаг ожидания подключения
+										client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										server_t * server = awh_cast <server_t *> (i->second.get());
+										// Устанавливаем текст ошибки
+										const string error = "Only RAW, DATAGRAM, and SEQPACKET socket types are supported for server nodes";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Снимаем флаг ожидания подключения
+										server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									} break;
+								}
+							}
+						}
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод отключения события
  *
  * @param id идентификатор события
@@ -24574,7 +25384,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					}
 				}
 			// Если событие клонированно с другого события
-			} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::ACCEPTED) {
+			} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CLONED) {
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -24611,8 +25421,8 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									client->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+									// Устанавливаем статус события в состояние клонированно
+									client->state.status.store(event::status_t::CLONED, std::memory_order_release);
 									// Выходим из функции с ошибкой
 									return result;
 								}
@@ -24640,8 +25450,8 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Снимаем флаг ожидания подключения
-										client->state.status.store(event::status_t::ACCEPTED, std::memory_order_release);
+										// Устанавливаем статус события в состояние клонированно
+										client->state.status.store(event::status_t::CLONED, std::memory_order_release);
 										// Если функция обратного вызова для вывода подключения установлена
 										if(client->callbacks.connect != nullptr)
 											// Вывзываем функцию обратного вызова для подключения
@@ -25279,8 +26089,8 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 						server_t * server = awh_cast <server_t *> (i->second.get());
 						// Если событие разрешено принимать входящие соединения
 						if(server->actions & action::ACCEPT){
-							// Устанавливаем статус события в состояние подключения
-							server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+							// Устанавливаем статус события в состояние прослушивания
+							server->state.status.store(event::status_t::LISTENING, std::memory_order_release);
 							// Устанавливаем максимальное количество входящих соединений
 							server->backlog.max = max;
 							// Если нам необходимо выполнить асинхронное подключение
@@ -27429,113 +28239,106 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									}
 									// Если сокет является неблокирующим
 									if(origin->state.options & event::options::NOIOBLOCK){
-										// Если очередь передачи данных пустая
-										if(origin->transfer.queue.empty()){
-											// Выполняем отправку данных в UDP сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-											// Если мы отправили не все данные
-											} else if(bytes == -1) {
-												// Если нам нужно повторить попытку позже
-												if(errno == EAGAIN){
-													{
-														// Выполняем блокировку уникальным мютексом
-														const locker_t lock(origin->transfer.mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														origin->transfer.queue.push(data, size);
-													}{
-														// Выполняем блокировку потоков
-														const locker_t lock(::local::mtx);
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, origin);
-														// Создаём объект промежуточного звена
-														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::local::change.size() - 1);
-														// Если таймаут не установлен
-														if(origin->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = origin->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != origin->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																origin->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
-															}
-														}
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, 0);
-													// Выходим из функции
-													return result;
-												// Если произошла ошибка при отправке данных
-												} else {
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-													// Выходим из функции
-													return result;
-												}
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(io::close(origin, this->_log))
-													// Выполняем удаление узла
-													io::destroy(origin, this->_log);
-												// Выходим из функции
-												return result;
-											}
-										// Если очередь передачи данных не пуста
-										} else {
+										// Если необходимо установить таймаут на чтение данных
+										auto i = origin->timeouts.find(event::action_t::READ);
+										// Если таймаут на подключение найден
+										if((i != origin->timeouts.end()) && (i->second > 0)){
+											// Активируем таймаут события
+											origin->timeout = i->first;
 											{
-												// Выполняем блокировку уникальным мютексом
-												const locker_t lock(origin->transfer.mtx);
-												// Копим данные для дальнейшей отправки
-												origin->transfer.queue.push(data, size);
+												// Выполняем блокировку потоков
+												const locker_t lock(::local::mtx);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+												// Создаём объект промежуточного звена
+												auto ret = ::local::evaccs.emplace(origin->id, ::local::evacc_t{});
+												// Устанавливаем количество событий
+												ret.first->second.count++;
+												// Если событие успешно добавлено
+												if(ret.second)
+													// Устанавливаем индекс текущего элемента
+													ret.first->second.index = (::local::change.size() - 1);
 											}
+										}
+										// Если таймаут не установлен
+										if(origin->timeout == event::action_t::NONE){
+											// Если необходимо установить таймаут на запись данных
+											i = origin->timeouts.find(event::action_t::WRITE);
+											// Если таймаут на подключение найден
+											if((i != origin->timeouts.end()) && (i->second > 0)){
+												// Активируем таймаут события
+												origin->timeout = i->first;
+												{
+													// Выполняем блокировку потоков
+													const locker_t lock(::local::mtx);
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Устанавливаем таймаут на получение данных
+													EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
+													// Создаём объект промежуточного звена
+													auto ret = ::local::evaccs.emplace(origin->id, ::local::evacc_t{});
+													// Устанавливаем количество событий
+													ret.first->second.count++;
+													// Если событие успешно добавлено
+													if(ret.second)
+														// Устанавливаем индекс текущего элемента
+														ret.first->second.index = (::local::change.size() - 1);
+												}
+											}
+										}
+										// Выполняем отправку данных в UDP сокет
+										const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+										// Если данные отправлены успешно
+										if((result = (bytes > 0))){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(origin->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
-												origin->callbacks.write(origin->id, 0);
+												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+										// Если мы отправили не все данные
+										} else if(bytes == -1) {
+											// Если нам нужно повторить попытку позже
+											if(errno == EAGAIN){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(origin->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													origin->callbacks.write(origin->id, 0);
+											// Если произошла ошибка при отправке данных
+											} else {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(origin->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
 											// Выходим из функции
-											return true;
+											return result;
+										// Если произошёл дисконнект
+										} else {
+											// Выполняем обработку закрытия подключения
+											if(io::close(origin, this->_log))
+												// Выполняем удаление узла
+												io::destroy(origin, this->_log);
+											// Выходим из функции
+											return result;
 										}
 									// Если сокет является полублокирующим
 									} else if(origin->state.options & event::options::SMIOBLOCK) {
@@ -28508,121 +29311,221 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								} break;
 								// Для типа сокета SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									// Получаем размер буфера данных для записи
-									const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-									// Если мы пытаемся записать в буфер данных больше чем он может принять
-									if(size > bufferSize){
-										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
-										// Если установлена функция обратного вызова
-										if(client->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+									// Если клиент находится в состоянии подключено
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+										// Получаем размер буфера данных для записи
+										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
+										// Если мы пытаемся записать в буфер данных больше чем он может принять
+										if(size > bufferSize){
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выходим из функции
+											return result;
 										}
-										// Выходим из функции
-										return result;
-									}
-									// Если сокет является неблокирующим
-									if(client->state.options & event::options::NOIOBLOCK){
-										// Если очередь передачи данных пустая
-										if(client->transfer.queue.empty()){
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Количество прочитанных байт
-												ssize_t bytes = 0;
-												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
+										// Если сокет является неблокирующим
+										if(client->state.options & event::options::NOIOBLOCK){
+											// Если очередь передачи данных пустая
+											if(client->transfer.queue.empty()){
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(client->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															client->transfer.fd,
+															data, size, nullptr, 0,
+															client->transfer.sctp.info.sinfo_ppid,
+															client->transfer.sctp.info.sinfo_flags,
+															client->transfer.sctp.info.sinfo_stream,
+															client->transfer.sctp.info.sinfo_timetolive,
+															client->transfer.sctp.info.sinfo_context
+														);
 													// Выполняем отправку данных в TCP/IP сокет
-													bytes = ::sctp_sendmsg(
-														client->transfer.fd,
-														data, size, nullptr, 0,
-														client->transfer.sctp.info.sinfo_ppid,
-														client->transfer.sctp.info.sinfo_flags,
-														client->transfer.sctp.info.sinfo_stream,
-														client->transfer.sctp.info.sinfo_timetolive,
-														client->transfer.sctp.info.sinfo_context
-													);
-												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(client->transfer.fd, data, size, 0);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
-											#endif
-											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-											// Если мы отправили не все данные
-											} else if(bytes == -1) {
-												// Если нам нужно повторить попытку позже
-												if((result = (errno == EAGAIN))){
-													{
-														// Выполняем блокировку уникальным мютексом
-														const locker_t lock(client->transfer.mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.queue.push(data, size);
-													}{
-														// Выполняем блокировку потоков
-														const locker_t lock(::local::mtx);
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Активируем событие на запись для клиентского сокета
-														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
-														// Создаём объект промежуточного звена
-														auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
-														// Устанавливаем количество событий
-														ret.first->second.count++;
-														// Если событие успешно добавлено
-														if(ret.second)
-															// Устанавливаем индекс текущего элемента
-															ret.first->second.index = (::local::change.size() - 1);
-														// Если таймаут не установлен
-														if(client->timeout == event::action_t::NONE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Устанавливаем количество событий
-																ret.first->second.count++;
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-															}
-														}
-													}
+													else bytes = ::send(client->transfer.fd, data, size, 0);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в TCP/IP сокет
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+												#endif
+												// Если данные отправлены успешно
+												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вывзываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, 0);
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если мы отправили не все данные
+												} else if(bytes == -1) {
+													// Если нам нужно повторить попытку позже
+													if((result = (errno == EAGAIN))){
+														{
+															// Выполняем блокировку уникальным мютексом
+															const locker_t lock(client->transfer.mtx);
+															// Сохраняем оставшиеся данные для последующей отправки
+															client->transfer.queue.push(data, size);
+														}{
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Активируем событие на запись для клиентского сокета
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Если таймаут не установлен
+															if(client->timeout == event::action_t::NONE){
+																// Выполняем проверку на наличие таймаута для события записи
+																auto i = client->timeouts.find(event::action_t::WRITE);
+																// Если нужный нам таймаут найден
+																if((i != client->timeouts.end()) && (i->second > 0)){
+																	// Устанавливаем количество событий
+																	ret.first->second.count++;
+																	// Активируем таймаут события
+																	client->timeout = i->first;
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на получение данных
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																}
+															}
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вывзываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Выходим из функции
+														return result;
+													// Если произошла ошибка при отправке данных
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return result;
+													}
+												// Если произошёл дисконнект
+												} else {
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
 													// Выходим из функции
 													return result;
-												// Если произошла ошибка при отправке данных
-												} else {
+												}
+											// Если очередь передачи данных не пуста
+											} else {
+												{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t lock(client->transfer.mtx);
+													// Копим данные для дальнейшей отправки
+													client->transfer.queue.push(data, size);
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
+												// Выходим из функции
+												return true;
+											}
+										// Если сокет является полублокирующим
+										} else if(client->state.options & event::options::SMIOBLOCK) {
+											// Переводим сокет в блокирующий режим
+											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												// Если необходимо установить таймаут на отправку данных
+												auto i = client->timeouts.find(event::action_t::WRITE);
+												// Если таймаут на подключение найден
+												if((i != client->timeouts.end()) && (i->second > 0))
+													// Устанавливаем таймаут на отправку данных
+													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(client->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															client->transfer.fd,
+															data, size, nullptr, 0,
+															client->transfer.sctp.info.sinfo_ppid,
+															client->transfer.sctp.info.sinfo_flags,
+															client->transfer.sctp.info.sinfo_stream,
+															client->transfer.sctp.info.sinfo_timetolive,
+															client->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::send(client->transfer.fd, data, size, 0);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в TCP/IP сокет
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+												#endif
+												// Если данные отправлены успешно
+												if(bytes == 0){
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												// Если произошла какая-то ошибка при отправке данных
+												} else if(bytes == -1) {
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
 													// Устанавливаем текст ошибки
 													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
@@ -28648,34 +29551,15 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выходим из функции
 													return result;
 												}
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(io::close(client, this->_log))
-													// Выполняем удаление узла
-													io::destroy(client, this->_log);
-												// Выходим из функции
-												return result;
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
 											}
-										// Если очередь передачи данных не пуста
+										// Если сокет является блокирующим
 										} else {
-											{
-												// Выполняем блокировку уникальным мютексом
-												const locker_t lock(client->transfer.mtx);
-												// Копим данные для дальнейшей отправки
-												client->transfer.queue.push(data, size);
-											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(client->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
-												client->callbacks.write(client->id, 0);
-											// Выходим из функции
-											return true;
-										}
-									// Если сокет является полублокирующим
-									} else if(client->state.options & event::options::SMIOBLOCK) {
-										// Переводим сокет в блокирующий режим
-										if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 											// Если необходимо установить таймаут на отправку данных
 											auto i = client->timeouts.find(event::action_t::WRITE);
 											// Если таймаут на подключение найден
@@ -28719,8 +29603,6 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
 											} else if(bytes == -1) {
-												// Переводим сокет обратно в неблокирующий режим
-												this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
 												// Устанавливаем текст ошибки
 												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
@@ -28743,67 +29625,26 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
-												// Выходим из функции
-												return result;
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вывзываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, static_cast <size_t> (bytes));
-											// Переводим сокет обратно в неблокирующий режим
-											result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+											// Устанавливаем результат выполнения функции
+											result = (static_cast <size_t> (bytes) == size);
 										}
-									// Если сокет является блокирующим
-									} else {
-										// Если необходимо установить таймаут на отправку данных
-										auto i = client->timeouts.find(event::action_t::WRITE);
-										// Если таймаут на подключение найден
-										if((i != client->timeouts.end()) && (i->second > 0))
-											// Устанавливаем таймаут на отправку данных
-											this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(client->state.protocol == event::protocol_t::SCTP)
-												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
-													client->transfer.fd,
-													data, size, nullptr, 0,
-													client->transfer.sctp.info.sinfo_ppid,
-													client->transfer.sctp.info.sinfo_flags,
-													client->transfer.sctp.info.sinfo_stream,
-													client->transfer.sctp.info.sinfo_timetolive,
-													client->transfer.sctp.info.sinfo_context
-												);
-											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(client->transfer.fd, data, size, 0);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
-										#endif
-										// Если данные отправлены успешно
-										if(bytes == 0){
-											// Выполняем обработку закрытия подключения
-											if(io::close(client, this->_log))
-												// Выполняем удаление узла
-												io::destroy(client, this->_log);
-											// Выходим из функции
-											return result;
-										// Если произошла какая-то ошибка при отправке данных
-										} else if(bytes == -1) {
+									// Если клиент находится в запущенном состоянии
+									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+										// Получаем размер буфера данных для записи
+										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
+										// Если мы пытаемся записать в буфер данных больше чем он может принять
+										if(size > bufferSize){
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
@@ -28820,13 +29661,330 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
+											// Выходим из функции
+											return result;
 										}
-										// Если функция обратного вызова для вывода записанных данных установлена
-										if(client->callbacks.write != nullptr)
-											// Вывзываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, static_cast <size_t> (bytes));
-										// Устанавливаем результат выполнения функции
-										result = (static_cast <size_t> (bytes) == size);
+										// Если сокет является неблокирующим
+										if(client->state.options & event::options::NOIOBLOCK){
+											// Если очередь передачи данных пустая
+											if(client->transfer.queue.empty()){
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(client->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															client->transfer.fd,
+															data, size,
+															&::trust_cast <struct sockaddr> (client->endpoint.server),
+															client->endpoint.size,
+															client->transfer.sctp.info.sinfo_ppid,
+															client->transfer.sctp.info.sinfo_flags,
+															client->transfer.sctp.info.sinfo_stream,
+															client->transfer.sctp.info.sinfo_timetolive,
+															client->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в UDP сокет
+													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												#endif
+												// Если данные отправлены успешно
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вывзываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если мы отправили не все данные
+												} else if(bytes == -1) {
+													// Если нам нужно повторить попытку позже
+													if((result = (errno == EAGAIN))){
+														{
+															// Выполняем блокировку уникальным мютексом
+															const locker_t lock(client->transfer.mtx);
+															// Сохраняем оставшиеся данные для последующей отправки
+															client->transfer.queue.push(data, size);
+														}{
+															// Выполняем блокировку потоков
+															const locker_t lock(::local::mtx);
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Активируем событие на запись для клиентского сокета
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+															// Создаём объект промежуточного звена
+															auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+															// Устанавливаем количество событий
+															ret.first->second.count++;
+															// Если событие успешно добавлено
+															if(ret.second)
+																// Устанавливаем индекс текущего элемента
+																ret.first->second.index = (::local::change.size() - 1);
+															// Если таймаут не установлен
+															if(client->timeout == event::action_t::NONE){
+																// Выполняем проверку на наличие таймаута для события записи
+																auto i = client->timeouts.find(event::action_t::WRITE);
+																// Если нужный нам таймаут найден
+																if((i != client->timeouts.end()) && (i->second > 0)){
+																	// Устанавливаем количество событий
+																	ret.first->second.count++;
+																	// Активируем таймаут события
+																	client->timeout = i->first;
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на получение данных
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+																}
+															}
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вывзываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Выходим из функции
+														return result;
+													// Если произошла ошибка при отправке данных
+													} else {
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return result;
+													}
+												// Если произошёл дисконнект
+												} else {
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												}
+											// Если очередь передачи данных не пуста
+											} else {
+												{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t lock(client->transfer.mtx);
+													// Копим данные для дальнейшей отправки
+													client->transfer.queue.push(data, size);
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
+												// Выходим из функции
+												return true;
+											}
+										// Если сокет является полублокирующим
+										} else if(client->state.options & event::options::SMIOBLOCK) {
+											// Переводим сокет в блокирующий режим
+											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												// Если необходимо установить таймаут на отправку данных
+												auto i = client->timeouts.find(event::action_t::WRITE);
+												// Если таймаут на подключение найден
+												if((i != client->timeouts.end()) && (i->second > 0))
+													// Устанавливаем таймаут на отправку данных
+													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(client->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															client->transfer.fd,
+															data, size,
+															&::trust_cast <struct sockaddr> (client->endpoint.server),
+															client->endpoint.size,
+															client->transfer.sctp.info.sinfo_ppid,
+															client->transfer.sctp.info.sinfo_flags,
+															client->transfer.sctp.info.sinfo_stream,
+															client->transfer.sctp.info.sinfo_timetolive,
+															client->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в UDP сокет
+													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												#endif
+												// Если данные отправлены успешно
+												if(bytes == 0){
+													// Выполняем обработку закрытия подключения
+													if(io::close(client, this->_log))
+														// Выполняем удаление узла
+														io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
+												// Если произошла какая-то ошибка при отправке данных
+												} else if(bytes == -1) {
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													// Устанавливаем текст ошибки
+													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+													// Выходим из функции
+													return result;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вывзываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Если необходимо установить таймаут на отправку данных
+											auto i = client->timeouts.find(event::action_t::WRITE);
+											// Если таймаут на подключение найден
+											if((i != client->timeouts.end()) && (i->second > 0))
+												// Устанавливаем таймаут на отправку данных
+												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														data, size,
+														&::trust_cast <struct sockaddr> (client->endpoint.server),
+														client->endpoint.size,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в UDP сокет
+												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											#endif
+											// Если данные отправлены успешно
+											if(bytes == 0){
+												// Выполняем обработку закрытия подключения
+												if(io::close(client, this->_log))
+													// Выполняем удаление узла
+													io::destroy(client, this->_log);
+												// Выходим из функции
+												return result;
+											// Если произошла какая-то ошибка при отправке данных
+											} else if(bytes == -1) {
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(client->callbacks.write != nullptr)
+												// Вывзываем функцию обратного вызова для вывода записанных данных
+												client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Устанавливаем результат выполнения функции
+											result = (static_cast <size_t> (bytes) == size);
+										}
+									// Если клиент ещё не подготовлен для отправки данных
+									} else {
+										// Устанавливаем текст ошибки
+										const string error = "Client is not yet prepared to send data";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
 									}
 								} break;
 								// Для типа сокета RAW
@@ -28862,33 +30020,10 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									}
 									// Если сокет является неблокирующим
 									if(client->state.options & event::options::NOIOBLOCK){
-										// Если необходимо установить таймаут на чтение данных
-										auto i = client->timeouts.find(event::action_t::READ);
-										// Если таймаут на подключение найден
-										if((i != client->timeouts.end()) && (i->second > 0)){
-											// Активируем таймаут события
-											client->timeout = i->first;
-											{
-												// Выполняем блокировку потоков
-												const locker_t lock(::local::mtx);
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-												// Создаём объект промежуточного звена
-												auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
-												// Устанавливаем количество событий
-												ret.first->second.count++;
-												// Если событие успешно добавлено
-												if(ret.second)
-													// Устанавливаем индекс текущего элемента
-													ret.first->second.index = (::local::change.size() - 1);
-											}
-										}
 										// Если таймаут не установлен
 										if(client->timeout == event::action_t::NONE){
-											// Если необходимо установить таймаут на запись данных
-											i = client->timeouts.find(event::action_t::WRITE);
+											// Если необходимо установить таймаут на чтение данных
+											auto i = client->timeouts.find(event::action_t::READ);
 											// Если таймаут на подключение найден
 											if((i != client->timeouts.end()) && (i->second > 0)){
 												// Активируем таймаут события
@@ -28910,6 +30045,32 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														ret.first->second.index = (::local::change.size() - 1);
 												}
 											}
+											// Если таймаут не установлен
+											if(client->timeout == event::action_t::NONE){
+												// Если необходимо установить таймаут на запись данных
+												i = client->timeouts.find(event::action_t::WRITE);
+												// Если таймаут на подключение найден
+												if((i != client->timeouts.end()) && (i->second > 0)){
+													// Активируем таймаут события
+													client->timeout = i->first;
+													{
+														// Выполняем блокировку потоков
+														const locker_t lock(::local::mtx);
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на получение данных
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
+														// Создаём объект промежуточного звена
+														auto ret = ::local::evaccs.emplace(client->id, ::local::evacc_t{});
+														// Устанавливаем количество событий
+														ret.first->second.count++;
+														// Если событие успешно добавлено
+														if(ret.second)
+															// Устанавливаем индекс текущего элемента
+															ret.first->second.index = (::local::change.size() - 1);
+													}
+												}
+											}
 										}
 										// Выполняем отправку данных в UDP сокет
 										const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -28927,8 +30088,6 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(client->callbacks.write != nullptr)
 													// Вывзываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, 0);
-												// Выходим из функции и сообщаем, что данные не оптравлены
-												return result;
 											// Если произошла ошибка при отправке данных
 											} else {
 												// Устанавливаем текст ошибки
@@ -28953,9 +30112,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
-												// Выходим из функции
-												return result;
 											}
+											// Выходим из функции
+											return result;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -29086,45 +30245,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								} break;
 								// Для типа сокета DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-									// Если клиент только инициализирован и не активен
-									if(client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
-										// Устанавливаем статус события в состояние запущенного
-										client->state.status.store(event::status_t::RUNNING, std::memory_order_release);
-										{
-											// Выполняем блокировку потоков
-											const locker_t lock(::local::mtx);
-											// Создаём объект промежуточного звена
-											auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
-											// Устанавливаем количество событий
-											ret.first->second.count++;
-											// Если событие успешно добавлено
-											if(ret.second)
-												// Устанавливаем индекс текущего элемента
-												ret.first->second.index = (::local::change.size() - 1);
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Активируем событие на чтение для серверного сокета
-											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
-											// Если необходимо установить таймаут на чтение данных
-											auto i = client->timeouts.find(event::action_t::READ);
-											// Если таймаут на подключение найден
-											if((i != client->timeouts.end()) && (i->second > 0)){
-												// Если сокет является неблокирующим
-												if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
-													// Активируем таймаут события
-													client->timeout = i->first;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
-													// Увеличиваем количество событий
-													ret.first->second.count++;
-												// Устанавливаем таймаут на получение данных
-												} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
-											}
-										}
-									}
-									// Если подключение установлено
+									// Если клиент находится в состоянии подключено
 									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 										// Получаем размер буфера данных для записи
 										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
@@ -29372,7 +30493,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											result = (static_cast <size_t> (bytes) == size);
 										}
 									// Если клиент находится в запущенном состоянии
-									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) {
+									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
 										// Получаем размер буфера данных для записи
 										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
 										// Если мы пытаемся записать в буфер данных больше чем он может принять
@@ -33527,6 +34648,8 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Получаем текущее значение объекта межпроцессного соединения
 						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						ipc->state.oldset = ipc->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						ipc->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
@@ -33559,6 +34682,8 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Получаем текущее значение объекта директории
 						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						dir->state.oldset = dir->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						dir->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
@@ -33587,6 +34712,8 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Получаем текущее значение объекта файловой системы
 						file_t * file = awh_cast <file_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						file->state.oldset = file->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						file->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
@@ -33615,6 +34742,8 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла
 						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						peer->state.oldset = peer->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						peer->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
@@ -33683,6 +34812,8 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла-источника
 						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						origin->state.oldset = origin->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						origin->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						// Если сокет является неблокирующим
@@ -33736,9 +34867,12 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если подключение клиента установлено
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
+					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)){
 						// Получаем текущее значение объекта клиента
 						client_t * client = awh_cast <client_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						client->state.oldset = client->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						client->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
@@ -33803,9 +34937,12 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Если событие находится в запущенном состоянии
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING){
+					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
+					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING)){
 						// Получаем объект события сервера
 						server_t * server = awh_cast <server_t *> (i->second.get());
+						// Запоминаем текущее значение статуса события
+						server->state.oldset = server->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
 						server->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						{
@@ -34270,7 +35407,7 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Если подключение клиента установлено
+					// Если клиент находится в состоянии подключено
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 						// Получаем текущее значение объекта клиента
 						client_t * client = awh_cast <client_t *> (i->second.get());
@@ -35043,6 +36180,7 @@ bool awh::IO::reinitialize() noexcept {
 					auto client = awh_cast <client_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+					   (client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)){
@@ -35130,7 +36268,8 @@ bool awh::IO::reinitialize() noexcept {
 						break;
 					}
 					// Если событие находится в подключённом состоянии
-					if((client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
+					if((client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
+					   (client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем блокировку потоков
 						const locker_t lock(::local::mtx);
@@ -35152,7 +36291,8 @@ bool awh::IO::reinitialize() noexcept {
 					auto server = awh_cast <server_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) ||
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING) ||
 					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED) ||
 					   (server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)){
 						/**
@@ -35269,7 +36409,8 @@ bool awh::IO::reinitialize() noexcept {
 						break;
 					}
 					// Если событие находится в запущенном состоянии
-					if((server->state.status.load(std::memory_order_acquire) == event::status_t::RUNNING) ||
+					if((server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
+					   (server->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING) ||
 					   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
 						// Выполняем блокировку потоков
 						const locker_t lock(::local::mtx);
@@ -35982,8 +37123,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(dir->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние ожидание
-									dir->state.status.store(event::status_t::PENDING, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									dir->state.status = dir->state.oldset.load(std::memory_order_acquire);
 							} break;
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
@@ -35998,8 +37139,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(fs->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние ожидание
-									fs->state.status.store(event::status_t::PENDING, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									fs->state.status = fs->state.oldset.load(std::memory_order_acquire);
 							} break;
 							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
@@ -36014,8 +37155,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(ipc->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние ожидание
-									ipc->state.status.store(event::status_t::PENDING, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									ipc->state.status = ipc->state.oldset.load(std::memory_order_acquire);
 							} break;
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
@@ -36030,8 +37171,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние подтверждено
-									peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									peer->state.status = peer->state.oldset.load(std::memory_order_acquire);
 							} break;
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -36046,8 +37187,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(origin->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние подтверждено
-									origin->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									origin->state.status = origin->state.oldset.load(std::memory_order_acquire);
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -36062,8 +37203,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние подключено
-									client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									client->state.status = client->state.oldset.load(std::memory_order_acquire);
 							} break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -36078,8 +37219,8 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								}
 								// Если статус события восстановление из паузы
 								if(server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-									// Устанавливаем статус события в состояние запущено
-									server->state.status.store(event::status_t::RUNNING, std::memory_order_release);
+									// Восстанавливаем оригинальное значение статуса события
+									server->state.status = server->state.oldset.load(std::memory_order_acquire);
 							} break;
 						}
 					}

@@ -232,6 +232,14 @@ namespace awh {
 			virtual void sctpMessageInfo(const event::id_t id, const net::sctp_minfo_t & info) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод запуска события
+			 *
+			 * @param id идентификатор события
+			 * @return   результат выполнения запуска
+			 */
+			virtual bool launch(const event::id_t id) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод отключения события
 			 *
 			 * @param id идентификатор события

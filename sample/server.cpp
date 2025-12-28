@@ -81,7 +81,7 @@ int32_t main(int32_t argc, char * argv[]){
 						log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
 					break;
 					// Если статус запуска события
-					case static_cast <uint8_t> (event::status_t::RUNNING):
+					case static_cast <uint8_t> (event::status_t::LAUNCHED):
 						// Выводим сообщение о запуске события
 						log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
 					break;
@@ -158,7 +158,7 @@ int32_t main(int32_t argc, char * argv[]){
 							log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
 						break;
 						// Если статус запуска события
-						case static_cast <uint8_t> (event::status_t::RUNNING):
+						case static_cast <uint8_t> (event::status_t::LAUNCHED):
 							// Выводим сообщение о запуске события
 							log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
 						break;
@@ -495,11 +495,18 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем таймаут события на запись
 			io.timeout(eid, event::action_t::WRITE, 6000);
 			// Выполняем фиксацию настроек события сервера
-			if(io.commit(eid))
-				/**
-				 * Запускаем опрос событий
-				 */
-				while(io.poll());
+			if(io.commit(eid)){
+				// Выполняем запуск события
+				if(io.launch(eid)){
+					// Выводим сообщение об успешном запуске события
+					cout << " Событие успешно запущено!" << endl;
+					/**
+					 * Запускаем опрос событий
+					 */
+					while(io.poll());
+				// Выводим сообщение об ошибке запуска события
+				} else cout << " Ошибка запуска события!" << endl;
+			}
 		// Если адрес не установлен
 		} else cout << " Ошибка установки адреса события!" << endl;
 	}
