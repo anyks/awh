@@ -8645,7 +8645,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем пользовательское событие
-								EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR | EV_DISABLE, NOTE_FFNOP, 0, user);
+								EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, user);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
@@ -8693,7 +8693,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE, 0, 0, timer);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
@@ -8741,7 +8741,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, timer);
 								// Устанавливаем количество событий
 								ret.first->second.count = 1;
 								// Устанавливаем индекс текущего элемента
@@ -8829,7 +8829,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Устанавливаем событие на отслеживание изменения каталога
-											EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, dir);
+											EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, dir);
 											// Устанавливаем количество событий
 											ret.first->second.count = 1;
 											// Устанавливаем индекс текущего элемента
@@ -8977,7 +8977,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на отслеживание изменения файла
-										EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, file);
+										EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, file);
 										// Устанавливаем количество событий
 										ret.first->second.count = 1;
 										// Устанавливаем индекс текущего элемента
@@ -24412,7 +24412,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Активируем событие на запись для клиентского сокета
-						EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ENABLE, 0, 0, i->second.get());
+						EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ENABLE, NOTE_FFNOP, 0, i->second.get());
 						// Выводим положительный результат
 						return true;
 					}
@@ -24425,22 +24425,29 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
 						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
-						// Выполняем блокировку потоков
-						const locker_t lock(::local::mtx);
-						// Создаём объект промежуточного звена
-						auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
-						// Устанавливаем количество событий
-						ret.first->second.count++;
+						// Выполняем извлечение текущего значения объекта таймера
+						timer_t * timer = awh_cast <timer_t *> (i->second.get());
 						// Если событие успешно добавлено
-						if(ret.second)
-							// Устанавливаем индекс текущего элемента
-							ret.first->second.index = (::local::change.size() - 1);
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Активируем событие на запись для клиентского сокета
-						EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE, 0, 0, i->second.get());
-						// Выводим положительный результат
-						return true;
+						if(timer->delay > 0){
+							// Выполняем блокировку потоков
+							const locker_t lock(::local::mtx);
+							// Создаём объект промежуточного звена
+							auto ret = ::local::evaccs.emplace(i->first, ::local::evacc_t{});
+							// Устанавливаем количество событий
+							ret.first->second.count++;
+							// Если событие успешно добавлено
+							if(ret.second)
+								// Устанавливаем индекс текущего элемента
+								ret.first->second.index = (::local::change.size() - 1);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Устанавливаем событие таймаута на указанное количество миллисекунд
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
+							// Выводим положительный результат
+							return true;
+						}
+						// Снимаем флаг ожидания выполнения события
+						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 					}
 				} break;
 				// Если узел является директорией
@@ -24472,14 +24479,14 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 								// Получаем текущее значение объекта директории
 								dir_t * dir = awh_cast <dir_t *> (i->second.get());
 								// Активируем событие на запись для клиентского сокета
-								EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ENABLE, 0, 0, dir);
+								EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ENABLE, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, dir);
 							} break;
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
 								file_t * file = awh_cast <file_t *> (i->second.get());
 								// Активируем событие на запись для клиентского сокета
-								EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ENABLE, 0, 0, file);
+								EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ENABLE, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, file);
 							} break;
 						}
 						// Выводим положительный результат

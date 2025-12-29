@@ -124,6 +124,16 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим сообщение о переподключении события
 					log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
 				break;
+				// Если статус клонирования события
+				case static_cast <uint8_t> (event::status_t::CLONED):
+					// Выводим сообщение о клонировании события
+					log.print("Событие клонировано: ID=%u", log_t::flag_t::INFO, eid);
+				break;
+				// Если статус прослушивания события
+				case static_cast <uint8_t> (event::status_t::LISTENING):
+					// Выводим сообщение о прослушивании события
+					log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
+				break;
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
@@ -274,10 +284,16 @@ int32_t main(int32_t argc, char * argv[]){
 				// Уведомляем событие
 				io.send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
 			}, eid).detach();
-			/**
-			 * Запускаем опрос событий
-			 */
-			while(io.poll());
+			// Выполняем запуск события
+			if(io.launch(eid)){
+				// Выводим сообщение об успешном запуске события
+				cout << " Событие успешно запущено!" << endl;
+				/**
+				 * Запускаем опрос событий
+				 */
+				while(io.poll());
+			// Выводим сообщение об ошибке запуска события
+			} else cout << " Ошибка запуска события!" << endl;
 		}
 	}
 	// Выводим результат

@@ -1488,7 +1488,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::CLOSEONEXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -1496,7 +1496,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "192.168.7.112")){
+			if(io.target(eid, "192.168.7.233")){
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
@@ -1655,8 +1655,8 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем таймаут события на запись
 				io.timeout(eid, event::action_t::WRITE, 3000);
-				// Устанавливаем таймаут события на подключение
-				io.timeout(eid, event::action_t::CONNECT, 5000);
+				// Устанавливаем таймаут события на чтение
+				io.timeout(eid, event::action_t::READ, 5000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Выполняем инициализацию генератора

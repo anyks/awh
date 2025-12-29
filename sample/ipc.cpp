@@ -161,6 +161,16 @@ int32_t main(int32_t argc, char * argv[]){
 							// Выводим сообщение о переподключении события
 							log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
 						break;
+						// Если статус клонирования события
+						case static_cast <uint8_t> (event::status_t::CLONED):
+							// Выводим сообщение о клонировании события
+							log.print("Событие клонировано: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если статус прослушивания события
+						case static_cast <uint8_t> (event::status_t::LISTENING):
+							// Выводим сообщение о прослушивании события
+							log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
+						break;
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -302,10 +312,20 @@ int32_t main(int32_t argc, char * argv[]){
 					const string message = "Hello from child process!";
 					// Отправляем сообщение родительскому процессу
 					io.send(mfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
-					/**
-					 * Запускаем опрос событий
-					 */
-					while(io.poll());
+					// Выполняем запуск события
+					if(io.launch(cfds[0])){
+						// Сообщение для отправки дочернему процессу
+						const string message = "Hello from parent process!";
+						// Отправляем сообщение родительскому процессу
+						io.send(cfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
+						// Выводим сообщение об успешном запуске события
+						cout << " Событие успешно запущено!" << endl;
+						/**
+						 * Запускаем опрос событий
+						 */
+						while(io.poll());
+					// Выводим сообщение об ошибке запуска события
+					} else cout << " Ошибка запуска события!" << endl;
 				}
 			} break;
 			// Если процесс является родительским
@@ -396,6 +416,16 @@ int32_t main(int32_t argc, char * argv[]){
 						case static_cast <uint8_t> (event::status_t::RECONNECTED):
 							// Выводим сообщение о переподключении события
 							log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если статус клонирования события
+						case static_cast <uint8_t> (event::status_t::CLONED):
+							// Выводим сообщение о клонировании события
+							log.print("Событие клонировано: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если статус прослушивания события
+						case static_cast <uint8_t> (event::status_t::LISTENING):
+							// Выводим сообщение о прослушивании события
+							log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
 						break;
 					}
 				});
@@ -534,14 +564,20 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(mfds[0]) && io.commit(cfds[1])){
-					// Сообщение для отправки дочернему процессу
-					const string message = "Hello from parent process!";
-					// Отправляем сообщение родительскому процессу
-					io.send(cfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
-					/**
-					 * Запускаем опрос событий
-					 */
-					while(io.poll());
+					// Выполняем запуск события
+					if(io.launch(mfds[0])){
+						// Сообщение для отправки дочернему процессу
+						const string message = "Hello from parent process!";
+						// Отправляем сообщение родительскому процессу
+						io.send(cfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
+						// Выводим сообщение об успешном запуске события
+						cout << " Событие успешно запущено!" << endl;
+						/**
+						 * Запускаем опрос событий
+						 */
+						while(io.poll());
+					// Выводим сообщение об ошибке запуска события
+					} else cout << " Ошибка запуска события!" << endl;
 				}
 			}
 		}
