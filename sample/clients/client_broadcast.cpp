@@ -90,11 +90,6 @@ int32_t main(int32_t argc, char * argv[]){
 							// Выводим сообщение о запуске события
 							log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
 						break;
-						// Если статус остановки события
-						case static_cast <uint8_t> (event::status_t::STOPPED):
-							// Выводим сообщение о остановке события
-							log.print("Событие остановлено: ID=%u", log_t::flag_t::INFO, eid);
-						break;
 						// Если статус паузы события
 						case static_cast <uint8_t> (event::status_t::PAUSED):
 							// Выводим сообщение о паузе события
@@ -134,11 +129,6 @@ int32_t main(int32_t argc, char * argv[]){
 						case static_cast <uint8_t> (event::status_t::RECONNECTED):
 							// Выводим сообщение о переподключении события
 							log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
-						break;
-						// Если статус клонирования события
-						case static_cast <uint8_t> (event::status_t::CLONED):
-							// Выводим сообщение о клонировании события
-							log.print("Событие клонировано: ID=%u", log_t::flag_t::INFO, eid);
 						break;
 						// Если статус прослушивания события
 						case static_cast <uint8_t> (event::status_t::LISTENING):

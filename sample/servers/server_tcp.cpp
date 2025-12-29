@@ -83,14 +83,9 @@ int32_t main(int32_t argc, char * argv[]){
 						log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
 					break;
 					// Если статус запуска события
-					case static_cast <uint8_t> (event::status_t::RUNNING):
+					case static_cast <uint8_t> (event::status_t::LAUNCHED):
 						// Выводим сообщение о запуске события
 						log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус остановки события
-					case static_cast <uint8_t> (event::status_t::STOPPED):
-						// Выводим сообщение о остановке события
-						log.print("Событие остановлено: ID=%u", log_t::flag_t::INFO, eid);
 					break;
 					// Если статус паузы события
 					case static_cast <uint8_t> (event::status_t::PAUSED):
@@ -131,6 +126,11 @@ int32_t main(int32_t argc, char * argv[]){
 					case static_cast <uint8_t> (event::status_t::RECONNECTED):
 						// Выводим сообщение о переподключении события
 						log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
+					break;
+					// Если статус прослушивания события
+					case static_cast <uint8_t> (event::status_t::LISTENING):
+						// Выводим сообщение о прослушивании события
+						log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
 					break;
 				}
 			});

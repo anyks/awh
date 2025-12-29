@@ -1473,7 +1473,7 @@ int32_t main(int32_t argc, char * argv[]){
 				uint32_t gatewayAddress[4] = {0,0,0,0};
 			} redirect6;
 		} meta;
-	};
+	} __attribute__((packed));
 
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
@@ -1496,7 +1496,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "192.168.7.233")){
+			if(io.target(eid, "8.8.8.8")){
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
@@ -1656,7 +1656,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устанавливаем таймаут события на запись
 				io.timeout(eid, event::action_t::WRITE, 3000);
 				// Устанавливаем таймаут события на чтение
-				io.timeout(eid, event::action_t::READ, 5000);
+				io.timeout(eid, event::action_t::READ, 10000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Выполняем инициализацию генератора
@@ -1666,23 +1666,38 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выполняем генерирование случайного числа
 					uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
 
+					// Убедитесь, что структура layout совпадает с RFC
+					struct IcmpEchoPacket {
+						uint8_t type;
+						uint8_t code;
+						uint16_t checksum;
+						uint16_t identifier;
+						uint16_t sequence;
+						uint64_t payload;
+					} __attribute__((packed)); // ← отключает padding
+
 					// Создаём объект заголовков
-					struct IcmpHeader icmp{};
+					// struct IcmpHeader icmp{};
+
+					IcmpEchoPacket icmp{};
+
 					// Выполняем установку типа запроса
 					icmp.type = 8; // IPv4
 					// icmp.type = 128; // IPv6
 					// Устанавливаем код запроса
 					icmp.code = 0;
-					// Устанавливаем контрольную сумму
-					icmp.checksum = 0;
+					// Последовательность
+					uint16_t sequence = 0;
 					// Выполняем пинг 10 раз
 					for(uint8_t i = 0; i < 10; i++){
 						// Устанавливаем номер последовательности
-						icmp.meta.echo.sequence = 1;
+						icmp.sequence = htons(sequence);
 						// Устанавливаем идентификатор запроса
-						icmp.meta.echo.identifier = ::getpid();
+						icmp.identifier = htons(::getpid() & 0xFFFF);
 						// Устанавливаем данные полезной нагрузки
-						icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
+						icmp.payload = static_cast <uint64_t> (dist6(generator));
+						// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
+						icmp.checksum = 0;
 						// Выполняем подсчёт контрольной суммы
 						icmp.checksum = ::checksum(&icmp, sizeof(icmp));
 						// Запоминаем текущее значение времени в миллисекундах
@@ -1690,9 +1705,12 @@ int32_t main(int32_t argc, char * argv[]){
 						// Отправляем сообщение серверу
 						if(io.send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp))){
 							// Выполняем чтение ответа
-							if(io.recv(eid))
+							if(io.recv(eid)){
 								// Выполняем подсчёт количество прошедшего времени
 								cout << "Response: " << (chrono.timestamp(chrono_t::type_t::MILLISECONDS) - mseconds) << " msec." << endl;
+								// Увеличиваем последовательность запроса
+								sequence++;
+							}
 						}
 					}
 				}

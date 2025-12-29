@@ -118,15 +118,6 @@ namespace awh {
 			bool destroy(const event::id_t id) noexcept;
 		public:
 			/**
-			 * @brief Метод создания нового события на основе существующего
-			 *
-			 * @param id       идентификатор существующего события
-			 * @param node     узел события
-			 * @param protocol протокол сокета
-			 * @return         идентификатор созданного события
-			 */
-			event::id_t event(const event::id_t id, const event::node_t node, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
-			/**
 			 * @brief Метод создания нового события
 			 *
 			 * @param node     узел события
