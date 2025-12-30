@@ -48,19 +48,19 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::KEEPALIVE))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -137,7 +137,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
 			io.on(eid, [&io, &log](const event::id_t eid, const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Выводим сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
+				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -492,10 +492,8 @@ int32_t main(int32_t argc, char * argv[]){
 					break;
 				}
 			});
-			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 6000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 6000);
+			io.timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Выполняем запуск события

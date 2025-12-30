@@ -260,13 +260,13 @@ namespace awh {
 			/**
 			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 			 *
-			 * @param sock   сетевой сокет
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param cast   режим трансляции пакетов (unicast, multicast, broadcast)
-			 * @param hops   максимальное количество хопов
-			 * @return       результат работы функции
+			 * @param sock     сетевой сокет
+			 * @param family   семейство протоколов (IPv4 или IPv6)
+			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @param hops     максимальное количество хопов
+			 * @return         результат работы функции
 			 */
-			bool hops(const net::socket_t sock, const event::family_t family, const event::cast_t cast, const event::hops_t hops) const noexcept;
+			bool hops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы события

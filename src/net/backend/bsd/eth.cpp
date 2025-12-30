@@ -2638,13 +2638,13 @@ bool awh::Ethernet::multicastLoop(const net::socket_t sock, const event::family_
 /**
  * @brief Метод установки максимального количества хопов, через которые может пройти пакет
  *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param cast   режим трансляции пакетов (unicast, multicast, broadcast)
- * @param hops   максимальное количество хопов
- * @return       результат работы функции
+ * @param sock     сетевой сокет
+ * @param family   семейство протоколов (IPv4 или IPv6)
+ * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+ * @param hops     максимальное количество хопов
+ * @return         результат работы функции
  */
-bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family, const event::cast_t cast, const event::hops_t hops) const noexcept {
+bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2656,11 +2656,11 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
 			/**
 			 * Определяем режим трансляции пакетов
 			 */
-			switch(static_cast <uint8_t> (cast)){
+			switch(static_cast <uint8_t> (delivery)){
 				// Если необходимо установить максимальное количество хопов для unicast пакетов
-				case static_cast <uint8_t> (event::cast_t::UNICAST):
+				case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
 				// Если необходимо установить максимальное количество хопов для broadcast пакетов
-				case static_cast <uint8_t> (event::cast_t::BROADCAST): {
+				case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &hops, sizeof(hops))))){
 						/**
@@ -2679,7 +2679,7 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
 					}
 				} break;
 				// Если необходимо установить максимальное количество хопов для multicast пакетов
-				case static_cast <uint8_t> (event::cast_t::MULTICAST): {
+				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &hops, sizeof(hops))))){
 						/**
@@ -2704,11 +2704,11 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
 			/**
 			 * Определяем режим трансляции пакетов
 			 */
-			switch(static_cast <uint8_t> (cast)){
+			switch(static_cast <uint8_t> (delivery)){
 				// Если необходимо установить максимальное количество хопов для unicast пакетов
-				case static_cast <uint8_t> (event::cast_t::UNICAST):
+				case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
 				// Если необходимо установить максимальное количество хопов для broadcast пакетов
-				case static_cast <uint8_t> (event::cast_t::BROADCAST): {
+				case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hops, sizeof(hops))))){
 						/**
@@ -2727,7 +2727,7 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
 					}
 				} break;
 				// Если необходимо установить максимальное количество хопов для multicast пакетов
-				case static_cast <uint8_t> (event::cast_t::MULTICAST): {
+				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops, sizeof(hops))))){
 						/**

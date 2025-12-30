@@ -362,15 +362,15 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   режим трансляции пакетов (unicast, multicast, broadcast)
 			 */
-			event::cast_t cast(const event::id_t id) const noexcept;
+			event::delivery_mode_t delivery(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод установки режима трансляции пакетов для события
 			 *
-			 * @param id   идентификатор события
-			 * @param cast режим трансляции пакетов (unicast, multicast, broadcast)
-			 * @return     результат выполнения установки
+			 * @param id       идентификатор события
+			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @return         результат выполнения установки
 			 */
-			bool cast(const event::id_t id, const event::cast_t cast) noexcept;
+			bool delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept;
 		public:
 			/**
 			 * @brief Метод получения максимального количества хопов, через которые может пройти пакет

@@ -310,10 +310,10 @@ namespace awh {
 			event::node_t node;                   // Флаг узла события
 			event::hops_t hops;                   // Флаг хопов события
 			event::type_t type;                   // Флаг типа события
-			event::cast_t cast;				      // Флаг типа трансляции события
 			event::family_t family;               // Флаг семейства события
 			event::address_t address;             // Флаг адреса события
 			event::protocol_t protocol;           // Флаг протокола события
+			event::delivery_mode_t delivery;      // Флаг типа режима доставки события
 			std::atomic <event::status_t> status; // Флаг статуса события
 			std::atomic <event::status_t> oldset; // Флаг старого статуса события
 			/**
@@ -332,10 +332,10 @@ namespace awh {
 					this->node     = state.node;
 					this->hops     = state.hops;
 					this->type     = state.type;
-					this->cast     = state.cast;
 					this->family   = state.family;
 					this->address  = state.address;
 					this->protocol = state.protocol;
+					this->delivery = state.delivery;
 					this->status.store(state.status.load());
 					this->oldset.store(state.oldset.load());
 				}
@@ -351,10 +351,10 @@ namespace awh {
 			 node(event::node_t::NONE),
 			 hops(event::hops_t::WORLD),
 			 type(event::type_t::NONE),
-			 cast(event::cast_t::UNICAST),
 			 family(event::family_t::NONE),
 			 address(event::address_t::NONE),
 			 protocol(event::protocol_t::NONE),
+			 delivery(event::delivery_mode_t::UNICAST),
 			 status(event::status_t::NONE),
 			 oldset(event::status_t::NONE) {}
 		} __attribute__((packed)) state_t;

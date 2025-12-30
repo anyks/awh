@@ -1733,6 +1733,8 @@ namespace verify {
 				if(i != ::__awh_ssl_splice_map_.end()){
 					// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
 					if(::__awh_ssl_ids__.find(i->second) != ::__awh_ssl_ids__.end()){
+						// Сохраняем полученное имя хоста
+						member->host.name = sni;
 						// Выполняем подмену сертификата на основной
 						::SSL_set_SSL_CTX(ssl, reinterpret_cast <::member_t *> (static_cast <uintptr_t> (i->second))->ctx);
 						// Устанавливаем результат обработки

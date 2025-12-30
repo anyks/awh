@@ -105,7 +105,7 @@ namespace awh {
 		 * @brief Типы трансляции пакетов
 		 *
 		 */
-		enum class cast_t : uint8_t {
+		enum class delivery_mode_t : uint8_t {
 			NONE      = 0x00, // Режим не определён
 			UNICAST   = 0x01, // Режим unicast
 			MULTICAST = 0x02, // Режим multicast

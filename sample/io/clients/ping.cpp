@@ -12,13 +12,18 @@
  * @copyright: Copyright © 2025
  */
 
+#include <ctime>
+#include <random>
 #include <iostream>
 #include <cinttypes>
+#include <algorithm>
 
 /**
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <net/addr.hpp>
+#include <sys/chrono.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -29,6 +34,48 @@ using namespace awh;
  * Подписываемся на пространство имён заполнителя
  */
 using namespace placeholders;
+
+/**
+ * @brief Функция подсчёта контрольной суммы
+ *
+ * @param buffer буфер данных для подсчёта
+ * @param size   размер данных для подсчёта
+ * @return       подсчитанная контрольная сумма
+ */
+uint16_t checksum(const void * buffer, const size_t size) noexcept {
+	// Результат работы функции
+	uint16_t result = 0;
+	// Если данные переданы верные
+	if((buffer != nullptr) && (size > 0)){
+		// Контрольная сумма расчёта
+		uint32_t sum = 0;
+		// Устанавливаем длину контрольной суммы
+		size_t length = size;
+		// Выполняем приведение буфера в нужную нам форму
+		auto data = reinterpret_cast <const uint16_t *> (buffer);
+		// Если длина буфера всего один байт
+		if(length & 1)
+			// Выполняем расчёт контрольной суммы
+			sum = reinterpret_cast <const uint8_t *> (data)[length - 1];
+		// Делим длину байт пополам
+		length /= 2;
+		/**
+		 *  Выполняем перебор буфера байт
+		 */
+		while(length--){
+			// Выполняем расчёт контрольной суммы
+			sum += * data++;
+			// Если контрольная сумма достигла предела
+			if(sum & 0xffff0000)
+				// Выполняем смещение на оставшиеся 16 байт
+				sum = ((sum >> 16) + (sum & 0xffff));
+		}
+		// Выполняем получение результата контрольной суммы
+		result = static_cast <uint16_t> (~sum);
+	}
+	// Выводим результат
+	return result;
+}
 
 /**
  * @brief Главная функция приложения
@@ -1379,271 +1426,298 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}
 	*/
+
+	/**
+	 * @brief Структура заголовков ICMP
+	 *
+	 */
+	struct IcmpHeader {
+		uint8_t type;      // Тип запроса
+		uint8_t code;      // Код запроса
+		uint16_t checksum; // Контрольная сумма
+		/**
+		 * Объединение структур запроса
+		 */
+		union {
+			/**
+			 * @brief Структура отправляемого запроса
+			 *
+			 */
+			struct {
+				uint16_t identifier = 0; // Идентификатор запроса
+				uint16_t sequence   = 0; // Номер последовательности
+				uint64_t payload    = 0; // Тело полезной нагрузки
+			} echo;
+			/**
+			 * @brief Структура указателя запроса
+			 *
+			 */
+			struct ICMP_PACKET_POINTER_HEADER {
+				// Указатель пакета
+				uint8_t pointer = 0;
+			} pointer;
+			/**
+			 * @brief Структура адреса ответа
+			 *
+			 */
+			struct ICMP_PACKET_REDIRECT_HEADER {
+				// Адрес ответа IPv4
+				uint32_t gatewayAddress = 0;
+			} redirect;
+			/**
+			 * @brief Структура адреса ответа
+			 *
+			 */
+			struct ICMP6_PACKET_REDIRECT_HEADER {
+				// Адрес ответа IPv6
+				uint32_t gatewayAddress[4] = {0,0,0,0};
+			} redirect6;
+		} meta;
+	} __attribute__((packed));
+
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
+	// Создаём объект работы с датами
+	chrono_t chrono(&fmk, &log);
+	// Создаём объект работы с IP-адресами
+	net_addr_t addr(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
+	// Устанавливаем порт события
+	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::CLOSEONEXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
-		// Устанавливаем адрес сервера назначения
-		if(io.target(eid, "/tmp/awh.sock")){
-			// Устанавливаем функцию обратного вызова на событие таймера
-			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
-				/**
-				 * Обрабатываем статус события
-				 */
-				switch(static_cast <uint8_t> (status)){
-					// Если статус принятия
-					case static_cast <uint8_t> (event::status_t::ACCEPTED):
-						// Выводим сообщение о принятии события
-						log.print("Событие принято: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус уничтожения
-					case static_cast <uint8_t> (event::status_t::DESTROYED):
-						// Выводим сообщение об уничтожении события
-						log.print("Событие подлежит уничтожению: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус инициализации
-					case static_cast <uint8_t> (event::status_t::INITIAL):
-						// Выводим сообщение об инициализации события
-						log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус запуска события
-					case static_cast <uint8_t> (event::status_t::LAUNCHED):
-						// Выводим сообщение о запуске события
-						log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус паузы события
-					case static_cast <uint8_t> (event::status_t::PAUSED):
-						// Выводим сообщение о паузе события
-						log.print("Событие на паузе: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус возобновления события
-					case static_cast <uint8_t> (event::status_t::RESUMED):
-						// Выводим сообщение о возобновлении события
-						log.print("Событие возобновлено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус успешного выполнения события
-					case static_cast <uint8_t> (event::status_t::SUCCESS):
-						// Выводим сообщение о успешном выполнении события
-						log.print("Событие успешно выполнено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус неудачного выполнения события
-					case static_cast <uint8_t> (event::status_t::FAILURE):
-						// Выводим сообщение о неудачном выполнении события
-						log.print("Событие выполнено с ошибкой: ID=%u", log_t::flag_t::CRITICAL, eid);
-					break;
-					// Если статус выполнения события в ожидании
-					case static_cast <uint8_t> (event::status_t::PENDING):
-						// Выводим сообщение о выполнении события в ожидании
-						log.print("Событие в ожидании: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус подключения события
-					case static_cast <uint8_t> (event::status_t::CONNECTED):
-						// Выводим сообщение о подключении события
-						log.print("Событие подключено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус отмены события
-					case static_cast <uint8_t> (event::status_t::CANCELLED):
-						// Выводим сообщение об отмене события
-						log.print("Событие отменено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус переподключения события
-					case static_cast <uint8_t> (event::status_t::RECONNECTED):
-						// Выводим сообщение о переподключении события
-						log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если статус прослушивания события
-					case static_cast <uint8_t> (event::status_t::LISTENING):
-						// Выводим сообщение о прослушивании события
-						log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
-					break;
+		// Устанавливаем IP-адрес события
+		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
+			// Устанавливаем адрес сервера назначения
+			if(io.target(eid, "8.8.8.8")){
+				// Устанавливаем функцию обратного вызова на запись в событие
+				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
+					// Выводим сообщение о переподключении события
+					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+				}));
+				// Устанавливаем функцию обратного вызова на чтение из события
+				io.on(eid, [&addr, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					// Результат полученных данных
+					auto icmpResponseHeader = reinterpret_cast <const struct IcmpHeader *> (data);
+					// Добавляем полученный IP-адрес
+					addr.v4(icmpResponseHeader->meta.redirect.gatewayAddress);
+					// Выводим сообщение о переподключении события
+					log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, static_cast <string> (addr).c_str());
+				});
+				// Устанавливаем функцию обратного вызова на ошибку события
+				io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+					/**
+					 * Обрабатываем статус события
+					 */
+					switch(static_cast <uint8_t> (error)){
+						// Если ошибка неизвестного события
+						case static_cast <uint8_t> (event::error_t::UNKNOWN):
+							// Выводим сообщение об ошибке неизвестного события
+							log.print("Неизвестная ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка недопустимой операции
+						case static_cast <uint8_t> (event::error_t::INVALID):
+							// Выводим сообщение об ошибке недопустимой операции
+							log.print("Недопустимая операция события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка доступа запрещёния
+						case static_cast <uint8_t> (event::error_t::ACCESS_DENIED):
+							// Выводим сообщение об ошибке доступа запрещёния
+							log.print("Доступ к событию запрещён: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка уже существующего объекта
+						case static_cast <uint8_t> (event::error_t::ALREADY_EXISTS):
+							// Выводим сообщение об ошибке уже существующего объекта
+							log.print("Объект события уже существует: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка доступа к сокету
+						case static_cast <uint8_t> (event::error_t::INVALID_SOCKET):
+							// Выводим сообщение об ошибке доступа к сокету
+							log.print("Ошибка доступа к сокету события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка некорректного адреса
+						case static_cast <uint8_t> (event::error_t::INVALID_ADDRESS):
+							// Выводим сообщение об ошибке некорректного адреса
+							log.print("Некорректный адрес события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка ошибки подключения
+						case static_cast <uint8_t> (event::error_t::CONNECTION_FAIL):
+							// Выводим сообщение об ошибке подключения
+							log.print("Ошибка подключения события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка недостаточно ресурсов
+						case static_cast <uint8_t> (event::error_t::INSUFFICIENT_RES):
+							// Выводим сообщение об ошибке недостаточно ресурсов
+							log.print("Недостаточно ресурсов для события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если ошибка события
+						case static_cast <uint8_t> (event::error_t::EVENT_FAIL):
+							// Выводим сообщение об ошибке события
+							log.print("Ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+						// Если объект не найден
+						case static_cast <uint8_t> (event::error_t::NOT_FOUND):
+							// Выводим сообщение об ошибке события
+							log.print("Объект события не найден: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
+						break;
+					}
+				});
+				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
+				io.on(eid, static_cast <event::callback::connect_t> ([&io, &log](const event::id_t eid, const bool ok) noexcept -> void {
+					// Выводим сообщение о принятии события
+					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
+					// Если подключение успешно
+					if(ok){
+						// Текст исходящего сообщения
+						const string message("Hello from async client!");
+						// Отправляем данные обратно клиенту
+						if(io.send(eid, message.c_str(), message.size()))
+							// Если данные успешно отправлены
+							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
+						// Если данные не отправлены
+						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+					}
+				}));
+				// Устанавливаем функцию обратного вызова на общее событие
+				io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим сообщение о чтении события
+							log.print("Событие на чтение: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является записью
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим сообщение о записи события
+							log.print("Событие на запись: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является подключением
+						case static_cast <uint8_t> (event::action_t::CONNECT):
+							// Выводим сообщение о подключении события
+							log.print("Событие на подключение: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является отключением
+						case static_cast <uint8_t> (event::action_t::DISCONNECT):
+							// Выводим сообщение об отключении события
+							log.print("Событие на отключение: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является переподключением
+						case static_cast <uint8_t> (event::action_t::RECONNECT):
+							// Выводим сообщение о переподключении события
+							log.print("Событие на переподключение: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является закрытием
+						case static_cast <uint8_t> (event::action_t::CLOSE):
+							// Выводим сообщение о закрытии события
+							log.print("Событие на закрытие подключения: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением
+						case static_cast <uint8_t> (event::action_t::CHANGE):
+							// Выводим сообщение об изменении события
+							log.print("Событие на изменение: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							log.print("Событие на удаление: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является переименованием
+						case static_cast <uint8_t> (event::action_t::RENAME):
+							// Выводим сообщение о переименовании события
+							log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением атрибутов
+						case static_cast <uint8_t> (event::action_t::ATTRIB):
+							// Выводим сообщение об изменении атрибутов события
+							log.print("Событие на изменение атрибутов: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является отзывом доступа
+						case static_cast <uint8_t> (event::action_t::REVOKE):
+							// Выводим сообщение об отзыве доступа события
+							log.print("Событие на отзыв доступа: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением счётчика жёстких ссылок
+						case static_cast <uint8_t> (event::action_t::HDLINK):
+							// Выводим сообщение о изменении счётчика жёстких ссылок события
+							log.print("Событие на изменение счётчика жёстких ссылок: ID=%u", log_t::flag_t::INFO, eid);
+						break;
+					}
+				});
+				// Устанавливаем таймаут события на запись
+				io.timeout(eid, event::action_t::WRITE, 3000);
+				// Устанавливаем таймаут события на чтение
+				io.timeout(eid, event::action_t::READ, 10000);
+				// Выполняем фиксацию настроек события сервера
+				if(io.commit(eid)){
+					// Выполняем инициализацию генератора
+					std::random_device randev;
+					// Подключаем устройство генератора
+					mt19937 generator(randev());
+					// Выполняем генерирование случайного числа
+					uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
+
+					// Убедитесь, что структура layout совпадает с RFC
+					struct IcmpEchoPacket {
+						uint8_t type;
+						uint8_t code;
+						uint16_t checksum;
+						uint16_t identifier;
+						uint16_t sequence;
+						uint64_t payload;
+					} __attribute__((packed)); // ← отключает padding
+
+					// Создаём объект заголовков
+					// struct IcmpHeader icmp{};
+
+					IcmpEchoPacket icmp{};
+
+					// Выполняем установку типа запроса
+					icmp.type = 8; // IPv4
+					// icmp.type = 128; // IPv6
+					// Устанавливаем код запроса
+					icmp.code = 0;
+					// Последовательность
+					uint16_t sequence = 0;
+					// Выполняем пинг 10 раз
+					for(uint8_t i = 0; i < 10; i++){
+						// Устанавливаем номер последовательности
+						icmp.sequence = htons(sequence);
+						// Устанавливаем идентификатор запроса
+						icmp.identifier = htons(::getpid() & 0xFFFF);
+						// Устанавливаем данные полезной нагрузки
+						icmp.payload = static_cast <uint64_t> (dist6(generator));
+						// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
+						icmp.checksum = 0;
+						// Выполняем подсчёт контрольной суммы
+						icmp.checksum = ::checksum(&icmp, sizeof(icmp));
+						// Запоминаем текущее значение времени в миллисекундах
+						const uint64_t mseconds = chrono.timestamp(chrono_t::type_t::MILLISECONDS);
+						// Отправляем сообщение серверу
+						if(io.send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp))){
+							// Выполняем чтение ответа
+							if(io.recv(eid)){
+								// Выполняем подсчёт количество прошедшего времени
+								cout << "Response: " << (chrono.timestamp(chrono_t::type_t::MILLISECONDS) - mseconds) << " msec." << endl;
+								// Увеличиваем последовательность запроса
+								sequence++;
+							}
+						}
+					}
 				}
-			});
-			// Устанавливаем функцию обратного вызова на запись в событие
-			io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-				// Выводим сообщение о переподключении события
-				log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
-			}));
-			// Устанавливаем функцию обратного вызова на чтение из события
-			io.on(eid, [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-				// Текст входящего сообщения
-				const string message(reinterpret_cast <const char *> (data), size);
-				// Выводим сообщение о переподключении события
-				log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-			});
-			// Устанавливаем функцию обратного вызова на ошибку события
-			io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
-				/**
-				 * Обрабатываем статус события
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если ошибка неизвестного события
-					case static_cast <uint8_t> (event::error_t::UNKNOWN):
-						// Выводим сообщение об ошибке неизвестного события
-						log.print("Неизвестная ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка недопустимой операции
-					case static_cast <uint8_t> (event::error_t::INVALID):
-						// Выводим сообщение об ошибке недопустимой операции
-						log.print("Недопустимая операция события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка доступа запрещёния
-					case static_cast <uint8_t> (event::error_t::ACCESS_DENIED):
-						// Выводим сообщение об ошибке доступа запрещёния
-						log.print("Доступ к событию запрещён: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка уже существующего объекта
-					case static_cast <uint8_t> (event::error_t::ALREADY_EXISTS):
-						// Выводим сообщение об ошибке уже существующего объекта
-						log.print("Объект события уже существует: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка доступа к сокету
-					case static_cast <uint8_t> (event::error_t::INVALID_SOCKET):
-						// Выводим сообщение об ошибке доступа к сокету
-						log.print("Ошибка доступа к сокету события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка некорректного адреса
-					case static_cast <uint8_t> (event::error_t::INVALID_ADDRESS):
-						// Выводим сообщение об ошибке некорректного адреса
-						log.print("Некорректный адрес события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка ошибки подключения
-					case static_cast <uint8_t> (event::error_t::CONNECTION_FAIL):
-						// Выводим сообщение об ошибке подключения
-						log.print("Ошибка подключения события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка недостаточно ресурсов
-					case static_cast <uint8_t> (event::error_t::INSUFFICIENT_RES):
-						// Выводим сообщение об ошибке недостаточно ресурсов
-						log.print("Недостаточно ресурсов для события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка события
-					case static_cast <uint8_t> (event::error_t::EVENT_FAIL):
-						// Выводим сообщение об ошибке события
-						log.print("Ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если объект не найден
-					case static_cast <uint8_t> (event::error_t::NOT_FOUND):
-						// Выводим сообщение об ошибке события
-						log.print("Объект события не найден: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-				}
-			});
-			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-			io.on(eid, static_cast <event::callback::connect_t> ([&io, &log](const event::id_t eid, const bool ok) noexcept -> void {
-				// Выводим сообщение о принятии события
-				log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
-				// Если подключение успешно
-				if(ok){
-					// Текст исходящего сообщения
-					const string message("Hello from async client!");
-					// Отправляем данные обратно клиенту
-					if(io.send(eid, message.c_str(), message.size()))
-						// Если данные успешно отправлены
-						log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
-					// Если данные не отправлены
-					else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
-				}
-			}));
-			// Устанавливаем функцию обратного вызова на общее событие
-			io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
-				/**
-				 * Обрабатываем действие события
-				 */
-				switch(static_cast <uint8_t> (action)){
-					// Если действие является чтением
-					case static_cast <uint8_t> (event::action_t::READ):
-						// Выводим сообщение о чтении события
-						log.print("Событие на чтение: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является записью
-					case static_cast <uint8_t> (event::action_t::WRITE):
-						// Выводим сообщение о записи события
-						log.print("Событие на запись: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является подключением
-					case static_cast <uint8_t> (event::action_t::CONNECT):
-						// Выводим сообщение о подключении события
-						log.print("Событие на подключение: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является отключением
-					case static_cast <uint8_t> (event::action_t::DISCONNECT):
-						// Выводим сообщение об отключении события
-						log.print("Событие на отключение: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является переподключением
-					case static_cast <uint8_t> (event::action_t::RECONNECT):
-						// Выводим сообщение о переподключении события
-						log.print("Событие на переподключение: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является закрытием
-					case static_cast <uint8_t> (event::action_t::CLOSE):
-						// Выводим сообщение о закрытии события
-						log.print("Событие на закрытие подключения: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является изменением
-					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение об изменении события
-						log.print("Событие на изменение: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является удалением
-					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение об удалении события
-						log.print("Событие на удаление: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является переименованием
-					case static_cast <uint8_t> (event::action_t::RENAME):
-						// Выводим сообщение о переименовании события
-						log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является изменением атрибутов
-					case static_cast <uint8_t> (event::action_t::ATTRIB):
-						// Выводим сообщение об изменении атрибутов события
-						log.print("Событие на изменение атрибутов: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является отзывом доступа
-					case static_cast <uint8_t> (event::action_t::REVOKE):
-						// Выводим сообщение об отзыве доступа события
-						log.print("Событие на отзыв доступа: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-					// Если действие является изменением счётчика жёстких ссылок
-					case static_cast <uint8_t> (event::action_t::HDLINK):
-						// Выводим сообщение о изменении счётчика жёстких ссылок события
-						log.print("Событие на изменение счётчика жёстких ссылок: ID=%u", log_t::flag_t::INFO, eid);
-					break;
-				}
-			});
-			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 3000);
-			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 3000);
-			// Устанавливаем таймаут события на подключение
-			io.timeout(eid, event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события сервера
-			if(io.commit(eid)){
-				// Если подключение к серверу прошло успешно
-				if(io.connect(eid, true)){
-					// Выполняем запуск события
-					if(io.launch(eid)){
-						// Выводим сообщение об успешном запуске события
-						cout << " Событие успешно запущено!" << endl;
-						/**
-						 * Запускаем опрос событий
-						 */
-						while(io.poll());
-					// Выводим сообщение об ошибке запуска события
-					} else cout << " Ошибка запуска события!" << endl;
-				}
-			}
-		// Если адрес назначения не установлен
-		} else cout << " Ошибка установки адреса сервера!" << endl;
+			// Если адрес назначения не установлен
+			} else cout << " Ошибка установки адреса сервера!" << endl;
+		// Если адрес не установлен
+		} else cout << " Ошибка установки адреса клиента!" << endl;
 	}
 
 	/**

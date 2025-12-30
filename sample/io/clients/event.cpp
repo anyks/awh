@@ -1,6 +1,6 @@
 /**
- * @file: dir.cpp
- * @date: 2025-11-24
+ * @file: event.cpp
+ * @date: 2025-11-20
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -49,8 +49,8 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
-	// Добавляем новое событие отслеживания каталога
-	event::id_t eid = io.event(event::node_t::DIR, event::family_t::FSYS);
+	// Добавляем новое пользовательское событие
+	event::id_t eid = io.event(event::node_t::NOTIFY, event::family_t::USER);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устанавливаем функцию обратного вызова на событие таймера
@@ -126,6 +126,18 @@ int32_t main(int32_t argc, char * argv[]){
 				break;
 			}
 		});
+		// Устанавливаем функцию обратного вызова на запись в событие
+		io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
+			// Выводим сообщение о переподключении события
+			log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+		}));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Текст входящего сообщения
+			const string message(reinterpret_cast <const char *> (data), size);
+			// Выводим сообщение о переподключении события
+			log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+		});
 		// Устанавливаем функцию обратного вызова на ошибку события
 		io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 			/**
@@ -179,145 +191,8 @@ int32_t main(int32_t argc, char * argv[]){
 				break;
 			}
 		});
-		// Устанавливаем функцию обратного вызова на изменение события
-		io.on(eid, [&log](const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
-			/**
-			 * Обрабатываем тип узла события
-			 */
-			switch(static_cast <uint8_t> (vnode)){
-				// Если тип узла не определён
-				case static_cast <uint8_t> (event::vnode_t::NONE):
-					// Выводим сообщение о типе узла события
-					log.print("Тип узла события: Не определён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-				break;
-				case static_cast <uint8_t> (event::vnode_t::CHR): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Символьный узел устройства добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение об удалении события
-							log.print("Тип узла события: Символьный узел устройства удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-				case static_cast <uint8_t> (event::vnode_t::BLK): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Блочный узел устройства добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение об удалении события
-							log.print("Тип узла события: Блочный узел устройства удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-				// Если тип узла является каналом FIFO
-				case static_cast <uint8_t> (event::vnode_t::FIFO): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Канал FIFO добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение об удалении события
-							log.print("Тип узла события: Канал FIFO удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-				// Если тип узла является сокетом
-				case static_cast <uint8_t> (event::vnode_t::SOCK): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Сокет добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение об удалении события
-							log.print("Тип узла события: Сокет удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-				// Если тип узла является файлом
-				case static_cast <uint8_t> (event::vnode_t::FILE): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Файл добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение об удалении события
-							log.print("Тип узла события: Файл удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-				// Если тип узла является каталогом
-				case static_cast <uint8_t> (event::vnode_t::DIR): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Каталог добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение о типе узла события
-							log.print("Тип узла события: Каталог удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-				// Если тип узла является символической ссылкой
-				case static_cast <uint8_t> (event::vnode_t::LINK): {
-					/**
-					 * Обрабатываем действие события
-					 */
-					switch(static_cast <uint8_t> (action)){
-						// Если действие является изменением
-						case static_cast <uint8_t> (event::action_t::CHANGE):
-							// Выводим сообщение о изменении события
-							log.print("Тип узла события: Символическая ссылка добавлена, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-						// Если действие является удалением
-						case static_cast <uint8_t> (event::action_t::DELETE):
-							// Выводим сообщение о типе узла события
-							log.print("Тип узла события: Символическая ссылка удалена, Путь=%s", log_t::flag_t::INFO, path.c_str());
-						break;
-					}
-				} break;
-			}
-		});
 		// Устанавливаем функцию обратного вызова на общее событие
-		io.on(eid, [&io, &log](const event::id_t eid, const event::action_t action) noexcept -> void {
+		io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Обрабатываем действие события
 			 */
@@ -331,6 +206,21 @@ int32_t main(int32_t argc, char * argv[]){
 				case static_cast <uint8_t> (event::action_t::WRITE):
 					// Выводим сообщение о записи события
 					log.print("Событие на запись: ID=%u", log_t::flag_t::INFO, eid);
+				break;
+				// Если действие является подключением
+				case static_cast <uint8_t> (event::action_t::CONNECT):
+					// Выводим сообщение о подключении события
+					log.print("Событие на подключение: ID=%u", log_t::flag_t::INFO, eid);
+				break;
+				// Если действие является отключением
+				case static_cast <uint8_t> (event::action_t::DISCONNECT):
+					// Выводим сообщение об отключении события
+					log.print("Событие на отключение: ID=%u", log_t::flag_t::INFO, eid);
+				break;
+				// Если действие является переподключением
+				case static_cast <uint8_t> (event::action_t::RECONNECT):
+					// Выводим сообщение о переподключении события
+					log.print("Событие на переподключение: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 				// Если действие является закрытием
 				case static_cast <uint8_t> (event::action_t::CLOSE):
@@ -350,7 +240,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Если действие является переименованием
 				case static_cast <uint8_t> (event::action_t::RENAME):
 					// Выводим сообщение о переименовании события
-					log.print("Событие на переименование: ID=%u, новый адрес: %s", log_t::flag_t::INFO, eid, io.address(eid, event::address_t::FS).c_str());
+					log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 				// Если действие является изменением атрибутов
 				case static_cast <uint8_t> (event::action_t::ATTRIB):
@@ -369,21 +259,31 @@ int32_t main(int32_t argc, char * argv[]){
 				break;
 			}
 		});
-		// Устанавливаем путь к отслеживаемому каталогу
-		if(io.address(eid, event::address_t::FS, "../tmp")){
-			// Выполняем фиксацию настроек события сервера
-			if(io.commit(eid)){
-				// Выполняем запуск события
-				if(io.launch(eid)){
-					// Выводим сообщение об успешном запуске события
-					cout << " Событие успешно запущено!" << endl;
-					/**
-					 * Запускаем опрос событий
-					 */
-					while(io.poll());
-				// Выводим сообщение об ошибке запуска события
-				} else cout << " Ошибка запуска события!" << endl;
-			}
+		// Выполняем фиксацию настроек события сервера
+		if(io.commit(eid)){
+			// Запускаем дочерний поток для уведомления события
+			std::thread([&io](const event::id_t eid) noexcept -> void {
+				// Текст сообщения
+				const string message = "Hello AWH IO Event!";
+				// Задержка перед уведомлением события
+				std::this_thread::sleep_for(std::chrono::seconds(3));
+				// Уведомляем событие
+				io.send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
+				// Задержка перед уведомлением события
+				std::this_thread::sleep_for(std::chrono::seconds(3));
+				// Уведомляем событие
+				io.send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
+			}, eid).detach();
+			// Выполняем запуск события
+			if(io.launch(eid)){
+				// Выводим сообщение об успешном запуске события
+				cout << " Событие успешно запущено!" << endl;
+				/**
+				 * Запускаем опрос событий
+				 */
+				while(io.poll());
+			// Выводим сообщение об ошибке запуска события
+			} else cout << " Ошибка запуска события!" << endl;
 		}
 	}
 	// Выводим результат

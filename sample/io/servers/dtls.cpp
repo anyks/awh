@@ -22,6 +22,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <net/tls.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -47,14 +48,89 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
-	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	// Создаём объект транспортного уровня безопасности
+	tls_t tls(&fmk, &log);
+	// Добавляем новое событие клиента UDP
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
+		// Регистрируем объект транспортного уровня безопасности
+		tls_t::id_t tid = tls.create(event::node_t::SERVER, event::protocol_t::UDP);
+		// Устанавливаем ALPN протоколы TLS
+		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		// Устанавливаем файл центра сертификации DTLS
+		tls.ca(tid, "../sh/certificates", "ca.pem");
+		// Включаем проверку имени хоста DTLS
+		tls.validateHostname(tid, false);
+		// Устанавливаем клиентский сертификат DTLS
+		tls.certificate(tid, "../sh/certificates/server/cert.pem");
+		// Устанавливаем приватный ключ DTLS
+		tls.privateKey(tid, "../sh/certificates/server/key.pem");
+		// Регистрируем функцию обратного вызова на получение ошибок DTLS
+		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept -> void {
+			/**
+			 * Обрабатываем входящие ошибки DTLS
+			 */
+			switch(static_cast <uint8_t> (error)){
+				// Если получено предупреждение DTLS
+				case static_cast <uint8_t> (tls_t::error_t::WARNING):
+					// Выводим сообщение о предупреждающей ошибке DTLS
+					log.print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::WARNING, id, message.c_str());
+				break;
+				// Если получена критическая ошибка DTLS
+				case static_cast <uint8_t> (tls_t::error_t::CRITICAL):
+					// Выводим сообщение о предупреждающей ошибке DTLS
+					log.print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
+				break;
+			}
+		});
+		// Регистрируем функцию обратного вызова на запись данных DTLS
+		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::event_t event, const size_t size) noexcept -> void {
+			/**
+			 * Обрабатываем тип события DTLS
+			 */
+			switch(static_cast <uint8_t> (event)){
+				// Если событие шифрования данных DTLS
+				case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION):
+					// Выводим сообщение о записи зашифрованных данных DTLS
+					log.print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
+				break;
+				// Если событие дешифрования данных DTLS
+				case static_cast <uint8_t> (tls_t::event_t::DECRYPTION):
+					// Выводим сообщение о записи дешифрованных данных DTLS
+					log.print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
+				break;
+			}
+		});
+		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
+		tls.on(tid, [&tls, &io, &log](const tls_t::id_t id) noexcept -> void {
+			// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
+			cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
+			cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.hostname(id) << endl << endl;
+			cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+			cout << "Версия OpenSSL: " << tls.version() << endl << endl;
+			cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;
+			cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
+			cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
+			cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
+			// Выводим данные сертификата DTLS
+			cout << "Certificate data:\n" << tls.certificateExtract(id) << endl << endl;
+			// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+			log.print("Рукопожатие DTLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log_t::flag_t::INFO, id, tls.alpn(id));
+			// Выводим информацию о DTLS соединении
+			cout << tls.peerInfo(id) << endl;
+			// Выполняем повторную передачу данных TLS
+			if(tls.retransmit(id))
+				// Выводим сообщение об успешной повторной передаче данных TLS
+				log.print("Успешно выполнена повторная передача данных TLS: ID=%" PRIu64 "", log_t::flag_t::INFO, id);
+			// Выводим сообщение об ошибке повторной передачи данных TLS
+			else log.print("Ошибка повторной передачи данных TLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, id);
+		});
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::KEEPALIVE))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -135,9 +211,41 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
-			io.on(eid, [&io, &log](const event::id_t eid, const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+			io.on(eid, [tid, &tls, &io, &log](const event::id_t eid, const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Выводим сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
+				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
+				// Устанавливаем клиента DTLS для события
+				tls.peer(tid, io.address(cid, event::address_t::IPV4), io.port(cid));
+				// Регистрируем функцию обратного вызова на чтение данных DTLS
+				tls.on(tid, [cid, &tls, &io, &log](const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+					/**
+					 * Обрабатываем тип события DTLS
+					 */
+					switch(static_cast <uint8_t> (event)){
+						// Если событие шифрования данных DTLS
+						case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION): {
+							// Отправляем данные обратно клиенту
+							if(io.send(cid, reinterpret_cast <const char *> (buffer), size))
+								// Если данные успешно отправлены
+								log.print("Отправлено зашифрованных данных: ID=%u, %zu байт", log_t::flag_t::INFO, cid, size);
+							// Если данные не отправлены
+							else log.print("Ошибка отправки зашифрованных данных: ID=%u", log_t::flag_t::CRITICAL, cid);
+						} break;
+						// Если событие дешифрования данных DTLS
+						case static_cast <uint8_t> (tls_t::event_t::DECRYPTION): {
+							// Получаем ответ сервера в расшифрованном виде
+							const string response(reinterpret_cast <const char *> (buffer), size);
+							// Выводим сообщение полученных данных с сервера
+							log.print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", log_t::flag_t::INFO, id, size, response.c_str());
+							// Если данные успешно зашифрованы DTLS
+							if(tls.encrypt(id, response.c_str(), response.size()))
+								// Выводим сообщение об успешном шифровании данных DTLS
+								log.print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, id, response.size());
+							// Если данные не отправлены
+							else log.print("Ошибка шифрования: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, id);
+						} break;
+					}
+				});
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -217,17 +325,13 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-					// Текст входящего сообщения
-					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
-					log.print("Прочитано2: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-					// Отправляем данные обратно клиенту
-					if(io.send(eid, reinterpret_cast <const char *> (data), size))
-						// Если данные успешно отправлены
-						log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+				io.on(cid, [tid, &tls, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					// Если данные успешно дешифрованы DTLS
+					if(tls.decrypt(tid, data, size)){
+						// Выводим сообщение об успешном дешифровании данных DTLS
+						log.print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
 					// Если данные не отправлены
-					else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+					} else log.print("Ошибка дешифрования: ID=%u", log_t::flag_t::CRITICAL, eid);
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
 				io.on(cid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
@@ -355,74 +459,18 @@ int32_t main(int32_t argc, char * argv[]){
 						break;
 					}
 				});
-				// Текст входящего сообщения
-				const string message(reinterpret_cast <const char *> (data), size);
-				// Выводим сообщение о переподключении события
-				log.print("Прочитано1: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, cid, size, message.c_str());
-				// Отправляем данные обратно клиенту
-				if(io.send(cid, reinterpret_cast <const char *> (data), size))
-					// Если данные успешно отправлены
-					log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, cid, size);
+				// Если данные успешно дешифрованы DTLS
+				if(tls.decrypt(tid, data, size)){
+					// Выводим сообщение об успешном дешифровании данных DTLS
+					log.print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
 				// Если данные не отправлены
-				else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, cid);
-			});
-			// Устанавливаем функцию обратного вызова на ошибку события
-			io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
-				/**
-				 * Обрабатываем статус события
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если ошибка неизвестного события
-					case static_cast <uint8_t> (event::error_t::UNKNOWN):
-						// Выводим сообщение об ошибке неизвестного события
-						log.print("Неизвестная ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка недопустимой операции
-					case static_cast <uint8_t> (event::error_t::INVALID):
-						// Выводим сообщение об ошибке недопустимой операции
-						log.print("Недопустимая операция события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка доступа запрещёния
-					case static_cast <uint8_t> (event::error_t::ACCESS_DENIED):
-						// Выводим сообщение об ошибке доступа запрещёния
-						log.print("Доступ к событию запрещён: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка уже существующего объекта
-					case static_cast <uint8_t> (event::error_t::ALREADY_EXISTS):
-						// Выводим сообщение об ошибке уже существующего объекта
-						log.print("Объект события уже существует: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка доступа к сокету
-					case static_cast <uint8_t> (event::error_t::INVALID_SOCKET):
-						// Выводим сообщение об ошибке доступа к сокету
-						log.print("Ошибка доступа к сокету события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка некорректного адреса
-					case static_cast <uint8_t> (event::error_t::INVALID_ADDRESS):
-						// Выводим сообщение об ошибке некорректного адреса
-						log.print("Некорректный адрес события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка ошибки подключения
-					case static_cast <uint8_t> (event::error_t::CONNECTION_FAIL):
-						// Выводим сообщение об ошибке подключения
-						log.print("Ошибка подключения события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка недостаточно ресурсов
-					case static_cast <uint8_t> (event::error_t::INSUFFICIENT_RES):
-						// Выводим сообщение об ошибке недостаточно ресурсов
-						log.print("Недостаточно ресурсов для события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если ошибка события
-					case static_cast <uint8_t> (event::error_t::EVENT_FAIL):
-						// Выводим сообщение об ошибке события
-						log.print("Ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-					// Если объект не найден
-					case static_cast <uint8_t> (event::error_t::NOT_FOUND):
-						// Выводим сообщение об ошибке события
-						log.print("Объект события не найден: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-					break;
-				}
+				} else log.print("Ошибка дешифрования: ID=%u", log_t::flag_t::CRITICAL, eid);
+				// Если рукопожатие DTLS успешно
+				if(tls.handshake(tid))
+					// Выводим сообщение о начале рукопожатия DTLS
+					log.print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", log_t::flag_t::INFO, tid);
+				// Если рукопожатие DTLS не выполнено
+				else log.print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
 			});
 			// Устанавливаем функцию обратного вызова на общее событие
 			io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
@@ -493,9 +541,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 6000);
+			// io.timeout(eid, event::action_t::READ, 5000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 6000);
+			io.timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Выполняем запуск события

@@ -8552,10 +8552,30 @@ namespace io {
 								}
 							// Если мы детектировали событие переименования директории
 							} else if(ev.fflags & NOTE_RENAME) {
-								// Если событие переименования директории разрешено
-								if(dir->actions & action::RENAME)
+								/**
+								 * Для операционной системы MacOS X
+								 */
+								#if __APPLE__ || __MACH__
+									// Буфер для хранения пути директории
+									char buffer[PATH_MAX];
+									// Получаем актуальный путь директории
+									if(::fcntl(dir->fd, F_GETPATH, buffer) == 0){
+										// Устанавливаем новый путь директории
+										awh_cast <net::addr_fs_t *> (dir->path.get())->address = buffer;
+										// Если событие переименования директории разрешено
+										if(dir->actions & action::RENAME)
+											// Вызываем функцию обратного вызова флаг события
+											dir->callbacks.event(dir->id, event::action_t::RENAME);
+										// Формируем положительный результат
+										return true;
+									}
+								#endif
+								// Если событие удаления директории разрешено
+								if(dir->actions & action::DELETE)
 									// Вызываем функцию обратного вызова флаг события
-									dir->callbacks.event(dir->id, event::action_t::RENAME);
+									dir->callbacks.event(dir->id, event::action_t::DELETE);
+								// Выполняем удаление узла
+								io::destroy(node, log);
 							// Если мы детектировали событие удаления директории
 							} else if(ev.fflags & NOTE_DELETE) {
 								// Если событие удаления директории разрешено
@@ -8770,7 +8790,7 @@ namespace io {
 							if(client->transfer.actions & action::RECONNECT){
 								// Деактивируем таймаут события
 								client->timeout = event::action_t::NONE;
-								// Устанавливаем статус события в состояние инициализировано
+								// Устанавливаем статус события в состояние не инициализировано
 								client->state.status.store(event::status_t::NONE, std::memory_order_release);
 								// Обрабатываем событие сокета
 								if(io::socket(client, log)){
@@ -8813,10 +8833,15 @@ namespace io {
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
 										// Выполняем повторное подключение клиента
-										if(self->connect(client->id, static_cast <bool> (
+										if(!self->connect(client->id, static_cast <bool> (
 											(client->state.options & event::options::NOIOBLOCK) ||
 											(client->state.options & event::options::SMIOBLOCK)
-										))) break;
+										)) || !self->launch(client->id)){
+											// Если функция обратного вызова для вывода подключения установлена
+											if(client->callbacks.connect != nullptr)
+												// Вывзываем функцию обратного вызова для подключения
+												client->callbacks.connect(client->id, false);
+										}
 									} break;
 								}
 							}
@@ -9629,9 +9654,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Определяем тип приведения события
 							 */
-							switch(static_cast <uint8_t> (client->state.cast)){
+							switch(static_cast <uint8_t> (client->state.delivery)){
 								// Для типа трансляции пакетов MULTICAST
-								case static_cast <uint8_t> (event::cast_t::MULTICAST): {
+								case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
 									/**
 									 * Определяем семейство события
 									 */
@@ -9877,9 +9902,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									}
 								} break;
 								// Для типа трансляции пакетов UNICAST
-								case static_cast <uint8_t> (event::cast_t::UNICAST):
+								case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
 								// Для типа трансляции пакетов BROADCAST
-								case static_cast <uint8_t> (event::cast_t::BROADCAST): {
+								case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
 									/**
 									 * Определяем семейство события
 									 */
@@ -11388,9 +11413,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Определяем тип приведения события
 							 */
-							switch(static_cast <uint8_t> (server->state.cast)){
+							switch(static_cast <uint8_t> (server->state.delivery)){
 								// Для типа трансляции пакетов MULTICAST
-								case static_cast <uint8_t> (event::cast_t::MULTICAST): {
+								case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
 									/**
 									 * Определяем семейство события
 									 */
@@ -11624,9 +11649,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									}
 								} break;
 								// Для типа трансляции пакетов UNICAST
-								case static_cast <uint8_t> (event::cast_t::UNICAST):
+								case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
 								// Для типа трансляции пакетов BROADCAST
-								case static_cast <uint8_t> (event::cast_t::BROADCAST): {
+								case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
 									/**
 									 * Определяем семейство события
 									 */
@@ -13337,7 +13362,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 								// Устанавливаем IP-адрес в хост сервера
 								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 								// Если событие является мультикастовым
-								if(server->state.cast == event::cast_t::MULTICAST)
+								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
 									result = this->_eth.multicastIface(server->fd, server->state.family, name);
 							// Если IP-адрес не получен
@@ -13385,7 +13410,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 								// Устанавливаем IP-адрес в хост сервера
 								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 								// Если событие является мультикастовым
-								if(server->state.cast == event::cast_t::MULTICAST)
+								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
 									result = this->_eth.multicastIface(server->fd, server->state.family, name);
 							// Если IP-адрес не получен
@@ -16257,7 +16282,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 													// Если событие является мультикастовым
-													if((server->state.cast == event::cast_t::MULTICAST) && !source.iface.empty())
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
 														result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
 												// Если IP-адрес не получен
@@ -16309,7 +16334,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 													// Если событие является мультикастовым
-													if((server->state.cast == event::cast_t::MULTICAST) && !source.iface.empty())
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
 														result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
 												// Если IP-адрес не получен
@@ -16728,7 +16753,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 											// Если событие является мультикастовым
-											if((server->state.cast == event::cast_t::MULTICAST) && !source.iface.empty())
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
 												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
 										// Если MAC-адрес не получен
@@ -17023,7 +17048,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 											// Если событие является мультикастовым
-											if((server->state.cast == event::cast_t::MULTICAST) && !source.iface.empty())
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
 												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
 										// Если MAC-адрес не получен
@@ -17452,7 +17477,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 											// Если событие является мультикастовым
-											if((server->state.cast == event::cast_t::MULTICAST) && !source.iface.empty())
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
 												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
 										// Если IP-адрес не получен
@@ -17551,7 +17576,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 											// Если событие является мультикастовым
-											if((server->state.cast == event::cast_t::MULTICAST) && !source.iface.empty())
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
 												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
 										// Если IP-адрес не получен
@@ -19927,7 +19952,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 						// Устанавливаем результат работы функции как ложь
 						result = isSetup;
 					// Для типа трансляции пакетов MULTICAST
-					if(i->second->state.cast == event::cast_t::MULTICAST){
+					if(i->second->state.delivery == event::delivery_mode_t::MULTICAST){
 						// Если опция передана как MULTICASTLOOP
 						if(event::options::MULTICASTLOOP & options){
 							// Устанавливаем режим обратной связи многоадресной передачи
@@ -20532,7 +20557,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
 							// Для типа трансляции пакетов MULTICAST
-							if(i->second->state.cast == event::cast_t::MULTICAST){
+							if(i->second->state.delivery == event::delivery_mode_t::MULTICAST){
 								/**
 								 * Определяем семейство события
 								 */
@@ -22317,6 +22342,8 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						switch(static_cast <uint8_t> (i->second->state.type)){
 							// Если сокет принадлежит к типу STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Если сокет принадлежит к типу DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если сокет принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем блокировку потоков
@@ -31373,7 +31400,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
  * @param id идентификатор события
  * @return   режим трансляции пакетов (unicast, multicast, broadcast)
  */
-awh::event::cast_t awh::IO::cast(const event::id_t id) const noexcept {
+awh::event::delivery_mode_t awh::IO::delivery(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -31383,7 +31410,7 @@ awh::event::cast_t awh::IO::cast(const event::id_t id) const noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED))
 			// Выводим режим трансляции пакетов
-			return i->second->state.cast;
+			return i->second->state.delivery;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -31403,16 +31430,16 @@ awh::event::cast_t awh::IO::cast(const event::id_t id) const noexcept {
 		#endif
 	}
 	// Выводим результат по умолчанию
-	return event::cast_t::NONE;
+	return event::delivery_mode_t::NONE;
 }
 /**
  * @brief Метод установки режима трансляции пакетов для события
  *
- * @param id   идентификатор события
- * @param cast режим трансляции пакетов (unicast, multicast, broadcast)
- * @return     результат выполнения установки
+ * @param id       идентификатор события
+ * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+ * @return         результат выполнения установки
  */
-bool awh::IO::cast(const event::id_t id, const event::cast_t cast) noexcept {
+bool awh::IO::delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -31428,28 +31455,28 @@ bool awh::IO::cast(const event::id_t id, const event::cast_t cast) noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <peer_t *> (i->second.get())->state.cast = cast;
+					awh_cast <peer_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <origin_t *> (i->second.get())->state.cast = cast;
+					awh_cast <origin_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <client_t *> (i->second.get())->state.cast = cast;
+					awh_cast <client_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <server_t *> (i->second.get())->state.cast = cast;
+					awh_cast <server_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
@@ -31460,7 +31487,7 @@ bool awh::IO::cast(const event::id_t id, const event::cast_t cast) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to set packet forwarding mode for non-network nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (cast)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unable to set packet forwarding mode for non-network nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL);
 					/**
 					* Если режим отладки не включён
 					*/
@@ -31480,7 +31507,7 @@ bool awh::IO::cast(const event::id_t id, const event::cast_t cast) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (cast)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -31558,7 +31585,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 					// Получаем текущее значение объекта однорангового узла
 					peer_t * peer = awh_cast <peer_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(peer->transfer.fd, family, peer->state.cast, hops)))
+					if((result = this->_eth.hops(peer->transfer.fd, family, peer->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						peer->state.hops = hops;
 				} break;
@@ -31567,7 +31594,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 					// Получаем текущее значение объекта однорангового узла-источника
 					origin_t * origin = awh_cast <origin_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(origin->transfer.fd, family, origin->state.cast, hops)))
+					if((result = this->_eth.hops(origin->transfer.fd, family, origin->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						origin->state.hops = hops;
 				} break;
@@ -31576,7 +31603,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 					// Получаем текущее значение объекта клиента
 					client_t * client = awh_cast <client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(client->transfer.fd, family, client->state.cast, hops)))
+					if((result = this->_eth.hops(client->transfer.fd, family, client->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						client->state.hops = hops;
 				} break;
@@ -31585,7 +31612,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 					// Получаем текущее значение объекта сервера
 					server_t * server = awh_cast <server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(server->fd, family, server->state.cast, hops)))
+					if((result = this->_eth.hops(server->fd, family, server->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						server->state.hops = hops;
 				} break;

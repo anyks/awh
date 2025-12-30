@@ -52,31 +52,28 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект транспортного уровня безопасности
 	tls_t tls(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
-		// Флаг завершения работы
-		bool stop = false;
 		// Регистрируем объект транспортного уровня безопасности
-		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::TCP);
+		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::UDP);
 		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"}});
-		// tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"},{2,"h3"}});
-		// Устанавливаем файл центра сертификации TLS
+		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"http/1.1"},{2,"h3"}});
+		// Устанавливаем файл центра сертификации DTLS
 		tls.ca(tid, "../sh/certificates", "ca.pem");
-		// Включаем проверку имени хоста TLS
+		// Включаем проверку имени хоста DTLS
 		tls.validateHostname(tid, false);
-		// Устанавливаем имя хоста TLS
-		tls.hostname(tid, "anyks.com");
-		// Устанавливаем клиентский сертификат TLS
+		// Устанавливаем имя хоста DTLS
+		tls.hostname(tid, "server.anyks.com");
+		// Устанавливаем клиентский сертификат DTLS
 		tls.certificate(tid, "../sh/certificates/client/cert.pem");
-		// Устанавливаем приватный ключ TLS
+		// Устанавливаем приватный ключ DTLS
 		tls.privateKey(tid, "../sh/certificates/client/key.pem");
-		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
+		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
 		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
-			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+			// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
 			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
 			cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
 			cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
@@ -85,9 +82,9 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
 			cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
 			cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
-			// Выводим данные сертификата TLS
+			// Выводим данные сертификата DTLS
 			cout << "Certificate data:\n" << tls.certificateExtract(id) << endl << endl;
-			// Выводим информацию о TLS соединении
+			// Выводим информацию о DTLS соединении
 			cout << tls.peerInfo(id) << endl;
 			// Текст запроса к серверу
 			const string request =
@@ -96,56 +93,56 @@ int32_t main(int32_t argc, char * argv[]){
 				"Connection: close\r\n"
 				"User-Agent: iouring-openssl-sample/1.0\r\n"
 				"\r\n";
-			// Если данные успешно зашифрованы TLS
+			// Если данные успешно зашифрованы DTLS
 			if(tls.encrypt(id, request.c_str(), request.size()))
-				// Выводим сообщение об успешном шифровании данных TLS
-				log.print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, id, request.size());
+				// Выводим сообщение об успешном шифровании данных DTLS
+				log.print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, id, request.size());
 			// Если данные не отправлены
 			else log.print("Ошибка шифрования: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, id);
 		});
-		// Регистрируем функцию обратного вызова на получение ошибок TLS
+		// Регистрируем функцию обратного вызова на получение ошибок DTLS
 		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept -> void {
 			/**
-			 * Обрабатываем входящие ошибки TLS
+			 * Обрабатываем входящие ошибки DTLS
 			 */
 			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
+				// Если получено предупреждение DTLS
 				case static_cast <uint8_t> (tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					log.print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::WARNING, id, message.c_str());
+					// Выводим сообщение о предупреждающей ошибке DTLS
+					log.print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::WARNING, id, message.c_str());
 				break;
-				// Если получена критическая ошибка TLS
+				// Если получена критическая ошибка DTLS
 				case static_cast <uint8_t> (tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					log.print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
+					// Выводим сообщение о предупреждающей ошибке DTLS
+					log.print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
 				break;
 			}
 		});
-		// Регистрируем функцию обратного вызова на запись данных TLS
+		// Регистрируем функцию обратного вызова на запись данных DTLS
 		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::event_t event, const size_t size) noexcept -> void {
 			/**
-			 * Обрабатываем тип события TLS
+			 * Обрабатываем тип события DTLS
 			 */
 			switch(static_cast <uint8_t> (event)){
-				// Если событие шифрования данных TLS
+				// Если событие шифрования данных DTLS
 				case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION):
-					// Выводим сообщение о записи зашифрованных данных TLS
-					log.print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
+					// Выводим сообщение о записи зашифрованных данных DTLS
+					log.print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
 				break;
-				// Если событие дешифрования данных TLS
+				// Если событие дешифрования данных DTLS
 				case static_cast <uint8_t> (tls_t::event_t::DECRYPTION):
-					// Выводим сообщение о записи дешифрованных данных TLS
-					log.print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
+					// Выводим сообщение о записи дешифрованных данных DTLS
+					log.print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
 				break;
 			}
 		});
-		// Регистрируем функцию обратного вызова на чтение данных TLS
-		tls.on(tid, [eid, &stop, &io, &log](const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Регистрируем функцию обратного вызова на чтение данных DTLS
+		tls.on(tid, [eid, &io, &log](const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
-			 * Обрабатываем тип события TLS
+			 * Обрабатываем тип события DTLS
 			 */
 			switch(static_cast <uint8_t> (event)){
-				// Если событие шифрования данных TLS
+				// Если событие шифрования данных DTLS
 				case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION): {
 					// Отправляем данные обратно клиенту
 					if(io.send(eid, reinterpret_cast <const char *> (buffer), size))
@@ -154,16 +151,12 @@ int32_t main(int32_t argc, char * argv[]){
 					// Если данные не отправлены
 					else log.print("Ошибка отправки зашифрованных данных: ID=%u", log_t::flag_t::CRITICAL, eid);
 				} break;
-				// Если событие дешифрования данных TLS
+				// Если событие дешифрования данных DTLS
 				case static_cast <uint8_t> (tls_t::event_t::DECRYPTION): {
 					// Получаем ответ сервера в расшифрованном виде
 					const string response(reinterpret_cast <const char *> (buffer), size);
 					// Выводим сообщение полученных данных с сервера
-					log.print("Получены данные с сервера TLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", log_t::flag_t::INFO, id, size, response.c_str());
-					// Если флаг остановки ещё не указан
-					if(!stop)
-						// Устанавливаем флаг завершения работы
-						stop = (response.rfind("</html>") != string::npos);
+					log.print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", log_t::flag_t::INFO, id, size, response.c_str());
 				} break;
 			}
 		});
@@ -257,10 +250,10 @@ int32_t main(int32_t argc, char * argv[]){
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
 				io.on(eid, [tid, &tls, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-					// Если данные успешно дешифрованы TLS
+					// Если данные успешно дешифрованы DTLS
 					if(tls.decrypt(tid, data, size))
-						// Выводим сообщение об успешном дешифровании данных TLS
-						log.print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
+						// Выводим сообщение об успешном дешифровании данных DTLS
+						log.print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
 					// Если данные не отправлены
 					else log.print("Ошибка дешифрования: ID=%u", log_t::flag_t::CRITICAL, eid);
 				});
@@ -322,20 +315,6 @@ int32_t main(int32_t argc, char * argv[]){
 						break;
 					}
 				});
-				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				io.on(eid, static_cast <event::callback::connect_t> ([tid, &tls, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
-					// Выводим сообщение о принятии события
-					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
-					// Если подключение успешно
-					if(ok){
-						// Если рукопожатие TLS успешно
-						if(tls.handshake(tid))
-							// Выводим сообщение о начале рукопожатия TLS
-							log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, tid);
-						// Если рукопожатие TLS не выполнено
-						else log.print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
-					}
-				}));
 				// Устанавливаем функцию обратного вызова на общее событие
 				io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
@@ -408,23 +387,24 @@ int32_t main(int32_t argc, char * argv[]){
 				// io.timeout(eid, event::action_t::READ, 3000);
 				// Устанавливаем таймаут события на запись
 				io.timeout(eid, event::action_t::WRITE, 3000);
-				// Устанавливаем таймаут события на подключение
-				io.timeout(eid, event::action_t::CONNECT, 5000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
-					// Если подключение к серверу прошло успешно
-					if(io.connect(eid, true)){
-						// Выполняем запуск события
-						if(io.launch(eid)){
-							// Выводим сообщение об успешном запуске события
-							cout << " Событие успешно запущено!" << endl;
-							/**
-							 * Запускаем опрос событий
-							 */
-							while(!stop && io.poll());
-						// Выводим сообщение об ошибке запуска события
-						} else cout << " Ошибка запуска события!" << endl;
-					}
+					// Выполняем запуск события
+					if(io.launch(eid)){
+						// Выводим сообщение об успешном запуске события
+						cout << " Событие успешно запущено!" << endl;
+						// Если рукопожатие DTLS успешно
+						if(tls.handshake(tid))
+							// Выводим сообщение о начале рукопожатия DTLS
+							log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, tid);
+						// Если рукопожатие DTLS не выполнено
+						else log.print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
+						/**
+						 * Запускаем опрос событий
+						 */
+						while(io.poll());
+					// Выводим сообщение об ошибке запуска события
+					} else cout << " Ошибка запуска события!" << endl;
 				}
 			// Если адрес назначения не установлен
 			} else cout << " Ошибка установки адреса сервера!" << endl;
