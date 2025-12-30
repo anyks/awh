@@ -271,13 +271,13 @@ namespace awh {
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы события
 			 *
-			 * @param sock  сетевой сокет
-			 * @param mode  режим активации/деактивации
-			 * @param group мультикаст-группа для активации/деактивации
-			 * @param addr  адрес сетевого интерфейса с которого исходит запрос
-			 * @return      результат работы функции
+			 * @param sock   сетевой сокет
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @return       результат работы функции
 			 */
-			bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * addr) const noexcept;
+			bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept;
 		public:
 			/**
 			 * @brief Метод вычисления контрольной суммы транспортного уровня

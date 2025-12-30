@@ -404,6 +404,8 @@ namespace awh {
 		 *
 		 */
 		typedef struct ServerCallbacks : public callbacks_t {
+			// Обратный вызов при записи события
+			event::callback::write_t write;
 			// Обратный вызов при получении общего события
 			event::callback::event_t event;
 			// Обратный вызов при принятии события
@@ -415,7 +417,8 @@ namespace awh {
 			 *
 			 */
 			explicit ServerCallbacks() noexcept :
-			 event(nullptr), accept(nullptr), origin(nullptr) {}
+			 write(nullptr), event(nullptr),
+			 accept(nullptr), origin(nullptr) {}
 		} server_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов клиента

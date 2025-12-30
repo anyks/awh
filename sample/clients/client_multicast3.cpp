@@ -1,5 +1,5 @@
 /**
- * @file: server.cpp
+ * @file: client.cpp
  * @date: 2025-10-25
  * @license: GPL-3.0
  *
@@ -12,9 +12,13 @@
  * @copyright: Copyright © 2025
  */
 
-/**
- * Стандартные модули
- */
+/*
+* 3. Сервер-обнаружение
+* Клиенты слушают 239.255.1.2,
+* Сервер периодически рассылает "я здесь",
+* Клиенты отвечают прямо серверу (unicast), чтобы установить соединение.
+*/
+
 #include <iostream>
 #include <cinttypes>
 
@@ -45,27 +49,31 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект логирования
 	log_t log(&fmk);
+	// Устанавливаем логгер
+	fmk.setLogger(&log);
+	// Устанавливаем уровень логирования
+	// log.level(log_t::level_t::NONE);
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента UDP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	io.port(eid, 9999);
+	io.port(eid, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
+		// Устананавливаем опции события
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT))
+			// Выводим сообщение об успешной установке опций события
+			cout << " Успешно установлены опции события!" << endl;
+		// Выводим сообщение об ошибке установки опций события
+		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем мультикастовый режим события
 		if(io.cast(eid, event::cast_t::MULTICAST)){
-			// Устанавливаем TTL для мультикастового события
-			if(io.hops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
-				// Устананавливаем опции события
-				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::MULTICASTLOOP))
-					// Выводим сообщение об успешной установке опций события
-					cout << " Успешно установлены опции события!" << endl;
-				// Выводим сообщение об ошибке установки опций события
-				else cout << " Ошибка установки опций события!" << endl;
-				// Устанавливаем IP-адрес события
-				if(io.address(eid, event::address_t::IPV4, "239.255.1.1")){
-					// Устанавливаем функцию обратного вызова на событие сервера
+			// Устанавливаем адрес сервера назначения
+			if(io.membership(eid, event::mode_t::ENABLED, "239.1.2.3", "0.0.0.0")){
+				// Фиксировать нужно до вызова membership!
+				if(io.commit(eid)){
+					// Устанавливаем функцию обратного вызова на событие клиента
 					io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
@@ -138,11 +146,19 @@ int32_t main(int32_t argc, char * argv[]){
 							break;
 						}
 					});
-					// Устанавливаем функцию обратного вызова на запись в событие
-					io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
+					// Устанавливаем функцию обратного вызова на чтение из события
+					io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+						// Текст входящего сообщения
+						const string message(reinterpret_cast <const char *> (data), size);
 						// Выводим сообщение о переподключении события
-						log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
-					}));
+						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+						// Отправляем данные обратно клиенту
+						if(io.send(eid, reinterpret_cast <const char *> (data), size))
+							// Если данные успешно отправлены
+							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+						// Если данные не отправлены
+						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+					});
 					// Устанавливаем функцию обратного вызова на ошибку события
 					io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 						/**
@@ -201,35 +217,89 @@ int32_t main(int32_t argc, char * argv[]){
 							break;
 						}
 					});
-					// Устанавливаем таймаут события на чтение
-					// io.timeout(eid, event::action_t::READ, 5000);
-					// Устанавливаем таймаут события на запись
-					// io.timeout(eid, event::action_t::WRITE, 5000);
-					// Выполняем фиксацию настроек события сервера
-					if(io.commit(eid)){
-						// Количество отправленных сообщений
-						uint8_t counter = 0;
+					// Устанавливаем функцию обратного вызова на общее событие
+					io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 						/**
-						 * Запускаем бесконечный цикл отправки сообщений в мультикастовую группу
+						 * Обрабатываем действие события
 						 */
-						for(;;){
-							// Формируем отправляемое сообщение
-							const string & message = fmk.format("Message #%d", ++counter);
-							// Выполняем отправку сообщения в мультикастовую группу
-							if(!io.send(eid, message.c_str(), message.size()))
-								// Выводим сообщение об ошибке отправки сообщения
-								log.print("Сообщение не отправлено: ID=%u, %s", log_t::flag_t::INFO, eid, message.c_str());
-							// Задержка между отправками сообщений
-							::sleep(2);
+						switch(static_cast <uint8_t> (action)){
+							// Если действие является чтением
+							case static_cast <uint8_t> (event::action_t::READ):
+								// Выводим сообщение о чтении события
+								log.print("Событие на чтение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является записью
+							case static_cast <uint8_t> (event::action_t::WRITE):
+								// Выводим сообщение о записи события
+								log.print("Событие на запись: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является подключением
+							case static_cast <uint8_t> (event::action_t::CONNECT):
+								// Выводим сообщение о подключении события
+								log.print("Событие на подключение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является отключением
+							case static_cast <uint8_t> (event::action_t::DISCONNECT):
+								// Выводим сообщение об отключении события
+								log.print("Событие на отключение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является переподключением
+							case static_cast <uint8_t> (event::action_t::RECONNECT):
+								// Выводим сообщение о переподключении события
+								log.print("Событие на переподключение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является закрытием
+							case static_cast <uint8_t> (event::action_t::CLOSE):
+								// Выводим сообщение о закрытии события
+								log.print("Событие на закрытие подключения: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является изменением
+							case static_cast <uint8_t> (event::action_t::CHANGE):
+								// Выводим сообщение об изменении события
+								log.print("Событие на изменение: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является удалением
+							case static_cast <uint8_t> (event::action_t::DELETE):
+								// Выводим сообщение об удалении события
+								log.print("Событие на удаление: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является переименованием
+							case static_cast <uint8_t> (event::action_t::RENAME):
+								// Выводим сообщение о переименовании события
+								log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является изменением атрибутов
+							case static_cast <uint8_t> (event::action_t::ATTRIB):
+								// Выводим сообщение об изменении атрибутов события
+								log.print("Событие на изменение атрибутов: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является отзывом доступа
+							case static_cast <uint8_t> (event::action_t::REVOKE):
+								// Выводим сообщение об отзыве доступа события
+								log.print("Событие на отзыв доступа: ID=%u", log_t::flag_t::INFO, eid);
+							break;
+							// Если действие является изменением счётчика жёстких ссылок
+							case static_cast <uint8_t> (event::action_t::HDLINK):
+								// Выводим сообщение о изменении счётчика жёстких ссылок события
+								log.print("Событие на изменение счётчика жёстких ссылок: ID=%u", log_t::flag_t::INFO, eid);
+							break;
 						}
-					}
-				// Если адрес не установлен
-				} else cout << " Ошибка установки адреса события!" << endl;
-			// Если TTL мультикастового события не установлен
-			} else {
-				// Выводим сообщение об ошибке установки TTL мультикастового события
-				cout << " Ошибка установки TTL мультикастового события!" << endl;
-			}
+					});
+					// Устанавливаем таймаут события на чтение
+					// io.timeout(eid, event::action_t::READ, 3000);
+					// Выполняем запуск события
+					if(io.launch(eid)){
+						// Выводим сообщение об успешном запуске события
+						cout << " Событие успешно запущено!" << endl;
+						/**
+						 * Запускаем опрос событий
+						 */
+						while(io.poll());
+					// Выводим сообщение об ошибке запуска события
+					} else cout << " Ошибка запуска события!" << endl;
+				}
+			// Если адрес назначения не установлен
+			} else cout << " Ошибка установки адреса сервера!" << endl;
 		// Если мультикастовый режим события не установлен
 		} else {
 			// Выводим сообщение об ошибке установки мультикастового режима события
@@ -237,5 +307,5 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}
 	// Выводим результат
-	return EXIT_SUCCESS;
+	return 0;
 }

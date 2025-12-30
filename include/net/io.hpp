@@ -321,12 +321,13 @@ namespace awh {
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы события
 			 *
-			 * @param id    идентификатор события
-			 * @param mode  режим активации/деактивации
-			 * @param group мультикаст-группа для активации/деактивации
-			 * @return      результат выполнения установки
+			 * @param id     идентификатор события
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @return       результат выполнения установки
 			 */
-			bool membership(const event::id_t id, const event::mode_t mode, const string & group) noexcept;
+			bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source) noexcept;
 		public:
 			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события

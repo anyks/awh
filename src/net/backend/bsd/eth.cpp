@@ -451,12 +451,13 @@ void awh::Ethernet::fillsource(net::src_t & source) const noexcept {
 		// Если название сетевого интерфейса передано
 		if(!source.iface.empty()){
 			// Если MAC-адрес ещё не заполнен
-			if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) == 0){
+			if((::strncmp("lo", source.iface.c_str(), 2) != 0) &&
+			   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) == 0)){
 				// Получаем список сетевых интерфейсов
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
 				if(::getifaddrs(&ptr) != 0)
-					// Выводим пустой результат
+					// Выходим из функции
 					return;
 				// Результат работы функции
 				bool result = false;
@@ -513,7 +514,7 @@ void awh::Ethernet::fillsource(net::src_t & source) const noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 							#endif
-							// Выводим пустой результат
+							// Выходим из функции
 							return;
 						}
 						// Перебираем все сетевые интерфейсы
@@ -561,7 +562,7 @@ void awh::Ethernet::fillsource(net::src_t & source) const noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("Unable to get list of network interfaces", awh::log_t::flag_t::WARNING);
 							#endif
-							// Выводим пустой результат
+							// Выходим из функции
 							return;
 						}
 						// Перебираем все сетевые интерфейсы
@@ -1008,7 +1009,7 @@ void awh::Ethernet::fillsource(const event::node_t node, net::src_t & source) co
 								// Выводим сообщение об ошибке
 								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 							#endif
-							// Выводим пустой результат
+							// Выходим из функции
 							return;
 						}
 						// Временный объект для извлечения MAC-адреса
@@ -1079,7 +1080,7 @@ void awh::Ethernet::fillsource(const event::node_t node, net::src_t & source) co
 								// Выводим сообщение об ошибке
 								this->_log->print("Unable to get list of network interfaces", awh::log_t::flag_t::WARNING);
 							#endif
-							// Выводим пустой результат
+							// Выходим из функции
 							return;
 						}
 						// Временный объект для извлечения MAC-адреса
@@ -1204,7 +1205,7 @@ void awh::Ethernet::fillsource(const unique_ptr <net::addr_t> & net, net::src_t 
 							// Выводим сообщение об ошибке
 							this->_log->print("Network address %u is not aligned to prefix %u", log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
 						#endif
-						// Выводим пустой результат
+						// Выходим из функции
 						return;
 					}
 				#endif
@@ -1233,7 +1234,7 @@ void awh::Ethernet::fillsource(const unique_ptr <net::addr_t> & net, net::src_t 
 						// Выводим сообщение об ошибке
 						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 					#endif
-					// Выводим пустой результат
+					// Выходим из функции
 					return;
 				}
 				// Устанавливаем префикс хостового адреса
@@ -1302,7 +1303,7 @@ void awh::Ethernet::fillsource(const unique_ptr <net::addr_t> & net, net::src_t 
 						// Выводим сообщение об ошибке
 						this->_log->print("Unable to get list of network interfaces", awh::log_t::flag_t::WARNING);
 					#endif
-					// Выводим пустой результат
+					// Выходим из функции
 					return;
 				}
 				// Устанавливаем префикс хостового адреса
@@ -2458,33 +2459,77 @@ bool awh::Ethernet::multicastIface(const net::socket_t sock, const event::family
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
 	if(!name.empty()){
-		// Получаем индекс сетевого интерфейса по его имени
-		const uint32_t index = ::if_nametoindex(name.c_str());
 		/**
 		 * Определяем семейство события
 		 */
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Устанавливаем сетевой интерфейс для multicast пакетов
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &index, sizeof(index))))){
+				// Получаем список сетевых интерфейсов
+				struct ifaddrs * ptr = nullptr;
+				// Выполняем получение списка сетевых интерфейсов
+				if(::getifaddrs(&ptr) != 0){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), log_t::flag_t::WARNING);
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 					#endif
+					// Выводим пустой результат
+					return result;
 				}
+				// Перебираем все сетевые интерфейсы
+				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+					// Пропускаем не IPv4-интерфейсы
+					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
+						// Пропускаем интерфейсы, которые не являются IPv4
+						continue;
+					// Если интерфейс не активен
+					if(!(ifa->ifa_flags & IFF_UP))
+						// Пропускаем неактивные интерфейсы
+						continue;
+					// Получаем IP-адрес интерфейса
+					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
+					// Если имя интерфейса совпадает
+					if(this->_fmk->compare(ifa->ifa_name, name)){
+						// Создаём объект сетевого интерфейса
+						struct in_addr iface = {};
+						// Присваиваем найденный IP-адрес
+						iface.s_addr = sin->sin_addr.s_addr;
+						// Устанавливаем сетевой интерфейс для multicast пакетов
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &iface, sizeof(iface))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+						// Выходим из цикла
+						break;
+					}
+				}
+				// Освобождаем память от списка сетевых интерфейсов
+				::freeifaddrs(ptr);
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Получаем индекс сетевого интерфейса по его имени
+				const uint32_t index = ::if_nametoindex(name.c_str());
 				// Устанавливаем сетевой интерфейс для multicast пакетов
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &index, sizeof(index))))){
 					/**
@@ -2709,13 +2754,13 @@ bool awh::Ethernet::hops(const net::socket_t sock, const event::family_t family,
 /**
  * @brief Метод активации/деактивации мультикаст группы события
  *
- * @param sock  сетевой сокет
- * @param mode  режим активации/деактивации
- * @param group мультикаст-группа для активации/деактивации
- * @param addr  адрес сетевого интерфейса с которого исходит запрос
- * @return      результат работы функции
+ * @param sock   сетевой сокет
+ * @param mode   режим активации/деактивации
+ * @param group  мультикаст-группа для активации/деактивации
+ * @param source адрес сетевого интерфейса с которого выполняется подписка
+ * @return       результат работы функции
  */
-bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * addr) const noexcept {
+bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2723,7 +2768,7 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 	 */
 	try {
 		// Если тип IP-адресов совпадает
-		if(group->size == addr->size){
+		if(group->size == source->size){
 			/**
 			 * Определяем режим блокировки
 			 */
@@ -2738,10 +2783,10 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 						case 4: {
 							// Формируем объект multicast request
 							struct ip_mreq mreq;
-							// Устанавливаем адрес сетевого интерфейса
-							mreq.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
+							// Устанавливаем адрес сетевого интерфейса
+							mreq.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))))){
 								/**
@@ -2763,10 +2808,10 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 						case 16: {
 							// Формируем объект multicast request
 							struct ipv6_mreq mreq;
-							// Устанавливаем адрес сетевого интерфейса
-							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(mreq.ipv6mr_interface));
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
+							// Устанавливаем адрес сетевого интерфейса
+							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(mreq.ipv6mr_interface));
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -2796,10 +2841,10 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 						case 4: {
 							// Формируем объект multicast request
 							struct ip_mreq mreq;
-							// Устанавливаем адрес сетевого интерфейса
-							mreq.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
+							// Устанавливаем адрес сетевого интерфейса
+							mreq.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq))))){
 								/**
@@ -2821,10 +2866,10 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 						case 16: {
 							// Формируем объект multicast request
 							struct ipv6_mreq mreq;
-							// Устанавливаем адрес сетевого интерфейса
-							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(mreq.ipv6mr_interface));
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
+							// Устанавливаем адрес сетевого интерфейса
+							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(mreq.ipv6mr_interface));
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))))){
 								/**
