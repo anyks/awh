@@ -9115,7 +9115,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end()){
-			// Если событие ещё не инициализированно или клонированно от другого события
+			// Если событие ещё не инициализировано или клонированно от другого события
 			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
@@ -14636,7 +14636,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является дирректорией
+							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем объект файловой системы
 								dir_t * fs = awh_cast <dir_t *> (i->second.get());
@@ -16035,7 +16035,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является дирректорией
+						// Если узел является директорией
 						case static_cast <uint8_t> (event::node_t::DIR):
 							// Получаем функцию обратного вызова ошибки события
 							callback = awh_cast <dir_t *> (i->second.get())->callbacks.error;
@@ -16085,7 +16085,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является дирректорией
+						// Если узел является директорией
 						case static_cast <uint8_t> (event::node_t::DIR): {
 							// Получаем объект файловой системы
 							dir_t * fs = awh_cast <dir_t *> (i->second.get());
@@ -19371,7 +19371,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						// Возвращаем идентификатор созданного события
 						result[i] = ret.first->first;
 					} break;
-					// Длля других семейств сокетов
+					// Для других семейств сокетов
 					default: {
 						// Выполняем блокировку потоков
 						const locker_t lock(::__awh_mtx__);
@@ -22247,7 +22247,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY): {
-					// Если событие уже инициализированно
+					// Если событие уже инициализировано
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
 						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
@@ -22273,7 +22273,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
-					// Если событие уже инициализированно
+					// Если событие уже инициализировано
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
 						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
@@ -22306,7 +22306,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::DIR):
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Если событие уже инициализированно
+					// Если событие уже инициализировано
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
 						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
@@ -22347,7 +22347,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 				} break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Если событие уже инициализированно
+					// Если событие уже инициализировано
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
 						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
@@ -22375,7 +22375,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Если событие уже инициализированно
+					// Если событие уже инициализировано
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние подключения
 						i->second->state.status.store(event::status_t::LAUNCHED, std::memory_order_release);
@@ -22877,7 +22877,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 		if(i != ::__awh_nodes__.end()){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
-			// Если событие уже инициализированно
+			// Если событие уже инициализировано
 			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 				/**
 				 * Определяем чем является текущий узел
@@ -23752,7 +23752,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 		if(i != ::__awh_nodes__.end()){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
-			// Если событие уже инициализированно
+			// Если событие уже инициализировано
 			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 				/**
 				 * Определяем чем является текущий узел
