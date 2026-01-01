@@ -3883,7 +3883,7 @@ namespace io {
 				}
 				// Если функция обратного вызова для вывода подключения установлена
 				if(node->callbacks.connect != nullptr)
-					// Вывзываем функцию обратного вызова для подключения
+					// Вызываем функцию обратного вызова для подключения
 					node->callbacks.connect(node->id, true);
 				// Если необходимо установить таймаут на чтение данных
 				auto i = node->timeouts.find(event::action_t::READ);
@@ -4007,11 +4007,11 @@ namespace io {
 												if(size == fs->size)
 													// Выполняем сброс смещения в буфере
 													offset = 0;
-												// Формируем смещение в буфере, согласно только порции новым данных
+												// Формируем смещение в буфере, согласно только порции новых данных
 												else offset = (fs->offset - offset);
 												// Если идентификатор события для передачи данных не установлен
 												if(fs->dest == 0)
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												else const_cast <io_t *> (io)->send(fs->dest, buffer + offset, size);
@@ -4177,7 +4177,7 @@ namespace io {
 														if(ipc->transfer.dest == 0){
 															// Если функция обратного вызова для вывода прочитанных данных установлена
 															if(ipc->callbacks.read != nullptr){
-																// Вывзываем функцию обратного вызова для вывода полученных данных
+																// Вызываем функцию обратного вызова для вывода полученных данных
 																ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 																// Если дескриптор сокета стал недействительным
 																if(ipc->transfer.fd == net::invalid_socket_t)
@@ -4246,7 +4246,7 @@ namespace io {
 													if(ipc->transfer.dest == 0){
 														// Если функция обратного вызова для вывода прочитанных данных установлена
 														if(ipc->callbacks.read != nullptr)
-															// Вывзываем функцию обратного вызова для вывода полученных данных
+															// Вызываем функцию обратного вызова для вывода полученных данных
 															ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 													} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
@@ -4359,7 +4359,7 @@ namespace io {
 												if(ipc->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(ipc->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(ipc->transfer.fd == net::invalid_socket_t)
@@ -4428,7 +4428,7 @@ namespace io {
 											if(ipc->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(ipc->callbacks.read != nullptr)
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
@@ -4506,7 +4506,7 @@ namespace io {
 											if(ipc->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(ipc->callbacks.read != nullptr)
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
@@ -4569,7 +4569,7 @@ namespace io {
 											if(ipc->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(ipc->callbacks.read != nullptr)
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
@@ -4667,7 +4667,7 @@ namespace io {
 												if(peer->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(peer->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(peer->transfer.fd == net::invalid_socket_t)
@@ -4734,7 +4734,7 @@ namespace io {
 											if(peer->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(peer->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(peer->transfer.fd == net::invalid_socket_t)
@@ -4834,7 +4834,7 @@ namespace io {
 											if(peer->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(peer->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(peer->transfer.fd == net::invalid_socket_t)
@@ -4923,7 +4923,7 @@ namespace io {
 											if(peer->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(peer->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(peer->transfer.fd == net::invalid_socket_t)
@@ -5047,7 +5047,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5114,7 +5114,7 @@ namespace io {
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
@@ -5216,7 +5216,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5305,7 +5305,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5415,7 +5415,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5515,7 +5515,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5598,7 +5598,7 @@ namespace io {
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
@@ -5669,7 +5669,7 @@ namespace io {
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(client->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
@@ -5748,7 +5748,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5814,7 +5814,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5895,7 +5895,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -5966,7 +5966,7 @@ namespace io {
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
 													if(client->callbacks.read != nullptr){
-														// Вывзываем функцию обратного вызова для вывода полученных данных
+														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -6081,7 +6081,7 @@ namespace io {
 								server_t * server = awh_cast <server_t *> (node);
 								// Если событие чтения разрешено
 								if(server->actions & action::READ){
-									// Колчество прочитанных байт
+									// Количество прочитанных байт
 									ssize_t bytes = 0;
 									// Буфер для временного хранения данных
 									char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
@@ -6364,7 +6364,7 @@ namespace io {
 											if(i->second->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(i->second->callbacks.read != nullptr){
-													// Вывзываем функцию обратного вызова для вывода полученных данных
+													// Вызываем функцию обратного вызова для вывода полученных данных
 													i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
 													if((i->second->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
@@ -7036,7 +7036,7 @@ namespace io {
 												if(bytes > 0){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(ipc->transfer.fd == net::invalid_socket_t)
@@ -7142,7 +7142,7 @@ namespace io {
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr){
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(ipc->transfer.fd == net::invalid_socket_t)
@@ -7217,7 +7217,7 @@ namespace io {
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr){
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(ipc->transfer.fd == net::invalid_socket_t)
@@ -7327,7 +7327,7 @@ namespace io {
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr){
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
@@ -7495,7 +7495,7 @@ namespace io {
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr){
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
@@ -7651,7 +7651,7 @@ namespace io {
 								client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
 								// Выполняем обработку события подключения клиента
 								return io::connect(client, io, eth, log);
-							// Если татус события просто запись данных в сокет
+							// Если статус события просто запись данных в сокет
 							} else {
 								// Если есть данные для отправки в сокет
 								if(!client->transfer.queue.empty()){
@@ -7669,7 +7669,7 @@ namespace io {
 											if(bytes > 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr){
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
@@ -7839,7 +7839,7 @@ namespace io {
 												if(bytes > 0){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -7989,7 +7989,7 @@ namespace io {
 												if(bytes > 0){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -8103,7 +8103,7 @@ namespace io {
 												if(bytes > 0){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -8219,7 +8219,7 @@ namespace io {
 												if(bytes > 0){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -8401,7 +8401,7 @@ namespace io {
 														session.second->transfer.sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
-												else bytes = bytes = ::sendto(
+												else bytes = ::sendto(
 													session.second->transfer.fd,
 													reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()),
 													session.second->transfer.queue.size(), 0,
@@ -8473,7 +8473,7 @@ namespace io {
 									if(bytes > 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(session.second->callbacks.write != nullptr){
-											// Вывзываем функцию обратного вызова для вывода записанных данных
+											// Вызываем функцию обратного вызова для вывода записанных данных
 											session.second->callbacks.write(session.second->id, static_cast <size_t> (bytes));
 											// Если дескриптор сокета стал недействительным
 											if(session.second->transfer.fd == net::invalid_socket_t)
@@ -8982,7 +8982,7 @@ namespace io {
 										)) || !self->launch(client->id)){
 											// Если функция обратного вызова для вывода подключения установлена
 											if(client->callbacks.connect != nullptr)
-												// Вывзываем функцию обратного вызова для подключения
+												// Вызываем функцию обратного вызова для подключения
 												client->callbacks.connect(client->id, false);
 										}
 									} break;
@@ -8994,7 +8994,7 @@ namespace io {
 							if(client->transfer.actions & action::READ){
 								// Если функция обратного вызова для вывода подключения установлена
 								if(client->callbacks.connect != nullptr)
-									// Вывзываем функцию обратного вызова для подключения
+									// Вызываем функцию обратного вызова для подключения
 									client->callbacks.connect(client->id, false);
 							}
 						}
@@ -9830,7 +9830,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 												// Если источник сетевого адреса установлен
 												if(client->source != nullptr)
-													// Устанавливаем адрес для локальго подключения
+													// Устанавливаем адрес для локального подключения
 													::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 												else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
@@ -10455,7 +10455,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
 														// Если источник сетевого адреса установлен
 														if(client->source != nullptr)
-															// Устанавливаем адрес для локальго подключения
+															// Устанавливаем адрес для локального подключения
 															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
 														// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 														else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
@@ -23023,7 +23023,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 												client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 												// Если функция обратного вызова для вывода подключения установлена
 												if(client->callbacks.connect != nullptr)
-													// Вывзываем функцию обратного вызова для подключения
+													// Вызываем функцию обратного вызова для подключения
 													client->callbacks.connect(client->id, false);
 												// Если установлен режим постоянного подключения
 												if(!(client->state.options & event::options::KEEPALIVE))
@@ -23116,7 +23116,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 												client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 												// Если функция обратного вызова для вывода подключения установлена
 												if(client->callbacks.connect != nullptr)
-													// Вывзываем функцию обратного вызова для подключения
+													// Вызываем функцию обратного вызова для подключения
 													client->callbacks.connect(client->id, false);
 												// Если установлен режим постоянного подключения
 												if(!(client->state.options & event::options::KEEPALIVE))
@@ -24612,7 +24612,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								fs->mtime = fs->info.st_mtime;
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(fs->callbacks.write != nullptr)
-									// Вывзываем функцию обратного вызова для вывода записанных данных
+									// Вызываем функцию обратного вызова для вывода записанных данных
 									fs->callbacks.write(fs->id, size);
 								// Выводим успешный результат выполнения функции
 								return true;
@@ -24702,7 +24702,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(ipc->callbacks.write != nullptr){
-																// Вывзываем функцию обратного вызова для вывода записанных данных
+																// Вызываем функцию обратного вызова для вывода записанных данных
 																ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 																// Если дескриптор сокета стал недействительным
 																if(ipc->transfer.fd == net::invalid_socket_t)
@@ -24736,7 +24736,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																}
 																// Если функция обратного вызова для вывода записанных данных установлена
 																if(ipc->callbacks.write != nullptr)
-																	// Вывзываем функцию обратного вызова для вывода записанных данных
+																	// Вызываем функцию обратного вызова для вывода записанных данных
 																	ipc->callbacks.write(ipc->id, 0);
 																// Выходим из функции
 																return result;
@@ -24790,7 +24790,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
 														// Выходим из функции
 														return true;
@@ -24844,7 +24844,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr){
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 															// Если дескриптор сокета стал недействительным
 															if(ipc->transfer.fd == net::invalid_socket_t)
@@ -24897,7 +24897,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 													// Устанавливаем результат выполнения функции
 													result = (static_cast <size_t> (bytes) == size);
@@ -24970,7 +24970,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(ipc->transfer.fd == net::invalid_socket_t)
@@ -25004,7 +25004,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
 														// Выходим из функции
 														return result;
@@ -25058,7 +25058,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
 												// Выходим из функции
 												return true;
@@ -25112,7 +25112,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
@@ -25160,7 +25160,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -25213,7 +25213,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(ipc->transfer.fd == net::invalid_socket_t)
@@ -25247,7 +25247,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
 														// Выходим из функции
 														return result;
@@ -25301,7 +25301,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
 												// Выходим из функции
 												return true;
@@ -25355,7 +25355,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
@@ -25403,7 +25403,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -25477,7 +25477,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(peer->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(peer->transfer.fd == net::invalid_socket_t)
@@ -25527,7 +25527,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(peer->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															peer->callbacks.write(peer->id, 0);
 														// Выходим из функции
 														return result;
@@ -25581,7 +25581,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, 0);
 												// Выходим из функции
 												return true;
@@ -25641,7 +25641,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::ENABLED);
@@ -25695,7 +25695,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -25771,7 +25771,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(peer->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(peer->transfer.fd == net::invalid_socket_t)
@@ -25821,7 +25821,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(peer->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															peer->callbacks.write(peer->id, 0);
 														// Выходим из функции
 														return result;
@@ -25875,7 +25875,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, 0);
 												// Выходим из функции
 												return true;
@@ -25960,7 +25960,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::ENABLED);
@@ -26039,7 +26039,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -26153,7 +26153,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr){
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(origin->transfer.fd == net::invalid_socket_t)
@@ -26166,7 +26166,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, 0);
 														// Если дескриптор сокета стал недействительным
 														if(origin->transfer.fd == net::invalid_socket_t)
@@ -26262,7 +26262,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
@@ -26310,7 +26310,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(origin->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -26361,7 +26361,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(origin->transfer.fd == net::invalid_socket_t)
@@ -26411,7 +26411,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(origin->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															origin->callbacks.write(origin->id, 0);
 														// Выходим из функции
 														return result;
@@ -26465,7 +26465,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
 												// Выходим из функции
 												return true;
@@ -26519,7 +26519,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
@@ -26567,7 +26567,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(origin->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -26653,7 +26653,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(origin->transfer.fd == net::invalid_socket_t)
@@ -26703,7 +26703,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(origin->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															origin->callbacks.write(origin->id, 0);
 														// Выходим из функции
 														return result;
@@ -26757,7 +26757,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
 												// Выходим из функции
 												return true;
@@ -26846,7 +26846,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
@@ -26929,7 +26929,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(origin->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -27032,7 +27032,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -27082,7 +27082,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Выходим из функции
 														return result;
@@ -27136,7 +27136,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, 0);
 												// Выходим из функции
 												return true;
@@ -27196,7 +27196,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
@@ -27250,7 +27250,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -27328,7 +27328,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr){
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
 															// Если дескриптор сокета стал недействительным
 															if(client->transfer.fd == net::invalid_socket_t)
@@ -27378,7 +27378,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(client->callbacks.write != nullptr)
-																// Вывзываем функцию обратного вызова для вывода записанных данных
+																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
 															// Выходим из функции
 															return result;
@@ -27432,7 +27432,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Выходим из функции
 													return true;
@@ -27517,7 +27517,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
 													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
@@ -27596,7 +27596,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Устанавливаем результат выполнения функции
 												result = (static_cast <size_t> (bytes) == size);
@@ -27673,7 +27673,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr){
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
 															// Если дескриптор сокета стал недействительным
 															if(client->transfer.fd == net::invalid_socket_t)
@@ -27723,7 +27723,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(client->callbacks.write != nullptr)
-																// Вывзываем функцию обратного вызова для вывода записанных данных
+																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
 															// Выходим из функции
 															return result;
@@ -27777,7 +27777,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Выходим из функции
 													return true;
@@ -27864,7 +27864,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
 													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
@@ -27945,7 +27945,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Устанавливаем результат выполнения функции
 												result = (static_cast <size_t> (bytes) == size);
@@ -28075,7 +28075,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr){
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
@@ -28088,7 +28088,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 														// Если дескриптор сокета стал недействительным
 														if(client->transfer.fd == net::invalid_socket_t)
@@ -28196,7 +28196,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
@@ -28256,7 +28256,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -28309,7 +28309,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr){
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
 															// Если дескриптор сокета стал недействительным
 															if(client->transfer.fd == net::invalid_socket_t)
@@ -28359,7 +28359,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(client->callbacks.write != nullptr)
-																// Вывзываем функцию обратного вызова для вывода записанных данных
+																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
 															// Выходим из функции
 															return result;
@@ -28413,7 +28413,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Выходим из функции
 													return true;
@@ -28473,7 +28473,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
 													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
@@ -28527,7 +28527,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Устанавливаем результат выполнения функции
 												result = (static_cast <size_t> (bytes) == size);
@@ -28577,7 +28577,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr){
-															// Вывзываем функцию обратного вызова для вывода записанных данных
+															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
 															// Если дескриптор сокета стал недействительным
 															if(client->transfer.fd == net::invalid_socket_t)
@@ -28627,7 +28627,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(client->callbacks.write != nullptr)
-																// Вывзываем функцию обратного вызова для вывода записанных данных
+																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
 															// Выходим из функции
 															return result;
@@ -28681,7 +28681,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Выходим из функции
 													return true;
@@ -28741,7 +28741,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
 													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
@@ -28795,7 +28795,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Устанавливаем результат выполнения функции
 												result = (static_cast <size_t> (bytes) == size);
@@ -28889,7 +28889,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr){
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(server->fd == net::invalid_socket_t)
@@ -28902,7 +28902,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
 													// Выходим из функции
 													return result;
@@ -29001,7 +29001,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
@@ -29055,7 +29055,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(server->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												server->callbacks.write(server->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -29104,7 +29104,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
@@ -29112,7 +29112,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
 												// Если произошла ошибка при отправке данных
 												} else {
@@ -29209,7 +29209,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
@@ -29263,7 +29263,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(server->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												server->callbacks.write(server->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -29339,7 +29339,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr){
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(server->fd == net::invalid_socket_t)
@@ -29352,7 +29352,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr){
-														// Вывзываем функцию обратного вызова для вывода записанных данных
+														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
 														// Если дескриптор сокета стал недействительным
 														if(server->fd == net::invalid_socket_t)
@@ -29481,7 +29481,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
-													// Вывзываем функцию обратного вызова для вывода записанных данных
+													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
 												result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
@@ -29562,7 +29562,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(server->callbacks.write != nullptr)
-												// Вывзываем функцию обратного вызова для вывода записанных данных
+												// Вызываем функцию обратного вызова для вывода записанных данных
 												server->callbacks.write(server->id, static_cast <size_t> (bytes));
 											// Устанавливаем результат выполнения функции
 											result = (static_cast <size_t> (bytes) == size);
@@ -30428,7 +30428,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 										endpoint.sin_family = AF_INET;
 										// Устанавливаем произвольный порт с которого выполняется подключение
 										endpoint.sin_port = htons(port);
-										// Устанавливаем адрес для локальго подключения
+										// Устанавливаем адрес для локального подключения
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
@@ -30559,7 +30559,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 										endpoint.sin6_family = AF_INET6;
 										// Устанавливаем произвольный порт с которого выполняется подключение
 										endpoint.sin6_port = htons(port);
-										// Устанавливаем адрес для локальго подключения
+										// Устанавливаем адрес для локального подключения
 										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
 										// Выполняем бинд на сокет
 										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
@@ -30704,7 +30704,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 											endpoint.sin_port = htons(host->port);
 										// Выполняем подписку на указанный порт
 										} else endpoint.sin_port = htons(port);
-										// Устанавливаем адрес для локальго подключения
+										// Устанавливаем адрес для локального подключения
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
@@ -30841,7 +30841,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 											endpoint.sin6_port = htons(host->port);
 										// Выполняем подписку на указанный порт
 										} else endpoint.sin6_port = htons(port);
-										// Устанавливаем адрес для локальго подключения
+										// Устанавливаем адрес для локального подключения
 										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
 										// Выполняем бинд на сокет
 										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
