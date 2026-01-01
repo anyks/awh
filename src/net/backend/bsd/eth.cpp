@@ -2575,7 +2575,7 @@ bool awh::Ethernet::multicastIface(const net::socket_t sock, const event::family
  * @param mode   режим активации или деактивации
  * @return       результат работы функции
  */
-bool awh::Ethernet::multicastLoop(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
+bool awh::Ethernet::multicastLoopback(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
 	// Параметр установки типа сокета
 	int32_t on = 0;
 	/**

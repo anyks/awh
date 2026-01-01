@@ -255,7 +255,7 @@ namespace awh {
 			 * @param mode   режим активации или деактивации
 			 * @return       результат работы функции
 			 */
-			bool multicastLoop(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
+			bool multicastLoopback(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет

@@ -124,12 +124,18 @@ TEST_F(EthFixture, EthSuiteTest){
 	ASSERT_FALSE(this->_eth->keepalive(sock, 30, 60, 10));
 	// Включаем заголовки в сокете
 	ASSERT_FALSE(this->_eth->hdrinclude(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	// Временный объект для извлечения сетевого интерфейса
+	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+	// Выполняем извлечение сетевых параметров
+	this->_eth->fillsource(source);
+	// Проверяем, что название сетевого интерфейса получено
+	ASSERT_FALSE(source.iface.empty());
 	// Устанавливаем интерфейс мультикаст группы по имени
-	ASSERT_TRUE(this->_eth->multicastIface(sock, awh::event::family_t::IPV4, "eth0"));
+	ASSERT_TRUE(this->_eth->multicastIface(sock, awh::event::family_t::IPV4, source.iface));
 	// Устанавливаем режим обратной петли для multicast пакетов
-	ASSERT_TRUE(this->_eth->multicastLoop(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->multicastLoopback(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
 	// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-	ASSERT_FALSE(this->_eth->hops(sock, awh::event::family_t::IPV4, awh::event::cast_t::UNICAST, awh::event::hops_t::NETWORK));
+	ASSERT_FALSE(this->_eth->hops(sock, awh::event::family_t::IPV4, awh::event::delivery_mode_t::UNICAST, awh::event::hops_t::NETWORK));
 	// Вычисляем контрольную сумму транспортного уровня с некорректными данными
 	ASSERT_EQ(0, this->_eth->checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, nullptr, nullptr, nullptr, 0));
 	// Выполняем проверку принадлежности IP-адреса подсети

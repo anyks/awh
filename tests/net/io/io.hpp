@@ -20,6 +20,7 @@
  */
 #include "../../main.hpp"
 #include "../../../include/net/io.hpp"
+#include "../../../include/net/addr.hpp"
 
 /**
  * @brief Класс фикстуры для тестов асинхронного движка ввода-вывода

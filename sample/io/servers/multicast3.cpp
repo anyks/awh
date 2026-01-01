@@ -12,12 +12,12 @@
  * @copyright: Copyright © 2025
  */
 
-/*
-* 3. Сервер-обнаружение
-* Клиенты слушают 239.255.1.2,
-* Сервер периодически рассылает "я здесь",
-* Клиенты отвечают прямо серверу (unicast), чтобы установить соединение.
-*/
+/**
+ * 3. Сервер-обнаружение
+ * Клиенты слушают 239.255.1.2,
+ * Сервер периодически рассылает "я здесь",
+ * Клиенты отвечают прямо серверу (unicast), чтобы установить соединение.
+ */
 
 /**
  * Стандартные модули
@@ -86,7 +86,7 @@ int32_t main(int32_t argc, char * argv[]){
 				 * event::options::MULTICASTLOOP разрешает или запрещает отправку сообщений в локальный порт 127.0.0.1 если клиент висит на 0.0.0.0 то он получит две копии сообщений
 				 */
 				// if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::MULTICASTLOOP))
-				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT))
+				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::MULTICASTLOOP))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события

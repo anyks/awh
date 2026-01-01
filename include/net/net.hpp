@@ -306,16 +306,16 @@ namespace awh {
 		 *
 		 */
 		typedef struct State {
-			uint16_t options;                     // Флаги опций события
-			event::node_t node;                   // Флаг узла события
-			event::hops_t hops;                   // Флаг хопов события
-			event::type_t type;                   // Флаг типа события
-			event::family_t family;               // Флаг семейства события
-			event::address_t address;             // Флаг адреса события
-			event::protocol_t protocol;           // Флаг протокола события
-			event::delivery_mode_t delivery;      // Флаг типа режима доставки события
-			std::atomic <event::status_t> status; // Флаг статуса события
-			std::atomic <event::status_t> oldset; // Флаг старого статуса события
+			uint16_t options;                // Флаги опций события
+			event::node_t node;              // Флаг узла события
+			event::hops_t hops;              // Флаг хопов события
+			event::type_t type;              // Флаг типа события
+			event::family_t family;          // Флаг семейства события
+			event::address_t address;        // Флаг адреса события
+			event::protocol_t protocol;      // Флаг протокола события
+			event::delivery_mode_t delivery; // Флаг типа режима доставки события
+			atomic <event::status_t> status; // Флаг статуса события
+			atomic <event::status_t> oldset; // Флаг старого статуса события
 			/**
 			 * @brief Оператор присваивания
 			 *
@@ -468,11 +468,13 @@ namespace awh {
 			event::id_t id;
 			// Состояние события
 			state_t state;
+			// Счётчик ссылок на событие
+			atomic_uint16_t refs;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Node() noexcept : id(0) {}
+			explicit Node() noexcept : id(0), refs(0) {}
 			/**
 			 * @brief Деструктор
 			 *

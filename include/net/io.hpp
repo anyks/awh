@@ -110,6 +110,18 @@ namespace awh {
 			bool address(const event::id_t id, const event::address_t address, const string & value) noexcept;
 		public:
 			/**
+			 * @brief Метод активации/деактивации мультикаст группы события
+			 *
+			 * @param id     идентификатор события
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @param port   порт мультикаст-группы с которого выполняется подписка
+			 * @return       результат выполнения установки
+			 */
+			bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port = 0) noexcept;
+		public:
+			/**
 			 * @brief Метод удаления события
 			 *
 			 * @param id идентификатор события
@@ -317,17 +329,6 @@ namespace awh {
 			 * @return   белый список события
 			 */
 			const std::unordered_map <string, event::address_t> & whitelist(const event::id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод активации/деактивации мультикаст группы события
-			 *
-			 * @param id     идентификатор события
-			 * @param mode   режим активации/деактивации
-			 * @param group  мультикаст-группа для активации/деактивации
-			 * @param source адрес сетевого интерфейса с которого выполняется подписка
-			 * @return       результат выполнения установки
-			 */
-			bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source) noexcept;
 		public:
 			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события

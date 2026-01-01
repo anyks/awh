@@ -339,6 +339,15 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем проверку является ли IP-адрес зарезервированным
 	cout << "Выполняем проверку является ли IP-адрес зарезервированным [::] == " << (addr.own() == net_addr_t::own_t::SYS) << endl << endl;
 
+	// Выводим тесты IP-адресов
+	addr = "192.168.3.25";
+	// Извлекаем адрес IPv4 в числовом виде
+	uint32_t v4 = addr.v4(net_addr_t::endian_t::BIG);
+	// Формируем адрес Broadcast
+	addr.v4((v4 & 0xFFFFFF00U) | 0x000000FFU, net_addr_t::endian_t::BIG);
+	// Выводим результат IP-адреса
+	cout << "Broadcast: " << addr << endl << endl;
+
 	// Создаём IP-адрес
 	string ip = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
 	// Выводим результат IP-адреса

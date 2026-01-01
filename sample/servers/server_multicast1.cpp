@@ -12,11 +12,11 @@
  * @copyright: Copyright © 2025
  */
 
-/*
+/**
  * 1. Peer-to-peer discovery (mDNS, SSDP)
  * Клиент отправляет запрос в мультикаст (224.0.0.251:5353 для mDNS),
  * Серверы слушают этот адрес и отвечают либо в мультикаст, либо напрямую клиенту.
-*/
+ */
 
 /**
  * Стандартные модули
@@ -64,7 +64,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем TTL для мультикастового события
 			if(io.hops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
-				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT))
+				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICASTLOOP))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
@@ -239,12 +239,6 @@ int32_t main(int32_t argc, char * argv[]){
 									const string message(reinterpret_cast <const char *> (data), size);
 									// Выводим сообщение о переподключении события
 									log.print("Прочитано2: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-									// Отправляем данные обратно клиенту
-									if(io.send(eid, reinterpret_cast <const char *> (data), size))
-										// Если данные успешно отправлены
-										log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
-									// Если данные не отправлены
-									else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
 								});
 								// Устанавливаем функцию обратного вызова на ошибку события
 								io.on(cid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {

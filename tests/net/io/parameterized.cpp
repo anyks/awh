@@ -575,14 +575,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
-							case static_cast <uint8_t> (awh::event::status_t::RUNNING):
+							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Выводим сообщение о запуске события
 								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
-							break;
-							// Если статус остановки события
-							case static_cast <uint8_t> (awh::event::status_t::STOPPED):
-								// Выводим сообщение о остановке события
-								this->_log->print("Событие остановлено: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
@@ -623,6 +618,11 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Выводим сообщение о переподключении события
 								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+							break;
+							// Если статус прослушивания события
+							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+								// Выводим сообщение о прослушивании события
+								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -807,14 +807,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
-							case static_cast <uint8_t> (awh::event::status_t::RUNNING):
+							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Выводим сообщение о запуске события
 								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
-							break;
-							// Если статус остановки события
-							case static_cast <uint8_t> (awh::event::status_t::STOPPED):
-								// Выводим сообщение о остановке события
-								this->_log->print("Событие остановлено: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
@@ -855,6 +850,11 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Выводим сообщение о переподключении события
 								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+							break;
+							// Если статус прослушивания события
+							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+								// Выводим сообщение о прослушивании события
+								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -1065,14 +1065,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
-							case static_cast <uint8_t> (awh::event::status_t::RUNNING):
+							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Выводим сообщение о запуске события
 								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
-							break;
-							// Если статус остановки события
-							case static_cast <uint8_t> (awh::event::status_t::STOPPED):
-								// Выводим сообщение о остановке события
-								this->_log->print("Событие остановлено: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
@@ -1113,6 +1108,11 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Выводим сообщение о переподключении события
 								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+							break;
+							// Если статус прослушивания события
+							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+								// Выводим сообщение о прослушивании события
+								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -1292,14 +1292,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
-							case static_cast <uint8_t> (awh::event::status_t::RUNNING):
+							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Выводим сообщение о запуске события
 								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
-							break;
-							// Если статус остановки события
-							case static_cast <uint8_t> (awh::event::status_t::STOPPED):
-								// Выводим сообщение о остановке события
-								this->_log->print("Событие остановлено: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
@@ -1340,6 +1335,11 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Выводим сообщение о переподключении события
 								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+							break;
+							// Если статус прослушивания события
+							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+								// Выводим сообщение о прослушивании события
+								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 							break;
 						}
 					});
