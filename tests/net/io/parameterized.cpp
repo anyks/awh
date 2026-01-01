@@ -157,7 +157,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
-		// Если пользователь является привилигированным
+		// Если пользователь является непривилигированным
 		if(::getuid())
 			// Добавляем новое событие клиента ICMP
 			eid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::ICMP);
@@ -320,29 +320,33 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	this->_io->timeout(eid, awh::event::action_t::CONNECT, 5000);
 	// Выполняем фиксацию настроек события сервера
 	ASSERT_TRUE(this->_io->commit(eid));
+	// Выполняем запуск события
+	ASSERT_TRUE(this->_io->launch(eid));
+	// Выполняем инициализацию генератора
+	std::random_device randev;
+	// Подключаем устройство генератора
+	std::mt19937 generator(randev());
+	// Выполняем генерирование случайного числа
+	std::uniform_int_distribution <std::mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
+	// Создаём объект заголовков
+	IoPingParameterizedFixture::IcmpHeader icmp{};
+	// Выполняем установку типа запроса
+	icmp.type = 8; // IPv4
+	// icmp.type = 128; // IPv6
+	// Устанавливаем код запроса
+	icmp.code = 0;
+	// Последовательность
+	uint16_t sequence = 0;
 	// Выполняем пинг 3 раза 
 	for(uint8_t i = 0; i < 3; i++){
-		// Выполняем инициализацию генератора
-		std::random_device randev;
-		// Подключаем устройство генератора
-		std::mt19937 generator(randev());
-		// Выполняем генерирование случайного числа
-		std::uniform_int_distribution <std::mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
-		// Создаём объект заголовков
-		IoPingParameterizedFixture::IcmpHeader icmp{};
-		// Выполняем установку типа запроса
-		icmp.type = 8; // IPv4
-		// icmp.type = 128; // IPv6
-		// Устанавливаем код запроса
-		icmp.code = 0;
-		// Устанавливаем контрольную сумму
-		icmp.checksum = 0;
 		// Устанавливаем номер последовательности
-		icmp.meta.echo.sequence = 1;
+		icmp.meta.echo.sequence = htons(sequence);
 		// Устанавливаем идентификатор запроса
-		icmp.meta.echo.identifier = ::getpid();
+		icmp.meta.echo.identifier = htons(::getpid() & 0xFFFF);
 		// Устанавливаем данные полезной нагрузки
 		icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
+		// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
+		icmp.checksum = 0;
 		// Выполняем подсчёт контрольной суммы
 		icmp.checksum = IoPingParameterizedFixture::checksum(&icmp, sizeof(icmp));
 		// Запоминаем текущее значение времени в миллисекундах
@@ -353,6 +357,8 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		ASSERT_TRUE(this->_io->recv(eid));
 		// Выполняем подсчёт количество прошедшего времени
 		ASSERT_GT(this->chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS) - mseconds, 0);
+		// Увеличиваем последовательность запроса
+		sequence++;
 	}
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
@@ -456,6 +462,8 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 			stop = true;
 		});
 	}
+	// Выполняем запуск события
+	ASSERT_TRUE(this->_io->launch(eid));
 	/**
 	 * Запускаем опрос событий
 	 */
@@ -764,6 +772,8 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Выполняем фиксацию настроек событий дочернего процесса
 					ASSERT_TRUE(this->_io->commit(cfds[0]));
 					ASSERT_TRUE(this->_io->commit(mfds[1]));
+					// Выполняем запуск события
+					ASSERT_TRUE(this->_io->launch(cfds[0]));
 					// Сообщение для отправки родительскому процессу
 					const std::string message = "Hello from child process!";
 					// Отправляем сообщение родительскому процессу
@@ -996,6 +1006,8 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Выполняем фиксацию настроек события сервера
 					ASSERT_TRUE(this->_io->commit(mfds[0]));
 					ASSERT_TRUE(this->_io->commit(cfds[1]));
+					// Выполняем запуск события
+					ASSERT_TRUE(this->_io->launch(mfds[0]));
 					// Сообщение для отправки дочернему процессу
 					const std::string message = "Hello from parent process!";
 					// Отправляем сообщение родительскому процессу
@@ -1253,6 +1265,8 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					});
 					// Выполняем фиксацию настроек события сервера
 					ASSERT_TRUE(this->_io->commit(events[1]));
+					// Выполняем запуск события
+					ASSERT_TRUE(this->_io->launch(events[1]));
 					// Сообщение для отправки родительскому процессу
 					const std::string message = "Hello from child process!";
 					// Отправляем сообщение родительскому процессу
@@ -1480,6 +1494,8 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					});
 					// Выполняем фиксацию настроек события сервера
 					ASSERT_TRUE(this->_io->commit(events[0]));
+					// Выполняем запуск события
+					ASSERT_TRUE(this->_io->launch(events[0]));
 					// Сообщение для отправки дочернему процессу
 					const std::string message = "Hello from parent process!";
 					// Отправляем сообщение родительскому процессу
