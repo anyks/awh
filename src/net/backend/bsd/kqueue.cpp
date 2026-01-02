@@ -67,6 +67,14 @@
 #include <netinet/tcp.h>
 
 /**
+ * Если операционной системой является FreeBSD
+ */
+#if __FreeBSD__
+	// Подключаем заголовочный файл SCTP
+	#include <netinet/sctp.h>
+#endif
+
+/**
  * Подключаем заголовочный файл асинхронного движка ввода-вывода
  */
 #include <net/io.hpp>
