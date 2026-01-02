@@ -1773,7 +1773,7 @@ bool awh::Ethernet::sctp([[maybe_unused]] const net::socket_t sock, [[maybe_unus
 				// Активируем получение входящих событий
 				event.se_on = 1;
 				// Устанавливаем тип события
-				event.se_type = SCTP_DATA_IO_EVENT;
+				event.se_type = SCTP_ASSOC_CHANGE;
 				// Устанавливаем идентификатор ассоциации
 				event.se_assoc_id = SCTP_FUTURE_ASSOC;
 				// Выполняем активацию получения событий SCTP для сокета
