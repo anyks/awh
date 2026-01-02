@@ -195,11 +195,11 @@ namespace awh {
 			// Список доступных флагов
 			std::unordered_set <mode_t> _mode;
 		private:
+			// Мютекс для блокировки потока
+			lock_state_t <std::recursive_mutex> _mtx;
+		private:
 			// Список проинициализированных процессов
 			mutable std::unordered_set <pid_t> _initialized;
-		private:
-			// Мютекс для блокировки потока
-			mutable lock_state_t <std::recursive_mutex> _mtx;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;
