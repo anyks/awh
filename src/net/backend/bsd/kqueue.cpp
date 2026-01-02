@@ -99,11 +99,25 @@ struct kevent64_s {
     uint32_t fflags;
     int64_t  data;
     uint64_t udata;
-    uint32_t ext[4];  // reserved for future use; set to zero
+    uint64_t ext[2];  // ← ВАЖНО: именно [2], как в мане
 };
 #endif
 
-// Объявляем kevent64, если не определён
+// Определяем макрос, если не определён
+#ifndef EV_SET64
+#define EV_SET64(kev, a, b, c, d, e, f, g, h) do { \
+    (kev)->ident = (a);                             \
+    (kev)->filter = (b);                            \
+    (kev)->flags = (c);                             \
+    (kev)->fflags = (d);                            \
+    (kev)->data = (e);                              \
+    (kev)->udata = (f);                             \
+    (kev)->ext[0] = (g);                            \
+    (kev)->ext[1] = (h);                            \
+} while(0)
+#endif
+
+// Объявляем функцию (если нужно)
 #ifndef kevent64
 int kevent64(int kq,
              const struct kevent64_s *changelist, int nchanges,
@@ -717,6 +731,13 @@ namespace io {
 		net::socket_t fd;
 		// Флаги активированных событий файла
 		uint16_t actions;
+		/**
+		 * Если операционной системой является FreeBSD
+		 */
+		#if __FreeBSD__
+			// Объект SCTP-событий
+			sctp_t sctp;
+		#endif
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
 		// Объект параметров конечной точки
@@ -6115,8 +6136,8 @@ namespace io {
 															buffer, AWH_MAX_EVENT_BUFFER_SIZE,
 															&::trust_cast <struct sockaddr> (server->endpoint.client),
 															&server->endpoint.size,
-															&server->transfer.sctp.info,
-															&server->transfer.sctp.flags
+															&server->sctp.info,
+															&server->sctp.flags
 														);
 													// Выполняем чтение данных из UDP-сокета
 													else bytes = ::recvfrom(
@@ -6189,8 +6210,8 @@ namespace io {
 															buffer, AWH_MAX_EVENT_BUFFER_SIZE,
 															&::trust_cast <struct sockaddr> (server->endpoint.client),
 															&server->endpoint.size,
-															&server->transfer.sctp.info,
-															&server->transfer.sctp.flags
+															&server->sctp.info,
+															&server->sctp.flags
 														);
 													// Выполняем чтение данных из UDP-сокета
 													else bytes = ::recvfrom(
@@ -20710,7 +20731,7 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 						/**
 						 * Определяем тип полезной нагрузки SCTP
 						 */
-						switch(server->transfer.sctp.info.sinfo_ppid){
+						switch(server->sctp.info.sinfo_ppid){
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
@@ -20728,45 +20749,45 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
-						result.num = server->transfer.sctp.info.sinfo_stream;
+						result.num = server->sctp.info.sinfo_stream;
 						// Устанавливаем контекст сообщения SCTP в результат работы функции
-						result.ctx = server->transfer.sctp.info.sinfo_context;
+						result.ctx = server->sctp.info.sinfo_context;
 						// Устанавливаем время жизни сообщения SCTP в результат работы функции
-						result.ttl = server->transfer.sctp.info.sinfo_timetolive;
+						result.ttl = server->sctp.info.sinfo_timetolive;
 						// Если установлен флаг EOF в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_EOF)
+						if(server->sctp.info.sinfo_flags & SCTP_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
 							result.flags |= event::sctp::AWH_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
+						if(server->sctp.info.sinfo_flags & SCTP_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
 							result.flags |= event::sctp::AWH_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
+						if(server->sctp.info.sinfo_flags & SCTP_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
 							result.flags |= event::sctp::AWH_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
+						if(server->sctp.info.sinfo_flags & SCTP_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
 							result.flags |= event::sctp::AWH_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
+						if(server->sctp.info.sinfo_flags & SCTP_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
 							result.flags |= event::sctp::AWH_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
+						if(server->sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
+						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
 							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
+						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
 							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(server->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
 							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
 					} break;
@@ -20993,51 +21014,51 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Выполняем зануление объекта информации SCTP
-						::memset(&server->transfer.sctp.info, 0, sizeof(server->transfer.sctp.info));
+						::memset(&server->sctp.info, 0, sizeof(server->sctp.info));
 						// Устанавливаем номер потока SCTP в результат работы функции
-						server->transfer.sctp.info.sinfo_stream = info.num;
+						server->sctp.info.sinfo_stream = info.num;
 						// Устанавливаем контекст сообщения SCTP в результат работы функции
-						server->transfer.sctp.info.sinfo_context = info.ctx;
+						server->sctp.info.sinfo_context = info.ctx;
 						// Устанавливаем время жизни сообщения SCTP в результат работы функции
-						server->transfer.sctp.info.sinfo_timetolive = info.ttl;
+						server->sctp.info.sinfo_timetolive = info.ttl;
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
-						server->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppi);
+						server->sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppi);
 						// Если установлен флаг EOF в сообщении SCTP
 						if(info.flags & event::sctp::AWH_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+							server->sctp.info.sinfo_flags |= SCTP_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
 						if(info.flags & event::sctp::AWH_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+							server->sctp.info.sinfo_flags |= SCTP_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
 						if(info.flags & event::sctp::AWH_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+							server->sctp.info.sinfo_flags |= SCTP_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
 						if(info.flags & event::sctp::AWH_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+							server->sctp.info.sinfo_flags |= SCTP_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
 						if(info.flags & event::sctp::AWH_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+							server->sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+							server->sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							server->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 					} break;
 					// Если узел является другим типом узла
 					default: {
@@ -27799,11 +27820,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														data, size,
 														&::trust_cast <struct sockaddr> (server->endpoint.server),
 														server->endpoint.size,
-														server->transfer.sctp.info.sinfo_ppid,
-														server->transfer.sctp.info.sinfo_flags,
-														server->transfer.sctp.info.sinfo_stream,
-														server->transfer.sctp.info.sinfo_timetolive,
-														server->transfer.sctp.info.sinfo_context
+														server->sctp.info.sinfo_ppid,
+														server->sctp.info.sinfo_flags,
+														server->sctp.info.sinfo_stream,
+														server->sctp.info.sinfo_timetolive,
+														server->sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
@@ -27902,11 +27923,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															data, size,
 															&::trust_cast <struct sockaddr> (server->endpoint.server),
 															server->endpoint.size,
-															server->transfer.sctp.info.sinfo_ppid,
-															server->transfer.sctp.info.sinfo_flags,
-															server->transfer.sctp.info.sinfo_stream,
-															server->transfer.sctp.info.sinfo_timetolive,
-															server->transfer.sctp.info.sinfo_context
+															server->sctp.info.sinfo_ppid,
+															server->sctp.info.sinfo_flags,
+															server->sctp.info.sinfo_stream,
+															server->sctp.info.sinfo_timetolive,
+															server->sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в UDP-сокет
 													else bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
@@ -27987,11 +28008,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														data, size,
 														&::trust_cast <struct sockaddr> (server->endpoint.server),
 														server->endpoint.size,
-														server->transfer.sctp.info.sinfo_ppid,
-														server->transfer.sctp.info.sinfo_flags,
-														server->transfer.sctp.info.sinfo_stream,
-														server->transfer.sctp.info.sinfo_timetolive,
-														server->transfer.sctp.info.sinfo_context
+														server->sctp.info.sinfo_ppid,
+														server->sctp.info.sinfo_flags,
+														server->sctp.info.sinfo_stream,
+														server->sctp.info.sinfo_timetolive,
+														server->sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
