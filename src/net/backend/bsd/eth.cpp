@@ -83,6 +83,14 @@
 #include <netinet/if_ether.h>
 
 /**
+ * Если операционной системой является FreeBSD
+ */
+#if __FreeBSD__
+	// Подключаем заголовочный файл SCTP
+	#include <netinet/sctp.h
+#endif
+
+/**
  * Подключаем наши заголовочные файлы
  */
 #include <sys/os.hpp>
