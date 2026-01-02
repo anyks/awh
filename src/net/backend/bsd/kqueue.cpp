@@ -538,6 +538,8 @@ namespace {
 		struct stat info;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
+		// Мьютекс для синхронизации потоков
+		lock_state_t <mutex> mtx;
 		/**
 		 * @brief Конструктор
 		 *
@@ -565,6 +567,8 @@ namespace {
 		struct stat info;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
+		// Мьютекс для синхронизации потоков
+		lock_state_t <mutex> mtx;
 		// Множество уже прочитанных записей каталога
 		unordered_map <string, event::vnode_t> entries;
 		/**
@@ -3059,6 +3063,8 @@ namespace io {
 				if(node->callbacks.change != nullptr){
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
+					// Выполняем блокировку уникальным мютексом
+					const locker_t lock(node->mtx);
 					// Создаем указатель на содержимое каталога
 					struct dirent * ptr = nullptr;
 					// Переменная для хранения типа узла
@@ -3970,6 +3976,8 @@ namespace io {
 					if(fs->actions & action::READ){
 						// Если событие находится не в состоянии паузы
 						if(fs->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+							// Выполняем блокировку уникальным мютексом
+							const locker_t lock(fs->mtx);
 							// Если функция обратного вызова для вывода прочитанных данных установлена
 							if((fs->callbacks.read != nullptr) || (fs->dest > 0)){
 								// Если не установлен флаг постоянного отслеживания файла
@@ -29933,7 +29941,7 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 			#endif
 		}
 	}
-	// Выводим резульатат работы функции
+	// Выводим результат работы функции
 	return result;
 }
 /**
@@ -29997,7 +30005,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::blacklist(co
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим резульатат работы функции
+	// Выводим результат работы функции
 	return result;
 }
 /**
@@ -30304,7 +30312,7 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 			#endif
 		}
 	}
-	// Выводим резульатат работы функции
+	// Выводим результат работы функции
 	return result;
 }
 /**
@@ -30368,7 +30376,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(co
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим резульатат работы функции
+	// Выводим результат работы функции
 	return result;
 }
 /**
@@ -33042,7 +33050,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 						ret.first->second.index = (::local::change.size() - 1);
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
-						// Удаляем предыдущее события из списка изменений
+						// Удаляем предыдущее событие из списка изменений
 						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, dir);
 						// Если флаги установлены
 						if(flags > 0){
@@ -35332,7 +35340,7 @@ bool awh::IO::reinitialize() noexcept {
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Если событие поставленно на паузу
+					// Если событие поставлено на паузу
 					} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
 						// Выполняем сброс статуса ожидания события
 						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
@@ -36088,31 +36096,69 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (node.second->state.node)){
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						dir_t * dir = awh_cast <dir_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(dir->mtx);
+						// Активируем или деактивируем мютекс передачи данных
+						dir->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						file_t * fs = awh_cast <file_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(fs->mtx);
+						// Активируем или деактивируем мютекс передачи данных
+						fs->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
 					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::NOTIFY):
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
+						// Получаем текущее значение объекта пользовательского события
+						user_t * user = awh_cast <user_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(user->mtx);
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <user_t *> (node.second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-					break;
+						user->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
 					// Если узел является межпроцессным взаимодействием
-					case static_cast <uint8_t> (event::node_t::IPC):
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпроцессного взаимодействия
+						ipc_t * ipc = awh_cast <ipc_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(ipc->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <ipc_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-					break;
+						ipc->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
 					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER):
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						peer_t * peer = awh_cast <peer_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(peer->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <peer_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-					break;
+						peer->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
 					// Если узел является одноранговым узлом-источником
-					case static_cast <uint8_t> (event::node_t::ORIGIN):
+					case static_cast <uint8_t> (event::node_t::ORIGIN): {
+						// Получаем текущее значение объекта однорангового узла-источника
+						origin_t * origin = awh_cast <origin_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(origin->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <origin_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-					break;
+						origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
 					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT):
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						client_t * client = awh_cast <client_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t lock(client->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
-						awh_cast <client_t *> (node.second.get())->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-					break;
+						client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
 				}
 			}
 		}
@@ -36213,6 +36259,8 @@ size_t awh::IO::size(const event::id_t id) const noexcept {
 					if(dir->path == nullptr)
 						// Прерываем выполнение
 						break;
+					// Выполняем блокировку уникальным мютексом
+					const locker_t lock(dir->mtx);
 					// Получаем адрес каталога
 					const string & path = awh_cast <net::addr_fs_t *> (dir->path.get())->address;
 					// Создаем указатель на содержимое каталога
@@ -36242,6 +36290,8 @@ size_t awh::IO::size(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
 					file_t * fs = awh_cast <file_t *> (i->second.get());
+					// Выполняем блокировку уникальным мютексом
+					const locker_t lock(fs->mtx);
 					// Если файл открыт удачно
 					if(::fstat(fs->fd, &fs->info) == 0)
 						// Выводим смещение в файле события
@@ -36470,6 +36520,14 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
+					// Очищаем список промежуточных звеньев
+					::local::evaccs.clear();
+					// Очищаем список изменений
+					::local::change.clear();
+					// Очищаем список обработанных событий
+					::__awh_processed__.clear();
+					// Выходим из функции с ошибкой
+					return false;
 				}
 				// Выполняем блокировку потоков
 				const locker_t lock(::local::mtx);
@@ -36479,7 +36537,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				for(auto i = ::local::change.begin(); i != ::local::change.end();){
 					// Получаем текущее значение узла
 					node = reinterpret_cast <net::node_t *> (i->udata);
-					// Если узел определена и существует
+					// Если узел определён и существует
 					if(node != nullptr){
 						/**
 						 * Определяем чем является текущий узел
