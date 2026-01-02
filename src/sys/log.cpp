@@ -282,7 +282,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		// Проверяем является ли это переводом строки
 		isEnd = ((payload.text.compare(AWH_STRING_BREAK) == 0) || (payload.text.compare(AWH_STRING_BREAK) == 0));
 	// Выполняем блокировку потока
-	const locker_t lock(this->_mtx);
+	const locker_t <> lock(this->_mtx);
 	// Если функция подписки на логи установлена, выводим результат
 	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
 		// Выводим сообщение лога всем подписавшимся
@@ -507,7 +507,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				// Если отправка сообщения в SysLog разрешёна
 				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Создаём список аргументов
 					va_list args;
 					// Запускаем инициализацию списка аргументов
@@ -658,7 +658,7 @@ void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
 				// Если отправка сообщения в SysLog разрешёна
 				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Создаём список аргументов
 					va_list args;
 					// Запускаем инициализацию списка аргументов
@@ -810,7 +810,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 				// Если отправка сообщения в SysLog разрешёна
 				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Открываем Syslog для нашего приложения
 					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
 					/**
@@ -907,7 +907,7 @@ void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring>
 				// Если отправка сообщения в SysLog разрешёна
 				if(this->_mode.find(mode_t::SYSLOG) != this->_mode.end()){
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Открываем Syslog для нашего приложения
 					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
 					/**
