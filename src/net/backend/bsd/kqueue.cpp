@@ -90,7 +90,7 @@
 
 
 // На FreeBSD и macOS kevent64_s может быть не определён в public headers
-#if !defined(__STRUCT_kevent64_s_defined) && defined(__FreeBSD__)
+#if !__STRUCT_kevent64_s_defined && __FreeBSD__
 #define __STRUCT_kevent64_s_defined
 struct kevent64_s {
     uint64_t ident;
@@ -27813,7 +27813,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
+												if(server->state.protocol == event::protocol_t::SCTP)
 													// Выполняем отправку данных в SCTP-сокет
 													bytes = ::sctp_sendmsg(
 														server->fd,
@@ -27916,7 +27916,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Количество прочитанных байт
 													ssize_t bytes = 0;
 													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
+													if(server->state.protocol == event::protocol_t::SCTP)
 														// Выполняем отправку данных в SCTP-сокет
 														bytes = ::sctp_sendmsg(
 															server->fd,
@@ -28001,7 +28001,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
+												if(server->state.protocol == event::protocol_t::SCTP)
 													// Выполняем отправку данных в SCTP-сокет
 													bytes = ::sctp_sendmsg(
 														server->fd,
@@ -34635,11 +34635,16 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 								// Выводим название установленного фильтра
 								cout << " EVFILT_SIGNAL " << endl;
 							break;
-							// Если фильтр установлен на событие machport
-							case EVFILT_MACHPORT:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_MACHPORT " << endl;
-							break;
+							/**
+							 * Для операционных систем MacOS X
+							 */
+							#if __APPLE__ || __MACH__
+								// Если фильтр установлен на событие machport
+								case EVFILT_MACHPORT:
+									// Выводим название установленного фильтра
+									cout << " EVFILT_MACHPORT " << endl;
+								break;
+							#endif
 							// Если фильтр установлен на событие таймера
 							case EVFILT_TIMER:
 								// Выводим название установленного фильтра
