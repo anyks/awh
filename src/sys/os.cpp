@@ -994,9 +994,9 @@ void awh::OS::releaseFreeMemory() const noexcept {
 		/**
 		 * BSD: можно попробовать malloc_trim (FreeBSD 13+)
 		 */
-		#if __FreeBSD__ && __FreeBSD__ >= 13
+		#if __FreeBSD__ && JEMALLOC
 			// Выполняем сброс памяти
-			::malloc_trim(0);
+			::malloc_stats_print(nullptr, nullptr, nullptr);
 		#endif
 	/**
 	 * Для операционной системы MS Windows

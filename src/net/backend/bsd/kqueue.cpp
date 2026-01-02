@@ -89,41 +89,63 @@
 #include <sys/threadpool.hpp>
 
 
-// На FreeBSD и macOS kevent64_s может быть не определён в public headers
+/**
+ * Если структура kevent64_s не определена в операционной системой является FreeBSD
+ */
 #if !__STRUCT_kevent64_s_defined && __FreeBSD__
-#define __STRUCT_kevent64_s_defined
-struct kevent64_s {
-    uint64_t ident;
-    int16_t  filter;
-    uint16_t flags;
-    uint32_t fflags;
-    int64_t  data;
-    uint64_t udata;
-    uint64_t ext[2];  // ← ВАЖНО: именно [2], как в мане
-};
+	// Определяем структуру kevent64_s
+	#define __STRUCT_kevent64_s_defined
+	/**
+	 * @brief Структура события kqueue с 64-битными полями
+	 *
+	 */
+	struct kevent64_s {
+		uint64_t ident;  // Идентификатор события
+		int16_t  filter; // Тип фильтра события
+		uint16_t flags;  // Флаги события
+		uint32_t fflags; // Флаги фильтра события
+		int64_t  data;   // Данные события
+		uint64_t udata;  // Пользовательские данные
+		uint64_t ext[2]; // Расширенные поля
+	};
 #endif
 
-// Определяем макрос, если не определён
+/**
+ * Если макрос инициализации события kevent64 не определён
+ */
 #ifndef EV_SET64
-#define EV_SET64(kev, a, b, c, d, e, f, g, h) do { \
-    (kev)->ident = (a);                             \
-    (kev)->filter = (b);                            \
-    (kev)->flags = (c);                             \
-    (kev)->fflags = (d);                            \
-    (kev)->data = (e);                              \
-    (kev)->udata = (f);                             \
-    (kev)->ext[0] = (g);                            \
-    (kev)->ext[1] = (h);                            \
-} while(0)
+	/**
+	 * Определяем макрос инициализации события kevent64
+	 */
+	#define EV_SET64(kev, a, b, c, d, e, f, g, h) do { \
+		(kev)->ident = (a);                             \
+		(kev)->filter = (b);                            \
+		(kev)->flags = (c);                             \
+		(kev)->fflags = (d);                            \
+		(kev)->data = (e);                              \
+		(kev)->udata = (f);                             \
+		(kev)->ext[0] = (g);                            \
+		(kev)->ext[1] = (h);                            \
+	} while(0)
 #endif
 
-// Объявляем функцию (если нужно)
+/**
+ * Если функция kevent64 не определена в операционной системой является FreeBSD
+ */
 #ifndef kevent64
-int kevent64(int kq,
-             const struct kevent64_s *changelist, int nchanges,
-             struct kevent64_s *eventlist, int nevents,
-             unsigned int flags,
-             const struct timespec *timeout);
+	/**
+	 * @brief Функция обработки событий kqueue с 64-битными полями
+	 *
+	 * @param kq         дескриптор очереди событий
+	 * @param changelist список изменений
+	 * @param nchanges   количество изменений
+	 * @param eventlist  список установленных событий
+	 * @param nevents    количество установленных событий
+	 * @param flags      флаги установки событий
+	 * @param timeout    таймаут выполнения функции
+	 * @return           результат выполнения функции
+	 */
+	int32_t kevent64(int32_t kq, const struct kevent64_s * changelist, int32_t nchanges, struct kevent64_s * eventlist, int32_t nevents, uint32_t flags, const struct timespec * timeout);
 #endif
 
 /**
