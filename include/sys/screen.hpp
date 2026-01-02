@@ -136,7 +136,7 @@ namespace awh {
 								this->_callback(payload);
 							{
 								// Выполняем блокировку уникальным мютексом
-								const locker_t lock(this->_mtx);
+								const locker_t <> lock(this->_mtx);
 								// Удаляем текущее задание
 								this->_payload.pop();
 							}
@@ -257,7 +257,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
@@ -290,7 +290,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
@@ -323,7 +323,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
@@ -357,7 +357,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = std::chrono::milliseconds(delay);
 				/**
@@ -392,7 +392,7 @@ namespace awh {
 				try {
 					{
 						// Выполняем блокировку потока
-						const locker_t lock(this->_mtx);
+						const locker_t <> lock(this->_mtx);
 						// Выполняем добавление данных в очередь
 						this->_payload.push(std::forward <T> (data));
 					}
@@ -433,7 +433,7 @@ namespace awh {
 				try {
 					{
 						// Выполняем блокировку потока
-						const locker_t lock(this->_mtx);
+						const locker_t <> lock(this->_mtx);
 						// Выполняем добавление данных в очередь
 						this->_payload.push(data);
 					}

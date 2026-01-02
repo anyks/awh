@@ -87,7 +87,7 @@
  */
 #if __FreeBSD__
 	// Подключаем заголовочный файл SCTP
-	#include <netinet/sctp.h
+	#include <netinet/sctp.h>
 #endif
 
 /**
