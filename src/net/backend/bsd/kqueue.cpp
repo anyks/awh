@@ -432,9 +432,9 @@ namespace std {
 };
 
 /**
- * Инкапсулируем статические типы данных в пространство имён
+ * Инкапсулируем статические функции в пространство имён асинхронного движка
  */
-namespace {
+namespace io {
 	/**
 	 * Подписываемся на пространство имён AWH
 	 */
@@ -773,7 +773,7 @@ namespace {
 	/**
 	 * Глобальная переменная списка сессий инициаторов запросов
 	 */
-	unordered_map <origin_id_t, origin_t *, origin_id_hash_t> __awh_origin_sessions__;
+	unordered_map <origin_id_t, ::io::origin_t *, origin_id_hash_t> __awh_origin_sessions__;
 };
 
 /**
@@ -1150,7 +1150,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool user(user_t *, const io_t *, const log_t *) noexcept;
+	static bool user(::io::user_t *, const io_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события ошибки
 	 *
@@ -1169,7 +1169,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool change(dir_t *, const io_t *, const fmk_t *, const log_t *) noexcept;
+	static bool change(::io::dir_t *, const io_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения
 	 *
@@ -1179,7 +1179,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool accept(server_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool accept(::io::server_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события подключения
 	 *
@@ -1189,7 +1189,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool connect(client_t *, const io_t *, const eth_t *, const log_t *) noexcept;
+	static bool connect(::io::client_t *, const io_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события чтения
 	 *
@@ -1266,7 +1266,7 @@ namespace io {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Выполняем обработку закрытия подключения
 					if(::io::close(node, log))
 						// Выполняем удаление узла
@@ -1275,7 +1275,7 @@ namespace io {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (node);
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Выполняем обработку закрытия подключения
 					if(::io::close(node, log))
 						// Выполняем удаление узла
@@ -1284,7 +1284,7 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Выполняем обработку закрытия подключения
 					if(::io::close(node, log))
 						// Выполняем удаление узла
@@ -1295,7 +1295,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Выполняем извлечение текущего значения объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (node);
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова статуса события
@@ -1310,7 +1310,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Выполняем извлечение текущего значения объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (node);
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова статуса события
@@ -1359,7 +1359,7 @@ namespace io {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (node);
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 					// Если событие закрытия разрешено
 					if(dir->actions & ::action::CLOSE){
 						// Создаём охранника узла события
@@ -1375,7 +1375,7 @@ namespace io {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (node);
+					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если событие закрытия разрешено
 					if(fs->actions & ::action::CLOSE){
 						// Создаём охранника узла события
@@ -1391,7 +1391,7 @@ namespace io {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если событие закрытия разрешено
 					if(ipc->transfer.actions & ::action::CLOSE){
 						// Создаём охранника узла события
@@ -1407,7 +1407,7 @@ namespace io {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Уменьшаем общее количество подключений сервера
 					if(peer->peers > 0)
 						// Уменьшаем общее количество подключений сервера
@@ -1427,7 +1427,7 @@ namespace io {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (node);
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Уменьшаем общее количество подключений сервера
 					if(origin->peers > 0)
 						// Уменьшаем общее количество подключений сервера
@@ -1447,7 +1447,7 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если событие отключения от сервера разрешено
 					if(client->transfer.actions & ::action::DISCONNECT){
 						// Создаём охранника узла события
@@ -1503,7 +1503,7 @@ namespace io {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (node);
+					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если событие закрытия разрешено
 					if(server->actions & ::action::CLOSE){
 						// Создаём охранника узла события
@@ -1571,12 +1571,12 @@ namespace io {
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT):
 									// Создаём сокет подключения
-									awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+									awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
 								break;
 								// Если узел является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER):
 									// Создаём сокет подключения
-									awh_cast <server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+									awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
 								break;
 							}
 						} break;
@@ -1593,13 +1593,13 @@ namespace io {
 									 */
 									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 										// Создаём сокет подключения
-										awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+										awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
 									/**
 									 * Для остальных операционных систем
 									 */
 									#else
 										// Создаём сокет подключения
-										awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+										awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 									#endif
 								break;
 								// Если узел является сервером
@@ -1609,13 +1609,13 @@ namespace io {
 									 */
 									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 										// Создаём сокет подключения
-										awh_cast <server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+										awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
 									/**
 									 * Для остальных операционных систем
 									 */
 									#else
 										// Создаём сокет подключения
-										awh_cast <server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+										awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 									#endif
 								break;
 							}
@@ -1629,12 +1629,12 @@ namespace io {
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT):
 									// Создаём сокет подключения
-									awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+									awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
 								break;
 								// Если узел является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER):
 									// Создаём сокет подключения
-									awh_cast <server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+									awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
 								break;
 							}
 						} break;
@@ -1690,12 +1690,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, 0);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, 0);
 												break;
 											}
 										} break;
@@ -1708,12 +1708,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 												break;
 											}
 										} break;
@@ -1726,12 +1726,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 												break;
 											}
 										} break;
@@ -1744,12 +1744,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 												break;
 											}
 										} break;
@@ -1762,12 +1762,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 												break;
 											}
 										} break;
@@ -1780,12 +1780,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 												break;
 											}
 										} break;
@@ -1808,12 +1808,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, 0);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, 0);
 												break;
 											}
 										} break;
@@ -1826,12 +1826,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
 												break;
 											}
 										} break;
@@ -1844,12 +1844,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
 												break;
 											}
 										} break;
@@ -1862,12 +1862,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 												break;
 											}
 										} break;
@@ -1917,12 +1917,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, 0);
 												break;
 											}
 										} break;
@@ -1935,12 +1935,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 												break;
 											}
 										} break;
@@ -1953,12 +1953,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
 												break;
 											}
 										} break;
@@ -1971,12 +1971,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
 												break;
 											}
 										} break;
@@ -1999,12 +1999,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
 												break;
 											}
 										} break;
@@ -2017,12 +2017,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 												break;
 											}
 										} break;
@@ -2035,12 +2035,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 												break;
 											}
 										} break;
@@ -2090,12 +2090,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, 0);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, 0);
 												break;
 											}
 										} break;
@@ -2108,12 +2108,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 												break;
 											}
 										} break;
@@ -2126,12 +2126,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 												break;
 											}
 										} break;
@@ -2154,12 +2154,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, 0);
 												break;
 											}
 										} break;
@@ -2172,12 +2172,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 												break;
 											}
 										} break;
@@ -2190,12 +2190,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 												break;
 											}
 										} break;
@@ -2245,12 +2245,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
 												break;
 											}
 										} break;
@@ -2273,12 +2273,12 @@ namespace io {
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT):
 													// Создаём сокет подключения
-													awh_cast <client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
 												break;
 												// Если узел является сервером
 												case static_cast <uint8_t> (event::node_t::SERVER):
 													// Создаём сокет подключения
-													awh_cast <server_t *> (node)->fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
 												break;
 											}
 										} break;
@@ -2355,11 +2355,11 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Возвращаем результат создания сокета
-					return (awh_cast <client_t *> (node)->transfer.fd != net::invalid_socket_t);
+					return (awh_cast <::io::client_t *> (node)->transfer.fd != net::invalid_socket_t);
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Возвращаем результат создания сокета
-					return (awh_cast <server_t *> (node)->fd != net::invalid_socket_t);
+					return (awh_cast <::io::server_t *> (node)->fd != net::invalid_socket_t);
 			}
 		/**
 		 * Если возникает ошибка
@@ -2403,7 +2403,7 @@ namespace io {
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY): {
 					// Получаем текущее значение объекта пользовательского события
-					user_t * user = awh_cast <user_t *> (node);
+					::io::user_t * user = awh_cast <::io::user_t *> (node);
 					// Если установлена функция обратного вызова
 					if(user->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -2412,7 +2412,7 @@ namespace io {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (node);
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2428,7 +2428,7 @@ namespace io {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (node);
+					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2446,7 +2446,7 @@ namespace io {
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Получаем текущее значение объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (node);
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -2455,7 +2455,7 @@ namespace io {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если дескриптор сокета инициализирован
 					if(ipc->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2471,7 +2471,7 @@ namespace io {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2487,7 +2487,7 @@ namespace io {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (node);
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Если установлена функция обратного вызова
 					if(origin->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -2524,7 +2524,7 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если дескриптор сокета инициализирован
 					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2557,7 +2557,7 @@ namespace io {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (node);
+					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если дескриптор сокета инициализирован
 					if(server->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2618,7 +2618,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool user(user_t * node, const io_t * io, const log_t * log) noexcept {
+	static bool user(::io::user_t * node, const io_t * io, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -2701,7 +2701,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта пользовательского события
-					user_t * user = awh_cast <user_t *> (node);
+					::io::user_t * user = awh_cast <::io::user_t *> (node);
 					// Если установлена функция обратного вызова
 					if(user->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2736,7 +2736,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (node);
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2769,7 +2769,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (node);
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 					// Если установлена функция обратного вызова
 					if(dir->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2802,7 +2802,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (node);
+					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если установлена функция обратного вызова
 					if(fs->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2835,7 +2835,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2868,7 +2868,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если установлена функция обратного вызова
 					if(peer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2901,7 +2901,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (node);
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Если установлена функция обратного вызова
 					if(origin->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2934,7 +2934,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если установлена функция обратного вызова
 					if(client->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -2967,7 +2967,7 @@ namespace io {
 					// Создаём охранника узла события
 					::local::guard_t guard(node);
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (node);
+					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если установлена функция обратного вызова
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
@@ -3028,7 +3028,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool change(dir_t * node, const io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool change(::io::dir_t * node, const io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3149,7 +3149,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool accept(server_t * node, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool accept(::io::server_t * node, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3247,7 +3247,7 @@ namespace io {
 							return false;
 						}
 						// Выполняем создание нового объекта узла
-						unique_ptr <peer_t> peer = make_unique <peer_t> (node->backlog.count, fmk, log);
+						unique_ptr <::io::peer_t> peer = make_unique <::io::peer_t> (node->backlog.count, fmk, log);
 						// Устанавливаем файловый дескриптор сокета
 						peer->transfer.fd = sock;
 						// Устанавливаем тип узла
@@ -3679,7 +3679,7 @@ namespace io {
 						auto ret = ::__awh_nodes__.emplace(::io::identifier(), ::move(peer));
 						{
 							// Получаем текущее значение объекта однорангового узла-источника
-							peer_t * peer = awh_cast <peer_t *> (ret.first->second.get());
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (ret.first->second.get());
 							// Устанавливаем идентификатор объекта однорангового узла-источника
 							peer->id = ret.first->first;
 							// Создаём охранника узла события
@@ -3773,7 +3773,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool connect(client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool connect(::io::client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -3896,7 +3896,7 @@ namespace io {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (node);
+					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если событие чтения разрешено
 					if(fs->actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
@@ -4030,7 +4030,7 @@ namespace io {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если событие чтения разрешено
 					if(ipc->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
@@ -4526,7 +4526,7 @@ namespace io {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если событие чтения разрешено
 					if(peer->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
@@ -4898,7 +4898,7 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если событие чтения разрешено
 					if(client->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
@@ -5944,7 +5944,7 @@ namespace io {
 							// Если сокет принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Получаем текущее значение объекта сервера
-								server_t * server = awh_cast <server_t *> (node);
+								::io::server_t * server = awh_cast <::io::server_t *> (node);
 								// Если событие чтения разрешено
 								if(server->actions & ::action::READ)
 									// Выполняем принятие нового подключения
@@ -5953,7 +5953,7 @@ namespace io {
 							// Для остальных типов сокетов
 							default: {
 								// Получаем текущее значение объекта сервера
-								server_t * server = awh_cast <server_t *> (node);
+								::io::server_t * server = awh_cast <::io::server_t *> (node);
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -5995,7 +5995,7 @@ namespace io {
 							// Если сокет принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Получаем текущее значение объекта сервера
-								server_t * server = awh_cast <server_t *> (node);
+								::io::server_t * server = awh_cast <::io::server_t *> (node);
 								// Если событие чтения разрешено
 								if(server->actions & ::action::READ){
 									// Количество прочитанных байт
@@ -6323,7 +6323,7 @@ namespace io {
 												return true;
 											}
 											// Выполняем создание нового объекта однорангового узла-источника
-											unique_ptr <origin_t> origin = make_unique <origin_t> (server->backlog.count, fmk, log);
+											unique_ptr <::io::origin_t> origin = make_unique <::io::origin_t> (server->backlog.count, fmk, log);
 											// Устанавливаем файловый дескриптор сокета
 											origin->transfer.fd = server->fd;
 											// Устанавливаем тип узла
@@ -6751,7 +6751,7 @@ namespace io {
 											auto ret = ::__awh_nodes__.emplace(::io::identifier(), ::move(origin));
 											{
 												// Получаем текущее значение объекта однорангового узла-источника
-												origin_t * origin = awh_cast <origin_t *> (ret.first->second.get());
+												::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
 												// Устанавливаем идентификатор объекта однорангового узла-источника
 												origin->id = ret.first->first;
 												// Регистрируем сессию источника по идентификатору источника
@@ -6802,7 +6802,7 @@ namespace io {
 							// Для остальных типов сокетов
 							default: {
 								// Получаем текущее значение объекта сервера
-								server_t * server = awh_cast <server_t *> (node);
+								::io::server_t * server = awh_cast <::io::server_t *> (node);
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -6881,7 +6881,7 @@ namespace io {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (node);
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если событие записи разрешено
 					if(ipc->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
@@ -7170,7 +7170,7 @@ namespace io {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (node);
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если событие записи разрешено
 					if(peer->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
@@ -7454,7 +7454,7 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (node);
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если событие записи разрешено
 					if(client->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
@@ -8299,7 +8299,7 @@ namespace io {
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::local::mtx);
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (node);
+					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Добавляем новое событие в список изменений
 					::local::change.push_back((struct kevent64_s){});
 					// Деактивируем событие на запись данных
@@ -8357,7 +8357,7 @@ namespace io {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (node);
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR){
 							// Выполняем обработку ошибки
@@ -8467,7 +8467,7 @@ namespace io {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (node);
+						::io::file_t * fs = awh_cast <::io::file_t *> (node);
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR){
 							// Выполняем обработку ошибки
@@ -8606,7 +8606,7 @@ namespace io {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (node);
+						::io::client_t * client = awh_cast <::io::client_t *> (node);
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR)
 							// Выполняем обработку ошибки
@@ -8668,7 +8668,7 @@ namespace io {
 						// Выполняем удаление узла
 						::io::destroy(node, log);
 				// Если событие пользовательского события сработало корректно
-				} else if(::io::user(awh_cast <user_t *> (node), io, log))
+				} else if(::io::user(awh_cast <::io::user_t *> (node), io, log))
 					// Пропускаем дальнейшую обработку события
 					return false;
 			} break;
@@ -8780,7 +8780,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Выполняем извлечение текущего значения объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						user->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Выполняем блокировку потоков
@@ -8795,7 +8795,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является таймаутом
 					case static_cast <uint8_t> (event::node_t::TIMEOUT): {
 						// Выполняем извлечение текущего значения объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Выполняем блокировку потоков
@@ -8810,7 +8810,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Выполняем извлечение текущего значения объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Выполняем блокировку потоков
@@ -8825,7 +8825,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						dir->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если путь к директории существует
@@ -8980,7 +8980,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * file = awh_cast <file_t *> (i->second.get());
+						::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						file->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если путь к файлу существует
@@ -9105,7 +9105,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						ipc->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если файловый дескриптор межпроцессного взаимодействия существует
@@ -9210,7 +9210,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если файловый дескриптор клиента существует
@@ -10751,7 +10751,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 						// Если файловый дескриптор сервера существует
@@ -11591,7 +11591,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11622,7 +11622,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11653,7 +11653,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11686,7 +11686,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Получаем текущее значение объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11717,7 +11717,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11748,7 +11748,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11779,7 +11779,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11810,7 +11810,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11841,7 +11841,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -11925,7 +11925,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
-							peer_t * peer = awh_cast <peer_t *> (i->second.get());
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 							// Если объект адреса однорангового узла не инициализирован
 							if(peer->remote == nullptr)
 								// Прерываем выполнение
@@ -11936,7 +11936,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 						// Если узел является одноранговым узлом-источником
 						case static_cast <uint8_t> (event::node_t::ORIGIN): {
 							// Получаем текущее значение объекта однорангового узла-источника
-							origin_t * origin = awh_cast <origin_t *> (i->second.get());
+							::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 							// Если объект адреса однорангового узла не инициализирован
 							if(origin->remote == nullptr)
 								// Прерываем выполнение
@@ -11947,7 +11947,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <client_t *> (i->second.get());
+							auto client = awh_cast <::io::client_t *> (i->second.get());
 							// Если объект адреса клиента не инициализирован
 							if(client->target == nullptr)
 								// Прерываем выполнение
@@ -11958,7 +11958,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <server_t *> (i->second.get());
+							auto server = awh_cast <::io::server_t *> (i->second.get());
 							// Если объект адреса сервера не инициализирован
 							if(server->host == nullptr)
 								// Прерываем выполнение
@@ -12062,7 +12062,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект адреса удалённого узла
-							client_t * client = awh_cast <client_t *> (i->second.get());
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 							// Если объект адреса клиента не инициализирован
 							if(client->target == nullptr){
 								// Создаём новый объект адреса удалённого узла
@@ -12091,7 +12091,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект адреса сервера
-							server_t * server = awh_cast <server_t *> (i->second.get());
+							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 							// Если объект адреса сервера не инициализирован
 							if(server->host == nullptr){
 								// Создаём новый объект адреса сервера
@@ -12182,7 +12182,7 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если объект источника сетевого адреса инициализирован
 					if(client->source != nullptr){
 						/**
@@ -12213,7 +12213,7 @@ string awh::IO::iface(const event::id_t id) const noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -12390,7 +12390,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -12496,7 +12496,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -12646,7 +12646,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * fs = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 					// Если объект адреса директории не инициализирован
 					if(fs->path == nullptr)
 						// Прерываем выполнение
@@ -12657,7 +12657,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (i->second.get());
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если объект адреса файловой системы не инициализирован
 					if(fs->path == nullptr)
 						// Прерываем выполнение
@@ -12668,7 +12668,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если объект адреса однорангового узла не инициализирован
 					if(peer->remote == nullptr)
 						// Прерываем выполнение
@@ -12769,7 +12769,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если объект адреса однорангового узла не инициализирован
 					if(origin->remote == nullptr)
 						// Прерываем выполнение
@@ -12870,7 +12870,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если объект адреса клиента не инициализирован
 					if(client->target == nullptr)
 						// Прерываем выполнение
@@ -12971,7 +12971,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если объект адреса сервера не инициализирован
 					if(server->host == nullptr)
 						// Прерываем выполнение
@@ -13119,7 +13119,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Если типы адресов соответствуют
 					if(i->second->state.family == event::family_t::FSYS){
 						// Получаем текущее значение объекта файловой системы
-						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 						// Если адрес соответствует адресу файловой системы
 						if(fs->addr.check(target, net_addr_t::type_t::FS)){
 							// Если объект адреса файловой системы не инициализирован
@@ -13166,7 +13166,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Если типы адресов не соответствуют
 					} else {
 						// Получаем текущее значение объекта файловой системы
-						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -13200,7 +13200,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Если типы адресов соответствуют
 					if(i->second->state.family == event::family_t::FSYS){
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если адрес соответствует адресу файловой системы
 						if(fs->addr.check(target, net_addr_t::type_t::FS)){
 							// Если объект адреса файловой системы не инициализирован
@@ -13247,7 +13247,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 					// Если типы адресов не соответствуют
 					} else {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -13279,7 +13279,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -13433,7 +13433,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -13640,7 +13640,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем объект файловой системы
-								dir_t * fs = awh_cast <dir_t *> (i->second.get());
+								::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 								// Если объект адреса файловой системы не инициализирован
 								if(fs->path == nullptr)
 									// Прерываем выполнение
@@ -13651,7 +13651,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем объект файловой системы
-								file_t * fs = awh_cast <file_t *> (i->second.get());
+								::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 								// Если объект адреса файловой системы не инициализирован
 								if(fs->path == nullptr)
 									// Прерываем выполнение
@@ -13663,7 +13663,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 					// Если типы адресов не соответствуют
 					} else {
 						// Получаем объект файловой системы
-						dir_t * fs = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -13701,7 +13701,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем объект однорангового узла
-							auto peer = awh_cast <peer_t *> (i->second.get());
+							auto peer = awh_cast <::io::peer_t *> (i->second.get());
 							// Если объект адреса однорангового узла не инициализирован
 							if(peer->remote == nullptr)
 								// Прерываем выполнение
@@ -13898,7 +13898,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если узел является одноранговым узлом-источником
 						case static_cast <uint8_t> (event::node_t::ORIGIN): {
 							// Получаем объект однорангового узла-источника
-							auto origin = awh_cast <origin_t *> (i->second.get());
+							auto origin = awh_cast <::io::origin_t *> (i->second.get());
 							// Если объект адреса однорангового узла не инициализирован
 							if(origin->remote == nullptr)
 								// Прерываем выполнение
@@ -14095,7 +14095,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <client_t *> (i->second.get());
+							auto client = awh_cast <::io::client_t *> (i->second.get());
 							// Если объект адреса клиента не инициализирован
 							if(client->source == nullptr)
 								// Прерываем выполнение
@@ -14288,7 +14288,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <server_t *> (i->second.get());
+							auto server = awh_cast <::io::server_t *> (i->second.get());
 							// Если объект адреса сервера не инициализирован
 							if(server->host == nullptr)
 								// Прерываем выполнение
@@ -14599,7 +14599,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
-								peer_t * peer = awh_cast <peer_t *> (i->second.get());
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
@@ -14610,7 +14610,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
 								// Получаем объект адреса удалённого узла-источника
-								origin_t * origin = awh_cast <origin_t *> (i->second.get());
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(origin->remote == nullptr)
 									// Прерываем выполнение
@@ -14621,7 +14621,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
-								client_t * client = awh_cast <client_t *> (i->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 								// Если объект адреса клиента не инициализирован
 								if(client->target == nullptr)
 									// Прерываем выполнение
@@ -14632,7 +14632,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
-								server_t * server = awh_cast <server_t *> (i->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								// Если объект адреса сервера не инициализирован
 								if(server->host == nullptr)
 									// Прерываем выполнение
@@ -14654,22 +14654,22 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <origin_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
 							break;
 						}
 						// Устанавливаем текст ошибки
@@ -14707,7 +14707,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
-								peer_t * peer = awh_cast <peer_t *> (i->second.get());
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 								// Если объект адреса однорангового узла не инициализирован
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
@@ -14720,7 +14720,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
 								// Получаем объект адреса удалённого узла-источника
-								origin_t * origin = awh_cast <origin_t *> (i->second.get());
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 								// Если объект адреса однорангового узла не инициализирован
 								if(origin->remote == nullptr)
 									// Прерываем выполнение
@@ -14733,7 +14733,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
-								client_t * client = awh_cast <client_t *> (i->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 								// Если объект адреса клиента не инициализирован
 								if(client->source == nullptr)
 									// Прерываем выполнение
@@ -14746,7 +14746,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
-								server_t * server = awh_cast <server_t *> (i->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								/**
 								 * Определяем семейство события
 								 */
@@ -14793,22 +14793,22 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <origin_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
 							break;
 						}
 						// Устанавливаем текст ошибки
@@ -14846,7 +14846,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем объект адреса удалённого узла
-								peer_t * peer = awh_cast <peer_t *> (i->second.get());
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 								// Если объект адреса однорангового узла не инициализирован
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
@@ -14859,7 +14859,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
 								// Получаем объект адреса удалённого узла-источника
-								origin_t * origin = awh_cast <origin_t *> (i->second.get());
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 								// Если объект адреса однорангового узла не инициализирован
 								if(origin->remote == nullptr)
 									// Прерываем выполнение
@@ -14872,7 +14872,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем объект адреса удалённого узла
-								client_t * client = awh_cast <client_t *> (i->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 								// Если объект адреса клиента не инициализирован
 								if(client->source == nullptr)
 									// Прерываем выполнение
@@ -14885,7 +14885,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем объект адреса сервера
-								server_t * server = awh_cast <server_t *> (i->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								/**
 								 * Определяем семейство события
 								 */
@@ -14936,22 +14936,22 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <peer_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <origin_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
 								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
 							break;
 						}
 						// Устанавливаем текст ошибки
@@ -15039,22 +15039,22 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является директорией
 						case static_cast <uint8_t> (event::node_t::DIR):
 							// Получаем функцию обратного вызова ошибки события
-							callback = awh_cast <dir_t *> (i->second.get())->callbacks.error;
+							callback = awh_cast <::io::dir_t *> (i->second.get())->callbacks.error;
 						break;
 						// Если узел является файловой системой
 						case static_cast <uint8_t> (event::node_t::FILE):
 							// Получаем функцию обратного вызова ошибки события
-							callback = awh_cast <file_t *> (i->second.get())->callbacks.error;
+							callback = awh_cast <::io::file_t *> (i->second.get())->callbacks.error;
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Получаем функцию обратного вызова ошибки события
-							callback = awh_cast <client_t *> (i->second.get())->callbacks.error;
+							callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
 						break;
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER):
 							// Получаем функцию обратного вызова ошибки события
-							callback = awh_cast <server_t *> (i->second.get())->callbacks.error;
+							callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
 						break;
 					}
 					// Устанавливаем текст ошибки
@@ -15089,7 +15089,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является директорией
 						case static_cast <uint8_t> (event::node_t::DIR): {
 							// Получаем объект файловой системы
-							dir_t * fs = awh_cast <dir_t *> (i->second.get());
+							::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 							// Если типы адресов соответствуют
 							if(fs->state.family == event::family_t::FSYS){
 								// Если адрес соответствует адресу файловой системы
@@ -15166,7 +15166,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является файловой системой
 						case static_cast <uint8_t> (event::node_t::FILE): {
 							// Получаем объект файловой системы
-							file_t * fs = awh_cast <file_t *> (i->second.get());
+							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если типы адресов соответствуют
 							if(fs->state.family == event::family_t::FSYS){
 								// Если адрес соответствует адресу файловой системы
@@ -15275,7 +15275,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
 									// Получаем объект клиента
-									auto client = awh_cast <client_t *> (i->second.get());
+									auto client = awh_cast <::io::client_t *> (i->second.get());
 									// Устанавливаем полученный MAC-адрес
 									if(client->addr.parse(value, net_addr_t::type_t::MAC)){
 										/**
@@ -15418,7 +15418,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 								// Если узел является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER): {
 									// Получаем объект сервера
-									auto server = awh_cast <server_t *> (i->second.get());
+									auto server = awh_cast <::io::server_t *> (i->second.get());
 									// Устанавливаем полученный MAC-адрес
 									if(server->addr.parse(value, net_addr_t::type_t::MAC)){
 										/**
@@ -15599,7 +15599,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем объект адреса удалённого узла
-										client_t * client = awh_cast <client_t *> (i->second.get());
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Если адрес соответствует адресу файловой системы
 										if(client->addr.check(value, net_addr_t::type_t::FS)){
 											// Устанавливаем тип адреса
@@ -15648,7 +15648,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем объект адреса сервера
-										server_t * server = awh_cast <server_t *> (i->second.get());
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Если адрес соответствует адресу файловой системы
 										if(server->addr.check(value, net_addr_t::type_t::FS)){
 											// Устанавливаем тип адреса
@@ -15739,7 +15739,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <client_t *> (i->second.get());
+							auto client = awh_cast <::io::client_t *> (i->second.get());
 							// Если типы адресов соответствуют
 							if(client->state.family == event::family_t::IPV4){
 								// Выполняем парсинг IPv4-адреса
@@ -15875,7 +15875,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <server_t *> (i->second.get());
+							auto server = awh_cast <::io::server_t *> (i->second.get());
 							// Если типы адресов соответствуют
 							if(server->state.family == event::family_t::IPV4){
 								// Выполняем парсинг IPv4-адреса
@@ -16034,7 +16034,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
-							auto client = awh_cast <client_t *> (i->second.get());
+							auto client = awh_cast <::io::client_t *> (i->second.get());
 							// Если типы адресов соответствуют
 							if(client->state.family == event::family_t::IPV6){
 								// Устанавливаем полученный IPv6-адрес
@@ -16170,7 +16170,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем объект сервера
-							auto server = awh_cast <server_t *> (i->second.get());
+							auto server = awh_cast <::io::server_t *> (i->second.get());
 							// Если типы адресов соответствуют
 							if(server->state.family == event::family_t::IPV6){
 								// Устанавливаем полученный IPv6-адрес
@@ -16345,7 +16345,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем текущее значение объекта клиента
-							client_t * client = awh_cast <client_t *> (i->second.get());
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 							/**
 							 * Определяем тип полученного IP-адреса
 							 */
@@ -16574,7 +16574,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем текущее значение объекта сервера
-							server_t * server = awh_cast <server_t *> (i->second.get());
+							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 							/**
 							 * Определяем тип полученного IP-адреса
 							 */
@@ -16885,7 +16885,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY): {
 					// Выполняем извлечение текущего значения объекта пользовательского события
-					user_t * user = awh_cast <user_t *> (i->second.get());
+					::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
 					struct kevent64_s event{};
 					// Снимаем событие из списка ожидания
@@ -16900,7 +16900,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Выполняем извлечение текущего значения объекта таймера
-					timer_t * timer = awh_cast <timer_t *> (i->second.get());
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
@@ -16920,7 +16920,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
 					struct kevent64_s event{};
 					// Снимаем событие из списка ожидания
@@ -16940,7 +16940,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * file = awh_cast <file_t *> (i->second.get());
+					::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
 					struct kevent64_s event{};
 					// Снимаем событие из списка ожидания
@@ -16957,7 +16957,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
@@ -16984,7 +16984,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
@@ -17007,7 +17007,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
@@ -17103,7 +17103,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::__awh_mtx__);
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <user_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::user_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -17115,7 +17115,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Активируем или деактивируем работу мютексов для передачи данных
-						awh_cast <user_t *> (ret.first->second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+						awh_cast <::io::user_t *> (ret.first->second.get())->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						// Возвращаем идентификатор созданного события
 						return ret.first->first;
 					}
@@ -17158,7 +17158,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::__awh_mtx__);
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <timer_t> ());
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::timer_t> ());
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -17209,7 +17209,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::__awh_mtx__);
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <dir_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::dir_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -17221,7 +17221,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Выполняем инициализацию объекта адреса файловой системы
-						awh_cast <dir_t *> (ret.first->second.get())->path = make_unique <net::addr_fs_t> ();
+						awh_cast <::io::dir_t *> (ret.first->second.get())->path = make_unique <net::addr_fs_t> ();
 						// Возвращаем идентификатор созданного события
 						return ret.first->first;
 					}
@@ -17262,7 +17262,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::__awh_mtx__);
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <file_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::file_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -17274,7 +17274,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 						// Устанавливаем флаг протокола сокета
 						ret.first->second->state.protocol = protocol;
 						// Выполняем инициализацию объекта адреса файловой системы
-						awh_cast <file_t *> (ret.first->second.get())->path = make_unique <net::addr_fs_t> ();
+						awh_cast <::io::file_t *> (ret.first->second.get())->path = make_unique <net::addr_fs_t> ();
 						// Возвращаем идентификатор созданного события
 						return ret.first->first;
 					}
@@ -17327,7 +17327,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::__awh_mtx__);
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -17339,7 +17339,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
 								// Выполняем инициализацию объекта хоста клиента
 								client->target = make_unique <net::attr_uds_t> ();
 								// Получаем объект хоста UDS-сокета
@@ -17400,7 +17400,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::__awh_mtx__);
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -17412,7 +17412,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
 								// Выполняем инициализацию объекта хоста клиента
 								client->target = make_unique <net::attr_net_t> ();
 								// Активируем или деактивируем работу мютексов для передачи данных
@@ -17540,7 +17540,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::__awh_mtx__);
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -17552,7 +17552,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
 								// Выполняем инициализацию объекта хоста сервера
 								server->host = make_unique <net::attr_uds_t> ();
 								// Получаем объект хоста UDS-сокета
@@ -17611,7 +17611,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::__awh_mtx__);
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -17623,7 +17623,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
 								// Устанавливаем флаг протокола сокета
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
 								// Выполняем инициализацию объекта хоста сервера
 								server->host = make_unique <net::attr_net_t> ();
 								/**
@@ -18276,7 +18276,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::__awh_mtx__);
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <ipc_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::ipc_t> (this->_fmk, this->_log));
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -18288,7 +18288,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 						// Устанавливаем тип узла события
 						ret.first->second->state.node = event::node_t::IPC;
 						// Получаем объект IPC-соединения
-						ipc_t * ipc = awh_cast <ipc_t *> (ret.first->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (ret.first->second.get());
 						// Создаём сокет подключения
 						ipc->transfer.fd = fds[i];
 						// Активируем или деактивируем работу мютексов для передачи данных
@@ -18307,7 +18307,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 							// Для клиента
 							case 0: {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <client_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::client_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг типа сокета
@@ -18319,7 +18319,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								// Устанавливаем тип узла события
 								ret.first->second->state.node = event::node_t::CLIENT;
 								// Получаем объект клиента
-								client_t * client = awh_cast <client_t *> (ret.first->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
 								// Активируем или деактивируем работу мютексов для передачи данных
 								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								/**
@@ -18351,7 +18351,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 							// Для сервера
 							case 1: {
 								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <server_t> (this->_fmk, this->_log));
+								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::server_t> (this->_fmk, this->_log));
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг типа сокета
@@ -18363,7 +18363,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
 								// Устанавливаем тип узла события
 								ret.first->second->state.node = event::node_t::SERVER;
 								// Получаем объект сервера
-								server_t * server = awh_cast <server_t *> (ret.first->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
 								/**
 								 * Определяем семейство события
 								 */
@@ -18451,7 +18451,7 @@ size_t awh::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
 						// Если смещение от начала файла
 						case static_cast <uint8_t> (event::seek_t::BEGIN):
 							// Выводим смещение в файле события
-							return awh_cast <file_t *> (i->second.get())->offset;
+							return awh_cast <::io::file_t *> (i->second.get())->offset;
 						// Если смещение от текущей позиции в файле
 						case static_cast <uint8_t> (event::seek_t::CURRENT):
 							// От текущей позиции не может быть смещения
@@ -18459,7 +18459,7 @@ size_t awh::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
 						// Если смещение от конца файла
 						case static_cast <uint8_t> (event::seek_t::END): {
 							// Получаем текущее значение объекта файловой системы
-							file_t * fs = awh_cast <file_t *> (i->second.get());
+							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если файл открыт удачно
 							if(::fstat(fs->fd, &fs->info) == 0)
 								// Выводим смещение в файле события
@@ -18540,17 +18540,17 @@ bool awh::IO::seek(const event::id_t id, const event::seek_t seek, const size_t 
 						// Если смещение от начала файла
 						case static_cast <uint8_t> (event::seek_t::BEGIN):
 							// Устанавливаем смещение в файле события
-							awh_cast <file_t *> (i->second.get())->offset = offset;
+							awh_cast <::io::file_t *> (i->second.get())->offset = offset;
 						break;
 						// Если смещение от текущей позиции в файле
 						case static_cast <uint8_t> (event::seek_t::CURRENT):
 							// Устанавливаем смещение в файле события
-							awh_cast <file_t *> (i->second.get())->offset += offset;
+							awh_cast <::io::file_t *> (i->second.get())->offset += offset;
 						break;
 						// Если смещение от конца файла
 						case static_cast <uint8_t> (event::seek_t::END): {
 							// Получаем текущее значение объекта файловой системы
-							file_t * fs = awh_cast <file_t *> (i->second.get());
+							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если файл открыт удачно
 							if(::fstat(fs->fd, &fs->info) == 0)
 								// Устанавливаем смещение в файле события
@@ -18670,32 +18670,32 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <dir_t *> (i->second.get())->fd;
+					fd = awh_cast <::io::dir_t *> (i->second.get())->fd;
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <file_t *> (i->second.get())->fd;
+					fd = awh_cast <::io::file_t *> (i->second.get())->fd;
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <server_t *> (i->second.get())->fd;
+					fd = awh_cast <::io::server_t *> (i->second.get())->fd;
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <ipc_t *> (i->second.get())->transfer.fd;
+					fd = awh_cast <::io::ipc_t *> (i->second.get())->transfer.fd;
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <peer_t *> (i->second.get())->transfer.fd;
+					fd = awh_cast <::io::peer_t *> (i->second.get())->transfer.fd;
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <client_t *> (i->second.get())->transfer.fd;
+					fd = awh_cast <::io::client_t *> (i->second.get())->transfer.fd;
 				break;
 				// Для других типов узлов
 				default: return false;
@@ -18823,7 +18823,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 													// Если узел является одноранговым узлом
 													case static_cast <uint8_t> (event::node_t::PEER): {
 														// Получаем текущее значение объекта однорангового узла
-														peer_t * peer = awh_cast <peer_t *> (i->second.get());
+														::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 														// Если необходимо установить таймаут на чтение данных
 														auto j = peer->timeouts.find(event::action_t::READ);
 														// Если таймаут на подключение найден
@@ -18839,7 +18839,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 													// Если узел является клиентом
 													case static_cast <uint8_t> (event::node_t::CLIENT): {
 														// Получаем текущее значение объекта клиента
-														client_t * client = awh_cast <client_t *> (i->second.get());
+														::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 														// Если таймаут уже был активирован
 														if(client->timeout != event::action_t::RECONNECT){
 															// Если необходимо установить таймаут на чтение данных
@@ -18917,7 +18917,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 													// Если узел является одноранговым узлом
 													case static_cast <uint8_t> (event::node_t::PEER): {
 														// Получаем текущее значение объекта однорангового узла
-														peer_t * peer = awh_cast <peer_t *> (i->second.get());
+														::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 														// Если таймаут уже был активирован
 														if(peer->timeout != event::action_t::NONE){
 															// Деактивируем таймаут события
@@ -18937,7 +18937,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 													// Если узел является клиентом
 													case static_cast <uint8_t> (event::node_t::CLIENT): {
 														// Получаем текущее значение объекта клиента
-														client_t * client = awh_cast <client_t *> (i->second.get());
+														::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 														// Если таймаут уже был активирован
 														if((client->timeout != event::action_t::NONE) && (client->timeout != event::action_t::RECONNECT)){
 															// Деактивируем таймаут события
@@ -19257,32 +19257,32 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 				// Получаем файловый дескриптор события
-					fd = awh_cast <dir_t *> (i->second.get())->fd;
+					fd = awh_cast <::io::dir_t *> (i->second.get())->fd;
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <file_t *> (i->second.get())->fd;
+					fd = awh_cast <::io::file_t *> (i->second.get())->fd;
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <server_t *> (i->second.get())->fd;
+					fd = awh_cast <::io::server_t *> (i->second.get())->fd;
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <ipc_t *> (i->second.get())->transfer.fd;
+					fd = awh_cast <::io::ipc_t *> (i->second.get())->transfer.fd;
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <peer_t *> (i->second.get())->transfer.fd;
+					fd = awh_cast <::io::peer_t *> (i->second.get())->transfer.fd;
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
-					fd = awh_cast <client_t *> (i->second.get())->transfer.fd;
+					fd = awh_cast <::io::client_t *> (i->second.get())->transfer.fd;
 				break;
 				// Для других типов узлов
 				default: return result;
@@ -19401,7 +19401,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 															// Если узел является одноранговым узлом
 															case static_cast <uint8_t> (event::node_t::PEER): {
 																// Получаем текущее значение объекта однорангового узла
-																peer_t * peer = awh_cast <peer_t *> (i->second.get());
+																::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 																// Если необходимо установить таймаут на чтение данных
 																auto j = peer->timeouts.find(event::action_t::READ);
 																// Если таймаут на подключение найден
@@ -19417,7 +19417,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 															// Если узел является клиентом
 															case static_cast <uint8_t> (event::node_t::CLIENT): {
 																// Получаем текущее значение объекта клиента
-																client_t * client = awh_cast <client_t *> (i->second.get());
+																::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 																// Если таймаут уже был активирован
 																if(client->timeout != event::action_t::RECONNECT){
 																	// Если необходимо установить таймаут на чтение данных
@@ -19495,7 +19495,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 															// Если узел является одноранговым узлом
 															case static_cast <uint8_t> (event::node_t::PEER): {
 																// Получаем текущее значение объекта однорангового узла
-																peer_t * peer = awh_cast <peer_t *> (i->second.get());
+																::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 																// Если таймаут уже был активирован
 																if(peer->timeout != event::action_t::NONE){
 																	// Добавляем новое событие в список изменений
@@ -19513,7 +19513,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 															// Если узел является клиентом
 															case static_cast <uint8_t> (event::node_t::CLIENT): {
 																// Получаем текущее значение объекта клиента
-																client_t * client = awh_cast <client_t *> (i->second.get());
+																::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 																// Если таймаут уже был активирован и не является таймаутом на переподключение
 																if((client->timeout != event::action_t::NONE) && (client->timeout != event::action_t::RECONNECT)){
 																	// Добавляем новое событие в список изменений
@@ -19832,7 +19832,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -19840,7 +19840,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -19873,7 +19873,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
-								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -19925,7 +19925,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -19956,7 +19956,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -19964,7 +19964,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -19997,7 +19997,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
-								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20051,7 +20051,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Получаем текущее значение объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -20082,7 +20082,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -20090,7 +20090,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20123,7 +20123,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
-								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20175,7 +20175,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -20183,7 +20183,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20216,7 +20216,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
-								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20268,7 +20268,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -20276,7 +20276,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20309,7 +20309,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
-								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20361,7 +20361,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -20369,7 +20369,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (j->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20402,7 +20402,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта директории
-								timer_t * timer = awh_cast <timer_t *> (j->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -20505,7 +20505,7 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						/**
 						 * Определяем тип полезной нагрузки SCTP
 						 */
@@ -20572,7 +20572,7 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						/**
 						 * Определяем тип полезной нагрузки SCTP
 						 */
@@ -20639,7 +20639,7 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
 						 * Определяем тип полезной нагрузки SCTP
 						 */
@@ -20706,7 +20706,7 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
 						 * Определяем тип полезной нагрузки SCTP
 						 */
@@ -20838,7 +20838,7 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Выполняем зануление объекта информации SCTP
 						::memset(&peer->transfer.sctp.info, 0, sizeof(peer->transfer.sctp.info));
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20889,7 +20889,7 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Выполняем зануление объекта информации SCTP
 						::memset(&origin->transfer.sctp.info, 0, sizeof(origin->transfer.sctp.info));
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20940,7 +20940,7 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Выполняем зануление объекта информации SCTP
 						::memset(&client->transfer.sctp.info, 0, sizeof(client->transfer.sctp.info));
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20991,7 +20991,7 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Выполняем зануление объекта информации SCTP
 						::memset(&server->transfer.sctp.info, 0, sizeof(server->transfer.sctp.info));
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -21123,7 +21123,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						// Устанавливаем статус события в состояние ожидания
 						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
 						// Выполняем извлечение текущего значения объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Если событие успешно добавлено
 						if(timer->delay > 0){
 							// Выполняем блокировку потоков
@@ -21158,14 +21158,14 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (i->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 								// Активируем событие на запись для клиентского сокета
 								EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ENABLE | EV_RECEIPT, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
 							} break;
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
-								file_t * file = awh_cast <file_t *> (i->second.get());
+								::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 								// Активируем событие на запись для клиентского сокета
 								EV_SET64(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ENABLE | EV_RECEIPT, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, reinterpret_cast <uint64_t> (file), 0, 0);
 							} break;
@@ -21185,7 +21185,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent64_s){});
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Активируем событие на запись для клиентского сокета
 						EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
 						// Выводим положительный результат
@@ -21221,7 +21221,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										client_t * client = awh_cast <client_t *> (i->second.get());
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Активируем событие на чтение для клиентского сокета
 										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
 										// Если необходимо установить таймаут на чтение данных с сервера
@@ -21243,7 +21243,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										server_t * server = awh_cast <server_t *> (i->second.get());
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Активируем событие на запись для клиентского сокета
 										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
 									} break;
@@ -21260,7 +21260,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										client_t * client = awh_cast <client_t *> (i->second.get());
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -21293,7 +21293,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										server_t * server = awh_cast <server_t *> (i->second.get());
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -21349,7 +21349,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										client_t * client = awh_cast <client_t *> (i->second.get());
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Устанавливаем статус события в состояние ожидания
 										client->state.status.store(event::status_t::PENDING, std::memory_order_release);
 										// Активируем событие на запись для клиентского сокета
@@ -21373,7 +21373,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										server_t * server = awh_cast <server_t *> (i->second.get());
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Устанавливаем статус события в состояние прослушивания
 										server->state.status.store(event::status_t::LISTENING, std::memory_order_release);
 										// Активируем событие на чтение для серверного сокета
@@ -21392,7 +21392,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
 										// Получаем текущее значение объекта клиента
-										client_t * client = awh_cast <client_t *> (i->second.get());
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -21423,7 +21423,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
-										server_t * server = awh_cast <server_t *> (i->second.get());
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -21511,7 +21511,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 					// Устанавливаем статус события в состояние отмены
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -21534,7 +21534,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 					// Устанавливаем статус события в состояние отмены
 					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -21597,7 +21597,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если событие подключение к серверу разрешено
 						if(client->transfer.actions & ::action::CONNECT){
 							// Устанавливаем статус события в состояние успешного подключения
@@ -21861,7 +21861,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY): {
 								// Получаем текущее значение объекта пользовательского события
-								user_t * user = awh_cast <user_t *> (i->second.get());
+								::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(user->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -21892,7 +21892,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (i->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -21923,7 +21923,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
-								file_t * fs = awh_cast <file_t *> (i->second.get());
+								::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -21956,7 +21956,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта таймера
-								timer_t * timer = awh_cast <timer_t *> (i->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -21987,7 +21987,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
 								// Получаем текущее значение объекта межпроцессного взаимодействия
-								ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+								::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(ipc->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22018,7 +22018,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
-								peer_t * peer = awh_cast <peer_t *> (i->second.get());
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22049,7 +22049,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
 								// Получаем текущее значение объекта однорангового узла-источника
-								origin_t * origin = awh_cast <origin_t *> (i->second.get());
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22080,7 +22080,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем текущее значение объекта сервера
-								server_t * server = awh_cast <server_t *> (i->second.get());
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22120,7 +22120,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22151,7 +22151,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22182,7 +22182,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22215,7 +22215,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Получаем текущее значение объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22246,7 +22246,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22277,7 +22277,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22308,7 +22308,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22339,7 +22339,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22370,7 +22370,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22452,7 +22452,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если событие разрешено принимать входящие соединения
 						if(server->actions & ::action::ACCEPT){
 							// Устанавливаем статус события в состояние успешного прослушивания
@@ -22591,7 +22591,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY): {
 								// Получаем текущее значение объекта пользовательского события
-								user_t * user = awh_cast <user_t *> (i->second.get());
+								::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(user->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22622,7 +22622,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (i->second.get());
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22653,7 +22653,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
-								file_t * fs = awh_cast <file_t *> (i->second.get());
+								::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22686,7 +22686,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта таймера
-								timer_t * timer = awh_cast <timer_t *> (i->second.get());
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22717,7 +22717,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
 								// Получаем текущее значение объекта межпроцессного взаимодействия
-								ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+								::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(ipc->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22748,7 +22748,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
-								peer_t * peer = awh_cast <peer_t *> (i->second.get());
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22779,7 +22779,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
 								// Получаем текущее значение объекта однорангового узла-источника
-								origin_t * origin = awh_cast <origin_t *> (i->second.get());
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22810,7 +22810,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
-								client_t * client = awh_cast <client_t *> (i->second.get());
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 								// Если установлена функция обратного вызова
 								if(client->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -22850,7 +22850,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22881,7 +22881,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22912,7 +22912,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22945,7 +22945,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Получаем текущее значение объекта таймера
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -22976,7 +22976,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -23007,7 +23007,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -23038,7 +23038,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -23069,7 +23069,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -23100,7 +23100,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -23220,7 +23220,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (i->second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если запись в файл разрешена
 						if(fs->actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
@@ -23293,7 +23293,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(user->mtx);
 						// Добавляем данные в очередь событий пользователя
@@ -23322,7 +23322,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Если записи в сокет разрешено
 						if(ipc->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
@@ -24045,7 +24045,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если записи в сокет разрешено
 						if(peer->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
@@ -24651,7 +24651,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если записи в сокет разрешено
 						if(origin->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
@@ -25530,7 +25530,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если записи в сокет разрешено
 						if(client->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
@@ -27316,7 +27316,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если записи в сокет разрешено
 						if(server->actions & ::action::WRITE){
 							// Если сервер находится в запущенном состоянии
@@ -28128,7 +28128,7 @@ bool awh::IO::clearBlacklist(const event::id_t id) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект узла
-					auto node = awh_cast <server_t *> (i->second.get());
+					auto node = awh_cast <::io::server_t *> (i->second.get());
 					// Очищаем чёрный список
 					node->blacklist.clear();
 					// Устанавливаем результат
@@ -28184,7 +28184,7 @@ bool awh::IO::addToBlacklist(const event::id_t id, const string & value) noexcep
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
 						 * Определяем тип адреса события
 						 */
@@ -28345,7 +28345,7 @@ bool awh::IO::removeFromBlacklist(const event::id_t id, const string & value) no
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект узла
-						auto node = awh_cast <server_t *> (i->second.get());
+						auto node = awh_cast <::io::server_t *> (i->second.get());
 						// Если чёрный список не пустой
 						if(!node->blacklist.empty()){
 							/**
@@ -28439,7 +28439,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::blacklist(co
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
-					return awh_cast <server_t *> (i->second.get())->blacklist;
+					return awh_cast <::io::server_t *> (i->second.get())->blacklist;
 				// Для других типов узлов
 				default: {
 					/**
@@ -28501,7 +28501,7 @@ bool awh::IO::clearWhitelist(const event::id_t id) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект узла
-					auto node = awh_cast <server_t *> (i->second.get());
+					auto node = awh_cast <::io::server_t *> (i->second.get());
 					// Очищаем белый список
 					node->whitelist.clear();
 					// Устанавливаем результат
@@ -28557,7 +28557,7 @@ bool awh::IO::addToWhitelist(const event::id_t id, const string & value) noexcep
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
 						 * Определяем тип адреса события
 						 */
@@ -28716,7 +28716,7 @@ bool awh::IO::removeFromWhitelist(const event::id_t id, const string & value) no
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект узла
-						auto node = awh_cast <server_t *> (i->second.get());
+						auto node = awh_cast <::io::server_t *> (i->second.get());
 						// Если белый список не пустой
 						if(!node->whitelist.empty()){
 							/**
@@ -28810,7 +28810,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::IO::whitelist(co
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим полученный результат
-					return awh_cast <server_t *> (i->second.get())->whitelist;
+					return awh_cast <::io::server_t *> (i->second.get())->whitelist;
 				// Для других типов узлов
 				default: {
 					/**
@@ -28880,7 +28880,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем объект клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
 						 * Определяем семейство события
 						 */
@@ -29150,7 +29150,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
 						 * Определяем семейство события
 						 */
@@ -29531,7 +29531,7 @@ void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool ada
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Выполняем создание новой узла
-					auto node = awh_cast <server_t *> (i->second.get());
+					auto node = awh_cast <::io::server_t *> (i->second.get());
 					// Устанавливаем глубину очереди принятия входящих соединений
 					node->backlog.depth = depth;
 					// Устанавливаем режим адаптивной глубины очереди принятия входящих соединений
@@ -29599,7 +29599,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (i->second.get());
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -29642,7 +29642,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если узел является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного соединения
-					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -29686,7 +29686,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -29726,7 +29726,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -29766,7 +29766,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -29806,7 +29806,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -29910,7 +29910,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (i->second.get());
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -29960,7 +29960,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если узел является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного соединения
-					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -29997,7 +29997,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -30029,7 +30029,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -30061,7 +30061,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -30111,7 +30111,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем семейство события
 					 */
@@ -30240,28 +30240,28 @@ bool awh::IO::delivery(const event::id_t id, const event::delivery_mode_t delive
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <peer_t *> (i->second.get())->state.delivery = delivery;
+					awh_cast <::io::peer_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <origin_t *> (i->second.get())->state.delivery = delivery;
+					awh_cast <::io::origin_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <client_t *> (i->second.get())->state.delivery = delivery;
+					awh_cast <::io::client_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Устанавливаем максимальное количество хопов для события
-					awh_cast <server_t *> (i->second.get())->state.delivery = delivery;
+					awh_cast <::io::server_t *> (i->second.get())->state.delivery = delivery;
 					// Выводим результат работы функции
 					return true;
 				}
@@ -30368,7 +30368,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
 					if((result = this->_eth.hops(peer->transfer.fd, family, peer->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
@@ -30377,7 +30377,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
 					if((result = this->_eth.hops(origin->transfer.fd, family, origin->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
@@ -30386,7 +30386,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
 					if((result = this->_eth.hops(client->transfer.fd, family, client->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
@@ -30395,7 +30395,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
 					if((result = this->_eth.hops(server->fd, family, server->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
@@ -30473,11 +30473,11 @@ uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Выводим значение задержки времени таймаута
-					return awh_cast <timer_t *> (i->second.get())->delay;
+					return awh_cast <::io::timer_t *> (i->second.get())->delay;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события однорангового узла
-					auto peer = awh_cast <peer_t *> (i->second.get());
+					auto peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = peer->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -30488,7 +30488,7 @@ uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем объект события однорангового узла-источника
-					auto origin = awh_cast <origin_t *> (i->second.get());
+					auto origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = origin->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -30499,7 +30499,7 @@ uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект события сервера
-					auto server = awh_cast <server_t *> (i->second.get());
+					auto server = awh_cast <::io::server_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = server->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -30510,7 +30510,7 @@ uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект события клиента
-					auto client = awh_cast <client_t *> (i->second.get());
+					auto client = awh_cast <::io::client_t *> (i->second.get());
 					// Выполняем поиск таймаута для действия события
 					auto i = client->timeouts.find(action);
 					// Если таймаут для действия события найден
@@ -30584,7 +30584,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::local::mtx);
 					// Получаем объект события таймаута
-					timer_t * timer = awh_cast <timer_t *> (i->second.get());
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 					// Устанавливаем значение задержки времени таймаута
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
@@ -30609,7 +30609,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::local::mtx);
 					// Получаем объект события интервала
-					timer_t * timer = awh_cast <timer_t *> (i->second.get());
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 					// Устанавливаем значение задержки времени таймаута
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
@@ -30642,12 +30642,12 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <peer_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::peer_t *> (i->second.get())->timeouts[action] = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
 							// Получаем объект события однорангового узла
-							peer_t * peer = awh_cast <peer_t *> (i->second.get());
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -30690,12 +30690,12 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <peer_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::peer_t *> (i->second.get())->timeouts[action] = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
 							// Получаем объект события однорангового узла-источника
-							origin_t * origin = awh_cast <origin_t *> (i->second.get());
+							::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 							// Если установлена функция обратного вызова
 							if(origin->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -30742,12 +30742,12 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Если действие является переподключением
 						case static_cast <uint8_t> (event::action_t::RECONNECT):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <client_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::client_t *> (i->second.get())->timeouts[action] = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
 							// Получаем объект события клиента
-							client_t * client = awh_cast <client_t *> (i->second.get());
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 							// Если установлена функция обратного вызова
 							if(client->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -30790,12 +30790,12 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <server_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::server_t *> (i->second.get())->timeouts[action] = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
 							// Получаем объект события сервера
-							server_t * server = awh_cast <server_t *> (i->second.get());
+							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -30885,7 +30885,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -30958,7 +30958,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (i->second.get());
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31049,7 +31049,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31086,7 +31086,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31132,7 +31132,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31178,7 +31178,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31242,7 +31242,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31334,7 +31334,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31513,7 +31513,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (i->second.get());
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31712,7 +31712,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31796,7 +31796,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31900,7 +31900,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -31988,7 +31988,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -32138,7 +32138,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
@@ -32299,17 +32299,17 @@ bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t i
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Получаем файловый дескриптор события
-					socket = awh_cast <server_t *> (i->second.get())->fd;
+					socket = awh_cast <::io::server_t *> (i->second.get())->fd;
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Получаем файловый дескриптор события
-					socket = awh_cast <peer_t *> (i->second.get())->transfer.fd;
+					socket = awh_cast <::io::peer_t *> (i->second.get())->transfer.fd;
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
-					socket = awh_cast <client_t *> (i->second.get())->transfer.fd;
+					socket = awh_cast <::io::client_t *> (i->second.get())->transfer.fd;
 				break;
 				// Для других типов узлов
 				default: return false;
@@ -32371,7 +32371,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					// Если событие ожидает результата обработки события
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Получаем текущее значение объекта межпроцессного соединения
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						ipc->state.oldset = ipc->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32395,7 +32395,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					// Если событие ожидает результата обработки события
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						dir->state.oldset = dir->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32415,7 +32415,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					// Если событие ожидает результата обработки события
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Получаем текущее значение объекта файловой системы
-						file_t * file = awh_cast <file_t *> (i->second.get());
+						::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						file->state.oldset = file->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32435,7 +32435,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					// Если статус события является успешным
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						peer->state.oldset = peer->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32493,7 +32493,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					// Если статус события является успешным
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						origin->state.oldset = origin->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32544,7 +32544,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
 					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)){
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						client->state.oldset = client->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32602,7 +32602,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
 					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING)){
 						// Получаем объект события сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
 						server->state.oldset = server->state.status.load(std::memory_order_acquire);
 						// Устанавливаем статус события в состояние паузы
@@ -32675,7 +32675,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является межпроцессным соединением
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного соединения
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						ipc->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
@@ -32693,7 +32693,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						dir->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Флаги событий каталога
@@ -32741,7 +32741,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * file = awh_cast <file_t *> (i->second.get());
+						::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						file->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Флаги событий каталога
@@ -32789,7 +32789,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						peer->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
@@ -32822,7 +32822,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						origin->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
@@ -32850,7 +32850,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						client->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
@@ -32883,7 +32883,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект события сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						server->state.status.store(event::status_t::RESUMED, std::memory_order_release);
 						// Если событие чтения из сокета разрешено
@@ -32946,7 +32946,7 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 					// Если статус события является успешным
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Выполняем поиск таймаута для действия чтения
 						auto j = peer->timeouts.find(event::action_t::READ);
 						// Выводим результат проверки
@@ -32958,7 +32958,7 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 					// Если статус события является успешным
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Идентификатор сессии источника
 						origin_id_t sid;
 						/**
@@ -32990,7 +32990,7 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Выполняем поиск таймаута для действия чтения
 						auto j = client->timeouts.find(event::action_t::READ);
 						// Выводим результат проверки
@@ -33040,7 +33040,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (i->second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
 						struct kevent64_s event{};
 						// Снимаем событие из списка ожидания
@@ -33061,7 +33061,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Получаем объект события интервала
-						timer_t * timer = awh_cast <timer_t *> (i->second.get());
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
 						struct kevent64_s event{};
 						// Снимаем событие из списка ожидания
@@ -33080,7 +33080,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (i->second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
 						struct kevent64_s event{};
 						// Снимаем событие из списка ожидания
@@ -33107,7 +33107,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * file = awh_cast <file_t *> (i->second.get());
+						::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
 						struct kevent64_s event{};
 						// Снимаем событие из списка ожидания
@@ -33130,7 +33130,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Объекты событий для удаления из списка ожидания
 						struct kevent64_s events[2] = {};
 						// Снимаем событие на чтение из списка ожидания
@@ -33155,7 +33155,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (i->second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Количество событий для удаления
 						size_t count = 2;
 						// Объекты событий для удаления из списка ожидания
@@ -33189,7 +33189,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (i->second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если установлен таймаут для события
 						if(origin->timeout != event::action_t::NONE){
 							// Объект события для удаления из списка ожидания
@@ -33211,7 +33211,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (i->second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Количество событий для удаления
 						size_t count = 2;
 						// Объекты событий для удаления из списка ожидания
@@ -33259,7 +33259,7 @@ void awh::IO::clear() noexcept {
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
-						server_t * server = awh_cast <server_t *> (i->second.get());
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Объекты событий для удаления из списка ожидания
 						struct kevent64_s events[2] = {};
 						// Снимаем событие на чтение из списка ожидания
@@ -33518,7 +33518,7 @@ bool awh::IO::reinitialize() noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					// Если каталог открыт
 					if(dir->handle != nullptr)
 						// Закрываем каталог
@@ -33557,7 +33557,7 @@ bool awh::IO::reinitialize() noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * file = awh_cast <file_t *> (i->second.get());
+					::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(file->fd != net::invalid_socket_t)
 						// Закрываем дескриптор сокета
@@ -33592,7 +33592,7 @@ bool awh::IO::reinitialize() noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((peer->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) ||
 					   (peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
@@ -33656,7 +33656,7 @@ bool awh::IO::reinitialize() noexcept {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((origin->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) ||
 					   (origin->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
@@ -33689,7 +33689,7 @@ bool awh::IO::reinitialize() noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект события клиента
-					auto client = awh_cast <client_t *> (i->second.get());
+					auto client = awh_cast <::io::client_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
 					   (client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
@@ -33778,7 +33778,7 @@ bool awh::IO::reinitialize() noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект события сервера
-					auto server = awh_cast <server_t *> (i->second.get());
+					auto server = awh_cast <::io::server_t *> (i->second.get());
 					// Если событие находится в состоянии инициализации
 					if((server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
 					   (server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
@@ -33928,7 +33928,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					// Если каталог открыт
 					if(dir->handle != nullptr)
 						// Закрываем каталог
@@ -33949,7 +33949,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * file = awh_cast <file_t *> (i->second.get());
+					::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(file->fd != net::invalid_socket_t)
 						// Закрываем дескриптор сокета
@@ -33966,7 +33966,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
-					ipc_t * ipc = awh_cast <ipc_t *> (i->second.get());
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(ipc->transfer.fd != net::invalid_socket_t)
 						// Закрываем дескриптор сокета
@@ -33983,7 +33983,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
-					peer_t * peer = awh_cast <peer_t *> (i->second.get());
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t)
 						// Закрываем дескриптор сокета
@@ -34000,7 +34000,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
-					origin_t * origin = awh_cast <origin_t *> (i->second.get());
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если установлена функция обратного вызова
 					if(origin->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -34013,7 +34013,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
-					client_t * client = awh_cast <client_t *> (i->second.get());
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(client->transfer.fd != net::invalid_socket_t)
 						// Закрываем дескриптор сокета
@@ -34042,7 +34042,7 @@ bool awh::IO::deinitialize() noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
-					server_t * server = awh_cast <server_t *> (i->second.get());
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(server->fd != net::invalid_socket_t)
 						// Закрываем дескриптор сокета
@@ -34132,7 +34132,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
-						dir_t * dir = awh_cast <dir_t *> (node.second.get());
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(dir->mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34141,7 +34141,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является файловой системой
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
-						file_t * fs = awh_cast <file_t *> (node.second.get());
+						::io::file_t * fs = awh_cast <::io::file_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(fs->mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34150,7 +34150,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
 						// Получаем текущее значение объекта пользовательского события
-						user_t * user = awh_cast <user_t *> (node.second.get());
+						::io::user_t * user = awh_cast <::io::user_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(user->mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34159,7 +34159,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
-						ipc_t * ipc = awh_cast <ipc_t *> (node.second.get());
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(ipc->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34168,7 +34168,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
-						peer_t * peer = awh_cast <peer_t *> (node.second.get());
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(peer->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34177,7 +34177,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
-						origin_t * origin = awh_cast <origin_t *> (node.second.get());
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(origin->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34186,7 +34186,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
-						client_t * client = awh_cast <client_t *> (node.second.get());
+						::io::client_t * client = awh_cast <::io::client_t *> (node.second.get());
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(client->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
@@ -34287,7 +34287,7 @@ size_t awh::IO::size(const event::id_t id) const noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
-					dir_t * dir = awh_cast <dir_t *> (i->second.get());
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					// Если объект адреса файловой системы не инициализирован
 					if(dir->path == nullptr)
 						// Прерываем выполнение
@@ -34322,7 +34322,7 @@ size_t awh::IO::size(const event::id_t id) const noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Получаем текущее значение объекта файловой системы
-					file_t * fs = awh_cast <file_t *> (i->second.get());
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Выполняем блокировку уникальным мютексом
 					const locker_t <> lock(fs->mtx);
 					// Если файл открыт удачно
@@ -34681,7 +34681,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является интервалом
 							case static_cast <uint8_t> (event::node_t::INTERVAL): {
 								// Получаем текущее значение объекта таймера
-								timer_t * timer = awh_cast <timer_t *> (node);
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34719,7 +34719,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является директорией
 							case static_cast <uint8_t> (event::node_t::DIR): {
 								// Получаем текущее значение объекта директории
-								dir_t * dir = awh_cast <dir_t *> (node);
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34764,7 +34764,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
-								file_t * fs = awh_cast <file_t *> (node);
+								::io::file_t * fs = awh_cast <::io::file_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34809,7 +34809,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является межпроцессным взаимодействием
 							case static_cast <uint8_t> (event::node_t::IPC): {
 								// Получаем текущее значение объекта межпроцессного взаимодействия
-								ipc_t * ipc = awh_cast <ipc_t *> (node);
+								::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34854,7 +34854,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
-								peer_t * peer = awh_cast <peer_t *> (node);
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34899,7 +34899,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
 								// Получаем текущее значение объекта однорангового узла-источника
-								origin_t * origin = awh_cast <origin_t *> (node);
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34944,7 +34944,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
-								client_t * client = awh_cast <client_t *> (node);
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -34989,7 +34989,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Получаем текущее значение объекта сервера
-								server_t * server = awh_cast <server_t *> (node);
+								::io::server_t * server = awh_cast <::io::server_t *> (node);
 								// Если мы получили ошибку
 								if((i->flags & EV_ERROR) && (i->data != 0)){
 									// Если установлена функция обратного вызова
@@ -35168,32 +35168,32 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <file_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <user_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <::io::user_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <ipc_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <peer_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <origin_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на чтение события
-					awh_cast <client_t *> (i->second.get())->callbacks.read = ::move(cb);
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35256,37 +35256,37 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <file_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <user_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::user_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <ipc_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <peer_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <origin_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <client_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <server_t *> (i->second.get())->callbacks.write = ::move(cb);
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35349,42 +35349,42 @@ void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noex
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <user_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::user_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <dir_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::dir_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <file_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <ipc_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <peer_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <origin_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <client_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на получение общего события
-					awh_cast <server_t *> (i->second.get())->callbacks.event = ::move(cb);
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35447,49 +35447,49 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <user_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::user_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <timer_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::timer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <dir_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::dir_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <file_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <ipc_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <peer_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <origin_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <client_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
-					awh_cast <server_t *> (i->second.get())->callbacks.error = ::move(cb);
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35552,49 +35552,49 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <user_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::user_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <timer_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::timer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <dir_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::dir_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <file_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <ipc_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <peer_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <origin_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <client_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					awh_cast <server_t *> (i->second.get())->callbacks.status = ::move(cb);
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35657,12 +35657,12 @@ void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noe
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
 					// Устанавливаем функцию обратного вызова на получение изменения каталога
-					awh_cast <dir_t *> (i->second.get())->callbacks.change = ::move(cb);
+					awh_cast <::io::dir_t *> (i->second.get())->callbacks.change = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
 					// Устанавливаем функцию обратного вызова на получение изменения файла
-					awh_cast <file_t *> (i->second.get())->callbacks.change = ::move(cb);
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.change = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35725,7 +35725,7 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на событие принятия нового подключения
-					awh_cast <server_t *> (i->second.get())->callbacks.accept = ::move(cb);
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.accept = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35788,7 +35788,7 @@ void awh::IO::on(const event::id_t id, const event::callback::origin_t & cb) noe
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Устанавливаем функцию обратного вызова на событие принятия нового подключения
-					awh_cast <server_t *> (i->second.get())->callbacks.origin = ::move(cb);
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.origin = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
@@ -35851,7 +35851,7 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на событие подключения к серверу
-					awh_cast <client_t *> (i->second.get())->callbacks.connect = ::move(cb);
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.connect = ::move(cb);
 				break;
 				// Для других типов узлов
 				default: {
