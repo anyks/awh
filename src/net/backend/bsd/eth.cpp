@@ -2350,24 +2350,51 @@ bool awh::Ethernet::keepalive(const net::socket_t sock, const int32_t cnt, const
 		// Выходим из функции
 		return result;
 	}
-	// Время через которое происходит проверка подключения
-	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-		// Выходим из функции
-		return result;
-	}
+	/**
+	 * Если мы работаем в MacOS X
+	 */
+	#if __APPLE__
+		// Время через которое происходит проверка подключения
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+			// Выходим из функции
+			return result;
+		}
+	/**
+	 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
+	 */
+	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		// Время через которое происходит проверка подключения
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+			// Выходим из функции
+			return result;
+		}
+	#endif
 	// Время между попытками
 	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
 		/**
