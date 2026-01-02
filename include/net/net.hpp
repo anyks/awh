@@ -317,32 +317,6 @@ namespace awh {
 			atomic <event::status_t> status; // Флаг статуса события
 			atomic <event::status_t> oldset; // Флаг старого статуса события
 			/**
-			 * @brief Оператор присваивания
-			 *
-			 * @param state объект состояния события
-			 * @return      ссылка на объект состояния события
-			 */
-			State & operator = (const State & state) noexcept {
-				// Проверяем на самоприсваивание
-				if(this != &state){
-					/**
-					 * Выполняем копирование полей состояния события
-					 */
-					this->options  = state.options;
-					this->node     = state.node;
-					this->hops     = state.hops;
-					this->type     = state.type;
-					this->family   = state.family;
-					this->address  = state.address;
-					this->protocol = state.protocol;
-					this->delivery = state.delivery;
-					this->status.store(state.status.load());
-					this->oldset.store(state.oldset.load());
-				}
-				// Возвращаем ссылку на объект состояния события
-				return (* this);
-			}
-			/**
 			 * @brief Конструктор
 			 *
 			 */
@@ -487,7 +461,7 @@ namespace awh {
 		 */
 		typedef struct Timer : public node_t {
 			// Задержка времени таймера в миллисекундах
-			uint16_t delay;
+			uint32_t delay;
 			// Обратные вызовы события
 			callbacks_t callbacks;
 			/**
@@ -569,7 +543,7 @@ namespace awh {
 			// Обратные вызовы события
 			peer_callbacks_t callbacks;
 			// Активные таймауты события
-			unordered_map <event::action_t, uint16_t> timeouts;
+			unordered_map <event::action_t, uint32_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
@@ -593,7 +567,7 @@ namespace awh {
 			// Обратные вызовы события
 			client_callbacks_t callbacks;
 			// Активные таймауты события
-			unordered_map <event::action_t, uint16_t> timeouts;
+			unordered_map <event::action_t, uint32_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *
@@ -621,7 +595,7 @@ namespace awh {
 			// Белый список пиров которым разрешён доступ
 			unordered_map <string, event::address_t> whitelist;
 			// Активные таймауты события
-			unordered_map <event::action_t, uint16_t> timeouts;
+			unordered_map <event::action_t, uint32_t> timeouts;
 			/**
 			 * @brief Конструктор
 			 *

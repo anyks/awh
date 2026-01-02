@@ -19180,7 +19180,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (options)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -30422,7 +30422,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
  * @param action тип действия события
  * @return       значение таймаута в миллисекундах
  */
-uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) const noexcept {
+uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -30531,7 +30531,7 @@ uint16_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
  * @param action  тип действия события
  * @param timeout значение таймаута в миллисекундах
  */
-void awh::IO::timeout(const event::id_t id, const event::action_t action, const uint16_t timeout) noexcept {
+void awh::IO::timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -30561,7 +30561,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Останавливаем активный таймаут
 						EV_SET64(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
 						// Если таймаут необходимо запустить
-						if(timeout > 0){
+						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent64_s){});
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
@@ -30586,7 +30586,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Останавливаем активный таймаут
 						EV_SET64(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
 						// Если таймаут необходимо запустить
-						if(timeout > 0){
+						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent64_s){});
 							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд

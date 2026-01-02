@@ -397,7 +397,7 @@ namespace awh {
 			 * @param action тип действия события
 			 * @return       значение таймаута в миллисекундах
 			 */
-			uint16_t timeout(const event::id_t id, const event::action_t action) const noexcept;
+			uint32_t timeout(const event::id_t id, const event::action_t action) const noexcept;
 			/**
 			 * @brief Метод установки таймаута события
 			 *
@@ -405,7 +405,7 @@ namespace awh {
 			 * @param action  тип действия события
 			 * @param timeout значение таймаута в миллисекундах
 			 */
-			void timeout(const event::id_t id, const event::action_t action, const uint16_t timeout) noexcept;
+			void timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept;
 		public:
 			/**
 			 * @brief Метод получения действия события

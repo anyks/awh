@@ -414,7 +414,7 @@ namespace awh {
 			 * @param action тип действия события
 			 * @return       значение таймаута в миллисекундах
 			 */
-			virtual uint16_t timeout(const event::id_t id, const event::action_t action) const noexcept = 0;
+			virtual uint32_t timeout(const event::id_t id, const event::action_t action) const noexcept = 0;
 			/**
 			 * @brief Метод установки таймаута события
 			 *
@@ -422,7 +422,7 @@ namespace awh {
 			 * @param action  тип действия события
 			 * @param timeout значение таймаута в миллисекундах
 			 */
-			virtual void timeout(const event::id_t id, const event::action_t action, const uint16_t timeout) noexcept = 0;
+			virtual void timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения действия события
