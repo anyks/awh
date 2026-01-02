@@ -88,6 +88,30 @@
 #include <sys/locker.hpp>
 #include <sys/threadpool.hpp>
 
+
+// На FreeBSD и macOS kevent64_s может быть не определён в public headers
+#if !defined(__STRUCT_kevent64_s_defined) && defined(__FreeBSD__)
+#define __STRUCT_kevent64_s_defined
+struct kevent64_s {
+    uint64_t ident;
+    int16_t  filter;
+    uint16_t flags;
+    uint32_t fflags;
+    int64_t  data;
+    uint64_t udata;
+    uint32_t ext[4];  // reserved for future use; set to zero
+};
+#endif
+
+// Объявляем kevent64, если не определён
+#ifndef kevent64
+int kevent64(int kq,
+             const struct kevent64_s *changelist, int nchanges,
+             struct kevent64_s *eventlist, int nevents,
+             unsigned int flags,
+             const struct timespec *timeout);
+#endif
+
 /**
  * Подписываемся на стандартное пространство имён
  */
