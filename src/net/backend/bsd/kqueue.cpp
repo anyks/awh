@@ -4669,7 +4669,11 @@ namespace io {
 														
 														// --- УВЕДОМЛЕНИЕ ---
 														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+															
+															cout << "CMSG level: " << cmsg->cmsg_level << ", type: " << cmsg->cmsg_type << endl;
+															
 															if (cmsg->cmsg_level == IPPROTO_SCTP) {
+																
 																
 																cout << "Notification type: ";
 																switch (cmsg->cmsg_type) {
