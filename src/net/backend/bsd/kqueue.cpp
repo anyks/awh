@@ -3207,7 +3207,8 @@ namespace io {
 						// const net::socket_t sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
 						
 						
-
+						// Буфер для временного хранения данных
+						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 
 
 						// Выполняем чтение данных из SCTP-сокета
