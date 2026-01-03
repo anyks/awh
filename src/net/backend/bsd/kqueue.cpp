@@ -6105,6 +6105,19 @@ namespace io {
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Если событие является неблокирующим
 											if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
+												
+												sctp_assoc_t assoc_id = node->sctp.info.sinfo_assoc_id;
+
+
+												// Отделяем в новый сокет
+												const net::socket_t sock = ::sctp_peeloff(node->fd, assoc_id);
+												if (sock == net::invalid_socket_t) {
+													perror("sctp_peeloff");
+												}
+
+												cout << "!!!!! SERVER READ " << sock << endl;
+												
+												
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
