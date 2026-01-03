@@ -1806,24 +1806,28 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 			events.sctp_association_event = 1;
 		// Отключаем асоциационные события SCTP_ASSOC_CHANGE
 		else events.sctp_association_event = 0;
+		/*
 		// Если необходимо установить асоциационные события SCTP_ASSOC_RESET
 		if(options & event::sctp::notify::AWH_ASSOC_RESET)
 			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
 			events.sctp_assoc_reset_event = 1;
 		// Отключаем асоциационные события SCTP_ASSOC_RESET
 		else events.sctp_assoc_reset_event = 0;
+		*/
 		// Если необходимо установить события SCTP_SEND_FAILED_EVENT
 		if(options & event::sctp::notify::AWH_SEND_FAILURE)
 			// Устанавливаем события SCTP_SEND_FAILED_EVENT
 			events.sctp_send_failure_event = 1;
 		// Отключаем события SCTP_SEND_FAILED_EVENT
 		else events.sctp_send_failure_event = 0;
+		/*
 		// Если необходимо установить асоциационные события SCTP_TERMINATION_EVENT
 		if(options & event::sctp::notify::AWH_TERMINATION)
 			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
 			events.sctp_termination_event = 1;
 		// Отключаем асоциационные события SCTP_ASSOC_CHANGE
 		else events.sctp_termination_event = 0;
+		*/
 		// Если необходимо установить асоциационные события SCTP_STREAM_RESET_EVENT
 		if(options & event::sctp::notify::AWH_STREAM_RESET)
 			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
