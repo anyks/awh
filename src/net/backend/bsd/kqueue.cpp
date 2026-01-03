@@ -36142,6 +36142,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									}
 								// Если нет ошибки
 								} else {
+									
+									cout << "Processing client event for ID: " << client->id << " == " << i->data << endl;
+									
 									// Если установлена функция обратного вызова
 									if((client->callbacks.status != nullptr) && ::__awh_processed__.find(client->id) == ::__awh_processed__.end()){
 										// Добавляем идентификатор события в список обработанных
@@ -36237,10 +36240,16 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				// Активируем параметры таймаута
 				pts = &ts;
 			}
+
+			cout << "Polling with timeout: " << timeout << " ms" << endl;
+
 			/**
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+			
+			cout << "Events received: " << events << endl;
+			
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**
