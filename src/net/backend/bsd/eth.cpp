@@ -1724,10 +1724,11 @@ bool awh::Ethernet::nosigill() const noexcept {
 /**
 * @brief Метод активации получения SCTP-событий для сокета
 *
-* @param sock сетевой сокет
-* @return     результат работы функции
+* @param sock    сетевой сокет
+* @param options опции активации событий SCTP
+* @return        результат работы функции
 */
-bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock) const noexcept {
+bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint16_t options) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1765,43 +1766,88 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock) const 
 				#endif
 			}
 		#endif
-
-		/*
-			struct sctp_event_subscribe {
-				uint8_t sctp_data_io_event;        // SCTP_DATA_IO_EVENT
-				uint8_t sctp_association_event;    // SCTP_ASSOC_CHANGE
-				uint8_t sctp_address_event;        // SCTP_ADDR_CHANGE
-				uint8_t sctp_send_failure_event;   // SCTP_SEND_FAILED
-				uint8_t sctp_peer_error_event;     // SCTP_PEER_ERROR
-				uint8_t sctp_shutdown_event;       // SCTP_SHUTDOWN_EVENT
-				uint8_t sctp_partial_delivery_event; // SCTP_PARTIAL_DELIVERY_EVENT
-				uint8_t sctp_adaptation_layer_event; // SCTP_ADAPTATION_INDICATION
-				uint8_t sctp_authentication_event; // SCTP_AUTHENTICATION_INDICATION
-				uint8_t sctp_sender_dry_event;     // SCTP_SENDER_DRY_EVENT
-			#if __FreeBSD_version >= 1200000 || defined(__linux__)
-				uint8_t sctp_stream_reset_event;   // SCTP_STREAM_RESET_EVENT
-				uint8_t sctp_assoc_reset_event;    // SCTP_ASSOC_RESET_EVENT (редко)
-				uint8_t sctp_termination_event;    // SCTP_TERMINATION_EVENT (редко)
-			#endif
-			};
-		*/
-
 		// Создаём объект подписки на события
 		struct sctp_event_subscribe events;
 		// Зануляем объект события
 		::memset(&events, 0, sizeof(events));
+		// Если необходимо установить уведомления о каждом входящем DATA-пакете
+		if(options & event::sctp::notify::AWH_DATA_IO)
+			// Устанавливаем уведомления о каждом входящем DATA-пакете
+			events.sctp_data_io_event = 1;
 		// Отключаем уведомления о каждом входящем DATA-пакете
-		events.sctp_data_io_event = 0;
-		// Устанавливаем события SCTP_ADAPTATION_EVENT
-		events.sctp_address_event = 1;
-		// Устанавливаем события SCTP_SHUTDOWN_EVENT
-		events.sctp_shutdown_event = 1;
-		// Устанавливаем события SCTP_PEER_ERROR_EVENT
-		events.sctp_peer_error_event = 1;
-		// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-		events.sctp_association_event = 1;
-		// Устанавливаем события SCTP_SEND_FAILED_EVENT
-		events.sctp_send_failure_event = 1;
+		else events.sctp_data_io_event = 0;
+		// Если необходимо установить события SCTP_ADDR_CHANGE
+		if(options & event::sctp::notify::AWH_ADDRESS_CHANGE)
+			// Устанавливаем события SCTP_ADDR_CHANGE
+			events.sctp_address_event = 1;
+		// Отключаем события SCTP_ADDR_CHANGE
+		else events.sctp_address_event = 0;
+		// Если необходимо установить события SCTP_SHUTDOWN_EVENT
+		if(options & event::sctp::notify::AWH_SHUTDOWN)
+			// Устанавливаем события SCTP_SHUTDOWN_EVENT
+			events.sctp_shutdown_event = 1;
+		// Отключаем события SCTP_SHUTDOWN_EVENT
+		else events.sctp_shutdown_event = 0;
+		// Если необходимо установить события SCTP_PEER_ERROR_EVENT
+		if(options & event::sctp::notify::AWH_PEER_ERROR)
+			// Устанавливаем события SCTP_PEER_ERROR_EVENT
+			events.sctp_peer_error_event = 1;
+		// Отключаем события SCTP_PEER_ERROR_EVENT
+		else events.sctp_peer_error_event = 0;
+		// Если необходимо установить события SCTP_SENDER_DRY_EVENT
+		if(options & event::sctp::notify::AWH_SENDER_DRY)
+			// Устанавливаем события SCTP_SENDER_DRY_EVENT
+			events.sctp_sender_dry_event = 1;
+		// Отключаем события SCTP_SENDER_DRY_EVENT
+		else events.sctp_sender_dry_event = 0;
+		// Если необходимо установить асоциационные события SCTP_ASSOC_CHANGE
+		if(options & event::sctp::notify::AWH_ASSOCIATION)
+			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+			events.sctp_association_event = 1;
+		// Отключаем асоциационные события SCTP_ASSOC_CHANGE
+		else events.sctp_association_event = 0;
+		// Если необходимо установить асоциационные события SCTP_ASSOC_RESET
+		if(options & event::sctp::notify::AWH_ASSOC_RESET)
+			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+			events.sctp_assoc_reset_event = 1;
+		// Отключаем асоциационные события SCTP_ASSOC_RESET
+		else events.sctp_assoc_reset_event = 0;
+		// Если необходимо установить события SCTP_SEND_FAILED_EVENT
+		if(options & event::sctp::notify::AWH_SEND_FAILURE)
+			// Устанавливаем события SCTP_SEND_FAILED_EVENT
+			events.sctp_send_failure_event = 1;
+		// Отключаем события SCTP_SEND_FAILED_EVENT
+		else events.sctp_send_failure_event = 0;
+		// Если необходимо установить асоциационные события SCTP_TERMINATION_EVENT
+		if(options & event::sctp::notify::AWH_TERMINATION)
+			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+			events.sctp_termination_event = 1;
+		// Отключаем асоциационные события SCTP_ASSOC_CHANGE
+		else events.sctp_termination_event = 0;
+		// Если необходимо установить асоциационные события SCTP_STREAM_RESET_EVENT
+		if(options & event::sctp::notify::AWH_STREAM_RESET)
+			// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+			events.sctp_stream_reset_event = 1;
+		// Отключаем асоциационные события SCTP_ASSOC_CHANGE
+		else events.sctp_stream_reset_event = 0;
+		// Если необходимо установить события SCTP_AUTHENTICATION_INDICATION
+		if(options & event::sctp::notify::AWH_AUTHENTICATION)
+			// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
+			events.sctp_authentication_event = 1;
+		// Отключаем события SCTP_AUTHENTICATION_INDICATION
+		else events.sctp_authentication_event = 0;
+		// Если необходимо установить события SCTP_PARTIAL_DELIVERY_EVENT
+		if(options & event::sctp::notify::AWH_PARTIAL_DELIVERY)
+			// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
+			events.sctp_partial_delivery_event = 1;
+		// Отключаем события SCTP_PARTIAL_DELIVERY_EVENT
+		else events.sctp_partial_delivery_event = 0;
+		// Если необходимо установить события SCTP_ADAPTATION_INDICATION
+		if(options & event::sctp::notify::AWH_ADAPTATION_LAYER)
+			// Устанавливаем события SCTP_ADAPTATION_INDICATION
+			events.sctp_adaptation_layer_event = 1;
+		// Отключаем события SCTP_ADAPTATION_INDICATION
+		else events.sctp_adaptation_layer_event = 0;
 		// Выполняем активацию получения событий SCTP для сокета
 		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events))))){
 			/**

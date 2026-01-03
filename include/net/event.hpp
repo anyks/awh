@@ -232,6 +232,68 @@ namespace awh {
 		 */
 		namespace sctp {
 			/**
+			 * @brief пространство имён уведомлений SCTP
+			 *
+			 */
+			namespace notify {
+				/**
+				 * Событие отсутствует
+				 */
+				static constexpr uint16_t AWH_NONE = 0x00;
+				/**
+				 * Событие уведомления при каждом DATA-чанке [SCTP_DATA_IO_EVENT]
+				 */
+				static constexpr uint16_t AWH_DATA_IO = 0x01;
+				/**
+				 * Событие добавления/удаления IP-адреса в multi-homed ассоциации [SCTP_ADDR_CHANGE]
+				 */
+				static constexpr uint16_t AWH_ADDRESS = 0x02;
+				/**
+				 * Событие получения SHUTDOWN от однорангового узла (graceful завершение) [SCTP_SHUTDOWN_EVENT]
+				 */
+				static constexpr uint16_t AWH_SHUTDOWN = 0x04;
+				/**
+				 * Событие однорангового узла приславшего ERROR-чанк (неверный параметр и т.д.) [SCTP_PEER_ERROR]
+				 */
+				static constexpr uint16_t AWH_PEER_ERROR = 0x08;
+				/**
+				 * Событие опустошения буфера отправки (полезно для flow control) [SCTP_SENDER_DRY_EVENT]
+				 */
+				static constexpr uint16_t AWH_SENDER_DRY = 0x10;
+				/**
+				 * Событие изменения состояния ассоциации (установка, разрыв, ошибка) [SCTP_ASSOC_CHANGE]
+				 */
+				static constexpr uint16_t AWH_ASSOCIATION = 0x20;
+				/**
+				 * Событие полного сброса ассоциации (экспериментально) [SCTP_ASSOC_RESET_EVENT]
+				 */
+				static constexpr uint16_t AWH_ASSOC_RESET = 0x40;
+				/**
+				 * Событие неудачной отправки данных (например, после ABORT) [SCTP_SEND_FAILED]
+				 */
+				static constexpr uint16_t AWH_SEND_FAILURE = 0x80;
+				/**
+				 * Событие уведомления перед уничтожением ассоциации [SCTP_TERMINATION_EVENT]
+				 */
+				static constexpr uint16_t AWH_TERMINATION = 0x100;
+				/**
+				 * Событие сброса потока (если поддерживается SCTP_STREAM_RESET) [SCTP_STREAM_RESET_EVENT]
+				 */
+				static constexpr uint16_t AWH_STREAM_RESET = 0x200;
+				/**
+				 * Событие уведомления об аутентификации (если включена AUTH) [SCTP_AUTHENTICATION_INDICATION]
+				 */
+				static constexpr uint16_t AWH_AUTHENTICATION = 0x400;
+				/**
+				 * Событие начала/окончания частичной доставки большого сообщения [SCTP_PARTIAL_DELIVERY_EVENT]
+				 */
+				static constexpr uint16_t AWH_PARTIAL_DELIVERY = 0x800;
+				/**
+				 * Событие получения Adaptation Layer Indication (используется в SIGTRAN) [SCTP_ADAPTATION_INDICATION]
+				 */
+				static constexpr uint16_t AWH_ADAPTATION_LAYER = 0x1000;
+			};
+			/**
 			 * @brief пространство имён информации о сообщении SCTP
 			 *
 			 */

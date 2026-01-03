@@ -429,13 +429,16 @@ namespace io {
 		typedef struct SCTP {
 			// Флаги SCTP-событий
 			int32_t flags;
+			// Опции SCTP-событий
+			uint16_t options;
 			// Информация о SCTP-событиях
 			struct sctp_sndrcvinfo info;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit SCTP() noexcept : flags(0), info{} {}
+			explicit SCTP() noexcept :
+			 flags(0), options(0), info{} {}
 		} sctp_t;
 	#endif
 
@@ -3344,7 +3347,7 @@ namespace io {
 							if((peer->state.type == event::type_t::SEQPACKET) &&
 							   (peer->state.protocol == event::protocol_t::SCTP))
 								// Выполняем активацию событий SCTP
-								eth->sctpEvents(peer->transfer.fd);
+								eth->sctpEvents(peer->transfer.fd, peer->transfer.sctp.options);
 						#endif
 						// Выполняем инициализацию объекта MAC-адреса
 						peer->mac = make_unique <net::addr_mac_t> ();
@@ -6428,7 +6431,7 @@ namespace io {
 												if((origin->state.type == event::type_t::SEQPACKET) &&
 												   (origin->state.protocol == event::protocol_t::SCTP))
 													// Выполняем активацию событий SCTP
-													eth->sctpEvents(origin->transfer.fd);
+													eth->sctpEvents(origin->transfer.fd, origin->transfer.sctp.options);
 											#endif
 											// Устанавливаем размер объекта подключения клиента
 											origin->endpoint.size = server->endpoint.size;
@@ -9848,7 +9851,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((client->state.type == event::type_t::SEQPACKET) &&
 													   (client->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(client->transfer.fd);
+														this->_eth.sctpEvents(client->transfer.fd, client->transfer.sctp.options);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -10334,7 +10337,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((client->state.type == event::type_t::SEQPACKET) &&
 													   (client->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(client->transfer.fd);
+														this->_eth.sctpEvents(client->transfer.fd, client->transfer.sctp.options);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -11319,7 +11322,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((server->state.type == event::type_t::SEQPACKET) &&
 													   (server->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(server->fd);
+														this->_eth.sctpEvents(server->fd, server->sctp.options);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -11491,7 +11494,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((server->state.type == event::type_t::SEQPACKET) &&
 													   (server->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(server->fd);
+														this->_eth.sctpEvents(server->fd, server->sctp.options);
 												#endif
 												/**
 												 * Определяем тип сокета
