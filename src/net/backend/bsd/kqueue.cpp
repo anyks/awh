@@ -3208,16 +3208,28 @@ namespace io {
 						
 						
 
-						
+
+
+						// Выполняем чтение данных из SCTP-сокета
+						ssize_t bytes = ::sctp_recvmsg(
+							node->fd,
+							buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+							&::trust_cast <struct sockaddr> (node->endpoint.client),
+							&node->endpoint.size,
+							&node->sctp.info,
+							&node->sctp.flags
+						);
+
 
 						sctp_assoc_t assoc_id = node->sctp.info.sinfo_assoc_id;
-
 
 						// Отделяем в новый сокет
 						const net::socket_t sock = ::sctp_peeloff(node->fd, assoc_id);
 						if (sock == net::invalid_socket_t) {
 							perror("sctp_peeloff");
 						}
+
+						
 
 						cout << "!!!!! SACCEPT2 " << sock << endl;
 						
