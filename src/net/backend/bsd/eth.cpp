@@ -1741,6 +1741,9 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 		switch(static_cast <uint8_t> (type)){
 			// Для типа сокета STREAM
 			case static_cast <uint8_t> (event::type_t::STREAM): {
+
+				return true;
+
 				// Создаём объект подписки на события
 				struct sctp_event_subscribe events = {};
 				// Зануляем объект события
