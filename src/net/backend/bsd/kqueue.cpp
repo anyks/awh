@@ -1466,7 +1466,7 @@ namespace io {
 										// Если таймаут на переподключение найден найден
 										if((i != client->timeouts.end()) && (i->second > 0))
 											// Устанавливаем задержку таймаута на значение из конфигурации
-											delay = (static_cast <uint64_t> (i->second) * 1000000);
+											delay = (static_cast <intptr_t> (i->second));
 										// Устанавливаем статус события в состояние переподключения
 										client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
 										// Выполняем блокировку потоков
@@ -1476,7 +1476,7 @@ namespace io {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, delay, client);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, delay, client);
 									}
 								}
 							} break;
@@ -3704,7 +3704,7 @@ namespace io {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 									// Если сокет является блокирующим
 									} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 								}
@@ -3816,7 +3816,7 @@ namespace io {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Устанавливаем таймаут на получение данных
-						EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, node);
+						EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), node);
 					// Устанавливаем таймаут на получение данных
 					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 				}
@@ -4873,7 +4873,7 @@ namespace io {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 							}
 							// Формируем положительный результат
 							return true;
@@ -5909,7 +5909,7 @@ namespace io {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+								EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 							}
 							// Формируем положительный результат
 							return true;
@@ -6288,7 +6288,7 @@ namespace io {
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, i->second);
+													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
 												}
 											}
 										}
@@ -6771,7 +6771,7 @@ namespace io {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, origin);
+															EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
 														}
 													}
 													// Выводим положительный результат
@@ -7200,7 +7200,7 @@ namespace io {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 													}
 												}
 												// Формируем положительный результат
@@ -7220,7 +7220,7 @@ namespace io {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 													// Если нужный нам таймаут не найден
 													} else {
 														// Выполняем блокировку потоков
@@ -7342,7 +7342,7 @@ namespace io {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 													// Если нужный нам таймаут не найден
 													} else {
 														// Выполняем блокировку потоков
@@ -7492,7 +7492,7 @@ namespace io {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 														}
 													}
 													// Формируем положительный результат
@@ -7512,7 +7512,7 @@ namespace io {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 														// Если нужный нам таймаут не найден
 														} else {
 															// Выполняем блокировку потоков
@@ -7636,7 +7636,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -7770,7 +7770,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -7868,7 +7868,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -7968,7 +7968,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -8196,7 +8196,7 @@ namespace io {
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, session.second);
+													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), session.second);
 												// Если нужный нам таймаут не найден
 												} else {
 													// Выполняем блокировку потоков
@@ -8798,7 +8798,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						 */
 						#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
 						#endif
 						// Формируем положительный результат
 						result = true;
@@ -8824,7 +8824,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						 */
 						#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
 						#endif
 						// Формируем положительный результат
 						result = true;
@@ -18840,7 +18840,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, peer);
+															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
 														}
 													} break;
 													// Если узел является клиентом
@@ -18858,7 +18858,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 															}
 														}
 													} break;
@@ -18932,7 +18932,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_NSECONDS, 0, peer);
+															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 														}
 														// Если необходимо установить таймаут на чтение данных
 														auto j = peer->timeouts.find(event::action_t::READ);
@@ -18952,7 +18952,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_NSECONDS, 0, client);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 														}
 														// Если таймаут не является таймаутом на переподключение
 														if(client->timeout != event::action_t::RECONNECT){
@@ -19418,7 +19418,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, peer);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
 																}
 															} break;
 															// Если узел является клиентом
@@ -19436,7 +19436,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																		// Добавляем новое событие в список изменений
 																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, client);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 																	}
 																}
 															} break;
@@ -19508,7 +19508,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_NSECONDS, 0, peer);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 																}
 																// Если необходимо установить таймаут на чтение данных
 																auto j = peer->timeouts.find(event::action_t::READ);
@@ -19526,7 +19526,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_NSECONDS, 0, client);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 																}
 																// Если таймаут не является таймаутом на переподключение
 																if(client->timeout != event::action_t::RECONNECT){
@@ -21142,7 +21142,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 							 */
 							#if __APPLE__
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
 							/**
 							 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
 							 */
@@ -21253,7 +21253,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, client);
+												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 											// Если сокет является блокирующим
 											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 										}
@@ -21383,7 +21383,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, client);
+												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 											// Если сокет является блокирующим
 											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
 										}
@@ -23244,7 +23244,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 							// Если событие находится не в состоянии паузы
 							if(fs->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
 								// Получаем актуальный итоговый размер файла
-								const off_t actual = (fs->offset + static_cast <uint64_t> (size));
+								const off_t actual = (fs->offset + static_cast <intptr_t> (size));
 								// Получаем смещение в файле с учётом размера страницы
 								const off_t offset = ((fs->offset / fs->size) * fs->size);
 								// Выделяем память под запись данных в файл
@@ -24107,7 +24107,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 																}
 															}
 														}
@@ -24148,7 +24148,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 																}
 															}
 														}
@@ -24432,7 +24432,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, peer);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 																}
 															}
 														}
@@ -24726,7 +24726,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, origin);
+												EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
 											}
 											// Если таймаут не установлен
 											if(origin->timeout == event::action_t::NONE){
@@ -24741,7 +24741,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, origin);
+													EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
 												}
 											}
 											// Выполняем отправку данных в RAW-сокет
@@ -24992,7 +24992,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, origin);
+																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
 																}
 															}
 														}
@@ -25274,7 +25274,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, origin);
+																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
 																}
 															}
 														}
@@ -25592,7 +25592,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 																}
 															}
 														}
@@ -25633,7 +25633,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 																}
 															}
 														}
@@ -25919,7 +25919,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Добавляем новое событие в список изменений
 																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 																	}
 																}
 															}
@@ -26254,7 +26254,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Добавляем новое событие в список изменений
 																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 																	}
 																}
 															}
@@ -26567,7 +26567,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+													EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 												}
 												// Если таймаут не установлен
 												if(client->timeout == event::action_t::NONE){
@@ -26582,7 +26582,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 													}
 												}
 											}
@@ -26860,7 +26860,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Добавляем новое событие в список изменений
 																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 																	}
 																}
 															}
@@ -27118,7 +27118,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Добавляем новое событие в список изменений
 																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (i->second) * 1000000, client);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 																	}
 																}
 															}
@@ -30610,13 +30610,13 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Останавливаем активный таймаут
-						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_NSECONDS, 0, timer);
+						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
 						// Если таймаут необходимо запустить
 						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -30635,13 +30635,13 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Останавливаем активный таймаут
-						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_NSECONDS, 0, timer);
+						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
 						// Если таймаут необходимо запустить
 						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -32829,7 +32829,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, peer);
+									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
 								// Если сокет является блокирующим
 								} else this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 							}
@@ -32858,7 +32858,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, origin);
+									EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), origin);
 								}
 							}
 							// Выполняем "пинок" для применения изменений
@@ -32890,7 +32890,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, client);
+									EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 								// Если сокет является блокирующим
 								} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 							}
@@ -33639,7 +33639,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, peer);
+								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
 							// Если сокет является блокирующим
 							} else this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 						}
@@ -33691,7 +33691,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (j->second) * 1000000, origin);
+								EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), origin);
 							}
 						}
 						// Увеличиваем значение итератора
