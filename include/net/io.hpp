@@ -218,6 +218,21 @@ namespace awh {
 			void sctpMessageInfo(const event::id_t id, const net::sctp_minfo_t & info) noexcept;
 		public:
 			/**
+			 * @brief Метод получения параметров рукопожатия SCTP
+			 *
+			 * @param id идентификатор события
+			 * @return   параметры рукопожатия SCTP
+			 */
+			net::sctp_handshake_t sctpHandshake(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки параметров рукопожатия SCTP
+			 *
+			 * @param id        идентификатор события
+			 * @param handshake параметры рукопожатия SCTP
+			 */
+			void sctpHandshake(const event::id_t id, const net::sctp_handshake_t & handshake) noexcept;
+		public:
+			/**
 			 * @brief Метод запуска события
 			 *
 			 * @param id идентификатор события

@@ -1728,7 +1728,7 @@ bool awh::Ethernet::nosigill() const noexcept {
 * @param type тип сокета
 * @return     результат работы функции
 */
-bool awh::Ethernet::sctp([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::type_t type) const noexcept {
+bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1742,13 +1742,17 @@ bool awh::Ethernet::sctp([[maybe_unused]] const net::socket_t sock, [[maybe_unus
 			// Для типа сокета STREAM
 			case static_cast <uint8_t> (event::type_t::STREAM): {
 				// Создаём объект подписки на события
-				struct sctp_event_subscribe event = {};
+				struct sctp_event_subscribe events = {};
 				// Зануляем объект события
-				::memset(&event, 0, sizeof(event));
-				// Активируем получение входящих событий
-				event.sctp_data_io_event = 1;
+				::memset(&events, 0, sizeof(events));
+				// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+				events.sctp_association_event = 1;
+				// Отключаем уведомления о каждом входящем DATA-пакете
+				events.sctp_data_io_event = 0;
+				// Устанавливаем события SCTP_SHUTDOWN_EVENT
+				events.sctp_shutdown_event = 1;
 				// Выполняем активацию получения событий SCTP для сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events))))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1809,6 +1813,88 @@ bool awh::Ethernet::sctp([[maybe_unused]] const net::socket_t sock, [[maybe_unus
 					this->_log->print("Unsupported socket type for SCTP events", log_t::flag_t::WARNING);
 				#endif
 			}
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения статуса SCTP сокета
+ *
+ * @param sock      сетевой сокет
+ * @param handshake объект параметров для извлечения параметров инициализации SCTP сокета
+ * @return          результат работы функции
+ */
+bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] net::sctp_handshake_t & handshake) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Создаём объект статуса SCTP сокета
+		struct sctp_status status = {};
+		// Размер структуры статуса SCTP сокета
+		socklen_t length = sizeof(status);
+		// Выполняем инициализацию SCTP сокета
+		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status, &length)))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+		// Если мы успешно получили статус SCTP сокета
+		} else {
+			// Устанавливаем количество исходящих потоков
+			handshake.ostreams = status.sstat_outstrms;
+			// Устанавливаем количество входящих потоков
+			handshake.instreams = status.sstat_instrms;
+			// Устанавливаем максимальное количество попыток инициализации сокета
+			handshake.attempts = status.sstat_max_attempts;
+			// Устанавливаем таймаут инициализации сокета
+			handshake.initTimeout = status.sstat_max_init_timeo;
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод инициализации SCTP сокета
+ *
+ * @param sock      сетевой сокет
+ * @param handshake параметры инициализации SCTP сокета
+ * @return          результат работы функции
+ */
+bool awh::Ethernet::sctpInit([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp_handshake_t & handshake) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Выполняем инициализацию SCTP сокета
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &handshake, sizeof(handshake))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
 		}
 	#endif
 	// Выводим результат

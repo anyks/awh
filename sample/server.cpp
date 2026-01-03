@@ -22,7 +22,6 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
-#include <net/tls.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -48,79 +47,14 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
-	// Создаём объект транспортного уровня безопасности
-	tls_t tls(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
-		// Регистрируем объект транспортного уровня безопасности
-		tls_t::id_t tid = tls.create(event::node_t::SERVER, event::protocol_t::TCP);
-		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
-		// Устанавливаем файл центра сертификации TLS
-		tls.ca(tid, "../sh/certificates", "ca.pem");
-		// Включаем проверку имени хоста TLS
-		tls.validateHostname(tid, false);
-		// Устанавливаем клиентский сертификат TLS
-		tls.certificate(tid, "../sh/certificates/server/cert.pem");
-		// Устанавливаем приватный ключ TLS
-		tls.privateKey(tid, "../sh/certificates/server/key.pem");
-		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		tls.on(tid, [&tls, &log](const tls_t::id_t id) noexcept -> void {
-			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
-			cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
-			cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.hostname(id) << endl << endl;
-			cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-			cout << "Версия OpenSSL: " << tls.version() << endl << endl;
-			cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;
-			cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
-			cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
-			cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
-			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-			log.print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log_t::flag_t::INFO, id, tls.alpn(id));
-		});
-		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					log.print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					log.print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
-		});
-		// Регистрируем функцию обратного вызова на запись данных TLS
-		tls.on(tid, [&log](const tls_t::id_t id, const tls_t::event_t event, const size_t size) noexcept -> void {
-			/**
-			 * Обрабатываем тип события TLS
-			 */
-			switch(static_cast <uint8_t> (event)){
-				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION):
-					// Выводим сообщение о записи зашифрованных данных TLS
-					log.print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
-				break;
-				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (tls_t::event_t::DECRYPTION):
-					// Выводим сообщение о записи дешифрованных данных TLS
-					log.print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log_t::flag_t::INFO, id, size);
-				break;
-			}
-		});
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -205,6 +139,19 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим сообщение о переподключении события
 				log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 			}));
+			// Устанавливаем функцию обратного вызова на чтение из события
+			io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Текст входящего сообщения
+				const string message(reinterpret_cast <const char *> (data), size);
+				// Выводим сообщение о переподключении события
+				log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+				// Отправляем данные обратно клиенту
+				if(io.send(eid, reinterpret_cast <const char *> (data), size))
+					// Если данные успешно отправлены
+					log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+				// Если данные не отправлены
+				else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+			});
 			// Устанавливаем функцию обратного вызова на ошибку события
 			io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 				/**
@@ -264,64 +211,25 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			io.on(eid, static_cast <event::callback::accept_t> ([tid, &tls, &io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Устананавливаем опции события
-				if(io.options(cid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::KEEPALIVE)){
+				if(io.options(cid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
-					cout << " Выполнено подключение: " << io.address(cid, event::address_t::IPV4) << ":" << io.port(cid) << endl;
-					// Устанавливаем клиента TLS для события
-					tls.peer(tid, io.address(cid, event::address_t::IPV4), io.port(cid));
-					// Регистрируем функцию обратного вызова на чтение данных TLS
-					tls.on(tid, [cid, &tls, &io, &log](const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
-						/**
-						 * Обрабатываем тип события TLS
-						 */
-						switch(static_cast <uint8_t> (event)){
-							// Если событие шифрования данных TLS
-							case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION): {
-								// Отправляем данные обратно клиенту
-								if(io.send(cid, reinterpret_cast <const char *> (buffer), size))
-									// Если данные успешно отправлены
-									log.print("Отправлено зашифрованных данных: ID=%u, %zu байт", log_t::flag_t::INFO, cid, size);
-								// Если данные не отправлены
-								else log.print("Ошибка отправки зашифрованных данных: ID=%u", log_t::flag_t::CRITICAL, cid);
-							} break;
-							// Если событие дешифрования данных TLS
-							case static_cast <uint8_t> (tls_t::event_t::DECRYPTION): {
-								// Получаем информацию о SCTP сообщении
-								auto info = io.sctpMessageInfo(cid);
-								// Выводим информацию о SCTP сообщении
-								log.print("SCTP Message Info: ID=%u, Stream=%u, FLAGS=%u, PPID=%u, Context=%u, TTL=%u", log_t::flag_t::INFO,
-									cid,
-									info.num,
-									info.flags,
-									static_cast <uint16_t> (info.ppid),
-									info.ctx,
-									info.ttl
-								);
-								// Получаем ответ сервера в расшифрованном виде
-								const string response(reinterpret_cast <const char *> (buffer), size);
-								// Выводим сообщение полученных данных с сервера
-								log.print("Получены данные с сервера TLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", log_t::flag_t::INFO, id, size, response.c_str());
-								// Если данные успешно зашифрованы TLS
-								if(tls.encrypt(id, response.c_str(), response.size()))
-									// Выводим сообщение об успешном шифровании данных TLS
-									log.print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, id, response.size());
-								// Если данные не отправлены
-								else log.print("Ошибка шифрования: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, id);
-							} break;
-						}
-					});
+					cout << " Успешно установлены опции события!" << endl;
 					// Устанавливаем функцию обратного вызова на чтение из события
-					io.on(cid, [tid, &tls, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-						// Если данные успешно дешифрованы TLS
-						if(tls.decrypt(tid, data, size))
-							// Выводим сообщение об успешном дешифровании данных TLS
-							log.print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
+					io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+						// Текст входящего сообщения
+						const string message(reinterpret_cast <const char *> (data), size);
+						// Выводим сообщение о переподключении события
+						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+						// Отправляем данные обратно клиенту
+						if(io.send(eid, reinterpret_cast <const char *> (data), size))
+							// Если данные успешно отправлены
+							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 						// Если данные не отправлены
-						else log.print("Ошибка дешифрования: ID=%u", log_t::flag_t::CRITICAL, eid);
+						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
 					io.on(cid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
@@ -391,12 +299,6 @@ int32_t main(int32_t argc, char * argv[]){
 							break;
 						}
 					});
-					// Если рукопожатие TLS успешно
-					if(tls.handshake(tid))
-						// Выводим сообщение о начале рукопожатия TLS
-						log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, tid);
-					// Если рукопожатие TLS не выполнено
-					else log.print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
 				// Выводим сообщение об ошибке установки опций события
 				} else cout << " Ошибка установки опций события!" << endl;
 			}));
@@ -469,7 +371,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			// io.timeout(eid, event::action_t::READ, 5000);
+			io.timeout(eid, event::action_t::READ, 5000);
 			// Устанавливаем таймаут события на запись
 			io.timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера

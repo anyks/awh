@@ -117,6 +117,10 @@ TEST_F(IoFixture, IoSuiteTest){
 			const awh::net::sctp_minfo_t minfo = this->_io->sctpMessageInfo(eid1);
 			// Устанавливаем информационные метаданные SCTP сообщения
 			this->_io->sctpMessageInfo(eid1, minfo);
+			// Извлекаем параметры рукопожатия SCTP
+			const awh::net::sctp_handshake_t handshake = this->_io->sctpHandshake(eid1);
+			// Устанавливаем параметры рукопожатия SCTP
+			this->_io->sctpHandshake(eid1, handshake);
 			// Извлекаем IP-адрес сетевого интерфейса
 			ip = this->_io->address(eid1, awh::event::address_t::IPV4);
 			// Извлекаем MAC-адрес сетевого интерфейса

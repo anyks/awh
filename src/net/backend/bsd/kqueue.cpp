@@ -3143,9 +3143,6 @@ namespace io {
 			if(node->actions & ::action::ACCEPT){
 				// Создаём охранника узла события
 				::local::guard_t guard(node);
-				
-				cout << "!!!!! SACCEPT1 " << node->fd << endl;
-				
 				// Если количество текущих подключений уже максимальное
 				if(node->backlog.count == node->backlog.max){
 					// Принимаем подключение и сразу закрываем его
@@ -3203,37 +3200,58 @@ namespace io {
 								::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_family = AF_INET6;
 							} break;
 						}
-						// Определяем разрешено ли подключение к прокси серверу
-						// const net::socket_t sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
-						
-						
-						// Буфер для временного хранения данных
-						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
-
-
-						// Выполняем чтение данных из SCTP-сокета
-						ssize_t bytes = ::sctp_recvmsg(
-							node->fd,
-							buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-							&::trust_cast <struct sockaddr> (node->endpoint.client),
-							&node->endpoint.size,
-							&node->sctp.info,
-							&node->sctp.flags
-						);
-
-
-						sctp_assoc_t assoc_id = node->sctp.info.sinfo_assoc_id;
-
-						// Отделяем в новый сокет
-						const net::socket_t sock = ::sctp_peeloff(node->fd, assoc_id);
-						if (sock == net::invalid_socket_t) {
-							perror("sctp_peeloff");
-						}
-
-						
-
-						cout << "!!!!! SACCEPT2 " << sock << endl;
-						
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							// Объявляем дескриптор сокета
+							net::socket_t sock = net::invalid_socket_t;
+							/**
+							 * Определяем протокол интернета
+							 */
+							switch(static_cast <uint8_t> (node->state.protocol)){
+								// Если протокол интернета установлен как TCP
+								case static_cast <uint8_t> (event::protocol_t::TCP):
+									// Определяем разрешено ли подключение к прокси серверу
+									sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
+								break;
+								// Если протокол интернета установлен как SCTP
+								case static_cast <uint8_t> (event::protocol_t::SCTP): {
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (node->state.type)){
+										// Если сокет принадлежит к типу STREAM
+										case static_cast <uint8_t> (event::type_t::STREAM):
+											// Определяем разрешено ли подключение к прокси серверу
+											sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
+										break;
+										// Если сокет принадлежит к типу SEQPACKET
+										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											// Буфер для временного хранения данных
+											char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
+											// Выполняем чтение данных из SCTP-сокета
+											const ssize_t bytes = ::sctp_recvmsg(
+												node->fd,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+												&::trust_cast <struct sockaddr> (node->endpoint.client),
+												&node->endpoint.size,
+												&node->sctp.info,
+												&node->sctp.flags
+											);
+											// Получаем дескриптор сокета из информации о сообщении SCTP
+											sock = ::sctp_peeloff(node->fd, node->sctp.info.sinfo_assoc_id);
+										} break;
+									}
+								} break;
+							}
+						/**
+						 * Если это другая операционная система
+						 */
+						#else
+							// Определяем разрешено ли подключение к прокси серверу
+							const net::socket_t sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
+						#endif
 						// Если сокет не создан тогда выходим
 						if(sock == net::invalid_socket_t){
 							// Если установлена функция обратного вызова
@@ -3280,7 +3298,7 @@ namespace io {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP)
 							// Выполняем активацию событий SCTP
-							eth->sctp(peer->transfer.fd, peer->state.type);
+							eth->sctpEvents(peer->transfer.fd, peer->state.type);
 						// Выполняем инициализацию объекта MAC-адреса
 						peer->mac = make_unique <net::addr_mac_t> ();
 						/**
@@ -6141,18 +6159,6 @@ namespace io {
 														&::trust_cast <struct sockaddr> (server->endpoint.client),
 														&server->endpoint.size
 													);
-
-													sctp_assoc_t assoc_id = server->sctp.info.sinfo_assoc_id;
-
-
-													// Отделяем в новый сокет
-													const net::socket_t sock = ::sctp_peeloff(server->fd, assoc_id);
-													if (sock == net::invalid_socket_t) {
-														perror("sctp_peeloff");
-													}
-
-													cout << "!!!!! SERVER READ " << sock << endl;
-
 												/**
 												 * Если это другая операционная система
 												 */
@@ -6370,7 +6376,7 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(origin->state.protocol == event::protocol_t::SCTP)
 												// Выполняем активацию событий SCTP
-												eth->sctp(origin->transfer.fd, origin->state.type);
+												eth->sctpEvents(origin->transfer.fd, origin->state.type);
 											// Устанавливаем размер объекта подключения клиента
 											origin->endpoint.size = server->endpoint.size;
 											// Выполняем копирование объект подключения клиента в сторейдж
@@ -9784,7 +9790,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Если протокол интернета установлен как SCTP
 												if(client->state.protocol == event::protocol_t::SCTP)
 													// Выполняем активацию событий SCTP
-													this->_eth.sctp(client->transfer.fd, client->state.type);
+													this->_eth.sctpEvents(client->transfer.fd, client->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -10264,7 +10270,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Если протокол интернета установлен как SCTP
 												if(client->state.protocol == event::protocol_t::SCTP)
 													// Выполняем активацию событий SCTP
-													this->_eth.sctp(client->transfer.fd, client->state.type);
+													this->_eth.sctpEvents(client->transfer.fd, client->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -11243,7 +11249,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Если протокол интернета установлен как SCTP
 												if(server->state.protocol == event::protocol_t::SCTP)
 													// Выполняем активацию событий SCTP
-													this->_eth.sctp(server->fd, server->state.type);
+													this->_eth.sctpEvents(server->fd, server->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -11409,7 +11415,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Если протокол интернета установлен как SCTP
 												if(server->state.protocol == event::protocol_t::SCTP)
 													// Выполняем активацию событий SCTP
-													this->_eth.sctp(server->fd, server->state.type);
+													this->_eth.sctpEvents(server->fd, server->state.type);
 												/**
 												 * Определяем тип сокета
 												 */
@@ -21141,6 +21147,518 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 	#endif
 }
 /**
+ * @brief Метод получения параметров рукопожатия SCTP
+ *
+ * @param id идентификатор события
+ * @return   параметры рукопожатия SCTP
+ */
+awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const noexcept {
+	// Результат работы функции
+	net::sctp_handshake_t result;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(peer->state.protocol == event::protocol_t::SCTP){
+							// Если тип однорангового узла установлен как SEQPACKET
+							if(peer->state.type == event::type_t::SEQPACKET)
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctpStatus(peer->transfer.fd, result);
+							// Если тип однорангового узла не установлен как SEQPACKET
+							else {
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									peer->callbacks.status(peer->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								peer->callbacks.status(peer->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A handshake is only possible for the SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является одноранговым узлом-источником
+					case static_cast <uint8_t> (event::node_t::ORIGIN): {
+						// Получаем текущее значение объекта однорангового узла-источника
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(origin->state.protocol == event::protocol_t::SCTP){
+							// Если тип однорангового узла установлен как SEQPACKET
+							if(origin->state.type == event::type_t::SEQPACKET)
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctpStatus(origin->transfer.fd, result);
+							// Если тип однорангового узла не установлен как SEQPACKET
+							else {
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(origin->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								origin->callbacks.status(origin->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A handshake is only possible for the SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(origin->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(client->state.protocol == event::protocol_t::SCTP){
+							// Если тип однорангового узла установлен как SEQPACKET
+							if(client->state.type == event::type_t::SEQPACKET)
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctpStatus(client->transfer.fd, result);
+							// Если тип однорангового узла не установлен как SEQPACKET
+							else {
+								// Если установлена функция обратного вызова
+								if(client->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									client->callbacks.status(client->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(client->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								client->callbacks.status(client->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A handshake is only possible for the SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(client->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(server->state.protocol == event::protocol_t::SCTP){
+							// Если тип однорангового узла установлен как SEQPACKET
+							if(server->state.type == event::type_t::SEQPACKET)
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctpStatus(server->fd, result);
+							// Если тип однорангового узла не установлен как SEQPACKET
+							else {
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									server->callbacks.status(server->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(server->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								server->callbacks.status(server->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A handshake is only possible for the SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(server->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Метод установки параметров рукопожатия SCTP
+ *
+ * @param id        идентификатор события
+ * @param handshake параметры рукопожатия SCTP
+ */
+void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & handshake) noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(client->state.protocol == event::protocol_t::SCTP){
+							// Если тип однорангового узла установлен как SEQPACKET
+							if(client->state.type == event::type_t::SEQPACKET)
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctpInit(client->transfer.fd, handshake);
+							// Если тип однорангового узла не установлен как SEQPACKET
+							else {
+								// Если установлена функция обратного вызова
+								if(client->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									client->callbacks.status(client->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(client->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								client->callbacks.status(client->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A handshake is only possible for the SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(client->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(server->state.protocol == event::protocol_t::SCTP){
+							// Если тип однорангового узла установлен как SEQPACKET
+							if(server->state.type == event::type_t::SEQPACKET)
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctpInit(server->fd, handshake);
+							// Если тип однорангового узла не установлен как SEQPACKET
+							else {
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									server->callbacks.status(server->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(server->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								server->callbacks.status(server->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A handshake is only possible for the SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(server->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+}
+/**
  * @brief Метод запуска события
  *
  * @param id идентификатор события
@@ -25977,7 +26495,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Количество прочитанных байт
 														ssize_t bytes = 0;
 														// Если протокол интернета установлен как SCTP
-														if(client->state.protocol == event::protocol_t::SCTP){
+														if(client->state.protocol == event::protocol_t::SCTP)
 															// Выполняем отправку данных в TCP/IP сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
@@ -25988,11 +26506,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_timetolive,
 																client->transfer.sctp.info.sinfo_context
 															);
-
-															cout << "!!!!! SCTP SEND MSG BYTES: " << bytes << " === " << client->transfer.fd << " == " << size << endl;
-
 														// Выполняем отправку данных в TCP/IP сокет
-														} else bytes = ::send(client->transfer.fd, data, size, 0);
+														else bytes = ::send(client->transfer.fd, data, size, 0);
 													/**
 													 * Если это другая операционная система
 													 */
@@ -35214,9 +35729,6 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
-			
-			cout << " Polled events: " << events << endl;
-			
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**

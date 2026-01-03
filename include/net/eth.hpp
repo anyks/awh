@@ -144,7 +144,23 @@ namespace awh {
 			* @param type тип сокета
 			* @return     результат работы функции
 			*/
-			bool sctp(const net::socket_t sock, const event::type_t type) const noexcept;
+			bool sctpEvents(const net::socket_t sock, const event::type_t type) const noexcept;
+			/**
+			 * @brief Метод получения статуса SCTP сокета
+			 *
+			 * @param sock      сетевой сокет
+			 * @param handshake объект параметров для извлечения параметров инициализации SCTP сокета
+			 * @return          результат работы функции
+			 */
+			bool sctpStatus(const net::socket_t sock, net::sctp_handshake_t & handshake) const noexcept;
+			/**
+			 * @brief Метод инициализации SCTP сокета
+			 *
+			 * @param sock      сетевой сокет
+			 * @param handshake параметры инициализации SCTP сокета
+			 * @return          результат работы функции
+			 */
+			bool sctpInit(const net::socket_t sock, const net::sctp_handshake_t & handshake) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK

@@ -92,13 +92,25 @@ TEST_F(EthFixture, EthSuiteTest){
 	 */
 	#if __FreeBSD__ || __Linux__
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_TRUE(this->_eth->sctp(sock, awh::event::type_t::STREAM));
+		ASSERT_TRUE(this->_eth->sctpEvents(sock, awh::event::type_t::STREAM));
+		// Объект для хранения параметров инициализации SCTP сокета
+		awh::net::sctp_handshake_t handshake;
+		// Инициализируем рукопожатие SCTP для сокета
+		ASSERT_TRUE(this->_eth->sctpInit(sock, handshake));
+		// Получаем статус SCTP сокета
+		ASSERT_TRUE(this->_eth->sctpStatus(sock, handshake));
 	/**
 	 * Для остальных операционных систем
 	 */
 	#else
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_FALSE(this->_eth->sctp(sock, awh::event::type_t::STREAM));
+		ASSERT_FALSE(this->_eth->sctpEvents(sock, awh::event::type_t::STREAM));
+		// Объект для хранения параметров инициализации SCTP сокета
+		awh::net::sctp_handshake_t handshake;
+		// Инициализируем рукопожатие SCTP для сокета
+		ASSERT_FALSE(this->_eth->sctpInit(sock, handshake));
+		// Получаем статус SCTP сокета
+		ASSERT_FALSE(this->_eth->sctpStatus(sock, handshake));
 	#endif
 	// Получаем код ошибки сокета
 	ASSERT_EQ(0, this->_eth->error(sock));

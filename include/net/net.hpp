@@ -125,6 +125,27 @@ namespace awh {
 			 ppid(event::sctp::ppid_t::DTLS) {}
 		} sctp_minfo_t;
 		/**
+		 * @brief Структура параметров рукопожатия SCTP
+		 *
+		 */
+		typedef struct SctpHandshake {
+			// Максимальное количество исходящих потоков
+			uint16_t ostreams;
+			// Максимальное количество входящих потоков
+			uint16_t instreams;
+			// Максимальное количество попыток подключения
+			uint16_t attempts;
+			// Максимальное время инициализации SCTP
+			uint16_t initTimeout;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit SctpHandshake() noexcept :
+				ostreams(5), instreams(5),
+				attempts(4), initTimeout(0) {}
+		} sctp_handshake_t;
+		/**
 		 * @brief Структура адреса
 		 *
 		 */
