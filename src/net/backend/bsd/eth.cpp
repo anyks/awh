@@ -1745,12 +1745,12 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 				struct sctp_event_subscribe events = {};
 				// Зануляем объект события
 				::memset(&events, 0, sizeof(events));
-				// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-				events.sctp_association_event = 1;
 				// Отключаем уведомления о каждом входящем DATA-пакете
 				events.sctp_data_io_event = 0;
 				// Устанавливаем события SCTP_SHUTDOWN_EVENT
 				events.sctp_shutdown_event = 1;
+				// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+				events.sctp_association_event = 1;
 				// Выполняем активацию получения событий SCTP для сокета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events))))){
 					/**

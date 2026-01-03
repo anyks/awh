@@ -4646,7 +4646,8 @@ namespace io {
 											 */
 											#if __FreeBSD__
 												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP)
+												if(peer->state.protocol == event::protocol_t::SCTP){
+													/*
 													// Выполняем чтение данных из SCTP-сокета
 													bytes = ::sctp_recvmsg(
 														peer->transfer.fd,
@@ -4655,8 +4656,31 @@ namespace io {
 														&peer->transfer.sctp.info,
 														&peer->transfer.sctp.flags
 													);
+													*/
+
+													struct iovec iov = { .iov_base = buffer, .iov_len = AWH_MAX_EVENT_BUFFER_SIZE };
+													struct msghdr msg = {
+														.msg_iov = &iov,
+														.msg_iovlen = 1,
+														.msg_control = nullptr,
+														.msg_controllen = 0
+													};
+
+													bytes = recvmsg(peer->transfer.fd, &msg, 0);
+													if (bytes > 0) {
+														if (msg.msg_flags & MSG_NOTIFICATION) {
+															
+															cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
+															
+															// Это управляющее сообщение — игнорируем или обрабатываем
+															return true; // не передаём в приложение
+														}
+														// Иначе — пользовательские данные
+														//process(buffer, n);
+													}
+
 												// Выполняем чтение данных из TCP/IP сокета
-												else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+												} else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											/**
 											 * Если это другая операционная система
 											 */
