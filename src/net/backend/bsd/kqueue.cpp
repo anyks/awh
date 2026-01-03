@@ -4648,6 +4648,92 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													
+													
+													char info[1024];
+
+													struct iovec iov = { .iov_base = buffer, .iov_len = AWH_MAX_EVENT_BUFFER_SIZE };
+													struct msghdr msg = {
+														.msg_iov = &iov,
+														.msg_iovlen = 1,
+														.msg_control = info,
+														.msg_controllen = sizeof(info)
+													};
+
+													bytes = ::recvmsg(peer->transfer.fd, &msg, MSG_NOSIGNAL);
+													if (bytes <= 0) return false;
+
+													// Проверяем: это уведомление или данные?
+													if (msg.msg_flags & MSG_NOTIFICATION) {
+														// --- УВЕДОМЛЕНИЕ ---
+														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+															if (cmsg->cmsg_level == IPPROTO_SCTP) {
+																
+																cout << "Notification type: ";
+																switch (cmsg->cmsg_type) {
+																	case SCTP_ASSOC_CHANGE:
+																		cout << "SCTP_ASSOC_CHANGE" << endl;
+																		break;
+																	case SCTP_PEER_ADDR_CHANGE:
+																		cout << "SCTP_PEER_ADDR_CHANGE" << endl;
+																		break;
+																	case SCTP_REMOTE_ERROR:
+																		cout << "SCTP_REMOTE_ERROR" << endl;
+																		break;
+																	case SCTP_SEND_FAILED:
+																		cout << "SCTP_SEND_FAILED" << endl;
+																		break;
+																	case SCTP_SHUTDOWN_EVENT:
+																		cout << "SCTP_SHUTDOWN_EVENT" << endl;
+																		break;
+																	case SCTP_ADAPTATION_INDICATION:
+																		cout << "SCTP_ADAPTATION_INDICATION" << endl;
+																		break;
+																	case SCTP_PARTIAL_DELIVERY_EVENT:
+																		cout << "SCTP_PARTIAL_DELIVERY_EVENT" << endl;
+																		break;
+																	case SCTP_AUTHENTICATION_EVENT:
+																		cout << "SCTP_AUTHENTICATION_EVENT" << endl;
+																		break;
+																	case SCTP_SENDER_DRY_EVENT:
+																		cout << "SCTP_SENDER_DRY_EVENT" << endl;
+																		break;
+																	default:
+																		cout << "Unknown (" << cmsg->cmsg_type << ")" << endl;
+																		break;
+																}
+															}
+														}
+
+														return true;
+													} else {
+														// --- ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ ---
+														struct sctp_sndrcvinfo *sinfo = &peer->transfer.sctp.info;
+
+														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+															if (cmsg->cmsg_level == IPPROTO_SCTP && cmsg->cmsg_type == SCTP_SNDRCV) {
+																sinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+																break;
+															}
+														}
+
+														if (sinfo) {
+															printf("Stream: %u, PPID: %u, flags: 0x%x\n",
+																sinfo->sinfo_stream,
+																sinfo->sinfo_ppid,
+																sinfo->sinfo_flags);
+														}
+
+														
+													}
+													
+													
+													
+													
+													
+													
+													
+													
+													/*
 													// Выполняем чтение данных из SCTP-сокета
 													bytes = ::sctp_recvmsg(
 														peer->transfer.fd,
@@ -4656,12 +4742,14 @@ namespace io {
 														&peer->transfer.sctp.info,
 														&peer->transfer.sctp.flags
 													);
+													*/
 
+													/*
 													if (bytes > 0) {
 														if (peer->transfer.sctp.flags & MSG_NOTIFICATION) {
 															cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
 
-															/*
+															
 															cout << "Notification type: ";
 															switch (peer->transfer.sctp.info.sinfo_type) {
 																case SCTP_ASSOC_CHANGE:
@@ -4692,7 +4780,7 @@ namespace io {
 																	cout << "Unknown (" << peer->transfer.sctp.info.sinfo_type << ")" << endl;
 																	break;
 															}
-															*/
+															
 
 															cout << " ------ " << peer->transfer.sctp.info.sinfo_flags << " || " << SCTP_EOF << " || " << SCTP_ABORT << " || " << SCTP_UNORDERED << " || " << SCTP_ADDR_OVER << " || " << SCTP_SENDALL << " || " << SCTP_PR_SCTP_TTL << " || " << SCTP_PR_SCTP_BUF << " || " << SCTP_PR_SCTP_RTX << endl;
 															
@@ -4700,6 +4788,7 @@ namespace io {
 															return true; // не передаём в приложение
 														}
 													}
+													*/
 													
 													/*
 													struct iovec iov = { .iov_base = buffer, .iov_len = AWH_MAX_EVENT_BUFFER_SIZE };
@@ -4710,7 +4799,7 @@ namespace io {
 														.msg_controllen = 0
 													};
 
-													bytes = recvmsg(peer->transfer.fd, &msg, 0);
+													bytes = recvmsg(peer->transfer.fd, &msg, MSG_NOSIGNAL);
 													if (bytes > 0) {
 														if (msg.msg_flags & MSG_NOTIFICATION) {
 															
