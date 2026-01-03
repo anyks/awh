@@ -1393,16 +1393,21 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-					
-					cout << "CLOSE PEER CONNECTION. TOTAL PEERS1: " << peer->peers << " == " << (u_short) peer->timeout << endl;
-					
+					// Выполняем проверку на наличие таймаута для подключения к серверу
+					auto i = peer->timeouts.find(peer->timeout);
+					// Если нужный нам таймаут найден
+					if((i != peer->timeouts.end()) && (i->second > 0)){
+						// Деактивируем таймаут события
+						peer->timeout = event::action_t::NONE;
+						// Добавляем новое событие в список изменений
+						::local::change.push_back((struct kevent){});
+						// Снимаем таймаут на получение данных
+						EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+					}
 					// Уменьшаем общее количество подключений сервера
 					if(peer->peers > 0)
 						// Уменьшаем общее количество подключений сервера
 						peer->peers--;
-
-					cout << "CLOSE PEER CONNECTION. TOTAL PEERS2: " << peer->peers << endl;
-
 					// Если событие отключения от сервера разрешено
 					if(peer->transfer.actions & ::action::DISCONNECT){
 						// Создаём охранника узла события
@@ -1419,6 +1424,17 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
+					// Выполняем проверку на наличие таймаута для подключения к серверу
+					auto i = origin->timeouts.find(origin->timeout);
+					// Если нужный нам таймаут найден
+					if((i != origin->timeouts.end()) && (i->second > 0)){
+						// Деактивируем таймаут события
+						origin->timeout = event::action_t::NONE;
+						// Добавляем новое событие в список изменений
+						::local::change.push_back((struct kevent){});
+						// Снимаем таймаут на получение данных
+						EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, origin);
+					}
 					// Уменьшаем общее количество подключений сервера
 					if(origin->peers > 0)
 						// Уменьшаем общее количество подключений сервера
@@ -1483,6 +1499,19 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
 										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, delay, client);
+									}
+								// Если режим постоянного подключения не установлен
+								} else {
+									// Выполняем проверку на наличие таймаута для подключения к серверу
+									auto i = client->timeouts.find(client->timeout);
+									// Если нужный нам таймаут найден
+									if((i != client->timeouts.end()) && (i->second > 0)){
+										// Деактивируем таймаут события
+										client->timeout = event::action_t::NONE;
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Снимаем таймаут на получение данных
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 									}
 								}
 							} break;
@@ -2463,9 +2492,6 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-
-					cout << " DESTROY PEER " << peer->id << endl;
-
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
