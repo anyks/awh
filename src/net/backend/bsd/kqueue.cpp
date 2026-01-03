@@ -1402,7 +1402,7 @@ namespace io {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Снимаем таймаут на получение данных
-						EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+						EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					}
 					// Уменьшаем общее количество подключений сервера
 					if(peer->peers > 0)
@@ -1433,7 +1433,7 @@ namespace io {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Снимаем таймаут на получение данных
-						EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, origin);
+						EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					}
 					// Уменьшаем общее количество подключений сервера
 					if(origin->peers > 0)
@@ -1511,7 +1511,7 @@ namespace io {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
 							} break;
