@@ -34,6 +34,7 @@
 /**
  * Подключаем системные заголовки
  */
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 /**
@@ -3145,7 +3146,7 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Если режим проверки хоста суревра установлен
 			if(mode)
 				// Устанавливаем режим проверки сертификата
@@ -3252,7 +3253,7 @@ void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcep
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			/**
 			 * Определяем режим работы TLS
 			 */
@@ -3353,7 +3354,7 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				/**
 				 * Определяем узел события к которому относится контекст TLS
 				 */
@@ -3460,7 +3461,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				// Выполняем парсинг I-адреса
 				if(this->_addr.parse(ip)){
 					// Выполняем инициализацию объекта хоста IPv4-адреса
@@ -3625,7 +3626,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 		// Если рукопожатие ещё не выполнено
 		if(!(result = (member->state & state::HANDSHAKE_MODE))){
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Если рукопожатие ещё не завершено
 			if(::SSL_is_init_finished(member->ssl) != 1){
 				// Выполняем TLS рукопожатие
@@ -3762,7 +3763,7 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Выполняем повторную передачу данных для DTLS/QUIC
 			if(::SSL_handle_events(member->ssl) == 1){
 				// Количество прочитанных данных
@@ -3831,7 +3832,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 			// Если рукопожатие выполнено успешно
 			if(member->state & state::HANDSHAKE_MODE){
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				/**
 				 * Для операционной системы Linux или FreeBSD
 				 */
@@ -4005,7 +4006,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Выполняем запись данных в BIO буфер чтения
 			int32_t bytes = ::BIO_write(member->rbio, buffer, static_cast <int32_t> (size));
 			// Если данные записаны успешно и размер записанных данных совпадает с размером входного буфера
@@ -4171,7 +4172,7 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 					// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 					auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 					// Выполняем блокировку потоков
-					const locker_t <> lock(member->mtx);
+					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем все основные алгоритмы шифрования
 					if(::SSL_set_cipher_list(member->ssl, result.c_str()) != 1){
 						// Получаем текст ошибки
@@ -4273,7 +4274,7 @@ void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & al
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
 				member->alpn.ids.clear();
 				// Выполняем сброс буфера поддерживаемых ALPN-протоколов
@@ -4338,7 +4339,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Если адрес файла центра сертификации не пустой
 			if(!filename.empty()){
 				// Создаём новое хранилище
@@ -4439,7 +4440,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Если название файла центра сертификации не пустое
 			if(!file.empty()){
 				// Создаём новое хранилище
@@ -4585,7 +4586,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				// Если CRL-файл сертификата уже создан
 				if(member->crl != nullptr)
 					// Выполняем освобождение памяти
@@ -4717,7 +4718,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				/**
 				 * Определяем узел события к которому относится контекст TLS
 				 */
@@ -5044,7 +5045,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 				auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 				// Выполняем блокировку потоков
-				const locker_t <> lock(member->mtx);
+				const locker_t <recursive_mutex> lock(member->mtx);
 				/**
 				 * Определяем узел события к которому относится контекст TLS
 				 */
@@ -6305,7 +6306,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, read_callback_t callback) no
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Устанавливаем функцию обратного вызова получения данных
 			member->callback.read = ::move(callback);
 		}
@@ -6349,7 +6350,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, write_callback_t callback) n
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Устанавливаем функцию обратного вызова передачи данных
 			member->callback.write = ::move(callback);
 		}
@@ -6393,7 +6394,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Устанавливаем функцию обратного вызова получения ошибок
 			member->callback.error = ::move(callback);
 		}
@@ -6437,7 +6438,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, handshake_callback_t callbac
 			// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов
 			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
 			// Выполняем блокировку потоков
-			const locker_t <> lock(member->mtx);
+			const locker_t <recursive_mutex> lock(member->mtx);
 			// Устанавливаем функцию обратного вызова выполнения рукопожатия
 			member->callback.handshake = ::move(callback);
 		}

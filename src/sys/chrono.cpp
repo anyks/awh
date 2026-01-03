@@ -444,7 +444,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 		// Если регулярное выражение получено
 		if(i != this->_expressions.end()){
 			// Выполняем блокировку потока
-			const locker_t <std::recursive_mutex> lock(this->_mtx.parse);
+			const locker_t <recursive_mutex> lock(this->_mtx.parse);
 			// Получаем объект регулярного выражения
 			const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 			// Создаём объект матчинга
@@ -3539,7 +3539,7 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx.parse);
+				const locker_t <recursive_mutex> lock(this->_mtx.parse);
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
@@ -5807,7 +5807,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx.parse);
+				const locker_t <recursive_mutex> lock(this->_mtx.parse);
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
@@ -7152,7 +7152,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx.parse);
+				const locker_t <recursive_mutex> lock(this->_mtx.parse);
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
