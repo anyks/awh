@@ -1397,6 +1397,9 @@ namespace io {
 					if(peer->peers > 0)
 						// Уменьшаем общее количество подключений сервера
 						peer->peers--;
+
+					cout << "CLOSE PEER CONNECTION. TOTAL PEERS: " << peer->peers << endl;
+
 					// Если событие отключения от сервера разрешено
 					if(peer->transfer.actions & ::action::DISCONNECT){
 						// Создаём охранника узла события
@@ -2457,6 +2460,9 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+
+					cout << " DESTROY PEER " << peer->id << endl;
+
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -4605,6 +4611,9 @@ namespace io {
 												// Выполняем чтение данных из TCP/IP сокета
 												bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											#endif
+
+											cout << " !!!!!!!!!!!!!! READ BYTES: " << bytes << endl;
+
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
