@@ -21116,7 +21116,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, 0, 0, timer);
 							// Выводим положительный результат
 							return true;
 						}
