@@ -8787,8 +8787,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
-						// Устанавливаем событие таймаута на указанное количество миллисекунд
-						EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+						/**
+						 * Если мы работаем в MacOS X
+						 */
+						#if __APPLE__
+							// Устанавливаем событие таймаута на указанное количество миллисекунд
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, 0, 0, timer);
+						/**
+						 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
+						 */
+						#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+							// Устанавливаем событие таймаута на указанное количество миллисекунд
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+						#endif
 						// Формируем положительный результат
 						result = true;
 					} break;
@@ -8802,8 +8813,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
-						// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-						EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+						/**
+						 * Если мы работаем в MacOS X
+						 */
+						#if __APPLE__
+							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, timer);
+						/**
+						 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
+						 */
+						#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+						#endif
 						// Формируем положительный результат
 						result = true;
 					} break;
@@ -21115,8 +21137,19 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
-							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, 0, 0, timer);
+							/**
+							 * Если мы работаем в MacOS X
+							 */
+							#if __APPLE__
+								// Устанавливаем событие таймаута на указанное количество миллисекунд
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, NOTE_NSECONDS, static_cast <uint64_t> (timer->delay) * 1000000, timer);
+							/**
+							 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
+							 */
+							#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+								// Устанавливаем событие таймаута на указанное количество миллисекунд
+								EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, 0, 0, timer);
+							#endif
 							// Выводим положительный результат
 							return true;
 						}
