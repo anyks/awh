@@ -1632,7 +1632,7 @@ namespace io {
 								// Выводим сообщение об ошибке
 								log->debug(
 									"An socket for a Unix event cannot be created because it has an invalid initialization type",
-									__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+									__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
@@ -1870,7 +1870,7 @@ namespace io {
 									// Выводим сообщение об ошибке
 									log->debug(
 										"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 									);
 								/**
 								 * Если режим отладки не включён
@@ -2043,7 +2043,7 @@ namespace io {
 									// Выводим сообщение об ошибке
 									log->debug(
 										"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 									);
 								/**
 								 * Если режим отладки не включён
@@ -2198,7 +2198,7 @@ namespace io {
 									// Выводим сообщение об ошибке
 									log->debug(
 										"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 									);
 								/**
 								 * Если режим отладки не включён
@@ -2281,7 +2281,7 @@ namespace io {
 									// Выводим сообщение об ошибке
 									log->debug(
 										"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 									);
 								/**
 								 * Если режим отладки не включён
@@ -2301,7 +2301,7 @@ namespace io {
 								// Выводим сообщение об ошибке
 								log->debug(
 									"An socket for a IP event cannot be created because it has an invalid initialization type",
-									__PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+									__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
@@ -2322,7 +2322,7 @@ namespace io {
 						// Выводим сообщение об ошибке
 						log->debug(
 							"Socket cannot be created because family it belongs to is not defined",
-							__PRETTY_FUNCTION__,std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING
+							__PRETTY_FUNCTION__,std::make_tuple(node, node->id), log_t::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
@@ -2355,7 +2355,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2651,7 +2651,7 @@ namespace io {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2737,7 +2737,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2770,7 +2770,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2803,7 +2803,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2836,7 +2836,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2869,7 +2869,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2902,7 +2902,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2935,7 +2935,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2968,7 +2968,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2992,7 +2992,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -3219,7 +3219,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								* Если режим отладки не включён
 								*/
@@ -3288,7 +3288,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -3348,7 +3348,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -3381,7 +3381,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -3419,7 +3419,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3452,7 +3452,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3515,7 +3515,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -3548,7 +3548,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -3586,7 +3586,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3619,7 +3619,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -3844,7 +3844,7 @@ namespace io {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -6932,7 +6932,7 @@ namespace io {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -6977,7 +6977,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -7038,7 +7038,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -7106,7 +7106,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -7259,7 +7259,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -7381,7 +7381,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -7551,7 +7551,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -7675,7 +7675,7 @@ namespace io {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -7809,7 +7809,7 @@ namespace io {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -7907,7 +7907,7 @@ namespace io {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -8007,7 +8007,7 @@ namespace io {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::WARNING, error.c_str());
+																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -8302,7 +8302,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, (node != nullptr ? node->id : 0)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

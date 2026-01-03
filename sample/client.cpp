@@ -287,7 +287,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем таймаут события на чтение
 			io.timeout(eid, event::action_t::READ, 10000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 6000);
+			//io.timeout(eid, event::action_t::WRITE, 6000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Выполняем запуск события
