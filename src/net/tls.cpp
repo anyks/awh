@@ -5453,24 +5453,54 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					SSL_OP_SINGLE_ECDH_USE    // Свежие ECDH-ключи (для ECDHE)
 				);
 				/**
-				 * Определяем тип протокола подключения
+				 * Для операционной системы Linux или FreeBSD
 				 */
-				switch(static_cast <uint8_t> (proto)){
-					// Если протокол подключения UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP): {
-						// Устанавливаем минимально-возможную версию DTLS
-						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
-						// Устанавливаем максимально-возможную версию DTLS
-						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
-					} break;
-					// Если протокол подключения TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP): {
-						// Устанавливаем минимально-возможную версию TLS
-						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
-						// Устанавливаем максимально-возможную версию TLS
-						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
-					} break;
-				}
+				#if __linux__ || __FreeBSD__
+					/**
+					 * Определяем тип протокола подключения
+					 */
+					switch(static_cast <uint8_t> (proto)){
+						// Если протокол подключения UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+						// Если протокол подключения SCTP
+						case static_cast <uint8_t> (event::protocol_t::SCTP): {
+							// Устанавливаем минимально-возможную версию DTLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию DTLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+						} break;
+						// Если протокол подключения TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Устанавливаем минимально-возможную версию TLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию TLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+						} break;
+					}
+				/**
+				 * Для операционной системы Linux
+				 */
+				#else
+					/**
+					 * Определяем тип протокола подключения
+					 */
+					switch(static_cast <uint8_t> (proto)){
+						// Если протокол подключения UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP): {
+							// Устанавливаем минимально-возможную версию DTLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию DTLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+						} break;
+						// Если протокол подключения TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Устанавливаем минимально-возможную версию TLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию TLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+						} break;
+					}
+				#endif
 				/**
 				 * Если версия OpenSSL соответствует или выше версии 3.0.0
 				 */
@@ -5853,24 +5883,54 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 					SSL_OP_SINGLE_ECDH_USE    // Свежие ECDH-ключи (для ECDHE)
 				);
 				/**
-				 * Определяем тип протокола подключения
+				 * Для операционной системы Linux или FreeBSD
 				 */
-				switch(static_cast <uint8_t> (proto)){
-					// Если протокол подключения UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP): {
-						// Устанавливаем минимально-возможную версию DTLS
-						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
-						// Устанавливаем максимально-возможную версию DTLS
-						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
-					} break;
-					// Если протокол подключения TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP): {
-						// Устанавливаем минимально-возможную версию TLS
-						::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
-						// Устанавливаем максимально-возможную версию TLS
-						::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
-					} break;
-				}
+				#if __linux__ || __FreeBSD__
+					/**
+					 * Определяем тип протокола подключения
+					 */
+					switch(static_cast <uint8_t> (proto)){
+						// Если протокол подключения UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+						// Если протокол подключения SCTP
+						case static_cast <uint8_t> (event::protocol_t::SCTP): {
+							// Устанавливаем минимально-возможную версию DTLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию DTLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+						} break;
+						// Если протокол подключения TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Устанавливаем минимально-возможную версию TLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию TLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+						} break;
+					}
+				/**
+				 * Для операционной системы Linux
+				 */
+				#else
+					/**
+					 * Определяем тип протокола подключения
+					 */
+					switch(static_cast <uint8_t> (proto)){
+						// Если протокол подключения UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP): {
+							// Устанавливаем минимально-возможную версию DTLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию DTLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, DTLS1_2_VERSION);
+						} break;
+						// Если протокол подключения TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Устанавливаем минимально-возможную версию TLS
+							::SSL_CTX_set_min_proto_version((* ret.first)->ctx, TLS1_2_VERSION);
+							// Устанавливаем максимально-возможную версию TLS
+							::SSL_CTX_set_max_proto_version((* ret.first)->ctx, TLS1_3_VERSION);
+						} break;
+					}
+				#endif
 				// Устанавливаем функцию обратного вызова для обработки сообщений TLS
 				::SSL_CTX_set_msg_callback((* ret.first)->ctx, &::ssl::message);
 				// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
