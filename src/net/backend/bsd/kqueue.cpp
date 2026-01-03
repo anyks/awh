@@ -4661,6 +4661,7 @@ namespace io {
 														if (peer->transfer.sctp.flags & MSG_NOTIFICATION) {
 															cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
 
+															/*
 															cout << "Notification type: ";
 															switch (peer->transfer.sctp.info.sinfo_type) {
 																case SCTP_ASSOC_CHANGE:
@@ -4691,6 +4692,7 @@ namespace io {
 																	cout << "Unknown (" << peer->transfer.sctp.info.sinfo_type << ")" << endl;
 																	break;
 															}
+															*/
 
 															cout << " ------ " << peer->transfer.sctp.info.sinfo_flags << " || " << SCTP_EOF << " || " << SCTP_ABORT << " || " << SCTP_UNORDERED << " || " << SCTP_ADDR_OVER << " || " << SCTP_SENDALL << " || " << SCTP_PR_SCTP_TTL << " || " << SCTP_PR_SCTP_BUF << " || " << SCTP_PR_SCTP_RTX << endl;
 															
