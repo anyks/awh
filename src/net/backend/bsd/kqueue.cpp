@@ -6106,7 +6106,7 @@ namespace io {
 											// Если событие является неблокирующим
 											if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
 												
-												sctp_assoc_t assoc_id = node->sctp.info.sinfo_assoc_id;
+												sctp_assoc_t assoc_id = server->sctp.info.sinfo_assoc_id;
 
 
 												// Отделяем в новый сокет
