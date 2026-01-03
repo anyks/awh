@@ -88,65 +88,7 @@
 #include <sys/locker.hpp>
 #include <sys/threadpool.hpp>
 
-/**
- * Если структура kevent64_s не определена в операционной системой является FreeBSD
- */
-#if !__STRUCT_kevent64_s_defined && __FreeBSD__
-	// Определяем структуру kevent64_s
-	#define __STRUCT_kevent64_s_defined
 
-	/**
-	 * @brief Структура события kqueue с 64-битными полями
-	 *
-	 */
-	struct kevent64_s {
-		uint64_t ident;  // Идентификатор события
-		int16_t  filter; // Тип фильтра события
-		uint16_t flags;  // Флаги события
-		uint32_t fflags; // Флаги фильтра события
-		int64_t  data;   // Данные события
-		uint64_t udata;  // Пользовательские данные
-		uint64_t ext[2]; // Расширенные поля
-	};
-#endif
-
-/**
- * Если макрос инициализации события kevent64 не определён
- */
-#ifndef EV_SET64
-	/**
-	 * Определяем макрос инициализации события kevent64
-	 */
-	#define EV_SET64(kev, a, b, c, d, e, f, g, h) do { \
-		(kev)->ident = (a);                             \
-		(kev)->filter = (b);                            \
-		(kev)->flags = (c);                             \
-		(kev)->fflags = (d);                            \
-		(kev)->data = (e);                              \
-		(kev)->udata = (f);                             \
-		(kev)->ext[0] = (g);                            \
-		(kev)->ext[1] = (h);                            \
-	} while(0)
-#endif
-
-/**
- * Если функция kevent64 не определена в операционной системой является FreeBSD
- */
-#ifndef kevent64
-	/**
-	 * @brief Функция обработки событий kqueue с 64-битными полями
-	 *
-	 * @param kq         дескриптор очереди событий
-	 * @param changelist список изменений
-	 * @param nchanges   количество изменений
-	 * @param eventlist  список установленных событий
-	 * @param nevents    количество установленных событий
-	 * @param flags      флаги установки событий
-	 * @param timeout    таймаут выполнения функции
-	 * @return           результат выполнения функции
-	 */
-	int32_t kevent64(int32_t kq, const struct kevent64_s * changelist, int32_t nchanges, struct kevent64_s * eventlist, int32_t nevents, uint32_t flags, const struct timespec * timeout);
-#endif
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -804,7 +746,7 @@ namespace {
 	/**
 	 * Глобальный массив активных событий kqueue
 	 */
-	struct kevent64_s __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
+	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
 	/**
 	 * Глобальная переменная списка обработанных событий
 	 */
@@ -895,11 +837,11 @@ namespace local {
 	/**
 	 * Глобальный массив временных событий ожидающих активации
 	 */
-	static vector <struct kevent64_s> change;
+	static vector <struct kevent> change;
 	/**
 	 * Глобальный массив результата активации временных событий
 	 */
-	static vector <struct kevent64_s> result;
+	static vector <struct kevent> result;
 	/**
 	 * Режим работы пула потоков
 	 */
@@ -1265,7 +1207,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool processing(struct kevent64_s &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool processing(struct kevent &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 };
 
 /**
@@ -1532,9 +1474,9 @@ namespace io {
 										// Активируем таймаут события
 										client->timeout = event::action_t::RECONNECT;
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, delay, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, delay, client);
 									}
 								}
 							} break;
@@ -3740,17 +3682,17 @@ namespace io {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение и активируем его
-									EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, peer);
 								// Устанавливаем событие на чтение и активируем его
-								else EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+								else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, peer);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+								EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 								// Если необходимо установить таймаут на получение данных
 								auto i = peer->timeouts.find(event::action_t::READ);
 								// Если таймаут на получение данных найден
@@ -3760,9 +3702,9 @@ namespace io {
 										// Активируем таймаут события
 										peer->timeout = i->first;
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
-										EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 									// Если сокет является блокирующим
 									} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 								}
@@ -3835,13 +3777,13 @@ namespace io {
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::local::mtx);
 					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent64_s){});
+					::local::change.push_back((struct kevent){});
 					// Активируем событие на чтение данных
-					EV_SET64(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (node), 0, 0);
+					EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, node);
 					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent64_s){});
+					::local::change.push_back((struct kevent){});
 					// Деактивируем событие на запись данных
-					EV_SET64(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (node), 0, 0);
+					EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, node);
 					// Если сокет является неблокирующим
 					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
 						// Выполняем проверку на наличие таймаута для подключения к серверу
@@ -3851,9 +3793,9 @@ namespace io {
 							// Деактивируем таймаут события
 							node->timeout = event::action_t::NONE;
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Снимаем таймаут на получение данных
-							EV_SET64(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (node), 0, 0);
+							EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, node);
 						}
 					}
 				}
@@ -3872,9 +3814,9 @@ namespace io {
 						// Активируем таймаут события
 						node->timeout = i->first;
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем таймаут на получение данных
-						EV_SET64(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (node), 0, 0);
+						EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, node);
 					// Устанавливаем таймаут на получение данных
 					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 				}
@@ -4929,9 +4871,9 @@ namespace io {
 								// Активируем таймаут события
 								peer->timeout = i->first;
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 							}
 							// Формируем положительный результат
 							return true;
@@ -5965,9 +5907,9 @@ namespace io {
 								// Активируем таймаут события
 								client->timeout = i->first;
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+								EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 							}
 							// Формируем положительный результат
 							return true;
@@ -6344,9 +6286,9 @@ namespace io {
 													// Активируем таймаут события
 													i->second->timeout = j->first;
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET64(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (i->second), 0, 0);
+													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, i->second);
 												}
 											}
 										}
@@ -6827,9 +6769,9 @@ namespace io {
 															// Активируем таймаут события
 															origin->timeout = i->first;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+															EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
 														}
 													}
 													// Выводим положительный результат
@@ -7201,9 +7143,9 @@ namespace io {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Деактивируем событие на запись данных
-								EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+								EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 							}
 							// Формируем положительный результат
 							return true;
@@ -7256,9 +7198,9 @@ namespace io {
 														// Активируем таймаут события
 														peer->timeout = i->first;
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 													}
 												}
 												// Формируем положительный результат
@@ -7276,9 +7218,9 @@ namespace io {
 														// Активируем таймаут события
 														peer->timeout = i->first;
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 													// Если нужный нам таймаут не найден
 													} else {
 														// Выполняем блокировку потоков
@@ -7286,9 +7228,9 @@ namespace io {
 														// Деактивируем таймаут события
 														peer->timeout = event::action_t::NONE;
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Снимаем таймаут на получение данных
-														EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 													}
 												}
 											}
@@ -7398,9 +7340,9 @@ namespace io {
 														// Активируем таймаут события
 														peer->timeout = i->first;
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 													// Если нужный нам таймаут не найден
 													} else {
 														// Выполняем блокировку потоков
@@ -7408,9 +7350,9 @@ namespace io {
 														// Деактивируем таймаут события
 														peer->timeout = event::action_t::NONE;
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Снимаем таймаут на получение данных
-														EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 													}
 												}
 											}
@@ -7476,17 +7418,17 @@ namespace io {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Деактивируем событие на запись данных
-								EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+								EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 								// Выполняем проверку на наличие таймаута для действия
 								if(peer->timeout == event::action_t::WRITE){
 									// Деактивируем таймаут события
 									peer->timeout = event::action_t::NONE;
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Снимаем таймаут на получение данных
-									EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 								}
 							}
 							// Формируем положительный результат
@@ -7548,9 +7490,9 @@ namespace io {
 															// Активируем таймаут события
 															client->timeout = i->first;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 														}
 													}
 													// Формируем положительный результат
@@ -7568,9 +7510,9 @@ namespace io {
 															// Активируем таймаут события
 															client->timeout = i->first;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 														// Если нужный нам таймаут не найден
 														} else {
 															// Выполняем блокировку потоков
@@ -7578,9 +7520,9 @@ namespace io {
 															// Деактивируем таймаут события
 															client->timeout = event::action_t::NONE;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Снимаем таймаут на получение данных
-															EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 														}
 													}
 												}
@@ -7692,9 +7634,9 @@ namespace io {
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -7702,9 +7644,9 @@ namespace io {
 																// Деактивируем таймаут события
 																client->timeout = event::action_t::NONE;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 															}
 														}
 													}
@@ -7826,9 +7768,9 @@ namespace io {
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -7836,9 +7778,9 @@ namespace io {
 																// Деактивируем таймаут события
 																client->timeout = event::action_t::NONE;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 															}
 														}
 													}
@@ -7924,9 +7866,9 @@ namespace io {
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -7934,9 +7876,9 @@ namespace io {
 																// Деактивируем таймаут события
 																client->timeout = event::action_t::NONE;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 															}
 														}
 													}
@@ -8024,9 +7966,9 @@ namespace io {
 																// Активируем таймаут события
 																client->timeout = i->first;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 															// Если нужный нам таймаут не найден
 															} else {
 																// Выполняем блокировку потоков
@@ -8034,9 +7976,9 @@ namespace io {
 																// Деактивируем таймаут события
 																client->timeout = event::action_t::NONE;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 															}
 														}
 													}
@@ -8103,17 +8045,17 @@ namespace io {
 									// Выполняем блокировку потоков
 									const locker_t <> lock(::local::mtx);
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Деактивируем событие на запись данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 									// Выполняем проверку на наличие таймаута для действия
 									if(client->timeout == event::action_t::WRITE){
 										// Деактивируем таймаут события
 										client->timeout = event::action_t::NONE;
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 									}
 								}
 								// Формируем положительный результат
@@ -8252,9 +8194,9 @@ namespace io {
 													// Активируем таймаут события
 													session.second->timeout = i->first;
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET64(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (session.second), 0, 0);
+													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, session.second);
 												// Если нужный нам таймаут не найден
 												} else {
 													// Выполняем блокировку потоков
@@ -8262,9 +8204,9 @@ namespace io {
 													// Деактивируем таймаут события
 													session.second->timeout = event::action_t::NONE;
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Снимаем таймаут на получение данных
-													EV_SET64(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (session.second), 0, 0);
+													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, session.second);
 												}
 											}
 										// Если в очереди данных больше не осталось данных для отправки
@@ -8276,9 +8218,9 @@ namespace io {
 												// Деактивируем таймаут события
 												session.second->timeout = event::action_t::NONE;
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Снимаем таймаут на получение данных
-												EV_SET64(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (session.second), 0, 0);
+												EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, session.second);
 											}
 										}
 									// Если мы отправили не все данные
@@ -8344,9 +8286,9 @@ namespace io {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent64_s){});
+					::local::change.push_back((struct kevent){});
 					// Деактивируем событие на запись данных
-					EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+					EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 					// Формируем положительный результат
 					return true;
 				}
@@ -8382,7 +8324,7 @@ namespace io {
 	 * @param log объект работы с логами
 	 * @return    результат выполнения обработки
 	 */
-	static bool processing(struct kevent64_s & ev, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool processing(struct kevent & ev, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		// Значение узла для обработки изменений
 		net::node_t * node = reinterpret_cast <net::node_t *> (ev.udata);
 		// Создаём охранника узла события
@@ -8829,9 +8771,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем пользовательское событие
-						EV_SET64(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (user), 0, 0);
+						EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, user);
 						// Формируем положительный результат
 						result = true;
 					} break;
@@ -8844,9 +8786,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие таймаута на указанное количество миллисекунд
-						EV_SET64(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
+						EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, 0, 0, timer);
 						// Формируем положительный результат
 						result = true;
 					} break;
@@ -8859,9 +8801,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-						EV_SET64(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
+						EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, timer);
 						// Формируем положительный результат
 						result = true;
 					} break;
@@ -8918,9 +8860,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на отслеживание изменения каталога
-										EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+										EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, dir);
 										// Устанавливаем флаги разрешающие получать события
 										dir->actions |= (::action::CHANGE | ::action::DELETE | ::action::RENAME | ::action::ATTRIB | ::action::REVOKE | ::action::HDLINK | ::action::CLOSE);
 										// Выполняем изменение содержимого в директории
@@ -9039,9 +8981,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Выполняем блокировку потоков
 									const locker_t <> lock(::local::mtx);
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на отслеживание изменения файла
-									EV_SET64(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+									EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, file);
 									// Устанавливаем флаги разрешающие получать события
 									file->actions |= (::action::CHANGE | ::action::DELETE | ::action::RENAME | ::action::ATTRIB | ::action::REVOKE | ::action::HDLINK | ::action::CLOSE | ::action::READ | ::action::WRITE);
 									// Если файл открыт удачно
@@ -9168,17 +9110,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Выполняем блокировку потоков
 									const locker_t <> lock(::local::mtx);
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Если сокет является неблокирующим
 									if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK))
 										// Устанавливаем событие на чтение и активируем его
-										EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+										EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 									// Устанавливаем событие на чтение и активируем его
-									else EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+									else EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на запись но отключаем его
-									EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 									// Устанавливаем флаг разрешающий выполнять чтение из сокета
 									ipc->transfer.actions |= ::action::READ;
 									// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -9299,17 +9241,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
 												if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 													// Устанавливаем событие на чтение но отключаем его
-													EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Устанавливаем событие на чтение но отключаем его
-												else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+												else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем событие на запись но отключаем его
-												EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												client->transfer.actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -9379,17 +9321,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
 												if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 													// Устанавливаем событие на чтение но отключаем его
-													EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Устанавливаем событие на чтение но отключаем его
-												else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+												else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем событие на запись но отключаем его
-												EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												client->transfer.actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -9683,17 +9625,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Если сокет является неблокирующим
 														if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+														else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Устанавливаем событие на запись но отключаем его
-														EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
 														client->transfer.actions |= ::action::READ;
 														// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -9848,17 +9790,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
 															if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем событие на запись но отключаем его
-															EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															client->transfer.actions |= ::action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -10326,17 +10268,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
 															if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем событие на запись но отключаем его
-															EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															client->transfer.actions |= ::action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -10832,17 +10774,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
 												if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 													// Устанавливаем событие на чтение но отключаем его
-													EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Устанавливаем событие на чтение но отключаем его
-												else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+												else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем событие на запись но отключаем его
-												EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+												EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												server->actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -10906,17 +10848,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
 												if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 													// Устанавливаем событие на чтение но отключаем его
-													EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Устанавливаем событие на чтение но отключаем его
-												else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+												else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем событие на запись но отключаем его
-												EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+												EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												server->actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -11136,13 +11078,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Если сокет является неблокирующим
 														if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+															EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 														// Устанавливаем событие на чтение но отключаем его
-														else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+														else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 														/**
 														 * Определяем тип сокета
 														 */
@@ -11152,9 +11094,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Если сокет принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем событие на запись но отключаем его
-																EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+																EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															} break;
 														}
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -11299,13 +11241,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
 															if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+																EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+															else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															/**
 															 * Определяем тип сокета
 															 */
@@ -11315,9 +11257,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																// Если сокет принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем событие на запись но отключаем его
-																	EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+																	EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 																} break;
 															}
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -11463,13 +11405,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
 															if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 																// Устанавливаем событие на чтение но отключаем его
-																EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+																EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															// Устанавливаем событие на чтение но отключаем его
-															else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+															else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															/**
 															 * Определяем тип сокета
 															 */
@@ -11479,9 +11421,9 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																// Если сокет принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем событие на запись но отключаем его
-																	EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+																	EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 																} break;
 															}
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -16930,11 +16872,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Выполняем извлечение текущего значения объекта пользовательского события
 					::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
-					struct kevent64_s event{};
+					struct kevent event{};
 					// Снимаем событие из списка ожидания
-					EV_SET64(&event, user->id, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (user), 0, 0);
+					EV_SET(&event, user->id, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, user);
 					// Выполняем удаление события из списка ожидания
-					::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
 					return ::io::destroy(user, this->_log);
 				}
@@ -16951,11 +16893,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета активен
 					else {
 						// Объект события для удаления из списка ожидания
-						struct kevent64_s event{};
+						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET64(&event, timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
+						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Выполняем удаление узла
 						return ::io::destroy(timer, this->_log);
 					}
@@ -16965,11 +16907,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Получаем текущее значение объекта директории
 					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
-					struct kevent64_s event{};
+					struct kevent event{};
 					// Снимаем событие из списка ожидания
-					EV_SET64(&event, dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+					EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
 					// Выполняем удаление события из списка ожидания
-					::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Если каталог открыт
 					if(dir->handle != nullptr){
 						// Закрываем каталог
@@ -16985,11 +16927,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 					// Объект события для удаления из списка ожидания
-					struct kevent64_s event{};
+					struct kevent event{};
 					// Снимаем событие из списка ожидания
-					EV_SET64(&event, file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+					EV_SET(&event, file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
 					// Выполняем удаление события из списка ожидания
-					::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
 					return ::io::destroy(file, this->_log);
 				}
@@ -17058,11 +17000,11 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета активен
 					else {
 						// Объект события для удаления из списка ожидания
-						struct kevent64_s event{};
+						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET64(&event, server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+						EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
 						// Выполняем удаление события из списка ожидания
-						if(::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr) < 0){
+						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) < 0){
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -18846,19 +18788,19 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent64_s){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
 											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent64_s){});
+											::local::change.push_back((struct kevent){});
 											// Если событие находится в состоянии паузы
 											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
 											// Если событие находится в активном состоянии
 											else {
 												// Устанавливаем событие на чтение
-												EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, i->second.get());
 												/**
 												 * Определяем чем является текущий узел
 												 */
@@ -18874,9 +18816,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Активируем таймаут события
 															peer->timeout = j->first;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Устанавливаем таймаут на получение данных
-															EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
 														}
 													} break;
 													// Если узел является клиентом
@@ -18892,9 +18834,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 																// Активируем таймаут события
 																client->timeout = j->first;
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, client);
 															}
 														}
 													} break;
@@ -18940,19 +18882,19 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent64_s){});
+											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
 											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent64_s){});
+											::local::change.push_back((struct kevent){});
 											// Если событие находится в состоянии паузы
 											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
 											// Если событие находится в активном состоянии
 											else {
 												// Устанавливаем событие на чтение
-												EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, i->second.get());
 												/**
 												 * Определяем чем является текущий узел
 												 */
@@ -18966,9 +18908,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Деактивируем таймаут события
 															peer->timeout = event::action_t::NONE;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, peer);
 														}
 														// Если необходимо установить таймаут на чтение данных
 														auto j = peer->timeouts.find(event::action_t::READ);
@@ -18986,9 +18928,9 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Деактивируем таймаут события
 															client->timeout = event::action_t::NONE;
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, client);
 														}
 														// Если таймаут не является таймаутом на переподключение
 														if(client->timeout != event::action_t::RECONNECT){
@@ -19424,19 +19366,19 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													// Выполняем блокировку потоков
 													const locker_t <> lock(::local::mtx);
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Удаляем событие на чтение
-													EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Если событие находится в состоянии паузы
 													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
 													// Если событие находится в активном состоянии
 													else {
 														// Устанавливаем событие на чтение
-														EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, i->second.get());
 														/**
 														 * Определяем чем является текущий узел
 														 */
@@ -19452,9 +19394,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Активируем таймаут события
 																	peer->timeout = j->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
 																}
 															} break;
 															// Если узел является клиентом
@@ -19470,9 +19412,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																		// Активируем таймаут события
 																		client->timeout = j->first;
 																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent64_s){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, client);
 																	}
 																}
 															} break;
@@ -19518,19 +19460,19 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													// Выполняем блокировку потоков
 													const locker_t <> lock(::local::mtx);
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Удаляем событие на чтение
-													EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Если событие находится в состоянии паузы
 													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
 													// Если событие находится в активном состоянии
 													else {
 														// Устанавливаем событие на чтение
-														EV_SET64(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, i->second.get());
 														/**
 														 * Определяем чем является текущий узел
 														 */
@@ -19542,9 +19484,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																// Если таймаут уже был активирован
 																if(peer->timeout != event::action_t::NONE){
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, peer);
 																}
 																// Если необходимо установить таймаут на чтение данных
 																auto j = peer->timeouts.find(event::action_t::READ);
@@ -19560,9 +19502,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																// Если таймаут уже был активирован и не является таймаутом на переподключение
 																if((client->timeout != event::action_t::NONE) && (client->timeout != event::action_t::RECONNECT)){
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, client);
 																}
 																// Если таймаут не является таймаутом на переподключение
 																if(client->timeout != event::action_t::RECONNECT){
@@ -21150,9 +21092,9 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Активируем событие на запись для клиентского сокета
-						EV_SET64(&::local::change.back(), i->first, EVFILT_USER, EV_ENABLE | EV_RECEIPT, NOTE_FFNOP, 0, reinterpret_cast <uint64_t> (i->second.get()), 0, 0);
+						EV_SET(&::local::change.back(), i->first, EVFILT_USER, EV_ENABLE | EV_RECEIPT, NOTE_FFNOP, 0, i->second.get());
 						// Выводим положительный результат
 						return true;
 					}
@@ -21172,9 +21114,9 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET64(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, reinterpret_cast <uint64_t> (timer), 0, 0);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ENABLE | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 							// Выводим положительный результат
 							return true;
 						}
@@ -21193,7 +21135,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -21203,14 +21145,14 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 								// Получаем текущее значение объекта директории
 								::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 								// Активируем событие на запись для клиентского сокета
-								EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ENABLE | EV_RECEIPT, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+								EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ENABLE | EV_RECEIPT, NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, dir);
 							} break;
 							// Если узел является файловой системой
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Получаем текущее значение объекта файловой системы
 								::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 								// Активируем событие на запись для клиентского сокета
-								EV_SET64(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ENABLE | EV_RECEIPT, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+								EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ENABLE | EV_RECEIPT, NOTE_WRITE | NOTE_EXTEND | NOTE_RENAME | NOTE_DELETE | NOTE_ATTRIB | NOTE_REVOKE | NOTE_LINK, 0, file);
 							} break;
 						}
 						// Выводим положительный результат
@@ -21226,11 +21168,11 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Активируем событие на запись для клиентского сокета
-						EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+						EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 						// Выводим положительный результат
 						return true;
 					}
@@ -21256,7 +21198,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -21266,7 +21208,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 										// Получаем текущее значение объекта клиента
 										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Активируем событие на чтение для клиентского сокета
-										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 										// Если необходимо установить таймаут на чтение данных с сервера
 										auto j = client->timeouts.find(event::action_t::READ);
 										// Если таймаут на чтение данных найден
@@ -21276,9 +21218,9 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 												// Активируем таймаут события
 												client->timeout = j->first;
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, client);
 											// Если сокет является блокирующим
 											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 										}
@@ -21288,7 +21230,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 										// Получаем текущее значение объекта сервера
 										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Активируем событие на запись для клиентского сокета
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 									} break;
 								}
 								// Выводим положительный результат
@@ -21384,7 +21326,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -21396,7 +21338,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 										// Устанавливаем статус события в состояние ожидания
 										client->state.status.store(event::status_t::PENDING, std::memory_order_release);
 										// Активируем событие на запись для клиентского сокета
-										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 										// Если необходимо установить таймаут на подключение к серверу
 										auto j = client->timeouts.find(event::action_t::CONNECT);
 										// Если таймаут на подключение найден
@@ -21406,9 +21348,9 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 												// Активируем таймаут события
 												client->timeout = j->first;
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, client);
 											// Если сокет является блокирующим
 											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
 										}
@@ -21420,7 +21362,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 										// Устанавливаем статус события в состояние прослушивания
 										server->state.status.store(event::status_t::LISTENING, std::memory_order_release);
 										// Активируем событие на чтение для серверного сокета
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 									} break;
 								}
 								// Выполняем "пинок" для применения изменений
@@ -21656,13 +21598,13 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, client);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 									}
 								}
 							// Если сокет является блокирующим
@@ -21682,13 +21624,13 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, client);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 									}
 								}
 							}
@@ -22513,13 +22455,13 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 									}
 								}
 							// Если сокет является блокирующим
@@ -22539,13 +22481,13 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 									}
 								}
 							}
@@ -23342,11 +23284,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 						// Добавляем данные в очередь событий пользователя
 						user->events.push(data, size);
 						// Создаём событие триггера
-						struct kevent64_s trigger{};
+						struct kevent trigger{};
 						// Выполняем установку события триггера
-						EV_SET64(&trigger, i->first, EVFILT_USER, EV_RECEIPT, NOTE_TRIGGER, 0, reinterpret_cast <uint64_t> (user), 0, 0);
+						EV_SET(&trigger, i->first, EVFILT_USER, EV_RECEIPT, NOTE_TRIGGER, 0, user);
 						// Триггерим событие Kqueue
-						if(!(result = (::kevent64(::__awh_kq__, &trigger, 1, nullptr, 0, 0, nullptr) != net::invalid_socket_t))){
+						if(!(result = (::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -23401,9 +23343,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+																EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(ipc->callbacks.write != nullptr){
@@ -23427,9 +23369,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Активируем событие на запись для клиентского сокета
-																	EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+																	EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 																}
 																// Если функция обратного вызова для вывода записанных данных установлена
 																if(ipc->callbacks.write != nullptr)
@@ -23652,9 +23594,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Активируем событие на запись для клиентского сокета
-														EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+														EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr){
@@ -23678,9 +23620,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+															EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
@@ -23913,9 +23855,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+															EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
@@ -24118,9 +24060,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+															EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 															// Если таймаут не установлен
 															if(peer->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -24130,9 +24072,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	peer->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 																}
 															}
 														}
@@ -24159,9 +24101,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+															EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 															// Если таймаут не установлен
 															if(peer->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -24171,9 +24113,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	peer->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 																}
 															}
 														}
@@ -24443,9 +24385,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+															EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 															// Если таймаут не установлен
 															if(peer->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -24455,9 +24397,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	peer->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, peer);
 																}
 															}
 														}
@@ -24749,9 +24691,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent64_s){});
+												::local::change.push_back((struct kevent){});
 												// Устанавливаем таймаут на получение данных
-												EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+												EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
 											}
 											// Если таймаут не установлен
 											if(origin->timeout == event::action_t::NONE){
@@ -24764,9 +24706,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выполняем блокировку потоков
 													const locker_t <> lock(::local::mtx);
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+													EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
 												}
 											}
 											// Выполняем отправку данных в RAW-сокет
@@ -25003,9 +24945,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (origin), 0, 0);
+															EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, origin);
 															// Если таймаут не установлен
 															if(origin->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -25015,9 +24957,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	origin->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
 																}
 															}
 														}
@@ -25285,9 +25227,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (origin), 0, 0);
+															EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, origin);
 															// Если таймаут не установлен
 															if(origin->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -25297,9 +25239,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	origin->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, origin);
 																}
 															}
 														}
@@ -25603,9 +25545,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 															// Если таймаут не установлен
 															if(client->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -25615,9 +25557,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	client->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																}
 															}
 														}
@@ -25644,9 +25586,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
 															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent64_s){});
+															::local::change.push_back((struct kevent){});
 															// Активируем событие на запись для клиентского сокета
-															EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 															// Если таймаут не установлен
 															if(client->timeout == event::action_t::NONE){
 																// Выполняем проверку на наличие таймаута для события записи
@@ -25656,9 +25598,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	// Активируем таймаут события
 																	client->timeout = i->first;
 																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent64_s){});
+																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																}
 															}
 														}
@@ -25930,9 +25872,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 																// Если таймаут не установлен
 																if(client->timeout == event::action_t::NONE){
 																	// Выполняем проверку на наличие таймаута для события записи
@@ -25942,9 +25884,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Активируем таймаут события
 																		client->timeout = i->first;
 																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent64_s){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																	}
 																}
 															}
@@ -26265,9 +26207,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 																// Если таймаут не установлен
 																if(client->timeout == event::action_t::NONE){
 																	// Выполняем проверку на наличие таймаута для события записи
@@ -26277,9 +26219,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Активируем таймаут события
 																		client->timeout = i->first;
 																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent64_s){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																	}
 																}
 															}
@@ -26590,9 +26532,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выполняем блокировку потоков
 													const locker_t <> lock(::local::mtx);
 													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent64_s){});
+													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+													EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 												}
 												// Если таймаут не установлен
 												if(client->timeout == event::action_t::NONE){
@@ -26605,9 +26547,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent64_s){});
+														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+														EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 													}
 												}
 											}
@@ -26871,9 +26813,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 																// Если таймаут не установлен
 																if(client->timeout == event::action_t::NONE){
 																	// Выполняем проверку на наличие таймаута для события записи
@@ -26883,9 +26825,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Активируем таймаут события
 																		client->timeout = i->first;
 																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent64_s){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																	}
 																}
 															}
@@ -27129,9 +27071,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
 																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent64_s){});
+																::local::change.push_back((struct kevent){});
 																// Активируем событие на запись для клиентского сокета
-																EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 																// Если таймаут не установлен
 																if(client->timeout == event::action_t::NONE){
 																	// Выполняем проверку на наличие таймаута для события записи
@@ -27141,9 +27083,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																		// Активируем таймаут события
 																		client->timeout = i->first;
 																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent64_s){});
+																		::local::change.push_back((struct kevent){});
 																		// Устанавливаем таймаут на получение данных
-																		EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (i->second) * 1000, client);
 																	}
 																}
 															}
@@ -30633,15 +30575,15 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					// Если таймаут находится в состоянии ожидания
 					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Останавливаем активный таймаут
-						EV_SET64(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
+						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, timer);
 						// Если таймаут необходимо запустить
 						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET64(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, reinterpret_cast <uint64_t> (timer), 0, 0);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -30658,15 +30600,15 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 					// Если таймаут находится в состоянии ожидания
 					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Останавливаем активный таймаут
-						EV_SET64(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
+						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, NOTE_USECONDS, 0, timer);
 						// Если таймаут необходимо запустить
 						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET64(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, reinterpret_cast <uint64_t> (timer), 0, 0);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (timer->delay) * 1000, timer);
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -31540,15 +31482,15 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::local::mtx);
 					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent64_s){});
+					::local::change.push_back((struct kevent){});
 					// Удаляем предыдущее событие из списка изменений
-					EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+					EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
 					// Если флаги установлены
 					if(flags > 0){
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на отслеживание изменения каталога
-						EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, dir);
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -31739,15 +31681,15 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::local::mtx);
 					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent64_s){});
+					::local::change.push_back((struct kevent){});
 					// Удаляем предыдущее событие из списка изменений
-					EV_SET64(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (fs), 0, 0);
+					EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, fs);
 					// Если флаги установлены
 					if(flags > 0){
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на отслеживание изменения каталога
-						EV_SET64(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, reinterpret_cast <uint64_t> (fs), 0, 0);
+						EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, fs);
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -31765,7 +31707,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -31775,14 +31717,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= ::action::READ;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 								} break;
 							}
 						} break;
@@ -31791,7 +31733,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -31801,14 +31743,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= ::action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~::action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+									EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 								} break;
 							}
 						} break;
@@ -31849,7 +31791,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -31859,14 +31801,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= ::action::READ;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 								} break;
 							}
 						} break;
@@ -31875,7 +31817,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -31885,14 +31827,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= ::action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~::action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 								} break;
 							}
 						} break;
@@ -32041,7 +31983,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -32051,14 +31993,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::READ;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								} break;
 							}
 						} break;
@@ -32067,7 +32009,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -32077,14 +32019,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~::action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								} break;
 							}
 						} break;
@@ -32113,7 +32055,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -32123,14 +32065,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::CONNECT;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~::action::CONNECT;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								} break;
 							}
 						} break;
@@ -32191,7 +32133,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -32201,14 +32143,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->actions |= ::action::READ;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								} break;
 							}
 						} break;
@@ -32217,7 +32159,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -32227,14 +32169,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->actions |= ::action::WRITE;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->actions &= ~::action::WRITE;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								} break;
 							}
 						} break;
@@ -32263,7 +32205,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							/**
 							 * Определяем тип действия события
 							 */
@@ -32273,14 +32215,14 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 									// Добавляем действие события в список разрешённых действий
 									server->actions |= ::action::ACCEPT;
 									// Активируем событие на чтение данных
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									server->actions &= ~::action::ACCEPT;
 									// Деактивируем событие на чтение данных
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								} break;
 							}
 						} break;
@@ -32422,13 +32364,13 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на чтение данных
-						EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+						EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на запись данных
-						EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+						EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -32446,9 +32388,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -32466,9 +32408,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET64(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+						EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -32486,13 +32428,13 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на чтение данных
-						EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на запись данных
-						EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
 							// Событие для получения таймаутов
@@ -32517,9 +32459,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 										// Деактивируем таймаут события
 										peer->timeout = event::action_t::NONE;
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 										// Выходим из цикла
 										break;
 									}
@@ -32567,9 +32509,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 										// Деактивируем таймаут события
 										origin->timeout = event::action_t::NONE;
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (origin), 0, 0);
+										EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, origin);
 										// Выходим из цикла
 										break;
 									}
@@ -32595,13 +32537,13 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на чтение данных
-						EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+						EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на запись данных
-						EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+						EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 						// Если сокет является неблокирующим
 						if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
 							// Событие для получения таймаутов
@@ -32626,9 +32568,9 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 										// Деактивируем таймаут события
 										client->timeout = event::action_t::NONE;
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 										// Выходим из цикла
 										break;
 									}
@@ -32653,15 +32595,15 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Деактивируем событие на чтение данных
-						EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+						EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 						// Если событие является датаграммой
 						if(server->state.type == event::type_t::DATAGRAM){
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Деактивируем событие на запись данных
-							EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+							EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -32726,9 +32668,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Активируем событие на чтение данных
-							EV_SET64(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+							EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, ipc);
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
 						}
@@ -32768,15 +32710,15 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
 						// Если флаги установлены
 						if(flags > 0){
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET64(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+							EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, dir);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -32816,15 +32758,15 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее событие из списка изменений
-						EV_SET64(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+						EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
 						// Если флаги установлены
 						if(flags > 0){
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET64(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+							EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, file);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -32840,9 +32782,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Активируем событие на чтение данных
-							EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 							// Выполняем проверку на наличие таймаута для действия
 							auto j = peer->timeouts.find(event::action_t::READ);
 							// Если нужный нам таймаут найден
@@ -32852,9 +32794,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 									// Активируем таймаут события
 									peer->timeout = j->first;
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
-									EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
 								// Если сокет является блокирующим
 								} else this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 							}
@@ -32881,9 +32823,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 									// Активируем таймаут события
 									origin->timeout = j->first;
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
-									EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+									EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, origin);
 								}
 							}
 							// Выполняем "пинок" для применения изменений
@@ -32901,9 +32843,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Активируем событие на чтение данных
-							EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+							EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 							// Выполняем проверку на наличие таймаута для действия
 							auto j = client->timeouts.find(event::action_t::READ);
 							// Если нужный нам таймаут найден
@@ -32913,9 +32855,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 									// Активируем таймаут события
 									client->timeout = j->first;
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
-									EV_SET64(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, client);
 								// Если сокет является блокирующим
 								} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 							}
@@ -32934,9 +32876,9 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Выполняем блокировку потоков
 							const locker_t <> lock(::local::mtx);
 							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent64_s){});
+							::local::change.push_back((struct kevent){});
 							// Активируем событие на чтение данных
-							EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+							EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
 						}
@@ -33085,11 +33027,11 @@ void awh::IO::clear() noexcept {
 						// Получаем текущее значение объекта пользовательского события
 						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
-						struct kevent64_s event{};
+						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET64(&event, i->first, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (user), 0, 0);
+						EV_SET(&event, i->first, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, user);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если установлена функция обратного вызова
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
@@ -33106,11 +33048,11 @@ void awh::IO::clear() noexcept {
 						// Получаем объект события интервала
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
-						struct kevent64_s event{};
+						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET64(&event, i->first, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (timer), 0, 0);
+						EV_SET(&event, i->first, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
@@ -33125,11 +33067,11 @@ void awh::IO::clear() noexcept {
 						// Получаем текущее значение объекта директории
 						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
-						struct kevent64_s event{};
+						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET64(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (dir), 0, 0);
+						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если каталог открыт
 						if(dir->handle != nullptr)
 							// Закрываем каталог
@@ -33152,11 +33094,11 @@ void awh::IO::clear() noexcept {
 						// Получаем текущее значение объекта файловой системы
 						::io::file_t * file = awh_cast <::io::file_t *> (i->second.get());
 						// Объект события для удаления из списка ожидания
-						struct kevent64_s event{};
+						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET64(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (file), 0, 0);
+						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
 						if(file->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
@@ -33175,13 +33117,13 @@ void awh::IO::clear() noexcept {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Объекты событий для удаления из списка ожидания
-						struct kevent64_s events[2] = {};
+						struct kevent events[2] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET64(&events[0], ipc->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+						EV_SET(&events[0], ipc->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, ipc);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET64(&events[1], ipc->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (ipc), 0, 0);
+						EV_SET(&events[1], ipc->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, ipc);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &events[0], 2, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
 						if(ipc->transfer.fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
@@ -33202,20 +33144,20 @@ void awh::IO::clear() noexcept {
 						// Количество событий для удаления
 						size_t count = 2;
 						// Объекты событий для удаления из списка ожидания
-						struct kevent64_s events[3] = {};
+						struct kevent events[3] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET64(&events[0], peer->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						EV_SET(&events[0], peer->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET64(&events[1], peer->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						EV_SET(&events[1], peer->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 						// Если установлен таймаут для события
 						if(peer->timeout != event::action_t::NONE){
 							// Увеличиваем количество событий
 							count++;
 							// Снимаем событие таймаута из списка ожидания
-							EV_SET64(&events[2], peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+							EV_SET(&events[2], peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
 						}
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &events[0], count, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
 						if(peer->transfer.fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
@@ -33236,11 +33178,11 @@ void awh::IO::clear() noexcept {
 						// Если установлен таймаут для события
 						if(origin->timeout != event::action_t::NONE){
 							// Объект события для удаления из списка ожидания
-							struct kevent64_s event{};
+							struct kevent event{};
 							// Снимаем событие таймаута из списка ожидания
-							EV_SET64(&event, origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (origin), 0, 0);
+							EV_SET(&event, origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, origin);
 							// Выполняем удаление события из списка ожидания
-							::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr);
+							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						}
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
@@ -33258,22 +33200,22 @@ void awh::IO::clear() noexcept {
 						// Количество событий для удаления
 						size_t count = 2;
 						// Объекты событий для удаления из списка ожидания
-						struct kevent64_s events[3] = {};
+						struct kevent events[3] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET64(&events[0], client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+						EV_SET(&events[0], client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, client);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET64(&events[1], client->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+						EV_SET(&events[1], client->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, client);
 						// Если установлен таймаут для события
 						if(client->timeout != event::action_t::NONE){
 							// Увеличиваем количество событий
 							count++;
 							// Объект события для удаления из списка ожидания
-							struct kevent64_s event{};
+							struct kevent event{};
 							// Снимаем событие таймаута из списка ожидания
-							EV_SET64(&events[2], client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+							EV_SET(&events[2], client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
 						}
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &events[0], count, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
 						if(client->transfer.fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
@@ -33304,13 +33246,13 @@ void awh::IO::clear() noexcept {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Объекты событий для удаления из списка ожидания
-						struct kevent64_s events[2] = {};
+						struct kevent events[2] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET64(&events[0], server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+						EV_SET(&events[0], server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET64(&events[1], server->fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+						EV_SET(&events[1], server->fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, server);
 						// Выполняем удаление события из списка ожидания
-						::kevent64(::__awh_kq__, &events[0], 2, nullptr, 0, 0, nullptr);
+						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
 						if(server->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
@@ -33365,11 +33307,11 @@ bool awh::IO::kick() noexcept {
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
 		// Создаём событие триггера
-		struct kevent64_s trigger{};
+		struct kevent trigger{};
 		// Выполняем установку события триггера
-		EV_SET64(&trigger, 0, EVFILT_USER, EV_RECEIPT, NOTE_TRIGGER, 0, reinterpret_cast <uint64_t> (nullptr), 0, 0);
+		EV_SET(&trigger, 0, EVFILT_USER, EV_RECEIPT, NOTE_TRIGGER, 0, nullptr);
 		// Триггерим событие Kqueue
-		if(!(result = (::kevent64(::__awh_kq__, &trigger, 1, nullptr, 0, 0, nullptr) != net::invalid_socket_t))){
+		if(!(result = (::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -33423,11 +33365,11 @@ bool awh::IO::initialize() noexcept {
 		// Активируем или деактивируем работу мютексов для основного потока
 		::__awh_mtx__.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 		// Создаём пользовательское событие
-		struct kevent64_s event{};
+		struct kevent event{};
 		// Устанавливаем пользовательское событие
-		EV_SET64(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR | EV_RECEIPT, NOTE_FFNOP, 0, reinterpret_cast <uint64_t> (nullptr), 0, 0);
+		EV_SET(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR | EV_RECEIPT, NOTE_FFNOP, 0, nullptr);
 		// Активируем пользовательское событие Kqueue
-		if(!(result = (::kevent64(::__awh_kq__, &event, 1, nullptr, 0, 0, nullptr) != net::invalid_socket_t))){
+		if(!(result = (::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -33490,9 +33432,9 @@ bool awh::IO::reinitialize() noexcept {
 			// Выполняем блокировку потоков
 			const locker_t <> lock(::local::mtx);
 			// Добавляем новое событие в список изменений
-			::local::change.push_back((struct kevent64_s){});
+			::local::change.push_back((struct kevent){});
 			// Устанавливаем пользовательское событие
-			EV_SET64(&::local::change.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR | EV_RECEIPT, NOTE_FFNOP, 0, reinterpret_cast <uint64_t> (nullptr), 0, 0);
+			EV_SET(&::local::change.back(), 0, EVFILT_USER, EV_ADD | EV_CLEAR | EV_RECEIPT, NOTE_FFNOP, 0, nullptr);
 		}
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
@@ -33642,17 +33584,17 @@ bool awh::IO::reinitialize() noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 							// Устанавливаем событие на чтение и активируем его
-							EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, peer);
 						// Устанавливаем событие на чтение и активируем его
-						else EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на запись но отключаем его
-						EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Если необходимо установить таймаут на получение данных
 						auto j = peer->timeouts.find(event::action_t::READ);
 						// Если таймаут на получение данных найден
@@ -33662,9 +33604,9 @@ bool awh::IO::reinitialize() noexcept {
 								// Активируем таймаут события
 								peer->timeout = j->first;
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET64(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (peer), 0, 0);
+								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, peer);
 							// Если сокет является блокирующим
 							} else this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 						}
@@ -33675,17 +33617,17 @@ bool awh::IO::reinitialize() noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
 						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Устанавливаем событие на чтение но отключаем его
-						else EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на запись но отключаем его
-						EV_SET64(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (peer), 0, 0);
+						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Увеличиваем значение итератора
 						++i;
 					// Если необходимо выполнить удаление события
@@ -33714,9 +33656,9 @@ bool awh::IO::reinitialize() noexcept {
 								// Активируем таймаут события
 								origin->timeout = j->first;
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем таймаут на получение данных
-								EV_SET64(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, reinterpret_cast <uint64_t> (origin), 0, 0);
+								EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, NOTE_USECONDS, static_cast <int64_t> (j->second) * 1000, origin);
 							}
 						}
 						// Увеличиваем значение итератора
@@ -33748,51 +33690,51 @@ bool awh::IO::reinitialize() noexcept {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+								else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+								else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+								else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Устанавливаем событие на запись но отключаем его
-								EV_SET64(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 							} break;
 						}
 					// Если событие находится в состоянии остановки
@@ -33811,9 +33753,9 @@ bool awh::IO::reinitialize() noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Активируем событие на чтение для серверного сокета
-						EV_SET64(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (client), 0, 0);
+						EV_SET(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 					}
 					// Увеличиваем значение итератора
 					++i;
@@ -33839,22 +33781,22 @@ bool awh::IO::reinitialize() noexcept {
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								// Если сокет является блокирующим
 								} else {
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								}
 								// Если событие является UDP-подключением
 								if(server->state.type == event::type_t::DATAGRAM){
 									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent64_s){});
+									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на запись но отключаем его
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								}
 							} break;
 							// Для семейства IPv4
@@ -33862,13 +33804,13 @@ bool awh::IO::reinitialize() noexcept {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+								else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								/**
 								 * Определяем тип сокета
 								 */
@@ -33876,9 +33818,9 @@ bool awh::IO::reinitialize() noexcept {
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 									} break;
 								}
 							} break;
@@ -33887,13 +33829,13 @@ bool awh::IO::reinitialize() noexcept {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent64_s){});
+								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
 								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
 									// Устанавливаем событие на чтение но отключаем его
-									EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
-								else EV_SET64(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+								else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								/**
 								 * Определяем тип сокета
 								 */
@@ -33901,9 +33843,9 @@ bool awh::IO::reinitialize() noexcept {
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent64_s){});
+										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на запись но отключаем его
-										EV_SET64(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 									} break;
 								}
 							} break;
@@ -33924,9 +33866,9 @@ bool awh::IO::reinitialize() noexcept {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent64_s){});
+						::local::change.push_back((struct kevent){});
 						// Активируем событие на чтение для серверного сокета
-						EV_SET64(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, reinterpret_cast <uint64_t> (server), 0, 0);
+						EV_SET(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, server);
 					}
 					// Увеличиваем значение итератора
 					++i;
@@ -34584,7 +34526,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				// Формируем список результатов установки
 				::local::result.resize(::local::change.size());
 				// Выполняем изменение параметров события
-				if(::kevent64(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), 0, nullptr) == net::invalid_socket_t){
+				if(::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), nullptr) == net::invalid_socket_t){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -35119,7 +35061,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 			/**
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
-			const ssize_t events = static_cast <ssize_t> (::kevent64(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, 0, pts));
+			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**
@@ -35140,7 +35082,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				// Выполняем перебор всех полученных событий
 				for(ssize_t i = 0; i < events; i++){
 					// Получаем текущее значение события
-					struct kevent64_s & ev = ::__awh_events__[i];
+					struct kevent & ev = ::__awh_events__[i];
 					// Если узел события не получена, значит узел уже удалён
 					if(reinterpret_cast <net::node_t *> (ev.udata) == nullptr)
 						// Пропускаем событие
