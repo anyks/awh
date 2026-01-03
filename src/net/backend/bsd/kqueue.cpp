@@ -1455,8 +1455,14 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (node);
+					
+					cout << "CLOSE CLIENT ID=" << client->id << " TIMEOUT=" << static_cast <uint8_t> (client->timeout) << endl;
+					
 					// Если событие отключения от сервера разрешено
 					if(client->transfer.actions & ::action::DISCONNECT){
+						
+						cout << "!!!!1 DISCONNECT CLIENT ID=" << client->id << endl;
+						
 						// Создаём охранника узла события
 						::local::guard_t guard(node);
 						// Если установлена функция обратного вызова
@@ -1473,14 +1479,26 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Если сокет принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								
+								cout << "!!!!2 DISCONNECT CLIENT ID=" << client->id << endl;
+								
 								// Если установлен режим постоянного подключения
 								if(client->state.options & event::options::KEEPALIVE){
+									
+									cout << "!!!!3 DISCONNECT CLIENT ID=" << client->id << endl;
+									
 									// Если событие переподключения к серверу разрешено
 									if(client->transfer.actions & ::action::RECONNECT){
+										
+										cout << "!!!!4 DISCONNECT CLIENT ID=" << client->id << endl;
+										
 										// Если клиент не подразумевает переподключение
 										if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
 											// Выводим результат выполнения функции
 											return !guard.isGarbage();
+										
+										cout << "!!!!5 DISCONNECT CLIENT ID=" << client->id << endl;
+										
 										// Время задержки таймаута
 										uint64_t delay = 5000000; // 5 секунд
 										// Если необходимо установить таймаут на переподключение
@@ -1499,6 +1517,9 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
 										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, delay, client);
+
+										cout << "!!!!6 DISCONNECT CLIENT ID=" << client->id << endl;
+
 									}
 								// Если режим постоянного подключения не установлен
 								} else {
@@ -1514,6 +1535,9 @@ namespace io {
 										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
+
+								cout << "!!!!7 DISCONNECT CLIENT ID=" << client->id << endl;
+
 							} break;
 						}
 						// Выводим результат выполнения функции
@@ -4640,9 +4664,6 @@ namespace io {
 												// Выполняем чтение данных из TCP/IP сокета
 												bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											#endif
-
-											cout << " !!!!!!!!!!!!!! READ BYTES: " << bytes << endl;
-
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -8784,6 +8805,9 @@ namespace io {
 			} break;
 			// Если мы получили событие таймера
 			case EVFILT_TIMER: {
+				
+				cout << "EVFILT_TIMER processing" << endl;
+				
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -8820,18 +8844,27 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (node);
+						
+						cout << "^^^^^^^^^^^^1 " << client->id << endl;
+						
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR)
 							// Выполняем обработку ошибки
 							::io::error(node, ev.data, log);
 						// Если статус события восстановление соединения
 						if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
+							
+							cout << "^^^^^^^^^^^^2 " << client->id << endl;
+							
 							// Если переподключение разрешено
 							if(client->transfer.actions & ::action::RECONNECT){
 								// Деактивируем таймаут события
 								client->timeout = event::action_t::NONE;
 								// Устанавливаем статус события в состояние не инициализировано
 								client->state.status.store(event::status_t::NONE, std::memory_order_release);
+								
+								cout << "^^^^^^^^^^^^3 " << client->id << endl;
+								
 								// Обрабатываем событие сокета
 								if(::io::socket(client, log)){
 									// Запоминаем текущие опции события
@@ -8840,17 +8873,32 @@ namespace io {
 									client->state.options = event::options::NONE;
 									// Получаем объект работы с асинхронными событиями
 									io_t * self = const_cast <io_t *> (io);
+									
+									cout << "^^^^^^^^^^^^4 " << client->id << endl;
+									
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
+										
+										cout << "^^^^^^^^^^^^5 " << client->id << endl;
+										
 										// Выполняем повторное подключение клиента
 										if(!self->connect(client->id, static_cast <bool> (
 											(client->state.options & event::options::NOIOBLOCK) ||
 											(client->state.options & event::options::SMIOBLOCK)
 										)) || !self->launch(client->id)){
+											
+											cout << "^^^^^^^^^^^^6 " << client->id << endl;
+											
 											// Если функция обратного вызова для вывода подключения установлена
-											if(client->callbacks.connect != nullptr)
+											if(client->callbacks.connect != nullptr){
+												
+												cout << "^^^^^^^^^^^^7 " << client->id << endl;
+												
 												// Вызываем функцию обратного вызова для подключения
 												client->callbacks.connect(client->id, false);
+											}
+
+											cout << "^^^^^^^^^^^^8 " << client->id << endl;
 										}
 									} break;
 								}
