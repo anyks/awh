@@ -37,6 +37,14 @@
 #include <netinet/in.h>
 
 /**
+ * Для операционной системы Linux или FreeBSD
+ */
+#if __linux__ || __FreeBSD__
+	// Подключаем заголовочный файл SCTP
+	#include <netinet/sctp.h>
+#endif
+
+/**
  * Подключаем заголовочный файл TLS
  */
 #include <net/net.hpp>
