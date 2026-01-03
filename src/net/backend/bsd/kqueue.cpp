@@ -4660,6 +4660,39 @@ namespace io {
 													if (bytes > 0) {
 														if (peer->transfer.sctp.flags & MSG_NOTIFICATION) {
 															cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
+
+															cout << "Notification type: ";
+															switch (peer->transfer.sctp.info.sinfo_type) {
+																case SCTP_ASSOC_CHANGE:
+																	cout << "SCTP_ASSOC_CHANGE" << endl;
+																	break;
+																case SCTP_PEER_ADDR_CHANGE:
+																	cout << "SCTP_PEER_ADDR_CHANGE" << endl;
+																	break;
+																case SCTP_REMOTE_ERROR:
+																	cout << "SCTP_REMOTE_ERROR" << endl;
+																	break;
+																case SCTP_SHUTDOWN_EVENT:
+																	cout << "SCTP_SHUTDOWN_EVENT" << endl;
+																	break;
+																case SCTP_ADAPTATION_INDICATION:
+																	cout << "SCTP_ADAPTATION_INDICATION" << endl;
+																	break;
+																case SCTP_PARTIAL_DELIVERY_EVENT:
+																	cout << "SCTP_PARTIAL_DELIVERY_EVENT" << endl;
+																	break;
+																case SCTP_AUTHENTICATION_EVENT:
+																	cout << "SCTP_AUTHENTICATION_EVENT" << endl;
+																	break;
+																case SCTP_SENDER_DRY_EVENT:
+																	cout << "SCTP_SENDER_DRY_EVENT" << endl;
+																	break;
+																default:
+																	cout << "Unknown (" << peer->transfer.sctp.info.sinfo_type << ")" << endl;
+																	break;
+															}
+
+															cout << " ------ " << peer->transfer.sctp.info.sinfo_flags << " || " << SCTP_EOF << " || " << SCTP_ABORT << " || " << SCTP_UNORDERED << " || " << SCTP_ADDR_OVER << " || " << SCTP_SENDALL << " || " << SCTP_PR_SCTP_TTL << " || " << SCTP_PR_SCTP_BUF << " || " << SCTP_PR_SCTP_RTX << endl;
 															
 															// Это управляющее сообщение — игнорируем или обрабатываем
 															return true; // не передаём в приложение

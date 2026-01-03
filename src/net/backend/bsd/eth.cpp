@@ -1749,6 +1749,10 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 				events.sctp_data_io_event = 0;
 				// Устанавливаем события SCTP_SHUTDOWN_EVENT
 				events.sctp_shutdown_event = 1;
+				// Устанавливаем события SCTP_PEER_ERROR_EVENT
+				events.sctp_peer_error_event = 1;
+				// Устанавливаем события SCTP_SEND_FAILED_EVENT
+				events.sctp_send_failure_event = 1;
 				// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
 				events.sctp_association_event = 1;
 				// Выполняем активацию получения событий SCTP для сокета
