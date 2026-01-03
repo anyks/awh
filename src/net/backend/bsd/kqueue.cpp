@@ -1393,16 +1393,19 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-					// Выполняем проверку на наличие таймаута для подключения к серверу
-					auto i = peer->timeouts.find(peer->timeout);
-					// Если нужный нам таймаут найден
-					if((i != peer->timeouts.end()) && (i->second > 0)){
-						// Деактивируем таймаут события
-						peer->timeout = event::action_t::NONE;
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на получение данных
-						EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+					// Если таймер активирован на ожидание чтения или записи данных
+					if(peer->timeout != event::action_t::NONE){
+						// Выполняем проверку на наличие таймаута для подключения к серверу
+						auto i = peer->timeouts.find(peer->timeout);
+						// Если нужный нам таймаут найден
+						if(i != peer->timeouts.end()){
+							// Деактивируем таймаут события
+							peer->timeout = event::action_t::NONE;
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Снимаем таймаут на получение данных
+							EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+						}
 					}
 					// Уменьшаем общее количество подключений сервера
 					if(peer->peers > 0)
@@ -1424,16 +1427,19 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
-					// Выполняем проверку на наличие таймаута для подключения к серверу
-					auto i = origin->timeouts.find(origin->timeout);
-					// Если нужный нам таймаут найден
-					if((i != origin->timeouts.end()) && (i->second > 0)){
-						// Деактивируем таймаут события
-						origin->timeout = event::action_t::NONE;
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на получение данных
-						EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+					// Если таймер активирован на ожидание чтения или записи данных
+					if(origin->timeout != event::action_t::NONE){
+						// Выполняем проверку на наличие таймаута для подключения к серверу
+						auto i = origin->timeouts.find(origin->timeout);
+						// Если нужный нам таймаут найден
+						if(i != origin->timeouts.end()){
+							// Деактивируем таймаут события
+							origin->timeout = event::action_t::NONE;
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Снимаем таймаут на получение данных
+							EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+						}
 					}
 					// Уменьшаем общее количество подключений сервера
 					if(origin->peers > 0)
@@ -1455,14 +1461,8 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (node);
-					
-					cout << "CLOSE CLIENT ID=" << client->id << " TIMEOUT=" << static_cast <uint8_t> (client->timeout) << endl;
-					
 					// Если событие отключения от сервера разрешено
 					if(client->transfer.actions & ::action::DISCONNECT){
-						
-						cout << "!!!!1 DISCONNECT CLIENT ID=" << client->id << endl;
-						
 						// Создаём охранника узла события
 						::local::guard_t guard(node);
 						// Если установлена функция обратного вызова
@@ -1479,28 +1479,16 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Если сокет принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-								
-								cout << "!!!!2 DISCONNECT CLIENT ID=" << client->id << endl;
-								
 								// Если установлен режим постоянного подключения
 								if(client->state.options & event::options::KEEPALIVE){
-									
-									cout << "!!!!3 DISCONNECT CLIENT ID=" << client->id << endl;
-									
 									// Если событие переподключения к серверу разрешено
 									if(client->transfer.actions & ::action::RECONNECT){
-										
-										cout << "!!!!4 DISCONNECT CLIENT ID=" << client->id << endl;
-										
 										// Если клиент не подразумевает переподключение
 										if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
 											// Выводим результат выполнения функции
 											return !guard.isGarbage();
-										
-										cout << "!!!!5 DISCONNECT CLIENT ID=" << client->id << endl;
-										
 										// Время задержки таймаута
-										uint64_t delay = 5000000; // 5 секунд
+										uint64_t delay = 5000; // 5 секунд
 										// Если необходимо установить таймаут на переподключение
 										auto i = client->timeouts.find(event::action_t::RECONNECT);
 										// Если таймаут на переподключение найден найден
@@ -1517,16 +1505,13 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем таймаут на получение данных
 										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, delay, client);
-
-										cout << "!!!!6 DISCONNECT CLIENT ID=" << client->id << endl;
-
 									}
-								// Если режим постоянного подключения не установлен
-								} else {
+								// Если режим постоянного подключения не установлен а таймер активирован
+								} else if(client->timeout != event::action_t::NONE) {
 									// Выполняем проверку на наличие таймаута для подключения к серверу
 									auto i = client->timeouts.find(client->timeout);
 									// Если нужный нам таймаут найден
-									if((i != client->timeouts.end()) && (i->second > 0)){
+									if(i != client->timeouts.end()){
 										// Деактивируем таймаут события
 										client->timeout = event::action_t::NONE;
 										// Добавляем новое событие в список изменений
@@ -1535,9 +1520,6 @@ namespace io {
 										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
-
-								cout << "!!!!7 DISCONNECT CLIENT ID=" << client->id << endl;
-
 							} break;
 						}
 						// Выводим результат выполнения функции
@@ -3898,13 +3880,13 @@ namespace io {
 						// Выполняем проверку на наличие таймаута для подключения к серверу
 						auto i = node->timeouts.find(node->timeout);
 						// Если нужный нам таймаут найден
-						if((i != node->timeouts.end()) && (i->second > 0)){
+						if(i != node->timeouts.end()){
 							// Деактивируем таймаут события
 							node->timeout = event::action_t::NONE;
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Снимаем таймаут на получение данных
-							EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, node);
+							EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						}
 					}
 				}
@@ -4641,235 +4623,8 @@ namespace io {
 										 * Выполняем получение данных пока их не получим
 										 */
 										for(;;){
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP){
-													
-													
-													char info[1024];
-
-													struct iovec iov = { .iov_base = buffer, .iov_len = AWH_MAX_EVENT_BUFFER_SIZE };
-													struct msghdr msg = {
-														.msg_iov = &iov,
-														.msg_iovlen = 1,
-														.msg_control = info,
-														.msg_controllen = sizeof(info)
-													};
-
-													bytes = ::recvmsg(peer->transfer.fd, &msg, MSG_NOSIGNAL);
-													if (bytes <= 0) return false;
-
-													// Проверяем: это уведомление или данные?
-													if (msg.msg_flags & MSG_NOTIFICATION) {
-
-														cout << " ------- SCTP Notification ------- " << peer->transfer.fd << endl;
-
-
-														printf("Получено уведомление (%zd байт)\n", bytes);
-
-														// Обязательно: проверяем, что control data есть
-														if (msg.msg_controllen == 0) {
-															printf("Но msg_controllen = 0 — буфер не был выделен!\n");
-															return false;
-														}
-
-														int found = 0;
-														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-															cmsg != NULL;
-															cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-
-															found = 1;
-															if (cmsg->cmsg_level == IPPROTO_SCTP) {
-																switch (cmsg->cmsg_type) {
-																	case SCTP_ASSOC_CHANGE: {
-																		auto *sac = (struct sctp_assoc_change*)CMSG_DATA(cmsg);
-																		printf("SCTP_ASSOC_CHANGE: state=%d\n", sac->sac_state);
-																		break;
-																	}
-																	case SCTP_SHUTDOWN_EVENT:
-																		printf("SCTP_SHUTDOWN_EVENT\n");
-																		break;
-																	default:
-																		printf("Неизвестный тип: %d\n", cmsg->cmsg_type);
-																}
-															}
-														}
-
-														if (!found) {
-															printf("Цикл cmsghdr ничего не нашёл — возможно, повреждённые данные или буфер слишком мал\n");
-														}
-
-
-
-
-														
-														cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
-														
-														// --- УВЕДОМЛЕНИЕ ---
-														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-															
-															cout << "CMSG level: " << cmsg->cmsg_level << ", type: " << cmsg->cmsg_type << endl;
-															
-															if (cmsg->cmsg_level == IPPROTO_SCTP) {
-
-																
-																cout << "Notification type: ";
-																switch (cmsg->cmsg_type) {
-																	case SCTP_ASSOC_CHANGE:
-																		cout << "SCTP_ASSOC_CHANGE" << endl;
-																		break;
-																	case SCTP_PEER_ADDR_CHANGE:
-																		cout << "SCTP_PEER_ADDR_CHANGE" << endl;
-																		break;
-																	case SCTP_REMOTE_ERROR:
-																		cout << "SCTP_REMOTE_ERROR" << endl;
-																		break;
-																	case SCTP_SEND_FAILED:
-																		cout << "SCTP_SEND_FAILED" << endl;
-																		break;
-																	case SCTP_SHUTDOWN_EVENT:
-																		cout << "SCTP_SHUTDOWN_EVENT" << endl;
-																		break;
-																	case SCTP_ADAPTATION_INDICATION:
-																		cout << "SCTP_ADAPTATION_INDICATION" << endl;
-																		break;
-																	case SCTP_PARTIAL_DELIVERY_EVENT:
-																		cout << "SCTP_PARTIAL_DELIVERY_EVENT" << endl;
-																		break;
-																	case SCTP_AUTHENTICATION_EVENT:
-																		cout << "SCTP_AUTHENTICATION_EVENT" << endl;
-																		break;
-																	case SCTP_SENDER_DRY_EVENT:
-																		cout << "SCTP_SENDER_DRY_EVENT" << endl;
-																		break;
-																	default:
-																		cout << "Unknown (" << cmsg->cmsg_type << ")" << endl;
-																		break;
-																}
-															}
-														}
-
-														return true;
-													} else {
-														// --- ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ ---
-														struct sctp_sndrcvinfo *sinfo = &peer->transfer.sctp.info;
-
-														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-															if (cmsg->cmsg_level == IPPROTO_SCTP && cmsg->cmsg_type == SCTP_SNDRCV) {
-																sinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
-																break;
-															}
-														}
-
-														if (sinfo) {
-															printf("Stream: %u, PPID: %u, flags: 0x%x\n",
-																sinfo->sinfo_stream,
-																sinfo->sinfo_ppid,
-																sinfo->sinfo_flags);
-														}
-
-														
-													}
-													
-													
-													
-													
-													
-													
-													
-													
-													/*
-													// Выполняем чтение данных из SCTP-сокета
-													bytes = ::sctp_recvmsg(
-														peer->transfer.fd,
-														buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-														nullptr, nullptr,
-														&peer->transfer.sctp.info,
-														&peer->transfer.sctp.flags
-													);
-													*/
-
-													/*
-													if (bytes > 0) {
-														if (peer->transfer.sctp.flags & MSG_NOTIFICATION) {
-															cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
-
-															
-															cout << "Notification type: ";
-															switch (peer->transfer.sctp.info.sinfo_type) {
-																case SCTP_ASSOC_CHANGE:
-																	cout << "SCTP_ASSOC_CHANGE" << endl;
-																	break;
-																case SCTP_PEER_ADDR_CHANGE:
-																	cout << "SCTP_PEER_ADDR_CHANGE" << endl;
-																	break;
-																case SCTP_REMOTE_ERROR:
-																	cout << "SCTP_REMOTE_ERROR" << endl;
-																	break;
-																case SCTP_SHUTDOWN_EVENT:
-																	cout << "SCTP_SHUTDOWN_EVENT" << endl;
-																	break;
-																case SCTP_ADAPTATION_INDICATION:
-																	cout << "SCTP_ADAPTATION_INDICATION" << endl;
-																	break;
-																case SCTP_PARTIAL_DELIVERY_EVENT:
-																	cout << "SCTP_PARTIAL_DELIVERY_EVENT" << endl;
-																	break;
-																case SCTP_AUTHENTICATION_EVENT:
-																	cout << "SCTP_AUTHENTICATION_EVENT" << endl;
-																	break;
-																case SCTP_SENDER_DRY_EVENT:
-																	cout << "SCTP_SENDER_DRY_EVENT" << endl;
-																	break;
-																default:
-																	cout << "Unknown (" << peer->transfer.sctp.info.sinfo_type << ")" << endl;
-																	break;
-															}
-															
-
-															cout << " ------ " << peer->transfer.sctp.info.sinfo_flags << " || " << SCTP_EOF << " || " << SCTP_ABORT << " || " << SCTP_UNORDERED << " || " << SCTP_ADDR_OVER << " || " << SCTP_SENDALL << " || " << SCTP_PR_SCTP_TTL << " || " << SCTP_PR_SCTP_BUF << " || " << SCTP_PR_SCTP_RTX << endl;
-															
-															// Это управляющее сообщение — игнорируем или обрабатываем
-															return true; // не передаём в приложение
-														}
-													}
-													*/
-													
-													/*
-													struct iovec iov = { .iov_base = buffer, .iov_len = AWH_MAX_EVENT_BUFFER_SIZE };
-													struct msghdr msg = {
-														.msg_iov = &iov,
-														.msg_iovlen = 1,
-														.msg_control = nullptr,
-														.msg_controllen = 0
-													};
-
-													bytes = recvmsg(peer->transfer.fd, &msg, MSG_NOSIGNAL);
-													if (bytes > 0) {
-														if (msg.msg_flags & MSG_NOTIFICATION) {
-															
-															cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
-															
-															// Это управляющее сообщение — игнорируем или обрабатываем
-															return true; // не передаём в приложение
-														}
-														// Иначе — пользовательские данные
-														//process(buffer, n);
-													}
-													*/
-
-												// Выполняем чтение данных из TCP/IP сокета
-												} else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем чтение данных из TCP/IP сокета
-												bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											#endif
+											// Выполняем чтение данных из TCP/IP сокета
+											bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -4942,31 +4697,8 @@ namespace io {
 										}
 									// Если событие является блокирующим
 									} else {
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(peer->state.protocol == event::protocol_t::SCTP)
-												// Выполняем чтение данных из SCTP-сокета
-												bytes = ::sctp_recvmsg(
-													peer->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-													nullptr, nullptr,
-													&peer->transfer.sctp.info,
-													&peer->transfer.sctp.flags
-												);
-											// Выполняем чтение данных из TCP/IP сокета
-											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем чтение данных из TCP/IP сокета
-											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-										#endif
+										// Выполняем чтение данных из TCP/IP сокета
+										const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если установлена функция обратного вызова
@@ -5263,29 +4995,8 @@ namespace io {
 										 * Выполняем получение данных пока их не получим
 										 */
 										for(;;){
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
-													// Выполняем чтение данных из SCTP-сокета
-													bytes = ::sctp_recvmsg(
-														client->transfer.fd,
-														buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-														nullptr, nullptr,
-														&client->transfer.sctp.info,
-														&client->transfer.sctp.flags
-													);
-												// Выполняем чтение данных из TCP/IP сокета
-												else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем чтение данных из TCP/IP сокета
-												bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											#endif
+											// Выполняем чтение данных из TCP/IP сокета
+											bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -5358,31 +5069,8 @@ namespace io {
 										}
 									// Если событие является блокирующим
 									} else {
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(client->state.protocol == event::protocol_t::SCTP)
-												// Выполняем чтение данных из SCTP-сокета
-												bytes = ::sctp_recvmsg(
-													client->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-													nullptr, nullptr,
-													&client->transfer.sctp.info,
-													&client->transfer.sctp.flags
-												);
-											// Выполняем чтение данных из TCP/IP сокета
-											else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем чтение данных из TCP/IP сокета
-											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-										#endif
+										// Выполняем чтение данных из TCP/IP сокета
+										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если установлена функция обратного вызова
@@ -7573,34 +7261,8 @@ namespace io {
 									case static_cast <uint8_t> (event::type_t::STREAM): {
 										// Определяем размер отправляемых данных
 										const size_t size = peer->transfer.queue.size();
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(peer->state.protocol == event::protocol_t::SCTP)
-												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
-													peer->transfer.fd,
-													reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()),
-													size, nullptr, 0,
-													peer->transfer.sctp.info.sinfo_ppid,
-													peer->transfer.sctp.info.sinfo_flags,
-													peer->transfer.sctp.info.sinfo_stream,
-													peer->transfer.sctp.info.sinfo_timetolive,
-													peer->transfer.sctp.info.sinfo_context
-												);
-											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), size, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), size, MSG_NOSIGNAL);
-										#endif
+										// Выполняем отправку данных в TCP/IP сокет
+										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -7659,7 +7321,7 @@ namespace io {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Снимаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
 												}
 											}
@@ -7781,7 +7443,7 @@ namespace io {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Снимаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
 												}
 											}
@@ -7857,7 +7519,7 @@ namespace io {
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Снимаем таймаут на получение данных
-									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 								}
 							}
 							// Формируем положительный результат
@@ -7891,34 +7553,8 @@ namespace io {
 										case static_cast <uint8_t> (event::type_t::STREAM): {
 											// Определяем размер отправляемых данных
 											const size_t size = client->transfer.queue.size();
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Количество прочитанных байт
-												ssize_t bytes = 0;
-												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
-													// Выполняем отправку данных в TCP/IP сокет
-													bytes = ::sctp_sendmsg(
-														client->transfer.fd,
-														reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
-														size, nullptr, 0,
-														client->transfer.sctp.info.sinfo_ppid,
-														client->transfer.sctp.info.sinfo_flags,
-														client->transfer.sctp.info.sinfo_stream,
-														client->transfer.sctp.info.sinfo_timetolive,
-														client->transfer.sctp.info.sinfo_context
-													);
-												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), size, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), size, MSG_NOSIGNAL);
-											#endif
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -7977,7 +7613,7 @@ namespace io {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Снимаем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 													}
 												}
@@ -8101,7 +7737,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 														}
 													}
@@ -8235,7 +7871,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 														}
 													}
@@ -8333,7 +7969,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 														}
 													}
@@ -8433,7 +8069,7 @@ namespace io {
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 														}
 													}
@@ -8510,7 +8146,7 @@ namespace io {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
 								// Формируем положительный результат
@@ -8661,7 +8297,7 @@ namespace io {
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Снимаем таймаут на получение данных
-													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, session.second);
+													EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 												}
 											}
 										// Если в очереди данных больше не осталось данных для отправки
@@ -8675,7 +8311,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Снимаем таймаут на получение данных
-												EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, session.second);
+												EV_SET(&::local::change.back(), session.second->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 											}
 										}
 									// Если мы отправили не все данные
@@ -9011,9 +8647,6 @@ namespace io {
 			} break;
 			// Если мы получили событие таймера
 			case EVFILT_TIMER: {
-				
-				cout << "EVFILT_TIMER processing" << endl;
-				
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -9050,27 +8683,18 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (node);
-						
-						cout << "^^^^^^^^^^^^1 " << client->id << endl;
-						
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR)
 							// Выполняем обработку ошибки
 							::io::error(node, ev.data, log);
 						// Если статус события восстановление соединения
 						if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
-							
-							cout << "^^^^^^^^^^^^2 " << client->id << endl;
-							
 							// Если переподключение разрешено
 							if(client->transfer.actions & ::action::RECONNECT){
 								// Деактивируем таймаут события
 								client->timeout = event::action_t::NONE;
 								// Устанавливаем статус события в состояние не инициализировано
 								client->state.status.store(event::status_t::NONE, std::memory_order_release);
-								
-								cout << "^^^^^^^^^^^^3 " << client->id << endl;
-								
 								// Обрабатываем событие сокета
 								if(::io::socket(client, log)){
 									// Запоминаем текущие опции события
@@ -9079,32 +8703,17 @@ namespace io {
 									client->state.options = event::options::NONE;
 									// Получаем объект работы с асинхронными событиями
 									io_t * self = const_cast <io_t *> (io);
-									
-									cout << "^^^^^^^^^^^^4 " << client->id << endl;
-									
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
-										
-										cout << "^^^^^^^^^^^^5 " << client->id << endl;
-										
 										// Выполняем повторное подключение клиента
 										if(!self->connect(client->id, static_cast <bool> (
 											(client->state.options & event::options::NOIOBLOCK) ||
 											(client->state.options & event::options::SMIOBLOCK)
 										)) || !self->launch(client->id)){
-											
-											cout << "^^^^^^^^^^^^6 " << client->id << endl;
-											
 											// Если функция обратного вызова для вывода подключения установлена
-											if(client->callbacks.connect != nullptr){
-												
-												cout << "^^^^^^^^^^^^7 " << client->id << endl;
-												
+											if(client->callbacks.connect != nullptr)
 												// Вызываем функцию обратного вызова для подключения
 												client->callbacks.connect(client->id, false);
-											}
-
-											cout << "^^^^^^^^^^^^8 " << client->id << endl;
 										}
 									} break;
 								}
@@ -17378,7 +16987,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Объект события для удаления из списка ожидания
 					struct kevent event{};
 					// Снимаем событие из списка ожидания
-					EV_SET(&event, user->id, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, user);
+					EV_SET(&event, user->id, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
@@ -17399,7 +17008,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
+						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Выполняем удаление узла
@@ -17413,7 +17022,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Объект события для удаления из списка ожидания
 					struct kevent event{};
 					// Снимаем событие из списка ожидания
-					EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
+					EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Если каталог открыт
@@ -17433,7 +17042,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 					// Объект события для удаления из списка ожидания
 					struct kevent event{};
 					// Снимаем событие из списка ожидания
-					EV_SET(&event, file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
+					EV_SET(&event, file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
@@ -17506,7 +17115,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
+						EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) < 0){
 							// Если установлена функция обратного вызова
@@ -19294,17 +18903,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Если событие находится в состоянии паузы
 											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 											// Если событие находится в активном состоянии
 											else {
 												// Устанавливаем событие на чтение
-												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
 												/**
 												 * Определяем чем является текущий узел
 												 */
@@ -19388,17 +18997,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Удаляем событие на чтение
-											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Если событие находится в состоянии паузы
 											if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 											// Если событие находится в активном состоянии
 											else {
 												// Устанавливаем событие на чтение
-												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, i->second.get());
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 												/**
 												 * Определяем чем является текущий узел
 												 */
@@ -19414,7 +19023,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 														// Если необходимо установить таймаут на чтение данных
 														auto j = peer->timeouts.find(event::action_t::READ);
@@ -19434,7 +19043,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Удаляем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 														// Если таймаут не является таймаутом на переподключение
 														if(client->timeout != event::action_t::RECONNECT){
@@ -19878,17 +19487,17 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Удаляем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Если событие находится в состоянии паузы
 													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 													// Если событие находится в активном состоянии
 													else {
 														// Устанавливаем событие на чтение
-														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
 														/**
 														 * Определяем чем является текущий узел
 														 */
@@ -19972,17 +19581,17 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Удаляем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, i->second.get());
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Если событие находится в состоянии паузы
 													if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 													// Если событие находится в активном состоянии
 													else {
 														// Устанавливаем событие на чтение
-														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, i->second.get());
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 														/**
 														 * Определяем чем является текущий узел
 														 */
@@ -19996,7 +19605,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 																}
 																// Если необходимо установить таймаут на чтение данных
 																auto j = peer->timeouts.find(event::action_t::READ);
@@ -20014,7 +19623,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Удаляем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 																}
 																// Если таймаут не является таймаутом на переподключение
 																if(client->timeout != event::action_t::RECONNECT){
@@ -22639,11 +22248,11 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
 							// Если сокет является блокирующим
@@ -22665,11 +22274,11 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
 							}
@@ -23492,11 +23101,11 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
 							// Если сокет является блокирующим
@@ -23518,11 +23127,11 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, server);
+										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
 							}
@@ -25168,33 +24777,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if(peer->state.options & event::options::NOIOBLOCK){
 											// Если очередь передачи данных пустая
 											if(peer->transfer.queue.empty()){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															peer->transfer.fd,
-															data, size, nullptr, 0,
-															peer->transfer.sctp.info.sinfo_ppid,
-															peer->transfer.sctp.info.sinfo_flags,
-															peer->transfer.sctp.info.sinfo_stream,
-															peer->transfer.sctp.info.sinfo_timetolive,
-															peer->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
-												/**
-												 * Если это другая операционная система
-												 */
-												#else
-													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
-												#endif
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если данные отправлены не полностью
@@ -25346,33 +24930,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((i != peer->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															peer->transfer.fd,
-															data, size, nullptr, 0,
-															peer->transfer.sctp.info.sinfo_ppid,
-															peer->transfer.sctp.info.sinfo_flags,
-															peer->transfer.sctp.info.sinfo_stream,
-															peer->transfer.sctp.info.sinfo_timetolive,
-															peer->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
-												/**
-												 * Если это другая операционная система
-												 */
-												#else
-													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
-												#endif
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
@@ -25429,33 +24988,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != peer->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Количество прочитанных байт
-												ssize_t bytes = 0;
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP)
-													// Выполняем отправку данных в TCP/IP сокет
-													bytes = ::sctp_sendmsg(
-														peer->transfer.fd,
-														data, size, nullptr, 0,
-														peer->transfer.sctp.info.sinfo_ppid,
-														peer->transfer.sctp.info.sinfo_flags,
-														peer->transfer.sctp.info.sinfo_stream,
-														peer->transfer.sctp.info.sinfo_timetolive,
-														peer->transfer.sctp.info.sinfo_context
-													);
-												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
-											#endif
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
@@ -26768,33 +26302,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if(client->state.options & event::options::NOIOBLOCK){
 											// Если очередь передачи данных пустая
 											if(client->transfer.queue.empty()){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															client->transfer.fd,
-															data, size, nullptr, 0,
-															client->transfer.sctp.info.sinfo_ppid,
-															client->transfer.sctp.info.sinfo_flags,
-															client->transfer.sctp.info.sinfo_stream,
-															client->transfer.sctp.info.sinfo_timetolive,
-															client->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
-												/**
-												 * Если это другая операционная система
-												 */
-												#else
-													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
-												#endif
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если данные отправлены не полностью
@@ -26946,33 +26455,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															client->transfer.fd,
-															data, size, nullptr, 0,
-															client->transfer.sctp.info.sinfo_ppid,
-															client->transfer.sctp.info.sinfo_flags,
-															client->transfer.sctp.info.sinfo_stream,
-															client->transfer.sctp.info.sinfo_timetolive,
-															client->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
-												/**
-												 * Если это другая операционная система
-												 */
-												#else
-													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
-												#endif
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
@@ -27029,33 +26513,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Количество прочитанных байт
-												ssize_t bytes = 0;
-												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
-													// Выполняем отправку данных в TCP/IP сокет
-													bytes = ::sctp_sendmsg(
-														client->transfer.fd,
-														data, size, nullptr, 0,
-														client->transfer.sctp.info.sinfo_ppid,
-														client->transfer.sctp.info.sinfo_flags,
-														client->transfer.sctp.info.sinfo_stream,
-														client->transfer.sctp.info.sinfo_timetolive,
-														client->transfer.sctp.info.sinfo_context
-													);
-												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
-											#endif
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
@@ -31962,13 +31421,13 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Останавливаем активный таймаут
-						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
+						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Если таймаут необходимо запустить
 						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), nullptr);
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -31987,13 +31446,13 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Останавливаем активный таймаут
-						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
+						EV_SET(&::local::change.back(), timer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Если таймаут необходимо запустить
 						if(timer->delay > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), timer);
+							EV_SET(&::local::change.back(), i->first, EVFILT_TIMER, EV_ADD | EV_RECEIPT, 0, static_cast <intptr_t> (timer->delay), nullptr);
 						}
 						// Выполняем "пинок" для применения изменений
 						this->kick();
@@ -32869,13 +32328,13 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					// Добавляем новое событие в список изменений
 					::local::change.push_back((struct kevent){});
 					// Удаляем предыдущее событие из списка изменений
-					EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
+					EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					// Если флаги установлены
 					if(flags > 0){
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на отслеживание изменения каталога
-						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, dir);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, nullptr);
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -33068,13 +32527,13 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
 					// Добавляем новое событие в список изменений
 					::local::change.push_back((struct kevent){});
 					// Удаляем предыдущее событие из списка изменений
-					EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, fs);
+					EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 					// Если флаги установлены
 					if(flags > 0){
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Устанавливаем событие на отслеживание изменения каталога
-						EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, fs);
+						EV_SET(&::local::change.back(), fs->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, nullptr);
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -33775,7 +33234,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -33795,7 +33254,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
+						EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -33846,7 +33305,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Выходим из цикла
 										break;
 									}
@@ -33896,7 +33355,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, origin);
+										EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Выходим из цикла
 										break;
 									}
@@ -33955,7 +33414,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Снимаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										// Выходим из цикла
 										break;
 									}
@@ -34097,13 +33556,13 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее события из списка изменений
-						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
+						EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Если флаги установлены
 						if(flags > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, dir);
+							EV_SET(&::local::change.back(), dir->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, nullptr);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -34145,13 +33604,13 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Удаляем предыдущее событие из списка изменений
-						EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
+						EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Если флаги установлены
 						if(flags > 0){
 							// Добавляем новое событие в список изменений
 							::local::change.push_back((struct kevent){});
 							// Устанавливаем событие на отслеживание изменения каталога
-							EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, file);
+							EV_SET(&::local::change.back(), file->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR | EV_RECEIPT, flags, 0, nullptr);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -34414,7 +33873,7 @@ void awh::IO::clear() noexcept {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET(&event, i->first, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, user);
+						EV_SET(&event, i->first, EVFILT_USER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если установлена функция обратного вызова
@@ -34435,7 +33894,7 @@ void awh::IO::clear() noexcept {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET(&event, i->first, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, timer);
+						EV_SET(&event, i->first, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если установлена функция обратного вызова
@@ -34454,7 +33913,7 @@ void awh::IO::clear() noexcept {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, dir);
+						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если каталог открыт
@@ -34481,7 +33940,7 @@ void awh::IO::clear() noexcept {
 						// Объект события для удаления из списка ожидания
 						struct kevent event{};
 						// Снимаем событие из списка ожидания
-						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, file);
+						EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
@@ -34504,9 +33963,9 @@ void awh::IO::clear() noexcept {
 						// Объекты событий для удаления из списка ожидания
 						struct kevent events[2] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET(&events[0], ipc->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, ipc);
+						EV_SET(&events[0], ipc->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET(&events[1], ipc->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, ipc);
+						EV_SET(&events[1], ipc->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
@@ -34531,15 +33990,15 @@ void awh::IO::clear() noexcept {
 						// Объекты событий для удаления из списка ожидания
 						struct kevent events[3] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET(&events[0], peer->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+						EV_SET(&events[0], peer->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET(&events[1], peer->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+						EV_SET(&events[1], peer->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Если установлен таймаут для события
 						if(peer->timeout != event::action_t::NONE){
 							// Увеличиваем количество событий
 							count++;
 							// Снимаем событие таймаута из списка ожидания
-							EV_SET(&events[2], peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, peer);
+							EV_SET(&events[2], peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						}
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
@@ -34565,7 +34024,7 @@ void awh::IO::clear() noexcept {
 							// Объект события для удаления из списка ожидания
 							struct kevent event{};
 							// Снимаем событие таймаута из списка ожидания
-							EV_SET(&event, origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, origin);
+							EV_SET(&event, origin->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 							// Выполняем удаление события из списка ожидания
 							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						}
@@ -34587,9 +34046,9 @@ void awh::IO::clear() noexcept {
 						// Объекты событий для удаления из списка ожидания
 						struct kevent events[3] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET(&events[0], client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, client);
+						EV_SET(&events[0], client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET(&events[1], client->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, client);
+						EV_SET(&events[1], client->transfer.fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Если установлен таймаут для события
 						if(client->timeout != event::action_t::NONE){
 							// Увеличиваем количество событий
@@ -34597,7 +34056,7 @@ void awh::IO::clear() noexcept {
 							// Объект события для удаления из списка ожидания
 							struct kevent event{};
 							// Снимаем событие таймаута из списка ожидания
-							EV_SET(&events[2], client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, client);
+							EV_SET(&events[2], client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						}
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
@@ -34633,9 +34092,9 @@ void awh::IO::clear() noexcept {
 						// Объекты событий для удаления из списка ожидания
 						struct kevent events[2] = {};
 						// Снимаем событие на чтение из списка ожидания
-						EV_SET(&events[0], server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, server);
+						EV_SET(&events[0], server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Снимаем событие на запись из списка ожидания
-						EV_SET(&events[1], server->fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, server);
+						EV_SET(&events[1], server->fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
 						// Если дескриптор сокета инициализирован
@@ -36348,9 +35807,6 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 									}
 								// Если нет ошибки
 								} else {
-									
-									cout << "Processing client event for ID: " << client->id << " == " << i->data << endl;
-									
 									// Если установлена функция обратного вызова
 									if((client->callbacks.status != nullptr) && ::__awh_processed__.find(client->id) == ::__awh_processed__.end()){
 										// Добавляем идентификатор события в список обработанных
@@ -36446,16 +35902,10 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				// Активируем параметры таймаута
 				pts = &ts;
 			}
-
-			cout << "Polling with timeout: " << timeout << " ms" << endl;
-
 			/**
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
-			
-			cout << "Events received: " << events << endl;
-			
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**
