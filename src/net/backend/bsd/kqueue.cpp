@@ -4666,7 +4666,7 @@ namespace io {
 													if (msg.msg_flags & MSG_NOTIFICATION) {
 
 
-														printf("Получено уведомление (%zd байт)\n", n);
+														printf("Получено уведомление (%zd байт)\n", bytes);
 
 														// Обязательно: проверяем, что control data есть
 														if (msg.msg_controllen == 0) {
