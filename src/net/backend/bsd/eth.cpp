@@ -1857,10 +1857,6 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 			handshake.ostreams = status.sstat_outstrms;
 			// Устанавливаем количество входящих потоков
 			handshake.instreams = status.sstat_instrms;
-			// Устанавливаем максимальное количество попыток инициализации сокета
-			handshake.attempts = status.sstat_max_attempts;
-			// Устанавливаем таймаут инициализации сокета
-			handshake.initTimeout = status.sstat_max_init_timeo;
 		}
 	#endif
 	// Выводим результат
