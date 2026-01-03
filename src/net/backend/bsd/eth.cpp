@@ -1755,6 +1755,9 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 				events.sctp_send_failure_event = 1;
 				// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
 				events.sctp_association_event = 1;
+				
+				cout << "DEBUG: SCTP_EVENTS FD: " << sock << endl;
+				
 				// Выполняем активацию получения событий SCTP для сокета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events))))){
 					/**

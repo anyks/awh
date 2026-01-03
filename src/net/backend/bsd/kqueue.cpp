@@ -4665,6 +4665,8 @@ namespace io {
 													// Проверяем: это уведомление или данные?
 													if (msg.msg_flags & MSG_NOTIFICATION) {
 
+														cout << " ------- SCTP Notification ------- " << peer->transfer.fd << endl;
+
 
 														printf("Получено уведомление (%zd байт)\n", bytes);
 
