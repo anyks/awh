@@ -234,7 +234,7 @@ namespace awh {
 			/**
 			 * Идентификатор полезной нагрузки SCTP
 			 */
-			enum class ppi_t : uint8_t {
+			enum class ppid_t : uint8_t {
 				DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
 				WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
 				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC

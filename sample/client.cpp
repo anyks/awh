@@ -163,7 +163,7 @@ int32_t main(int32_t argc, char * argv[]){
 						eid,
 						info.num,
 						info.flags,
-						static_cast <uint16_t> (info.ppi),
+						static_cast <uint16_t> (info.ppid),
 						info.ctx,
 						info.ttl
 					);
@@ -179,7 +179,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY))
+		if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
