@@ -88,13 +88,13 @@
 #include <sys/locker.hpp>
 #include <sys/threadpool.hpp>
 
-
 /**
  * Если структура kevent64_s не определена в операционной системой является FreeBSD
  */
 #if !__STRUCT_kevent64_s_defined && __FreeBSD__
 	// Определяем структуру kevent64_s
 	#define __STRUCT_kevent64_s_defined
+
 	/**
 	 * @brief Структура события kqueue с 64-битными полями
 	 *
