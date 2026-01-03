@@ -1393,12 +1393,15 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+					
+					cout << "CLOSE PEER CONNECTION. TOTAL PEERS1: " << peer->peers << " == " << (u_short) peer->timeout << endl;
+					
 					// Уменьшаем общее количество подключений сервера
 					if(peer->peers > 0)
 						// Уменьшаем общее количество подключений сервера
 						peer->peers--;
 
-					cout << "CLOSE PEER CONNECTION. TOTAL PEERS: " << peer->peers << endl;
+					cout << "CLOSE PEER CONNECTION. TOTAL PEERS2: " << peer->peers << endl;
 
 					// Если событие отключения от сервера разрешено
 					if(peer->transfer.actions & ::action::DISCONNECT){
