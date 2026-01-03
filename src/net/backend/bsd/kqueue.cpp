@@ -4664,6 +4664,9 @@ namespace io {
 
 													// Проверяем: это уведомление или данные?
 													if (msg.msg_flags & MSG_NOTIFICATION) {
+														
+														cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
+														
 														// --- УВЕДОМЛЕНИЕ ---
 														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 															if (cmsg->cmsg_level == IPPROTO_SCTP) {
