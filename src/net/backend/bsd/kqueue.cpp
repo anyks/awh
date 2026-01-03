@@ -6105,19 +6105,6 @@ namespace io {
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Если событие является неблокирующим
 											if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
-												
-												sctp_assoc_t assoc_id = server->sctp.info.sinfo_assoc_id;
-
-
-												// Отделяем в новый сокет
-												const net::socket_t sock = ::sctp_peeloff(server->fd, assoc_id);
-												if (sock == net::invalid_socket_t) {
-													perror("sctp_peeloff");
-												}
-
-												cout << "!!!!! SERVER READ " << sock << endl;
-												
-												
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -6141,6 +6128,18 @@ namespace io {
 														&::trust_cast <struct sockaddr> (server->endpoint.client),
 														&server->endpoint.size
 													);
+
+													sctp_assoc_t assoc_id = server->sctp.info.sinfo_assoc_id;
+
+
+													// Отделяем в новый сокет
+													const net::socket_t sock = ::sctp_peeloff(server->fd, assoc_id);
+													if (sock == net::invalid_socket_t) {
+														perror("sctp_peeloff");
+													}
+
+													cout << "!!!!! SERVER READ " << sock << endl;
+
 												/**
 												 * Если это другая операционная система
 												 */
@@ -35202,6 +35201,9 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+			
+			cout << " Polled events: " << events << endl;
+			
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**

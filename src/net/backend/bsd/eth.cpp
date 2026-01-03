@@ -1777,7 +1777,7 @@ bool awh::Ethernet::sctp([[maybe_unused]] const net::socket_t sock, [[maybe_unus
 				// Устанавливаем идентификатор ассоциации
 				event.se_assoc_id = SCTP_FUTURE_ASSOC;
 				// Выполняем активацию получения событий SCTP для сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &event, sizeof(event))))){
 					/**
 					 * Если включён режим отладки
 					 */
