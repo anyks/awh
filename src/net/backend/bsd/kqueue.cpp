@@ -4664,6 +4664,45 @@ namespace io {
 
 													// Проверяем: это уведомление или данные?
 													if (msg.msg_flags & MSG_NOTIFICATION) {
+
+
+														printf("Получено уведомление (%zd байт)\n", n);
+
+														// Обязательно: проверяем, что control data есть
+														if (msg.msg_controllen == 0) {
+															printf("Но msg_controllen = 0 — буфер не был выделен!\n");
+															return false;
+														}
+
+														int found = 0;
+														for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+															cmsg != NULL;
+															cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+
+															found = 1;
+															if (cmsg->cmsg_level == IPPROTO_SCTP) {
+																switch (cmsg->cmsg_type) {
+																	case SCTP_ASSOC_CHANGE: {
+																		auto *sac = (struct sctp_assoc_change*)CMSG_DATA(cmsg);
+																		printf("SCTP_ASSOC_CHANGE: state=%d\n", sac->sac_state);
+																		break;
+																	}
+																	case SCTP_SHUTDOWN_EVENT:
+																		printf("SCTP_SHUTDOWN_EVENT\n");
+																		break;
+																	default:
+																		printf("Неизвестный тип: %d\n", cmsg->cmsg_type);
+																}
+															}
+														}
+
+														if (!found) {
+															printf("Цикл cmsghdr ничего не нашёл — возможно, повреждённые данные или буфер слишком мал\n");
+														}
+
+
+
+
 														
 														cout << "Received SCTP notification of size " << bytes << " bytes." << endl;
 														
@@ -4673,7 +4712,7 @@ namespace io {
 															cout << "CMSG level: " << cmsg->cmsg_level << ", type: " << cmsg->cmsg_type << endl;
 															
 															if (cmsg->cmsg_level == IPPROTO_SCTP) {
-																
+
 																
 																cout << "Notification type: ";
 																switch (cmsg->cmsg_type) {
