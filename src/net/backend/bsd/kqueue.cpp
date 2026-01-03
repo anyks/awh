@@ -21782,8 +21782,6 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										}
 										// Снимаем флаг ожидания подключения
 										client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-										// Завершаем выполнение функции с ошибкой
-										return result;
 									}
 								} break;
 								// Если сокет принадлежит к типу DATAGRAM
@@ -21875,8 +21873,6 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										}
 										// Снимаем флаг ожидания подключения
 										client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-										// Завершаем выполнение функции с ошибкой
-										return result;
 									}
 								} break;
 							}
@@ -22570,10 +22566,78 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										}
 										// Снимаем флаг ожидания подключения
 										server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-										// Завершаем выполнение функции с ошибкой
-										return result;
 									}
 								} break;
+								/**
+								 * Для операционной системы FreeBSD
+								 */
+								#if __FreeBSD__
+									// Если сокет принадлежит к типу SEQPACKET
+									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+										// Если протокол интернета установлен как SCTP
+										if(server->state.protocol == event::protocol_t::SCTP){
+											// Выполняем слушать порт сервера
+											if(!(result = (::listen(server->fd, server->backlog.depth) == 0))){
+												// Если установлена функция обратного вызова
+												if(server->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													server->callbacks.status(server->id, event::status_t::FAILURE);
+												// Если установлена функция обратного вызова
+												if(server->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													#endif
+												}
+												// Снимаем флаг ожидания подключения
+												server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											}
+										// Если протокол интернета не установлен как SCTP
+										} else {
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "Listening is only supported for SCTP protocol with SEQPACKET event type";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+										}
+									} break;
+								#endif
 								// Для других типов сокетов
 								default: {
 									// Если установлена функция обратного вызова
@@ -22581,7 +22645,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = "Listening is only supported for STREAM event type";
+									const string error = "Listening is only supported for STREAM or SEQPACKET event type";
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -22604,12 +22668,8 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									}
 									// Снимаем флаг ожидания подключения
 									server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-									// Завершаем выполнение функции с ошибкой
-									return result;
 								}
 							}
-							// Возвращаем результат
-							return result;
 						}
 					} break;
 					// Для других типов узлов
