@@ -1777,7 +1777,7 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 		// Отключаем уведомления о каждом входящем DATA-пакете
 		else events.sctp_data_io_event = 0;
 		// Если необходимо установить события SCTP_ADDR_CHANGE
-		if(options & event::sctp::notify::AWH_ADDRESS_CHANGE)
+		if(options & event::sctp::notify::AWH_ADDRESS)
 			// Устанавливаем события SCTP_ADDR_CHANGE
 			events.sctp_address_event = 1;
 		// Отключаем события SCTP_ADDR_CHANGE
