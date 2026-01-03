@@ -4275,7 +4275,7 @@ namespace io {
 										 */
 										for(;;){
 											// Выполняем чтение данных из IPC-сокета
-											bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -4351,7 +4351,7 @@ namespace io {
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из IPC-сокета
-										const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если установлена функция обратного вызова
@@ -4422,7 +4422,7 @@ namespace io {
 									// Если событие является неблокирующим
 									if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
 										// Выполняем чтение данных из IPC-сокета
-										const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если нам нужно повторить попытку позже
@@ -4492,7 +4492,7 @@ namespace io {
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из IPC-сокета
-										const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										const ssize_t bytes = ::recv(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если установлена функция обратного вызова
@@ -4582,8 +4582,29 @@ namespace io {
 										 * Выполняем получение данных пока их не получим
 										 */
 										for(;;){
-											// Выполняем чтение данных из TCP/IP сокета
-											bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP)
+													// Выполняем чтение данных из SCTP-сокета
+													bytes = ::sctp_recvmsg(
+														peer->transfer.fd,
+														buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+														nullptr, nullptr,
+														&peer->transfer.sctp.info,
+														&peer->transfer.sctp.flags
+													);
+												// Выполняем чтение данных из TCP/IP сокета
+												else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем чтение данных из TCP/IP сокета
+												bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+											#endif
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -4656,8 +4677,31 @@ namespace io {
 										}
 									// Если событие является блокирующим
 									} else {
-										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(peer->state.protocol == event::protocol_t::SCTP)
+												// Выполняем чтение данных из SCTP-сокета
+												bytes = ::sctp_recvmsg(
+													peer->transfer.fd,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+													nullptr, nullptr,
+													&peer->transfer.sctp.info,
+													&peer->transfer.sctp.flags
+												);
+											// Выполняем чтение данных из TCP/IP сокета
+											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем чтение данных из TCP/IP сокета
+											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+										#endif
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если установлена функция обратного вызова
@@ -4743,13 +4787,13 @@ namespace io {
 													&peer->transfer.sctp.flags
 												);
 											// Выполняем чтение данных из TCP/IP сокета
-											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										/**
 										 * Если это другая операционная система
 										 */
 										#else
 											// Выполняем чтение данных из TCP/IP сокета
-											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										#endif
 										// Если мы получили ошибку
 										if(bytes < 0){
@@ -4839,13 +4883,13 @@ namespace io {
 													&peer->transfer.sctp.flags
 												);
 											// Выполняем чтение данных из TCP/IP сокета
-											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										/**
 										 * Если это другая операционная система
 										 */
 										#else
 											// Выполняем чтение данных из TCP/IP сокета
-											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 										#endif
 										// Если мы получили ошибку
 										if(bytes < 0){
@@ -4954,8 +4998,29 @@ namespace io {
 										 * Выполняем получение данных пока их не получим
 										 */
 										for(;;){
-											// Выполняем чтение данных из TCP/IP сокета
-											bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем чтение данных из SCTP-сокета
+													bytes = ::sctp_recvmsg(
+														client->transfer.fd,
+														buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+														nullptr, nullptr,
+														&client->transfer.sctp.info,
+														&client->transfer.sctp.flags
+													);
+												// Выполняем чтение данных из TCP/IP сокета
+												else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем чтение данных из TCP/IP сокета
+												bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+											#endif
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -5028,8 +5093,31 @@ namespace io {
 										}
 									// Если событие является блокирующим
 									} else {
-										// Выполняем чтение данных из TCP/IP сокета
-										const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(client->state.protocol == event::protocol_t::SCTP)
+												// Выполняем чтение данных из SCTP-сокета
+												bytes = ::sctp_recvmsg(
+													client->transfer.fd,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+													nullptr, nullptr,
+													&client->transfer.sctp.info,
+													&client->transfer.sctp.flags
+												);
+											// Выполняем чтение данных из TCP/IP сокета
+											else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем чтение данных из TCP/IP сокета
+											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+										#endif
 										// Если мы получили ошибку
 										if(bytes < 0){
 											// Если установлена функция обратного вызова
@@ -5117,13 +5205,13 @@ namespace io {
 														&client->transfer.sctp.flags
 													);
 												// Выполняем чтение данных из TCP/IP сокета
-												else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+												else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем чтение данных из TCP/IP сокета
-												const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+												const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											#endif
 											// Если мы получили ошибку
 											if(bytes < 0){
@@ -5213,13 +5301,13 @@ namespace io {
 														&client->transfer.sctp.flags
 													);
 												// Выполняем чтение данных из TCP/IP сокета
-												else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+												else bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем чтение данных из TCP/IP сокета
-												const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+												const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											#endif
 											// Если мы получили ошибку
 											if(bytes < 0){
@@ -5308,7 +5396,7 @@ namespace io {
 												// Выполняем чтение данных из UDP-сокета
 												else bytes = ::recvfrom(
 													client->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													&client->endpoint.size
 												);
@@ -5319,7 +5407,7 @@ namespace io {
 												// Выполняем чтение данных из UDP-сокета
 												const ssize_t bytes = ::recvfrom(
 													client->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													&client->endpoint.size
 												);
@@ -5415,7 +5503,7 @@ namespace io {
 												// Выполняем чтение данных из UDP-сокета
 												else bytes = ::recvfrom(
 													client->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													&client->endpoint.size
 												);
@@ -5426,7 +5514,7 @@ namespace io {
 												// Выполняем чтение данных из UDP-сокета
 												const ssize_t bytes = ::recvfrom(
 													client->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													&client->endpoint.size
 												);
@@ -5503,7 +5591,7 @@ namespace io {
 										// Выполняем чтение данных из RAW-сокета
 										const ssize_t bytes = ::recvfrom(
 											client->transfer.fd,
-											buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+											buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											&client->endpoint.size
 										);
@@ -5581,7 +5669,7 @@ namespace io {
 										// Выполняем чтение данных из RAW-сокета
 										const ssize_t bytes = ::recvfrom(
 											client->transfer.fd,
-											buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+											buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											&client->endpoint.size
 										);
@@ -5656,7 +5744,7 @@ namespace io {
 										// Если событие является неблокирующим
 										if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
 											// Выполняем чтение данных из UDP-сокета
-											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
@@ -5729,7 +5817,7 @@ namespace io {
 										// Если событие является блокирующим
 										} else {
 											// Выполняем чтение данных из UDP-сокета
-											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0);
+											const ssize_t bytes = ::recv(client->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если установлена функция обратного вызова
@@ -5800,7 +5888,7 @@ namespace io {
 											// Выполняем чтение данных из UDP-сокета
 											const ssize_t bytes = ::recvfrom(
 												client->transfer.fd,
-												buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 												&::trust_cast <struct sockaddr> (client->endpoint.server),
 												&client->endpoint.size
 											);
@@ -5878,7 +5966,7 @@ namespace io {
 											// Выполняем чтение данных из UDP-сокета
 											const ssize_t bytes = ::recvfrom(
 												client->transfer.fd,
-												buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 												&::trust_cast <struct sockaddr> (client->endpoint.server),
 												&client->endpoint.size
 											);
@@ -6049,7 +6137,7 @@ namespace io {
 											if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
 												// Выполняем чтение данных из UDP-сокета или RAW-сокета
 												bytes = ::recvfrom(
-													server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (server->endpoint.client),
 													&server->endpoint.size
 												);
@@ -6095,7 +6183,7 @@ namespace io {
 											} else {
 												// Выполняем чтение данных из UDP-сокета или RAW-сокета
 												bytes = ::recvfrom(
-													server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+													server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (server->endpoint.client),
 													&server->endpoint.size
 												);
@@ -6155,7 +6243,7 @@ namespace io {
 														);
 													// Выполняем чтение данных из UDP-сокета
 													else bytes = ::recvfrom(
-														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (server->endpoint.client),
 														&server->endpoint.size
 													);
@@ -6165,7 +6253,7 @@ namespace io {
 												#else
 													// Выполняем чтение данных из UDP-сокета
 													bytes = ::recvfrom(
-														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (server->endpoint.client),
 														&server->endpoint.size
 													);
@@ -6229,7 +6317,7 @@ namespace io {
 														);
 													// Выполняем чтение данных из UDP-сокета
 													else bytes = ::recvfrom(
-														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (server->endpoint.client),
 														&server->endpoint.size
 													);
@@ -6239,7 +6327,7 @@ namespace io {
 												#else
 													// Выполняем чтение данных из UDP-сокета
 													bytes = ::recvfrom(
-														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, 0,
+														server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (server->endpoint.client),
 														&server->endpoint.size
 													);
@@ -7044,7 +7132,7 @@ namespace io {
 										// Определяем размер отправляемых данных
 										const size_t size = ipc->transfer.queue.size();
 										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), size, 0);
+										const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -7119,7 +7207,7 @@ namespace io {
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), ipc->transfer.queue.size(), 0);
+										const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), ipc->transfer.queue.size(), MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -7220,8 +7308,34 @@ namespace io {
 									case static_cast <uint8_t> (event::type_t::STREAM): {
 										// Определяем размер отправляемых данных
 										const size_t size = peer->transfer.queue.size();
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), size, 0);
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(peer->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в TCP/IP сокет
+												bytes = ::sctp_sendmsg(
+													peer->transfer.fd,
+													reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()),
+													size, nullptr, 0,
+													peer->transfer.sctp.info.sinfo_ppid,
+													peer->transfer.sctp.info.sinfo_flags,
+													peer->transfer.sctp.info.sinfo_stream,
+													peer->transfer.sctp.info.sinfo_timetolive,
+													peer->transfer.sctp.info.sinfo_context
+												);
+											// Выполняем отправку данных в TCP/IP сокет
+											else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), size, MSG_NOSIGNAL);
+										/**
+										 * Если это другая операционная система
+										 */
+										#else
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), size, MSG_NOSIGNAL);
+										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
@@ -7358,13 +7472,13 @@ namespace io {
 													peer->transfer.sctp.info.sinfo_context
 												);
 											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), 0);
+											else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), MSG_NOSIGNAL);
 										/**
 										 * Если это другая операционная система
 										 */
 										#else
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), 0);
+											const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), MSG_NOSIGNAL);
 										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
@@ -7512,8 +7626,34 @@ namespace io {
 										case static_cast <uint8_t> (event::type_t::STREAM): {
 											// Определяем размер отправляемых данных
 											const size_t size = client->transfer.queue.size();
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
+														size, nullptr, 0,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), size, MSG_NOSIGNAL);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), size, MSG_NOSIGNAL);
+											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -7652,13 +7792,13 @@ namespace io {
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
+													else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
+													const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -7777,7 +7917,7 @@ namespace io {
 													else bytes = ::sendto(
 														client->transfer.fd,
 														reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
-														client->transfer.queue.size(), 0,
+														client->transfer.queue.size(), MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size
 													);
@@ -7789,7 +7929,7 @@ namespace io {
 													const ssize_t bytes = ::sendto(
 														client->transfer.fd,
 														reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
-														client->transfer.queue.size(), 0,
+														client->transfer.queue.size(), MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size
 													);
@@ -7891,7 +8031,7 @@ namespace io {
 											// Если клиент находится в состоянии подключено
 											if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), 0);
+												const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -7988,7 +8128,7 @@ namespace io {
 												const ssize_t bytes = ::sendto(
 													client->transfer.fd,
 													reinterpret_cast <const uint8_t *> (client->transfer.queue.data()),
-													client->transfer.queue.size(), 0,
+													client->transfer.queue.size(), MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size
 												);
@@ -8155,7 +8295,7 @@ namespace io {
 												else bytes = ::sendto(
 													session.second->transfer.fd,
 													reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()),
-													session.second->transfer.queue.size(), 0,
+													session.second->transfer.queue.size(), MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (session.second->endpoint.client),
 													session.second->endpoint.size
 												);
@@ -8167,7 +8307,7 @@ namespace io {
 												bytes = ::sendto(
 													session.second->transfer.fd,
 													reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()),
-													session.second->transfer.queue.size(), 0,
+													session.second->transfer.queue.size(), MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (session.second->endpoint.client),
 													session.second->endpoint.size
 												);
@@ -8179,7 +8319,7 @@ namespace io {
 											bytes = ::sendto(
 												session.second->transfer.fd,
 												reinterpret_cast <const uint8_t *> (session.second->transfer.queue.data()),
-												session.second->transfer.queue.size(), 0,
+												session.second->transfer.queue.size(), MSG_NOSIGNAL,
 												&::trust_cast <struct sockaddr> (session.second->endpoint.client),
 												session.second->endpoint.size
 											);
@@ -24046,6 +24186,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																	ipc->callbacks.write(ipc->id, 0);
 																// Выходим из функции
 																return result;
+															// Если мы пытаемся отправить данные на несуществующий узел
+															} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+																// Выполняем обработку закрытия подключения
+																if(::io::close(ipc, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(ipc, this->_log);
+																// Выходим из функции
+																return result;
 															// Если произошла ошибка при отправке данных
 															} else {
 																// Если установлена функция обратного вызова
@@ -24108,7 +24256,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
-														if(bytes == 0){
+														if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 															// Выполняем обработку закрытия подключения
 															if(::io::close(ipc, this->_log))
 																// Выполняем удаление узла
@@ -24165,7 +24313,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Выполняем отправку данных в TCP/IP сокет
 													const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 													// Если данные отправлены успешно
-													if(bytes == 0){
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 														// Выполняем обработку закрытия подключения
 														if(::io::close(ipc, this->_log))
 															// Выполняем удаление узла
@@ -24247,7 +24395,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если очередь передачи данных пустая
 											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
+												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если данные отправлены не полностью
@@ -24295,6 +24443,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(ipc->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
+														// Выходим из функции
+														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(ipc, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(ipc, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -24357,9 +24513,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
+												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(ipc, this->_log))
 														// Выполняем удаление узла
@@ -24409,9 +24565,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
+											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(ipc, this->_log))
 													// Выполняем удаление узла
@@ -24497,7 +24653,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если очередь передачи данных пустая
 											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
+												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -24530,6 +24686,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(ipc->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
+														// Выходим из функции
+														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(ipc, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(ipc, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -24592,9 +24756,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
+												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(ipc, this->_log))
 														// Выполняем удаление узла
@@ -24644,9 +24808,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, 0);
+											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(ipc, this->_log))
 													// Выполняем удаление узла
@@ -24712,8 +24876,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if(peer->state.options & event::options::NOIOBLOCK){
 											// Если очередь передачи данных пустая
 											if(peer->transfer.queue.empty()){
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(peer->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															peer->transfer.fd,
+															data, size, nullptr, 0,
+															peer->transfer.sctp.info.sinfo_ppid,
+															peer->transfer.sctp.info.sinfo_flags,
+															peer->transfer.sctp.info.sinfo_stream,
+															peer->transfer.sctp.info.sinfo_timetolive,
+															peer->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в TCP/IP сокет
+													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												#endif
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если данные отправлены не полностью
@@ -24792,6 +24981,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															peer->callbacks.write(peer->id, 0);
 														// Выходим из функции
 														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(peer, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(peer, this->_log);
+														// Выходим из функции
+														return result;
 													// Если произошла ошибка при отправке данных
 													} else {
 														// Если установлена функция обратного вызова
@@ -24857,10 +25054,35 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((i != peer->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(peer->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															peer->transfer.fd,
+															data, size, nullptr, 0,
+															peer->transfer.sctp.info.sinfo_ppid,
+															peer->transfer.sctp.info.sinfo_flags,
+															peer->transfer.sctp.info.sinfo_stream,
+															peer->transfer.sctp.info.sinfo_timetolive,
+															peer->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в TCP/IP сокет
+													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, this->_log))
 														// Выполняем удаление узла
@@ -24915,10 +25137,35 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != peer->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														peer->transfer.fd,
+														data, size, nullptr, 0,
+														peer->transfer.sctp.info.sinfo_ppid,
+														peer->transfer.sctp.info.sinfo_flags,
+														peer->transfer.sctp.info.sinfo_stream,
+														peer->transfer.sctp.info.sinfo_timetolive,
+														peer->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+											#endif
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(peer, this->_log))
 													// Выполняем удаление узла
@@ -25020,13 +25267,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															peer->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, 0);
+													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
@@ -25074,6 +25321,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(peer->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															peer->callbacks.write(peer->id, 0);
+														// Выходим из функции
+														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(peer, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(peer, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -25160,16 +25415,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															peer->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, 0);
+													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, this->_log))
 														// Выполняем удаление узла
@@ -25243,16 +25498,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														peer->transfer.sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(peer->transfer.fd, data, size, 0);
+												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(peer->transfer.fd, data, size, 0);
+												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(peer, this->_log))
 													// Выполняем удаление узла
@@ -25379,7 +25634,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 											}
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -25404,6 +25659,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выходим из функции
 															return result;
 													}
+												// Если мы пытаемся отправить данные на несуществующий узел
+												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+													// Выполняем обработку закрытия подключения
+													if(::io::close(origin, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(origin, this->_log);
+													// Выходим из функции
+													return result;
 												// Если произошла ошибка при отправке данных
 												} else {
 													// Если установлена функция обратного вызова
@@ -25449,9 +25712,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
@@ -25501,9 +25764,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, this->_log))
 													// Выполняем удаление узла
@@ -25587,7 +25850,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если очередь передачи данных пустая
 											if(origin->transfer.queue.empty()){
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -25634,6 +25897,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(origin->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															origin->callbacks.write(origin->id, 0);
+														// Выходим из функции
+														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(origin, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(origin, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -25696,9 +25967,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
@@ -25748,9 +26019,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, this->_log))
 													// Выполняем удаление узла
@@ -25855,7 +26126,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														);
 													// Выполняем отправку данных в UDP-сокет
 													else bytes = ::sendto(
-														origin->transfer.fd, data, size, 0,
+														origin->transfer.fd, data, size, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (origin->endpoint.client),
 														origin->endpoint.size
 													);
@@ -25865,7 +26136,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												#else
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(
-														origin->transfer.fd, data, size, 0,
+														origin->transfer.fd, data, size, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (origin->endpoint.client),
 														origin->endpoint.size
 													);
@@ -25916,6 +26187,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														if(origin->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															origin->callbacks.write(origin->id, 0);
+														// Выходим из функции
+														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(origin, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(origin, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -25999,7 +26278,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														);
 													// Выполняем отправку данных в UDP-сокет
 													else bytes = ::sendto(
-														origin->transfer.fd, data, size, 0,
+														origin->transfer.fd, data, size, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (origin->endpoint.client),
 														origin->endpoint.size
 													);
@@ -26009,13 +26288,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												#else
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(
-														origin->transfer.fd, data, size, 0,
+														origin->transfer.fd, data, size, MSG_NOSIGNAL,
 														&::trust_cast <struct sockaddr> (origin->endpoint.client),
 														origin->endpoint.size
 													);
 												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
@@ -26086,7 +26365,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = ::sendto(
-													origin->transfer.fd, data, size, 0,
+													origin->transfer.fd, data, size, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (origin->endpoint.client),
 													origin->endpoint.size
 												);
@@ -26096,13 +26375,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											#else
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(
-													origin->transfer.fd, data, size, 0,
+													origin->transfer.fd, data, size, MSG_NOSIGNAL,
 													&::trust_cast <struct sockaddr> (origin->endpoint.client),
 													origin->endpoint.size
 												);
 											#endif
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, this->_log))
 													// Выполняем удаление узла
@@ -26197,8 +26476,33 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										if(client->state.options & event::options::NOIOBLOCK){
 											// Если очередь передачи данных пустая
 											if(client->transfer.queue.empty()){
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(client->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															client->transfer.fd,
+															data, size, nullptr, 0,
+															client->transfer.sctp.info.sinfo_ppid,
+															client->transfer.sctp.info.sinfo_flags,
+															client->transfer.sctp.info.sinfo_stream,
+															client->transfer.sctp.info.sinfo_timetolive,
+															client->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в TCP/IP сокет
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												#endif
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если данные отправлены не полностью
@@ -26277,6 +26581,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															client->callbacks.write(client->id, 0);
 														// Выходим из функции
 														return result;
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(client, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(client, this->_log);
+														// Выходим из функции
+														return result;
 													// Если произошла ошибка при отправке данных
 													} else {
 														// Если установлена функция обратного вызова
@@ -26342,10 +26654,35 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Количество прочитанных байт
+													ssize_t bytes = 0;
+													// Если протокол интернета установлен как SCTP
+													if(client->state.protocol == event::protocol_t::SCTP)
+														// Выполняем отправку данных в TCP/IP сокет
+														bytes = ::sctp_sendmsg(
+															client->transfer.fd,
+															data, size, nullptr, 0,
+															client->transfer.sctp.info.sinfo_ppid,
+															client->transfer.sctp.info.sinfo_flags,
+															client->transfer.sctp.info.sinfo_stream,
+															client->transfer.sctp.info.sinfo_timetolive,
+															client->transfer.sctp.info.sinfo_context
+														);
+													// Выполняем отправку данных в TCP/IP сокет
+													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												/**
+												 * Если это другая операционная система
+												 */
+												#else
+													// Выполняем отправку данных в TCP/IP сокет
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
@@ -26400,10 +26737,35 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Количество прочитанных байт
+												ssize_t bytes = 0;
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = ::sctp_sendmsg(
+														client->transfer.fd,
+														data, size, nullptr, 0,
+														client->transfer.sctp.info.sinfo_ppid,
+														client->transfer.sctp.info.sinfo_flags,
+														client->transfer.sctp.info.sinfo_stream,
+														client->transfer.sctp.info.sinfo_timetolive,
+														client->transfer.sctp.info.sinfo_context
+													);
+												// Выполняем отправку данных в TCP/IP сокет
+												else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+											/**
+											 * Если это другая операционная система
+											 */
+											#else
+												// Выполняем отправку данных в TCP/IP сокет
+												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+											#endif
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, this->_log))
 													// Выполняем удаление узла
@@ -26507,13 +26869,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в TCP/IP сокет
-														else bytes = ::send(client->transfer.fd, data, size, 0);
+														else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в TCP/IP сокет
-														const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
@@ -26561,6 +26923,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															if(client->callbacks.write != nullptr)
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
+															// Выходим из функции
+															return result;
+														// Если мы пытаемся отправить данные на несуществующий узел
+														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -26647,16 +27017,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в TCP/IP сокет
-														else bytes = ::send(client->transfer.fd, data, size, 0);
+														else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в TCP/IP сокет
-														const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
-													if(bytes == 0){
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
@@ -26730,16 +27100,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, data, size, 0);
+													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
@@ -26842,13 +27212,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в UDP-сокет
-														else bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														else bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в UDP-сокет
-														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
@@ -26896,6 +27266,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															if(client->callbacks.write != nullptr)
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
+															// Выходим из функции
+															return result;
+														// Если мы пытаемся отправить данные на несуществующий узел
+														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -26984,16 +27362,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в UDP-сокет
-														else bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														else bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в UDP-сокет
-														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
-													if(bytes == 0){
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
@@ -27069,16 +27447,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в UDP-сокет
-													else bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													else bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
@@ -27221,7 +27599,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												}
 											}
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -27246,6 +27624,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выходим из функции
 															return result;
 													}
+												// Если мы пытаемся отправить данные на несуществующий узел
+												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+													// Выполняем обработку закрытия подключения
+													if(::io::close(client, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(client, this->_log);
+													// Выходим из функции
+													return result;
 												// Если произошла ошибка при отправке данных
 												} else {
 													// Если установлена функция обратного вызова
@@ -27303,9 +27689,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
@@ -27367,9 +27753,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, this->_log))
 													// Выполняем удаление узла
@@ -27455,7 +27841,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
@@ -27502,6 +27888,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															if(client->callbacks.write != nullptr)
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
+															// Выходим из функции
+															return result;
+														// Если мы пытаемся отправить данные на несуществующий узел
+														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -27570,9 +27964,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Устанавливаем таймаут на отправку данных
 														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Определяем переменную для хранения количества отправленных байт
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if(bytes == 0){
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
@@ -27628,9 +28022,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, 0);
+												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
@@ -27713,7 +28107,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
@@ -27760,6 +28154,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															if(client->callbacks.write != nullptr)
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																client->callbacks.write(client->id, 0);
+															// Выходим из функции
+															return result;
+														// Если мы пытаемся отправить данные на несуществующий узел
+														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -27828,9 +28230,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Устанавливаем таймаут на отправку данных
 														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
-													if(bytes == 0){
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
@@ -27886,9 +28288,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, 0, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
@@ -28015,7 +28417,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является неблокирующим
 										if(server->state.options & event::options::NOIOBLOCK){
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -28035,6 +28437,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
+													// Выходим из функции
+													return result;
+												// Если мы пытаемся отправить данные на несуществующий узел
+												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+													// Выполняем обработку закрытия подключения
+													if(::io::close(server, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(server, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла ошибка при отправке данных
@@ -28088,9 +28498,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
@@ -28146,9 +28556,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
@@ -28230,7 +28640,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является неблокирующим
 										if(server->state.options & event::options::NOIOBLOCK){
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
@@ -28245,6 +28655,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
+												// Если мы пытаемся отправить данные на несуществующий узел
+												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+													// Выполняем обработку закрытия подключения
+													if(::io::close(server, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(server, this->_log);
+													// Выходим из функции
+													return result;
 												// Если произошла ошибка при отправке данных
 												} else {
 													// Если установлена функция обратного вызова
@@ -28296,9 +28714,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
@@ -28354,9 +28772,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
@@ -28458,13 +28876,13 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														server->sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
-												else bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												else bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											#endif
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
@@ -28490,6 +28908,14 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выходим из функции
 															return result;
 													}
+												// Если мы пытаемся отправить данные на несуществующий узел
+												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+													// Выполняем обработку закрытия подключения
+													if(::io::close(server, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(server, this->_log);
+													// Выходим из функции
+													return result;
 												// Если произошла ошибка при отправке данных
 												} else {
 													// Если установлена функция обратного вызова
@@ -28561,16 +28987,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															server->sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в UDP-сокет
-													else bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+													else bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+													const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												#endif
 												// Если данные отправлены успешно
-												if(bytes == 0){
+												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
@@ -28646,16 +29072,16 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														server->sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
-												else bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												else bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(server->fd, data, size, 0, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											#endif
 											// Если данные отправлены успешно
-											if(bytes == 0){
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
