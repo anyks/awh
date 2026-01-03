@@ -6288,7 +6288,7 @@ namespace io {
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													// EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
+													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
 												}
 											}
 										}
@@ -6770,11 +6770,8 @@ namespace io {
 															origin->timeout = i->first;
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
-
-															cout << " DEBUG: Set READ timeout for origin " << origin->id << " : " << i->second << " ms" << endl;
-
 															// Устанавливаем таймаут на получение данных
-															// EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
+															EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
 														}
 													}
 													// Выводим положительный результат
