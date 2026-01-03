@@ -6110,7 +6110,7 @@ namespace io {
 
 
 												// Отделяем в новый сокет
-												const net::socket_t sock = ::sctp_peeloff(node->fd, assoc_id);
+												const net::socket_t sock = ::sctp_peeloff(server->fd, assoc_id);
 												if (sock == net::invalid_socket_t) {
 													perror("sctp_peeloff");
 												}
