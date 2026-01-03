@@ -25933,7 +25933,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Количество прочитанных байт
 														ssize_t bytes = 0;
 														// Если протокол интернета установлен как SCTP
-														if(client->state.protocol == event::protocol_t::SCTP)
+														if(client->state.protocol == event::protocol_t::SCTP){
 															// Выполняем отправку данных в TCP/IP сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
@@ -25944,8 +25944,11 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_timetolive,
 																client->transfer.sctp.info.sinfo_context
 															);
+
+															cout << "SCTP SEND MSG BYTES: " << bytes << " === " << client->transfer.fd << " == " << size << endl;
+
 														// Выполняем отправку данных в TCP/IP сокет
-														else bytes = ::send(client->transfer.fd, data, size, 0);
+														} else bytes = ::send(client->transfer.fd, data, size, 0);
 													/**
 													 * Если это другая операционная система
 													 */
