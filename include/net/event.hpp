@@ -232,53 +232,51 @@ namespace awh {
 		 */
 		namespace sctp {
 			/**
-			 * Идентификатор полезной нагрузки SCTP
+			 * @brief пространство имён информации о сообщении SCTP
+			 *
 			 */
-			enum class ppid_t : uint8_t {
-				DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
-				WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
-				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
+			namespace info {
+				/**
+				 * Упорядоченная доставка
+				 */
+				static constexpr uint16_t AWH_NONE = 0x00;
+				/**
+				 * Грациозное завершение (для stream-режима, устаревшее)
+				 */
+				static constexpr uint16_t AWH_EOF = 0x01;
+				/**
+				 * Отправить сообщение и разорвать ассоциацию (редко)
+				 */
+				static constexpr uint16_t AWH_ABORT = 0x02;
+				/**
+				 * Отправка сообщения всем ассоциациям
+				 */
+				static constexpr uint16_t AWH_SENDALL = 0x04;
+				/**
+				 * Сообщение доставляется без учёта порядка в потоке (может прийти раньше предыдущих)
+				 */
+				static constexpr uint16_t AWH_UNORDERED = 0x08;
+				/**
+				 * Использовать адрес из to, даже если сокет подключён
+				 */
+				static constexpr uint16_t AWH_ADDR_OVER = 0x10;
+				/**
+				 * Установка бита последнего фрагмента DATA, для мгновенной отправки
+				 */
+				static constexpr uint16_t AWH_SACK_IMMEDIATELY = 0x20;
+				/**
+				 * Если сообщение не доставлено за N миллисекунд — отбрось его
+				 */
+				static constexpr uint16_t AWH_PR_SCTP_TTL = 0x40;
+				/**
+				 * Сообщения отправляются только N раз попыток - после чего будет отброшено
+				 */
+				static constexpr uint16_t AWH_PR_SCTP_RTX = 0x80;
+				/**
+				 * Это сообщение имеет приоритет N. При нехватке ресурсов — сначала выбрасывай сообщения с низким приоритетом
+				 */
+				static constexpr uint16_t AWH_PR_SCTP_PRIO = 0x100;
 			};
-			/**
-			 * Упорядоченная доставка
-			 */
-			static constexpr uint16_t AWH_NONE = 0x00;
-			/**
-			 * Грациозное завершение (для stream-режима, устаревшее)
-			 */
-			static constexpr uint16_t AWH_EOF = 0x01;
-			/**
-			 * Отправить сообщение и разорвать ассоциацию (редко)
-			 */
-			static constexpr uint16_t AWH_ABORT = 0x02;
-			/**
-			 * Отправка сообщения всем ассоциациям
-			 */
-			static constexpr uint16_t AWH_SENDALL = 0x04;
-			/**
-			 * Сообщение доставляется без учёта порядка в потоке (может прийти раньше предыдущих)
-			 */
-			static constexpr uint16_t AWH_UNORDERED = 0x08;
-			/**
-			 * Использовать адрес из to, даже если сокет подключён
-			 */
-			static constexpr uint16_t AWH_ADDR_OVER = 0x10;
-			/**
-			 * Установка бита последнего фрагмента DATA, для мгновенной отправки
-			 */
-			static constexpr uint16_t AWH_SACK_IMMEDIATELY = 0x20;
-			/**
-			 * Если сообщение не доставлено за N миллисекунд — отбрось его
-			 */
-			static constexpr uint16_t AWH_PR_SCTP_TTL = 0x40;
-			/**
-			 * Сообщения отправляются только N раз попыток - после чего будет отброшено
-			 */
-			static constexpr uint16_t AWH_PR_SCTP_RTX = 0x80;
-			/**
-			 * Это сообщение имеет приоритет N. При нехватке ресурсов — сначала выбрасывай сообщения с низким приоритетом
-			 */
-			static constexpr uint16_t AWH_PR_SCTP_PRIO = 0x100;
 		};
 		/**
 		 * @brief пространство имён опций событий

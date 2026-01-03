@@ -3336,10 +3336,16 @@ namespace io {
 						peer->state.address = node->state.address;
 						// Устанавливаем протокол сокета
 						peer->state.protocol = node->state.protocol;
-						// Если протокол интернета установлен как SCTP
-						if(peer->state.protocol == event::protocol_t::SCTP)
-							// Выполняем активацию событий SCTP
-							eth->sctpEvents(peer->transfer.fd, peer->state.type);
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							// Если протокол интернета установлен как SCTP
+							if((peer->state.type == event::type_t::SEQPACKET) &&
+							   (peer->state.protocol == event::protocol_t::SCTP))
+								// Выполняем активацию событий SCTP
+								eth->sctpEvents(peer->transfer.fd);
+						#endif
 						// Выполняем инициализацию объекта MAC-адреса
 						peer->mac = make_unique <net::addr_mac_t> ();
 						/**
@@ -6414,10 +6420,16 @@ namespace io {
 											origin->state.options = server->state.options;
 											// Устанавливаем протокол сокета
 											origin->state.protocol = server->state.protocol;
-											// Если протокол интернета установлен как SCTP
-											if(origin->state.protocol == event::protocol_t::SCTP)
-												// Выполняем активацию событий SCTP
-												eth->sctpEvents(origin->transfer.fd, origin->state.type);
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Если протокол интернета установлен как SCTP
+												if((origin->state.type == event::type_t::SEQPACKET) &&
+												   (origin->state.protocol == event::protocol_t::SCTP))
+													// Выполняем активацию событий SCTP
+													eth->sctpEvents(origin->transfer.fd);
+											#endif
 											// Устанавливаем размер объекта подключения клиента
 											origin->endpoint.size = server->endpoint.size;
 											// Выполняем копирование объект подключения клиента в сторейдж
@@ -9828,10 +9840,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if((result = (client->target != nullptr))){
-												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
-													// Выполняем активацию событий SCTP
-													this->_eth.sctpEvents(client->transfer.fd, client->state.type);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Если протокол интернета установлен как SCTP
+													if((client->state.type == event::type_t::SEQPACKET) &&
+													   (client->state.protocol == event::protocol_t::SCTP))
+														// Выполняем активацию событий SCTP
+														this->_eth.sctpEvents(client->transfer.fd);
+												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -10308,10 +10326,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if((result = (client->target != nullptr))){
-												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
-													// Выполняем активацию событий SCTP
-													this->_eth.sctpEvents(client->transfer.fd, client->state.type);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Если протокол интернета установлен как SCTP
+													if((client->state.type == event::type_t::SEQPACKET) &&
+													   (client->state.protocol == event::protocol_t::SCTP))
+														// Выполняем активацию событий SCTP
+														this->_eth.sctpEvents(client->transfer.fd);
+												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -11287,10 +11311,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
-												// Если протокол интернета установлен как SCTP
-												if(server->state.protocol == event::protocol_t::SCTP)
-													// Выполняем активацию событий SCTP
-													this->_eth.sctpEvents(server->fd, server->state.type);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Если протокол интернета установлен как SCTP
+													if((server->state.type == event::type_t::SEQPACKET) &&
+													   (server->state.protocol == event::protocol_t::SCTP))
+														// Выполняем активацию событий SCTP
+														this->_eth.sctpEvents(server->fd);
+												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -11453,10 +11483,16 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
-												// Если протокол интернета установлен как SCTP
-												if(server->state.protocol == event::protocol_t::SCTP)
-													// Выполняем активацию событий SCTP
-													this->_eth.sctpEvents(server->fd, server->state.type);
+												/**
+												 * Если операционной системой является FreeBSD
+												 */
+												#if __FreeBSD__
+													// Если протокол интернета установлен как SCTP
+													if((server->state.type == event::type_t::SEQPACKET) &&
+													   (server->state.protocol == event::protocol_t::SCTP))
+														// Выполняем активацию событий SCTP
+														this->_eth.sctpEvents(server->fd);
+												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -20623,17 +20659,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::DTLS;
+								result.ppid = net::sctp_ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20645,39 +20681,39 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 						// Если установлен флаг EOF в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::AWH_EOF;
+							result.flags |= event::sctp::info::AWH_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::AWH_ABORT;
+							result.flags |= event::sctp::info::AWH_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::AWH_SENDALL;
+							result.flags |= event::sctp::info::AWH_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::AWH_UNORDERED;
+							result.flags |= event::sctp::info::AWH_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::AWH_ADDR_OVER;
+							result.flags |= event::sctp::info::AWH_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 						if(peer->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
 					} break;
 					// Если узел является одноранговым узлом-источником
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -20690,17 +20726,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::DTLS;
+								result.ppid = net::sctp_ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20712,39 +20748,39 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 						// Если установлен флаг EOF в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::AWH_EOF;
+							result.flags |= event::sctp::info::AWH_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::AWH_ABORT;
+							result.flags |= event::sctp::info::AWH_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::AWH_SENDALL;
+							result.flags |= event::sctp::info::AWH_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::AWH_UNORDERED;
+							result.flags |= event::sctp::info::AWH_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::AWH_ADDR_OVER;
+							result.flags |= event::sctp::info::AWH_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 						if(origin->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -20757,17 +20793,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::DTLS;
+								result.ppid = net::sctp_ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20779,39 +20815,39 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 						// Если установлен флаг EOF в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::AWH_EOF;
+							result.flags |= event::sctp::info::AWH_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::AWH_ABORT;
+							result.flags |= event::sctp::info::AWH_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::AWH_SENDALL;
+							result.flags |= event::sctp::info::AWH_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::AWH_UNORDERED;
+							result.flags |= event::sctp::info::AWH_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::AWH_ADDR_OVER;
+							result.flags |= event::sctp::info::AWH_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 						if(client->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
 					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -20824,17 +20860,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = event::sctp::ppid_t::DTLS;
+								result.ppid = net::sctp_ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20846,39 +20882,39 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 						// Если установлен флаг EOF в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::AWH_EOF;
+							result.flags |= event::sctp::info::AWH_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::AWH_ABORT;
+							result.flags |= event::sctp::info::AWH_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::AWH_SENDALL;
+							result.flags |= event::sctp::info::AWH_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::AWH_UNORDERED;
+							result.flags |= event::sctp::info::AWH_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::AWH_ADDR_OVER;
+							result.flags |= event::sctp::info::AWH_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::AWH_SACK_IMMEDIATELY;
+							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_TTL;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_RTX;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::AWH_PR_SCTP_PRIO;
+							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
 					} break;
 					// Если узел является другим типом узла
 					default: {
@@ -20960,39 +20996,39 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
 						peer->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::AWH_EOF)
+						if(info.flags & event::sctp::info::AWH_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ABORT)
+						if(info.flags & event::sctp::info::AWH_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SENDALL)
+						if(info.flags & event::sctp::info::AWH_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::AWH_UNORDERED)
+						if(info.flags & event::sctp::info::AWH_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ADDR_OVER)
+						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
 							peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 					} break;
@@ -21011,39 +21047,39 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
 						origin->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::AWH_EOF)
+						if(info.flags & event::sctp::info::AWH_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ABORT)
+						if(info.flags & event::sctp::info::AWH_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SENDALL)
+						if(info.flags & event::sctp::info::AWH_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::AWH_UNORDERED)
+						if(info.flags & event::sctp::info::AWH_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ADDR_OVER)
+						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
 							origin->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 					} break;
@@ -21062,39 +21098,39 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
 						client->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::AWH_EOF)
+						if(info.flags & event::sctp::info::AWH_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ABORT)
+						if(info.flags & event::sctp::info::AWH_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SENDALL)
+						if(info.flags & event::sctp::info::AWH_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::AWH_UNORDERED)
+						if(info.flags & event::sctp::info::AWH_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ADDR_OVER)
+						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
 							client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 					} break;
@@ -21113,39 +21149,39 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
 						server->sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::AWH_EOF)
+						if(info.flags & event::sctp::info::AWH_EOF)
 							// Устанавливаем флаг EOF в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_EOF;
 						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ABORT)
+						if(info.flags & event::sctp::info::AWH_ABORT)
 							// Устанавливаем флаг ABORT в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_ABORT;
 						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SENDALL)
+						if(info.flags & event::sctp::info::AWH_SENDALL)
 							// Устанавливаем флаг SENDALL в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_SENDALL;
 						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::AWH_UNORDERED)
+						if(info.flags & event::sctp::info::AWH_UNORDERED)
 							// Устанавливаем флаг UNORDERED в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_UNORDERED;
 						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::AWH_ADDR_OVER)
+						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
 							// Устанавливаем флаг ADDR_OVER в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
 						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::AWH_SACK_IMMEDIATELY)
+						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
 							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_TTL)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
 							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_RTX)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
 							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::AWH_PR_SCTP_PRIO)
+						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
 							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
 							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 					} break;

@@ -107,22 +107,30 @@ namespace awh {
 			WRITE = 0x02  // Запись
 		};
 		/**
+		 * Идентификатор полезной нагрузки SCTP
+		 */
+		enum class sctp_ppid_t : uint8_t {
+			DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
+			WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
+			WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
+		};
+		/**
 		 * @brief Структура метаданных сообщения SCTP
 		 *
 		 */
 		typedef struct SctpMessageInfo {
-			uint16_t num;             // Номер потока
-			uint32_t ttl;             // Время жизни (в миллисекундах)
-			uint32_t ctx;             // Контекст для уведомлений об ошибках
-			uint32_t flags;           // Флаги сообщения
-			event::sctp::ppid_t ppid; // Идентификатор полезной нагрузки
+			uint16_t num;     // Номер потока
+			uint32_t ttl;     // Время жизни (в миллисекундах)
+			uint32_t ctx;     // Контекст для уведомлений об ошибках
+			uint32_t flags;   // Флаги сообщения
+			sctp_ppid_t ppid; // Идентификатор полезной нагрузки
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit SctpMessageInfo() noexcept :
 			 num(0), ttl(0), ctx(0), flags(0),
-			 ppid(event::sctp::ppid_t::DTLS) {}
+			 ppid(sctp_ppid_t::DTLS) {}
 		} sctp_minfo_t;
 		/**
 		 * @brief Структура параметров рукопожатия SCTP

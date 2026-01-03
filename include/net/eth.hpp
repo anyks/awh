@@ -141,10 +141,9 @@ namespace awh {
 			* @brief Метод активации получения SCTP-событий для сокета
 			*
 			* @param sock сетевой сокет
-			* @param type тип сокета
 			* @return     результат работы функции
 			*/
-			bool sctpEvents(const net::socket_t sock, const event::type_t type) const noexcept;
+			bool sctpEvents(const net::socket_t sock) const noexcept;
 			/**
 			 * @brief Метод получения статуса SCTP сокета
 			 *
