@@ -3204,8 +3204,21 @@ namespace io {
 							} break;
 						}
 						// Определяем разрешено ли подключение к прокси серверу
-						const net::socket_t sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
+						// const net::socket_t sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
 						
+						
+
+						
+
+						sctp_assoc_t assoc_id = server->sctp.info.sinfo_assoc_id;
+
+
+						// Отделяем в новый сокет
+						const net::socket_t sock = ::sctp_peeloff(node->fd, assoc_id);
+						if (sock == net::invalid_socket_t) {
+							perror("sctp_peeloff");
+						}
+
 						cout << "!!!!! SACCEPT2 " << sock << endl;
 						
 						// Если сокет не создан тогда выходим
