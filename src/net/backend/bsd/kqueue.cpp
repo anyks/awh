@@ -3143,6 +3143,9 @@ namespace io {
 			if(node->actions & ::action::ACCEPT){
 				// Создаём охранника узла события
 				::local::guard_t guard(node);
+				
+				cout << "!!!!! SACCEPT1 " << node->fd << endl;
+				
 				// Если количество текущих подключений уже максимальное
 				if(node->backlog.count == node->backlog.max){
 					// Принимаем подключение и сразу закрываем его
@@ -3202,6 +3205,9 @@ namespace io {
 						}
 						// Определяем разрешено ли подключение к прокси серверу
 						const net::socket_t sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
+						
+						cout << "!!!!! SACCEPT2 " << sock << endl;
+						
 						// Если сокет не создан тогда выходим
 						if(sock == net::invalid_socket_t){
 							// Если установлена функция обратного вызова
@@ -25945,7 +25951,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																client->transfer.sctp.info.sinfo_context
 															);
 
-															cout << "SCTP SEND MSG BYTES: " << bytes << " === " << client->transfer.fd << " == " << size << endl;
+															cout << "!!!!! SCTP SEND MSG BYTES: " << bytes << " === " << client->transfer.fd << " == " << size << endl;
 
 														// Выполняем отправку данных в TCP/IP сокет
 														} else bytes = ::send(client->transfer.fd, data, size, 0);
