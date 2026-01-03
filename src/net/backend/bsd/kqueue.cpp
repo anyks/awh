@@ -6288,7 +6288,7 @@ namespace io {
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
 													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
+													// EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
 												}
 											}
 										}
