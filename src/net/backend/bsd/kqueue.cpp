@@ -19238,13 +19238,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 										// Если опция передана как TCP_CORK
 										if(event::options::TCPCORK & options){
 											// Активируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
+											if((isSetup = this->_eth.cork(fd, net::socket_mode_t::ENABLED)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCPCORK;
 										// Если опция не передана как TCP_CORK
 										} else {
 											// Деактивируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
+											if((isSetup = this->_eth.cork(fd, net::socket_mode_t::DISABLED)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCPCORK;
 										}
@@ -19255,13 +19255,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 										// Если опция передана как TCP_NODELAY
 										if(event::options::TCPNODELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
+											if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::ENABLED)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCPNODELAY;
 										// Если опция не передана как TCP_NODELAY
 										} else {
 											// Снимаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
+											if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::DISABLED)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCPNODELAY;
 										}
@@ -19284,13 +19284,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									// Если опция передана как TCP_CORK
 									if(event::options::TCPCORK & options){
 										// Активируем алгоритм TCP/CORK
-										if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::ENABLED)))
+										if((isSetup = this->_eth.cork(fd, net::socket_mode_t::ENABLED)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::TCPCORK;
 									// Если опция не передана как TCP_CORK
 									} else {
 										// Деактивируем алгоритм TCP/CORK
-										if((isSetup = this->_eth.tcpcork(fd, net::socket_mode_t::DISABLED)))
+										if((isSetup = this->_eth.cork(fd, net::socket_mode_t::DISABLED)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::TCPCORK;
 									}
@@ -19298,24 +19298,24 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									if(!isSetup)
 										// Устанавливаем результат работы функции как ложь
 										result = isSetup;
-									// Если опция передана как TCP_NODELAY
-									if(event::options::TCPNODELAY & options){
-										// Устанавливаем режим отключения алгоритма Нейгла
-										if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::ENABLED)))
-											// Устанавливаем опцию события
-											i->second->state.options |= event::options::TCPNODELAY;
-									// Если опция не передана как TCP_NODELAY
-									} else {
-										// Снимаем режим отключения алгоритма Нейгла
-										if((isSetup = this->_eth.tcpnodelay(fd, net::socket_mode_t::DISABLED)))
-											// Снимаем опцию события
-											i->second->state.options &= ~event::options::TCPNODELAY;
-									}
-									// Если опция не установлена
-									if(result && !isSetup)
-										// Устанавливаем результат работы функции как ложь
-										result = isSetup;
 								#endif
+								// Если опция передана как TCP_NODELAY
+								if(event::options::TCPNODELAY & options){
+									// Устанавливаем режим отключения алгоритма Нейгла
+									if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::ENABLED)))
+										// Устанавливаем опцию события
+										i->second->state.options |= event::options::TCPNODELAY;
+								// Если опция не передана как TCP_NODELAY
+								} else {
+									// Снимаем режим отключения алгоритма Нейгла
+									if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::DISABLED)))
+										// Снимаем опцию события
+										i->second->state.options &= ~event::options::TCPNODELAY;
+								}
+								// Если опция не установлена
+								if(result && !isSetup)
+									// Устанавливаем результат работы функции как ложь
+									result = isSetup;
 							}
 						} break;
 					}
@@ -19817,7 +19817,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											// Если сокет принадлежит к типу STREAM
 											case static_cast <uint8_t> (event::type_t::STREAM): {
 												// Устанавливаем или снимаем режим алгоритма TCP/CORK
-												if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+												if((result = this->_eth.cork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
 													// Если необходимо активировать режим алгоритма TCP/CORK
 													if(mode)
 														// Устанавливаем опцию события
@@ -19833,7 +19833,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 												 */
 												#if __FreeBSD__
 													// Устанавливаем или снимаем режим алгоритма TCP/CORK
-													if((result = this->_eth.tcpcork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+													if((result = this->_eth.cork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
 														// Если необходимо активировать режим алгоритма TCP/CORK
 														if(mode)
 															// Устанавливаем опцию события
@@ -19854,52 +19854,44 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
-							// Если протокол интернета установлен не как SCTP
-							if(i->second->state.protocol != event::protocol_t::SCTP){
-								/**
-								 * Определяем семейство события
-								 */
-								switch(static_cast <uint8_t> (i->second->state.family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6): {
-										/**
-										 * Определяем тип сокета
-										 */
-										switch(static_cast <uint8_t> (i->second->state.type)){
-											// Если сокет принадлежит к типу STREAM
-											case static_cast <uint8_t> (event::type_t::STREAM): {
-												// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-												if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-													// Если необходимо активировать алгоритм Нейгла для TCP сокета
-													if(mode)
-														// Устанавливаем опцию события
-														i->second->state.options |= event::options::TCPNODELAY;
-													// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-													else i->second->state.options ^= event::options::TCPNODELAY;
-												}
-											} break;
-											// Если сокет принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-												/**
-												 * Для операционной системы FreeBSD
-												 */
-												#if __FreeBSD__
-													// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-													if((result = this->_eth.tcpnodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
-														// Если необходимо активировать алгоритм Нейгла для TCP сокета
-														if(mode)
-															// Устанавливаем опцию события
-															i->second->state.options |= event::options::TCPNODELAY;
-														// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-														else i->second->state.options ^= event::options::TCPNODELAY;
-													}
-												#endif
-											} break;
-										}
-									} break;
-								}
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (i->second->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4):
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (i->second->state.type)){
+										// Если сокет принадлежит к типу STREAM
+										case static_cast <uint8_t> (event::type_t::STREAM): {
+											// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+											if((result = this->_eth.nodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+												// Если необходимо активировать алгоритм Нейгла для TCP сокета
+												if(mode)
+													// Устанавливаем опцию события
+													i->second->state.options |= event::options::TCPNODELAY;
+												// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+												else i->second->state.options ^= event::options::TCPNODELAY;
+											}
+										} break;
+										// Если сокет принадлежит к типу SEQPACKET
+										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+											// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
+											if((result = this->_eth.nodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+												// Если необходимо активировать алгоритм Нейгла для TCP сокета
+												if(mode)
+													// Устанавливаем опцию события
+													i->second->state.options |= event::options::TCPNODELAY;
+												// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
+												else i->second->state.options ^= event::options::TCPNODELAY;
+											}
+										} break;
+									}
+								} break;
 							}
 						}
 					} break;

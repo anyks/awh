@@ -1987,7 +1987,7 @@ int32_t awh::Ethernet::error(const net::socket_t sock) const noexcept {
  * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Ethernet::tcpcork(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
+bool awh::Ethernet::cork(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
 	// Параметр установки типа сокета
 	int32_t on = 0;
 	/**
@@ -2018,6 +2018,120 @@ bool awh::Ethernet::tcpcork(const net::socket_t sock, const net::socket_mode_t m
 		#endif
 	}
 	// Все удачно
+	return result;
+}
+/**
+ * @brief Метод отключения алгоритма Нейгла
+ *
+ * @param sock сетевой сокет
+ * @param mode режим установки типа сокета
+ * @return     результат работы функции
+ */
+bool awh::Ethernet::nodelay(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Параметр установки типа сокета
+	int32_t on = 0;
+	/**
+	 * Определяем режим блокировки
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		// Если необходимо активировать алгоритм Нейгла
+		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
+		// Если необходимо деактивировать алгоритм Нейгла
+		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
+	}
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Переменная для хранения протокола сокета
+		int32_t protocol = 0;
+		// Длина протокола сокета
+		socklen_t length = sizeof(protocol);
+		// Получаем протокол сокета
+		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+			/**
+			 * Определяем протокол сокета
+			 */
+			switch(protocol){
+				// Если протокол TCP
+				case IPPROTO_TCP: {
+					// Активируем/деактивируем алгоритм Нейгла
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
+				// Если протокол SCTP
+				case IPPROTO_SCTP: {
+					// Активируем/деактивируем алгоритм Нейгла
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_NODELAY, &on, sizeof(on))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
+			}
+		// Если возникает ошибка получения протокола сокета
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+	/**
+	 * Для остальных операционных систем
+	 */
+	#else
+		// Активируем/деактивируем алгоритм Нейгла
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+	#endif
+	// Выводим результат
 	return result;
 }
 /**
@@ -2203,46 +2317,6 @@ bool awh::Ethernet::broadcast(const net::socket_t sock, const net::socket_mode_t
 	bool result = false;
 	// Активируем/деактивируем широковещательный адрес
 	if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод отключения алгоритма Нейгла
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::tcpnodelay(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать алгоритм Нейгла
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать алгоритм Нейгла
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Активируем/деактивируем алгоритм Нейгла
-	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on))))){
 		/**
 		 * Если включён режим отладки
 		 */

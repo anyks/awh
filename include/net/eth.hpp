@@ -169,7 +169,16 @@ namespace awh {
 			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool tcpcork(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
+			bool cork(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
+			/**
+			 * @brief Метод отключения алгоритма Нейгла
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool nodelay(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
+		public:
 			/**
 			 * @brief Метод включающий или отключающий режим отображения IPv4 => IPv6
 			 *
@@ -210,14 +219,6 @@ namespace awh {
 			 * @return     результат работы функции
 			 */
 			bool broadcast(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод отключения алгоритма Нейгла
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool tcpnodelay(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
 			/**
 			 * @brief Метод установки блокирующего сокета
 			 *
