@@ -9000,7 +9000,7 @@ namespace io {
 					// Если событие является изменением ассоциации SCTP
 					case SCTP_ASSOC_CHANGE: {
 						// Получаем структуру изменения ассоциации SCTP
-						struct sctp_assoc_change * sac = reinterpret_cast <struct sctp_assoc_change *> (buffer);
+						const struct sctp_assoc_change * sac = reinterpret_cast <const struct sctp_assoc_change *> (buffer);
 						// Выводим информацию о событии изменения ассоциации SCTP
 						log->print(
 							"SCTP_ASSOC_CHANGE: state=%d, error=%d, outbound=%u, inbound=%u",
@@ -9014,7 +9014,7 @@ namespace io {
 					// Если событие является изменением адреса однорангового узла SCTP
 					case SCTP_PEER_ADDR_CHANGE: {
 						// Получаем структуру изменения адреса однорангового узла SCTP
-						struct sctp_paddr_change * spc = reinterpret_cast <struct sctp_paddr_change *> (buffer);
+						const struct sctp_paddr_change * spc = reinterpret_cast <const struct sctp_paddr_change *> (buffer);
 						// Буфер для хранения строкового представления адреса
 						char ip[INET6_ADDRSTRLEN];
 						// Получаем указатель на адрес
@@ -9044,7 +9044,7 @@ namespace io {
 					// Если событие является ошибкой удалённого узла SCTP
 					case SCTP_REMOTE_ERROR: {
 						// Получаем структуру ошибки удалённого узла SCTP
-						struct sctp_remote_error * sre = reinterpret_cast <struct sctp_remote_error *> (buffer);
+						const struct sctp_remote_error * sre = reinterpret_cast <const struct sctp_remote_error *> (buffer);
 						// Вычисляем смещение данных ошибки
 						const size_t offset = offsetof(struct sctp_remote_error, sre->sre_data);
 						// Вычисляем длину дополнительных данных ошибки
@@ -9052,7 +9052,7 @@ namespace io {
 						// Выводим информацию о событии ошибки удалённого узла SCTP
 						log->print(
 							"SCTP_REMOTE_ERROR: assoc_id=%u, error=0x%04x",
-							log_t::flag_t::ERROR,
+							log_t::flag_t::CRITICAL,
 							sre->sre_assoc_id, sre->sre_error
 						);
 						// Печатаем данные в hex (если есть)
@@ -9071,7 +9071,7 @@ namespace io {
 					// Если событие является завершением SCTP
 					case SCTP_SHUTDOWN_EVENT: {
 						// Получаем структуру завершения SCTP
-						struct sctp_shutdown_event * sse = reinterpret_cast <struct sctp_shutdown_event *> (buffer);
+						const struct sctp_shutdown_event * sse = reinterpret_cast <const struct sctp_shutdown_event *> (buffer);
 						// Выводим информацию о событии завершения SCTP
 						log->print(
 							"SCTP_SHUTDOWN_EVENT: assoc_id=%u",
@@ -9082,7 +9082,7 @@ namespace io {
 					// Если событие является получением адаптационной индикации SCTP
 					case SCTP_ADAPTATION_INDICATION: {
 						// Получаем структуру адаптационной индикации SCTP
-						struct sctp_adaptation_event * sad = reinterpret_cast <struct sctp_adaptation_event*> (buffer);
+						const struct sctp_adaptation_event * sad = reinterpret_cast <const struct sctp_adaptation_event*> (buffer);
 						// Выводим информацию о событии адаптационной индикации SCTP
 						log->print(
 							"SCTP_ADAPTATION_INDICATION: assoc_id=%u, indication=0x%08x",
@@ -9093,7 +9093,7 @@ namespace io {
 					// Если событие является частичной доставкой SCTP
 					case SCTP_PARTIAL_DELIVERY_EVENT: {
 						// Получаем структуру частичной доставки SCTP
-						struct sctp_pdapi_event * pdapi = reinterpret_cast <struct sctp_pdapi_event *> (buffer);
+						const struct sctp_pdapi_event * pdapi = reinterpret_cast <const struct sctp_pdapi_event *> (buffer);
 						// Выводим информацию о событии частичной доставки SCTP
 						log->print(
 							"SCTP_PARTIAL_DELIVERY_EVENT: assoc_id=%u, indication=0x%08x",
@@ -9104,7 +9104,7 @@ namespace io {
 					// Если событие является аутентификационной индикацией SCTP
 					case SCTP_AUTHENTICATION_INDICATION: {
 						// Получаем структуру аутентификационной индикации SCTP
-						struct sctp_authkey_event * auth = reinterpret_cast <struct sctp_authkey_event *> (buffer);
+						const struct sctp_authkey_event * auth = reinterpret_cast <const struct sctp_authkey_event *> (buffer);
 						// Выводим информацию о событии аутентификационной индикации SCTP
 						log->print(
 							"SCTP_AUTHENTICATION_INDICATION: assoc_id=%u, key_id=%u",
@@ -9115,7 +9115,7 @@ namespace io {
 					// Если событие является исчерпанием отправителя SCTP
 					case SCTP_SENDER_DRY_EVENT: {
 						// Получаем структуру исчерпания отправителя SCTP
-						struct sctp_sender_dry_event * dry = reinterpret_cast <struct sctp_sender_dry_event *> (buffer);
+						const struct sctp_sender_dry_event * dry = reinterpret_cast <const struct sctp_sender_dry_event *> (buffer);
 						// Выводим информацию о событии исчерпания отправителя SCTP
 						log->print(
 							"SCTP_SENDER_DRY_EVENT: assoc_id=%u",
@@ -9126,7 +9126,7 @@ namespace io {
 					// Если событие является остановкой очереди уведомлений SCTP
 					case SCTP_NOTIFICATIONS_STOPPED_EVENT: {
 						// Получаем структуру остановки очереди уведомлений SCTP
-						struct sctp_notifications_q_stopped_event * stopped = reinterpret_cast <struct sctp_notifications_q_stopped_event *> (buffer);
+						const struct sctp_notifications_q_stopped_event * stopped = reinterpret_cast <const struct sctp_notifications_q_stopped_event *> (buffer);
 						// Выводим информацию о событии остановки очереди уведомлений SCTP
 						log->print(
 							"SCTP_NOTIFICATIONS_STOPPED_EVENT: assoc_id=%u, queue=%u",
@@ -9137,7 +9137,7 @@ namespace io {
 					// Если событие является ошибкой отправки SCTP
 					case SCTP_SEND_FAILED_EVENT: {
 						// Получаем структуру ошибки отправки SCTP
-						struct sctp_send_failed_event * ssf = reinterpret_cast <struct sctp_send_failed_event *> (buffer);
+						const struct sctp_send_failed_event * ssf = reinterpret_cast <const struct sctp_send_failed_event *> (buffer);
 						// Выводим информацию о событии ошибки отправки SCTP
 						log->print(
 							"SCTP_SEND_FAILED_EVENT: assoc_id=%u, len=%u, error=%d",
@@ -9163,7 +9163,7 @@ namespace io {
 					// Если событие является сбросом потоков SCTP
 					case SCTP_STREAM_RESET_EVENT: {
 						// Получаем структуру сброса потоков SCTP
-						struct sctp_stream_reset_event * strres = reinterpret_cast <struct sctp_stream_reset_event *> (buffer);
+						const struct sctp_stream_reset_event * strres = reinterpret_cast <const struct sctp_stream_reset_event *> (buffer);
 						// Выводим информацию о событии сброса потоков SCTP
 						log->print(
 							"SCTP_STREAM_RESET_EVENT: assoc_id=%u, flags=0x%08x, n_streams=%u",
