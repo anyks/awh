@@ -194,6 +194,28 @@ int32_t main(int32_t argc, char * argv[]){
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
 			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+				// Получаем информацию о сообщении SCTP-сокета
+				const net::sctp::minfo_t & minfo = io.sctpMessageInfo(cid);
+				// Выводим информацию о сообщении SCTP-сокета
+				cout << " SCTP Message Info: " << endl;
+				cout << "  - Stream Number: " << minfo.num << endl;
+				cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
+				cout << "  - Context: " << minfo.ctx << endl;
+				cout << "  - Time to Live: " << minfo.ttl << endl;
+				cout << "  - Flags: " << minfo.flags << endl;
+				// Получаем статус SCTP-сокета
+				const net::sctp::status_t & status = io.sctpStatus(cid);
+				// Выводим статус SCTP-сокета
+				cout << " SCTP Status: " << endl;
+				cout << "  - ID: " << status.aid << endl;
+				cout << "  - State: " << status.state << endl;
+				cout << "  - Outbound Streams: " << status.outputStreams << endl;
+				cout << "  - Inbound Streams: " << status.inputStreams << endl;
+				cout << "  - Fragmentation Point: " << status.fragmentsPoint << endl;
+				cout << "  - Rate Window: " << status.rateWindow << endl;
+				cout << "  - Unpack Data: " << status.unpackData << endl;
+				cout << "  - Pending Data: " << status.pendingData << endl;
+				cout << "  - Peer Rate Window: " << status.peerRateWindow << endl;
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Устананавливаем опции события

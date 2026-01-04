@@ -648,22 +648,22 @@ namespace awh {
 			typedef struct Status {
 				uint32_t aid;            // ID ассоциации
 				int32_t state;           // Текущее состояние ассоциации
-				uint32_t readWindow;     // Размер окна получателя в байтах
-				uint16_t unackData;      // Количество неподтверждённых DATA чанков
+				uint32_t rateWindow;     // Размер окна скорости передачи
+				uint16_t unpackData;     // Количество неподтверждённых DATA чанков
 				uint16_t pendingData;    // Количество ожидающих данных
 				uint16_t inputStreams;   // Количество входящих потоков
 				uint16_t outputStreams;  // Количество исходящих потоков
 				uint32_t fragmentsPoint; // Точка фрагментации в байтах
-				uint32_t peerReadWindow; // Окно получателя на стороне пира
+				uint32_t peerRateWindow; // Размер окна скорости передачи данных одноранговым узлом
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				explicit Status() noexcept :
-				 aid(0), state(0), readWindow(0),
-				 unackData(0), pendingData(0),
+				 aid(0), state(0), rateWindow(0),
+				 unpackData(0), pendingData(0),
 				 inputStreams(0), outputStreams(0),
-				 fragmentsPoint(0), peerReadWindow(0) {}
+				 fragmentsPoint(0), peerRateWindow(0) {}
 			} status_t;
 		};
 	};
