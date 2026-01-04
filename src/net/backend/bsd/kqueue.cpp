@@ -8996,7 +8996,7 @@ namespace io {
 				/**
 				 * Определяем тип события SCTP
 				 */
-				switch(* reinterpret_cast <uint16_t *> (buffer)){
+				switch(* reinterpret_cast <const uint16_t *> (buffer)){
 					// Если событие является изменением ассоциации SCTP
 					case SCTP_ASSOC_CHANGE: {
 						// Получаем структуру изменения ассоциации SCTP
@@ -9141,7 +9141,7 @@ namespace io {
 						// Выводим информацию о событии ошибки отправки SCTP
 						log->print(
 							"SCTP_SEND_FAILED_EVENT: assoc_id=%u, len=%u, error=%d",
-							log_t::flag_t::ERROR,
+							log_t::flag_t::CRITICAL,
 							ssf->ssfe_assoc_id, ssf->ssfe_len, ssf->ssfe_error
 						);
 						// Проверка минимального размера
@@ -9149,7 +9149,7 @@ namespace io {
 							// Выводим информацию об ошибке некорректной длины
 							log->print(
 								"Invalid ssfe_length: %u",
-								log_t::flag_t::ERROR,
+								log_t::flag_t::CRITICAL,
 								ssf->ssfe_length
 							);
 							// Прекращаем обработку события
@@ -9178,7 +9178,7 @@ namespace io {
 							// Выводим информацию об ошибке некорректной длины
 							log->print(
 								"Invalid strreset_length: %u",
-								log_t::flag_t::ERROR,
+								log_t::flag_t::CRITICAL,
 								strres->strreset_length
 							);
 							// Прекращаем обработку события
@@ -9187,7 +9187,7 @@ namespace io {
 						// Вычисляем количество потоков для сброса
 						const size_t count = ((strres->strreset_length - min) / sizeof(uint16_t));
 						// Получаем список активных потоков
-						uint16_t * streams = reinterpret_cast <uint16_t *> (strres + 1);
+						const uint16_t * streams = reinterpret_cast <const uint16_t *> (strres + 1);
 						// Выводим информацию о сброшенных потоках SCTP
 						log->print(
 							"SCTP_STREAM_RESET_EVENT: assoc_id=%u, flags=0x%08x, streams_count=%u",
@@ -9214,7 +9214,7 @@ namespace io {
 						log->print(
 							"SCTP notification type: %u",
 							log_t::flag_t::WARNING,
-							* reinterpret_cast <uint16_t *> (buffer)
+							* reinterpret_cast <const uint16_t *> (buffer)
 						);
 				}
 			}
