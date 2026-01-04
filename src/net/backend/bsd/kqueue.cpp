@@ -5241,7 +5241,7 @@ namespace io {
 											// Если мы получили данные из сокета
 											} else if(bytes > 0) {
 												// Запоминаем идентификатор ассоциации SCTP
-												client->sctp.id = client->sctp.info.sinfo_assoc_id;
+												client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова флаг события
@@ -5332,7 +5332,7 @@ namespace io {
 											// Если мы получили данные из сокета
 											} else if(bytes > 0) {
 												// Запоминаем идентификатор ассоциации SCTP
-												client->sctp.id = client->sctp.info.sinfo_assoc_id;
+												client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова флаг события
@@ -5444,7 +5444,7 @@ namespace io {
 											// Если мы получили данные из сокета
 											} else if(bytes > 0) {
 												// Запоминаем идентификатор ассоциации SCTP
-												client->sctp.id = client->sctp.info.sinfo_assoc_id;
+												client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова флаг события
@@ -5546,7 +5546,7 @@ namespace io {
 											// Если мы получили данные из сокета
 											} else if(bytes > 0) {
 												// Запоминаем идентификатор ассоциации SCTP
-												client->sctp.id = client->sctp.info.sinfo_assoc_id;
+												client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова флаг события
