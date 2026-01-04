@@ -1875,19 +1875,17 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 /**
  * @brief Метод получения статуса SCTP сокета
  *
- * @param sock      сетевой сокет
- * @param handshake объект параметров для извлечения параметров инициализации SCTP сокета
- * @return          результат работы функции
+ * @param sock   сетевой сокет
+ * @param status объект для извлечения статуса инициализации SCTP сокета
+ * @return       результат работы функции
  */
-bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] net::sctp_handshake_t & handshake) const noexcept {
+bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] net::sctp::status_t & status) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
-		// Создаём объект статуса SCTP сокета
-		struct sctp_status status = {};
 		// Размер структуры статуса SCTP сокета
 		socklen_t length = sizeof(status);
 		// Выполняем инициализацию SCTP сокета
@@ -1905,12 +1903,6 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
-		// Если мы успешно получили статус SCTP сокета
-		} else {
-			// Устанавливаем количество исходящих потоков
-			handshake.ostreams = status.sstat_outstrms;
-			// Устанавливаем количество входящих потоков
-			handshake.instreams = status.sstat_instrms;
 		}
 	#endif
 	// Выводим результат
@@ -1919,11 +1911,11 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 /**
  * @brief Метод инициализации SCTP сокета
  *
- * @param sock      сетевой сокет
- * @param handshake параметры инициализации SCTP сокета
- * @return          результат работы функции
+ * @param sock   сетевой сокет
+ * @param intmes параметры инициализации SCTP сокета
+ * @return       результат работы функции
  */
-bool awh::Ethernet::sctpInit([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp_handshake_t & handshake) const noexcept {
+bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp::intmes_t & intmes) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1931,7 +1923,7 @@ bool awh::Ethernet::sctpInit([[maybe_unused]] const net::socket_t sock, [[maybe_
 	 */
 	#if __FreeBSD__
 		// Выполняем инициализацию SCTP сокета
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &handshake, sizeof(handshake))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &intmes, sizeof(intmes))))){
 			/**
 			 * Если включён режим отладки
 			 */

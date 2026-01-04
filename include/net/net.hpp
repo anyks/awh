@@ -107,53 +107,6 @@ namespace awh {
 			WRITE = 0x02  // Запись
 		};
 		/**
-		 * Идентификатор полезной нагрузки SCTP
-		 */
-		enum class sctp_ppid_t : uint8_t {
-			DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
-			WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
-			WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
-		};
-		/**
-		 * @brief Структура метаданных сообщения SCTP
-		 *
-		 */
-		typedef struct SctpMessageInfo {
-			uint16_t num;     // Номер потока
-			uint32_t ttl;     // Время жизни (в миллисекундах)
-			uint32_t ctx;     // Контекст для уведомлений об ошибках
-			uint32_t flags;   // Флаги сообщения
-			sctp_ppid_t ppid; // Идентификатор полезной нагрузки
-			/**
-			 * @brief Конструктор
-			 *
-			 */
-			explicit SctpMessageInfo() noexcept :
-			 num(0), ttl(0), ctx(0), flags(0),
-			 ppid(sctp_ppid_t::DTLS) {}
-		} sctp_minfo_t;
-		/**
-		 * @brief Структура параметров рукопожатия SCTP
-		 *
-		 */
-		typedef struct SctpHandshake {
-			// Максимальное количество исходящих потоков
-			uint16_t ostreams;
-			// Максимальное количество входящих потоков
-			uint16_t instreams;
-			// Максимальное количество попыток подключения
-			uint16_t attempts;
-			// Максимальное время инициализации SCTP
-			uint16_t initTimeout;
-			/**
-			 * @brief Конструктор
-			 *
-			 */
-			explicit SctpHandshake() noexcept :
-				ostreams(5), instreams(5),
-				attempts(4), initTimeout(0) {}
-		} sctp_handshake_t;
-		/**
 		 * @brief Структура адреса
 		 *
 		 */
@@ -636,6 +589,83 @@ namespace awh {
 			 */
 			virtual ~Server() = default;
 		} server_t;
+		/**
+		 * @brief Пространство имён для работы с SCTP
+		 *
+		 */
+		namespace sctp {
+			/**
+			 * Идентификатор полезной нагрузки SCTP
+			 */
+			enum class ppid_t : uint8_t {
+				DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
+				WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
+				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
+			};
+			/**
+			 * @brief Структура метаданных сообщения SCTP
+			 *
+			 */
+			typedef struct MessageInfo {
+				ppid_t ppid;    // Идентификатор полезной нагрузки
+				uint16_t num;   // Номер потока
+				uint32_t ttl;   // Время жизни (в миллисекундах)
+				uint32_t ctx;   // Контекст для уведомлений об ошибках
+				uint32_t flags; // Флаги сообщения
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit MessageInfo() noexcept :
+				 ppid(ppid_t::DTLS), num(0),
+				 ttl(0), ctx(0), flags(0) {}
+			} __attribute__((packed)) minfo_t;
+			/**
+			 * @brief Структура параметров рукопожатия SCTP
+			 *
+			 */
+			typedef struct InitMessage {
+				// Максимальное количество исходящих потоков
+				uint16_t ostreams;
+				// Максимальное количество входящих потоков
+				uint16_t instreams;
+				// Максимальное количество попыток подключения
+				uint16_t attempts;
+				// Максимальное время инициализации SCTP
+				uint16_t initTimeout;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit InitMessage() noexcept :
+				 ostreams(5), instreams(5),
+				 attempts(4), initTimeout(0) {}
+			} intmes_t;
+			/**
+			 * @brief Структура статуса SCTP подключения
+			 *
+			 */
+			typedef struct Status {
+				uint32_t aid;            // ID ассоциации
+				int32_t state;           // Текущее состояние ассоциации
+				uint32_t readWindow;     // Размер окна получателя в байтах
+				uint16_t unackData;      // Количество неподтверждённых DATA чанков
+				uint16_t pendingData;    // Количество ожидающих данных
+				uint16_t inputStreams;   // Количество входящих потоков
+				uint16_t outputStreams;  // Количество исходящих потоков
+				uint32_t fragmentsPoint; // Точка фрагментации в байтах
+				uint32_t peerReadWindow; // Окно получателя на стороне пира
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Status() noexcept :
+				 aid(0), state(0), readWindow(0),
+				 unackData(0), pendingData(0),
+				 inputStreams(0), outputStreams(0),
+				 fragmentsPoint(0), peerReadWindow(0) {}
+			} status_t;
+		};
 	};
 };
 

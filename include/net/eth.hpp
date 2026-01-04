@@ -148,19 +148,19 @@ namespace awh {
 			/**
 			 * @brief Метод получения статуса SCTP сокета
 			 *
-			 * @param sock      сетевой сокет
-			 * @param handshake объект параметров для извлечения параметров инициализации SCTP сокета
-			 * @return          результат работы функции
+			 * @param sock   сетевой сокет
+			 * @param status объект для извлечения статуса инициализации SCTP сокета
+			 * @return       результат работы функции
 			 */
-			bool sctpStatus(const net::socket_t sock, net::sctp_handshake_t & handshake) const noexcept;
+			bool sctpStatus(const net::socket_t sock, net::sctp::status_t & status) const noexcept;
 			/**
 			 * @brief Метод инициализации SCTP сокета
 			 *
-			 * @param sock      сетевой сокет
-			 * @param handshake параметры инициализации SCTP сокета
-			 * @return          результат работы функции
+			 * @param sock   сетевой сокет
+			 * @param intmes параметры инициализации SCTP сокета
+			 * @return       результат работы функции
 			 */
-			bool sctpInit(const net::socket_t sock, const net::sctp_handshake_t & handshake) const noexcept;
+			bool sctpInitMessages(const net::socket_t sock, const net::sctp::intmes_t & intmes) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK

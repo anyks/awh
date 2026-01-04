@@ -20622,9 +20622,9 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
  * @param id идентификатор события
  * @return   информационные метаданные SCTP сообщения
  */
-awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id) const noexcept {
+awh::net::sctp::minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id) const noexcept {
 	// Резузльтат работы функции
-	net::sctp_minfo_t result;
+	net::sctp::minfo_t result;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
@@ -20654,17 +20654,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::DTLS;
+								result.ppid = net::sctp::ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20721,17 +20721,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::DTLS;
+								result.ppid = net::sctp::ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20788,17 +20788,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::DTLS;
+								result.ppid = net::sctp::ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20855,17 +20855,17 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
 							// Если тип полезной нагрузки является WebRTC текстовым
 							case 0x33:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_STR;
+								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
 							break;
 							// Если тип полезной нагрузки является WebRTC бинарным
 							case 0x35:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::WEBRTC_BIN;
+								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
 							break;
 							// Если тип полезной нагрузки является DTLS
 							default:
 								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp_ppid_t::DTLS;
+								result.ppid = net::sctp::ppid_t::DTLS;
 							break;
 						}
 						// Устанавливаем номер потока SCTP в результат работы функции
@@ -20957,7 +20957,7 @@ awh::net::sctp_minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::id
  * @param id   идентификатор события
  * @param info информационные метаданные SCTP сообщения
  */
-void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unused]] const net::sctp_minfo_t & info) noexcept {
+void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unused]] const net::sctp::minfo_t & info) noexcept {
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
@@ -21219,14 +21219,14 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 	#endif
 }
 /**
- * @brief Метод получения параметров рукопожатия SCTP
+ * @brief Метод получения параметров статуса инициализации SCTP
  *
  * @param id идентификатор события
- * @return   параметры рукопожатия SCTP
+ * @return   параметры статуса инициализации SCTP
  */
-awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const noexcept {
+awh::net::sctp::status_t awh::IO::sctpStatus(const event::id_t id) const noexcept {
 	// Результат работы функции
-	net::sctp_handshake_t result;
+	net::sctp::status_t result;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
@@ -21262,7 +21262,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 									// Вызываем функцию обратного вызова об ошибке отказа
 									peer->callbacks.status(peer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								const string error = "A status is only possible for the SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -21291,7 +21291,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A handshake is only possible for the SCTP protocol";
+							const string error = "A status is only possible for the SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -21331,7 +21331,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 									// Вызываем функцию обратного вызова об ошибке отказа
 									origin->callbacks.status(origin->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								const string error = "A status is only possible for the SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -21360,7 +21360,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 								// Вызываем функцию обратного вызова об ошибке отказа
 								origin->callbacks.status(origin->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A handshake is only possible for the SCTP protocol";
+							const string error = "A status is only possible for the SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(origin->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -21400,7 +21400,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								const string error = "A status is only possible for the SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -21429,7 +21429,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A handshake is only possible for the SCTP protocol";
+							const string error = "A status is only possible for the SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -21469,7 +21469,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								const string error = "A status is only possible for the SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -21498,7 +21498,7 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A handshake is only possible for the SCTP protocol";
+							const string error = "A status is only possible for the SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -21546,12 +21546,12 @@ awh::net::sctp_handshake_t awh::IO::sctpHandshake(const event::id_t id) const no
 	return result;
 }
 /**
- * @brief Метод установки параметров рукопожатия SCTP
+ * @brief Метод установки параметров инициализации SCTP
  *
- * @param id        идентификатор события
- * @param handshake параметры рукопожатия SCTP
+ * @param id     идентификатор события
+ * @param intmes параметры инициализации SCTP события
  */
-void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & handshake) noexcept {
+void awh::IO::sctpInitMessages(const event::id_t id, const net::sctp::intmes_t & intmes) noexcept {
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
@@ -21579,7 +21579,7 @@ void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & 
 							// Если тип однорангового узла установлен как SEQPACKET
 							if(client->state.type == event::type_t::SEQPACKET)
 								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpInit(client->transfer.fd, handshake);
+								this->_eth.sctpInitMessages(client->transfer.fd, intmes);
 							// Если тип однорангового узла не установлен как SEQPACKET
 							else {
 								// Если установлена функция обратного вызова
@@ -21587,7 +21587,7 @@ void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								const string error = "A initial message is only possible for the SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -21616,7 +21616,7 @@ void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & 
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A handshake is only possible for the SCTP protocol";
+							const string error = "A initial message is only possible for the SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -21648,7 +21648,7 @@ void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & 
 							// Если тип однорангового узла установлен как SEQPACKET
 							if(server->state.type == event::type_t::SEQPACKET)
 								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpInit(server->fd, handshake);
+								this->_eth.sctpInitMessages(server->fd, intmes);
 							// Если тип однорангового узла не установлен как SEQPACKET
 							else {
 								// Если установлена функция обратного вызова
@@ -21656,7 +21656,7 @@ void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A handshake is only possible for the SEQPACKET socket type";
+								const string error = "A initial message is only possible for the SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -21685,7 +21685,7 @@ void awh::IO::sctpHandshake(const event::id_t id, const net::sctp_handshake_t & 
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A handshake is only possible for the SCTP protocol";
+							const string error = "A initial message is only possible for the SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события

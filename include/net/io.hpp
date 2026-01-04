@@ -208,29 +208,29 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   информационные метаданные SCTP сообщения
 			 */
-			net::sctp_minfo_t sctpMessageInfo(const event::id_t id) const noexcept;
+			net::sctp::minfo_t sctpMessageInfo(const event::id_t id) const noexcept;
 			/**
 			 * @brief Метод установки информационных метаданных SCTP сообщения
 			 *
 			 * @param id   идентификатор события
 			 * @param info информационные метаданные SCTP сообщения
 			 */
-			void sctpMessageInfo(const event::id_t id, const net::sctp_minfo_t & info) noexcept;
+			void sctpMessageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept;
 		public:
 			/**
-			 * @brief Метод получения параметров рукопожатия SCTP
+			 * @brief Метод получения параметров статуса инициализации SCTP
 			 *
 			 * @param id идентификатор события
-			 * @return   параметры рукопожатия SCTP
+			 * @return   параметры статуса инициализации SCTP
 			 */
-			net::sctp_handshake_t sctpHandshake(const event::id_t id) const noexcept;
+			net::sctp::status_t sctpStatus(const event::id_t id) const noexcept;
 			/**
-			 * @brief Метод установки параметров рукопожатия SCTP
+			 * @brief Метод установки параметров инициализации SCTP
 			 *
-			 * @param id        идентификатор события
-			 * @param handshake параметры рукопожатия SCTP
+			 * @param id     идентификатор события
+			 * @param intmes параметры инициализации SCTP события
 			 */
-			void sctpHandshake(const event::id_t id, const net::sctp_handshake_t & handshake) noexcept;
+			void sctpInitMessages(const event::id_t id, const net::sctp::intmes_t & intmes) noexcept;
 		public:
 			/**
 			 * @brief Метод запуска события
