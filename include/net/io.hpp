@@ -203,6 +203,21 @@ namespace awh {
 			bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 		public:
 			/**
+			 * @brief Метод получения опций подписки SCTP событий
+			 *
+			 * @param id идентификатор события
+			 * @return   опции подписки SCTP событий
+			 */
+			uint16_t sctpEventsSubscribed(const event::id_t id) const noexcept;
+			/**
+			 * @brief Метод установки опций подписки SCTP событий
+			 *
+			 * @param id      идентификатор события
+			 * @param options опции подписки SCTP событий
+			 */
+			void sctpEventsSubscribe(const event::id_t id, const uint16_t options) noexcept;
+		public:
+			/**
 			 * @brief Метод получения информационных метаданных SCTP сообщения
 			 *
 			 * @param id идентификатор события
