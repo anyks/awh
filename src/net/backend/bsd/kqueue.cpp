@@ -9122,6 +9122,7 @@ namespace io {
 							dry->sender_dry_assoc_id
 						);
 					} break;
+					/*
 					// Если событие является остановкой очереди уведомлений SCTP
 					case SCTP_NOTIFICATIONS_STOPPED_EVENT: {
 						// Получаем структуру остановки очереди уведомлений SCTP
@@ -9133,6 +9134,7 @@ namespace io {
 							stopped->nqse_assoc_id, stopped->nqse_queue
 						);
 					} break;
+					*/
 					// Если событие является ошибкой отправки SCTP
 					case SCTP_SEND_FAILED_EVENT: {
 						// Получаем структуру ошибки отправки SCTP
