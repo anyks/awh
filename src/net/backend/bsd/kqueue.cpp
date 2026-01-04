@@ -9101,12 +9101,12 @@ namespace io {
 						);
 					} break;
 					// Если событие является аутентификационной индикацией SCTP
-					case SCTP_AUTHENTICATION_INDICATION: {
+					case SCTP_AUTHENTICATION_EVENT: {
 						// Получаем структуру аутентификационной индикации SCTP
 						const struct sctp_authkey_event * auth = reinterpret_cast <const struct sctp_authkey_event *> (buffer);
 						// Выводим информацию о событии аутентификационной индикации SCTP
 						log->print(
-							"SCTP_AUTHENTICATION_INDICATION: assoc_id=%u, key_id=%u",
+							"SCTP_AUTHENTICATION_EVENT: assoc_id=%u, key_id=%u",
 							log_t::flag_t::INFO,
 							auth->auth_assoc_id, auth->auth_keynumber
 						);
