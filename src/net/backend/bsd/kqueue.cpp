@@ -5300,9 +5300,9 @@ namespace io {
 																	printf("Send failed, len=%u, err=%d\n", ssf->ssf_length, ssf->ssf_error);
 																	break;
 
-																case SCTP_PEER_ERROR:
+																case SCTP_PEER_ERROR_EVENT:
 																	sre = (struct sctp_remote_error*)buffer;
-																	printf("Peer error, cause=%u\n", sre->sre_cause);
+																	printf("Peer error, cause=%u\n", sre->sre_error);
 																	break;
 
 																default:
