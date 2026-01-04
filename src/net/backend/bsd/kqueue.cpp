@@ -1213,6 +1213,20 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool processing(struct kevent &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * @brief Функция обработки событий SCTP
+		 *
+		 * @param node   узел события
+		 * @param buffer буфер данных события
+		 * @param size	 размер буфера данных события
+		 * @param log    объект работы с логами
+		 */
+		static void eventsSCTP(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept;
+	#endif
 };
 
 /**
@@ -3288,9 +3302,12 @@ namespace io {
 												&node->sctp.flags
 											);
 											// Если мы получили уведомления SCTP
-											if((bytes <= 0) || (node->sctp.flags & MSG_NOTIFICATION))
+											if((bytes <= 0) || (node->sctp.flags & MSG_NOTIFICATION)){
+												// Обрабатываем события SCTP
+												::io::eventsSCTP(node, buffer, bytes, log);
 												// Выходим из функции
 												return (bytes > 0);
+											}
 											// Запоминаем идентификатор ассоциации SCTP
 											node->sctp.id = node->sctp.info.sinfo_assoc_id;
 											// Получаем дескриптор сокета из информации о сообщении SCTP
@@ -4873,9 +4890,12 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													// Если мы получили уведомления SCTP
-													if(peer->transfer.sctp.flags & MSG_NOTIFICATION)
+													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+														// Обрабатываем события SCTP
+														::io::eventsSCTP(peer, buffer, bytes, log);
 														// Формируем положительный результат
 														return true;
+													}
 												}
 											#endif
 											// Если функция обратного вызова для вывода события установлена
@@ -4974,9 +4994,12 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													// Если мы получили уведомления SCTP
-													if(peer->transfer.sctp.flags & MSG_NOTIFICATION)
+													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+														// Обрабатываем события SCTP
+														::io::eventsSCTP(peer, buffer, bytes, log);
 														// Формируем положительный результат
 														return true;
+													}
 												}
 											#endif
 											// Если функция обратного вызова для вывода события установлена
@@ -5274,43 +5297,8 @@ namespace io {
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
-
-															// buffer содержит управляющее сообщение
-															struct sctp_assoc_change *sac;
-															struct sctp_shutdown_event *sse;
-															struct sctp_send_failed *ssf;
-															struct sctp_remote_error *sre;
-
-															// Первые 2 байта — тип уведомления (sctp_notification.sn_header.sn_type)
-															uint16_t *sn_type = (uint16_t*)buffer;
-
-															cout << " !!!!!!!!!!! " << (*sn_type) << endl;
-
-															switch (*sn_type) {
-																case SCTP_ASSOC_CHANGE:
-																	sac = (struct sctp_assoc_change*)buffer;
-																	printf("Assoc state: %d\n", sac->sac_state);
-																	break;
-
-																case SCTP_SHUTDOWN_EVENT:
-																	sse = (struct sctp_shutdown_event*)buffer;
-																	printf("Shutdown for assoc %u\n", sse->sse_assoc_id);
-																	break;
-
-																case SCTP_SEND_FAILED:
-																	ssf = (struct sctp_send_failed*)buffer;
-																	printf("Send failed, len=%u, err=%d\n", ssf->ssf_length, ssf->ssf_error);
-																	break;
-
-																case SCTP_REMOTE_ERROR:
-																	sre = (struct sctp_remote_error*)buffer;
-																	printf("Peer error, cause=%u\n", sre->sre_error);
-																	break;
-
-																default:
-																	printf("Unknown notification type: %u\n", *sn_type);
-															}
-
+															// Обрабатываем события SCTP
+															::io::eventsSCTP(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
 														}
@@ -5414,9 +5402,12 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+															// Обрабатываем события SCTP
+															::io::eventsSCTP(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
+														}
 													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
@@ -5538,9 +5529,12 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+															// Обрабатываем события SCTP
+															::io::eventsSCTP(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
+														}
 													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
@@ -5652,9 +5646,12 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+															// Обрабатываем события SCTP
+															::io::eventsSCTP(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
+														}
 													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
@@ -8981,6 +8978,248 @@ namespace io {
 		// Выводим результат
 		return true;
 	}
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * @brief Функция обработки событий SCTP
+		 *
+		 * @param node   узел события
+		 * @param buffer буфер данных события
+		 * @param size	 размер буфера данных события
+		 * @param log    объект работы с логами
+		 */
+		static void eventsSCTP(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept {
+			// Если буфер данных события корректен и его размер достаточен для обработки
+			if((buffer != nullptr) && (size >= sizeof(uint16_t))){
+				/**
+				 * Определяем тип события SCTP
+				 */
+				switch(* reinterpret_cast <uint16_t *> (buffer)){
+					// Если событие является изменением ассоциации SCTP
+					case SCTP_ASSOC_CHANGE: {
+						// Получаем структуру изменения ассоциации SCTP
+						struct sctp_assoc_change * sac = reinterpret_cast <struct sctp_assoc_change *> (buffer);
+						// Выводим информацию о событии изменения ассоциации SCTP
+						log->print(
+							"SCTP_ASSOC_CHANGE: state=%d, error=%d, outbound=%u, inbound=%u",
+							log_t::flag_t::INFO,
+							sac->sac_state,
+							sac->sac_error,
+							sac->sac_outbound_streams,
+							sac->sac_inbound_streams
+						);
+					} break;
+					// Если событие является изменением адреса однорангового узла SCTP
+					case SCTP_PEER_ADDR_CHANGE: {
+						// Получаем структуру изменения адреса однорангового узла SCTP
+						struct sctp_paddr_change * spc = reinterpret_cast <struct sctp_paddr_change *> (buffer);
+						// Буфер для хранения строкового представления адреса
+						char ip[INET6_ADDRSTRLEN];
+						// Получаем указатель на адрес
+						void * addr = &spc->spc_aaddr;
+						/**
+						 * Преобразуем адрес в строковое представление
+						 */
+						switch(spc->spc_aaddr.sa_family){
+							// Если адрес является IPv4
+							case AF_INET:
+								// Извлекаем IP-адрес из структуры подключения
+								::inet_ntop(AF_INET, &(reinterpret_cast <struct sockaddr_in *> (addr))->sin_addr, ip, sizeof(ip));
+							break;
+							// Если адрес является IPv6
+							case AF_INET6:
+								// Извлекаем IP-адрес из структуры подключения
+								::inet_ntop(AF_INET6, &(reinterpret_cast <struct sockaddr_in6 *> (addr))->sin6_addr, ip, sizeof(ip));
+							break;
+						}
+						// Выводим информацию о событии изменения адреса однорангового узла SCTP
+						log->print(
+							"SCTP_PEER_ADDR_CHANGE: %s, state=%d, error=%d",
+							log_t::flag_t::INFO,
+							ip, spc->spc_state, spc->spc_error
+						);
+					} break;
+					// Если событие является ошибкой удалённого узла SCTP
+					case SCTP_REMOTE_ERROR: {
+						// Получаем структуру ошибки удалённого узла SCTP
+						struct sctp_remote_error * sre = reinterpret_cast <struct sctp_remote_error *> (buffer);
+						// Вычисляем смещение данных ошибки
+						const size_t offset = offsetof(struct sctp_remote_error, sre->sre_data);
+						// Вычисляем длину дополнительных данных ошибки
+						const size_t length = (sre->sre_length - offset);
+						// Выводим информацию о событии ошибки удалённого узла SCTP
+						log->print(
+							"SCTP_REMOTE_ERROR: assoc_id=%u, error=0x%04x",
+							log_t::flag_t::ERROR,
+							sre->sre_assoc_id, sre->sre_error
+						);
+						// Печатаем данные в hex (если есть)
+						if(length > 0){
+							// Выводим дополнительные данные ошибки
+							printf("Data: ");
+							// Проходим по всем дополнительным данным ошибки
+							for(size_t i = 0; i < length; i++)
+								// Выводим байт данных в hex формате
+								printf("%02x ", sre->sre_data[i]);
+							// Печатаем символ новой строки
+							printf("\n");
+						}
+						// Опционально: sre->sre_data содержит дополнительные данные (длина = sre->sre_length - offsetof(..., sre_data))
+					} break;
+					// Если событие является завершением SCTP
+					case SCTP_SHUTDOWN_EVENT: {
+						// Получаем структуру завершения SCTP
+						struct sctp_shutdown_event * sse = reinterpret_cast <struct sctp_shutdown_event *> (buffer);
+						// Выводим информацию о событии завершения SCTP
+						log->print(
+							"SCTP_SHUTDOWN_EVENT: assoc_id=%u",
+							log_t::flag_t::INFO,
+							sse->sse_assoc_id
+						);
+					} break;
+					// Если событие является получением адаптационной индикации SCTP
+					case SCTP_ADAPTATION_INDICATION: {
+						// Получаем структуру адаптационной индикации SCTP
+						struct sctp_adaptation_event * sad = reinterpret_cast <struct sctp_adaptation_event*> (buffer);
+						// Выводим информацию о событии адаптационной индикации SCTP
+						log->print(
+							"SCTP_ADAPTATION_INDICATION: assoc_id=%u, indication=0x%08x",
+							log_t::flag_t::INFO,
+							sad->sai_assoc_id, sad->sai_adaptation_ind
+						);
+					} break;
+					// Если событие является частичной доставкой SCTP
+					case SCTP_PARTIAL_DELIVERY_EVENT: {
+						// Получаем структуру частичной доставки SCTP
+						struct sctp_pdapi_event * pdapi = reinterpret_cast <struct sctp_pdapi_event *> (buffer);
+						// Выводим информацию о событии частичной доставки SCTP
+						log->print(
+							"SCTP_PARTIAL_DELIVERY_EVENT: assoc_id=%u, indication=0x%08x",
+							log_t::flag_t::INFO,
+							pdapi->pdapi_assoc_id, pdapi->pdapi_indication
+						);
+					} break;
+					// Если событие является аутентификационной индикацией SCTP
+					case SCTP_AUTHENTICATION_INDICATION: {
+						// Получаем структуру аутентификационной индикации SCTP
+						struct sctp_authkey_event * auth = reinterpret_cast <struct sctp_authkey_event *> (buffer);
+						// Выводим информацию о событии аутентификационной индикации SCTP
+						log->print(
+							"SCTP_AUTHENTICATION_INDICATION: assoc_id=%u, key_id=%u",
+							log_t::flag_t::INFO,
+							auth->auth_assoc_id, auth->auth_keynumber
+						);
+					} break;
+					// Если событие является исчерпанием отправителя SCTP
+					case SCTP_SENDER_DRY_EVENT: {
+						// Получаем структуру исчерпания отправителя SCTP
+						struct sctp_sender_dry_event * dry = reinterpret_cast <struct sctp_sender_dry_event *> (buffer);
+						// Выводим информацию о событии исчерпания отправителя SCTP
+						log->print(
+							"SCTP_SENDER_DRY_EVENT: assoc_id=%u",
+							log_t::flag_t::WARNING,
+							dry->sender_dry_assoc_id
+						);
+					} break;
+					// Если событие является остановкой очереди уведомлений SCTP
+					case SCTP_NOTIFICATIONS_STOPPED_EVENT: {
+						// Получаем структуру остановки очереди уведомлений SCTP
+						struct sctp_notifications_q_stopped_event * stopped = reinterpret_cast <struct sctp_notifications_q_stopped_event *> (buffer);
+						// Выводим информацию о событии остановки очереди уведомлений SCTP
+						log->print(
+							"SCTP_NOTIFICATIONS_STOPPED_EVENT: assoc_id=%u, queue=%u",
+							log_t::flag_t::INFO,
+							stopped->nqse_assoc_id, stopped->nqse_queue
+						);
+					} break;
+					// Если событие является ошибкой отправки SCTP
+					case SCTP_SEND_FAILED_EVENT: {
+						// Получаем структуру ошибки отправки SCTP
+						struct sctp_send_failed_event * ssf = reinterpret_cast <struct sctp_send_failed_event *> (buffer);
+						// Выводим информацию о событии ошибки отправки SCTP
+						log->print(
+							"SCTP_SEND_FAILED_EVENT: assoc_id=%u, len=%u, error=%d",
+							log_t::flag_t::ERROR,
+							ssf->ssfe_assoc_id, ssf->ssfe_len, ssf->ssfe_error
+						);
+						// Проверка минимального размера
+						if(ssf->ssfe_length < offsetof(struct sctp_send_failed_event, ssf->ssfe_data)){
+							// Выводим информацию об ошибке некорректной длины
+							log->print(
+								"Invalid ssfe_length: %u",
+								log_t::flag_t::ERROR,
+								ssf->ssfe_length
+							);
+							// Прекращаем обработку события
+							return;
+						}
+						// Получаем длину данных ошибки
+						const size_t length = (ssf->ssfe_length - offsetof(struct sctp_send_failed_event, ssf->ssfe_data));
+						// Получаем буфер данных ошибки
+						const uint8_t * data = ssf->ssfe_data;
+					} break;
+					// Если событие является сбросом потоков SCTP
+					case SCTP_STREAM_RESET_EVENT: {
+						// Получаем структуру сброса потоков SCTP
+						struct sctp_stream_reset_event * strres = reinterpret_cast <struct sctp_stream_reset_event *> (buffer);
+						// Выводим информацию о событии сброса потоков SCTP
+						log->print(
+							"SCTP_STREAM_RESET_EVENT: assoc_id=%u, flags=0x%08x, n_streams=%u",
+							log_t::flag_t::INFO,
+							strres->strreset_assoc_id, strres->strreset_flags, 
+							(strres->strreset_length - sizeof(struct sctp_stream_reset_event)) / sizeof(uint16_t)
+						);
+						// Проверка минимального размера
+						const size_t min = offsetof(struct sctp_stream_reset_event, strres->strreset_stream_list);
+						// Если длина структуры меньше минимально необходимой
+						if(strres->strreset_length < min){
+							// Выводим информацию об ошибке некорректной длины
+							log->print(
+								"Invalid strreset_length: %u",
+								log_t::flag_t::ERROR,
+								strres->strreset_length
+							);
+							// Прекращаем обработку события
+							break;
+						}
+						// Вычисляем количество потоков для сброса
+						const size_t count = ((strres->strreset_length - min) / sizeof(uint16_t));
+						// Получаем список активных потоков
+						uint16_t * streams = reinterpret_cast <uint16_t *> (strres + 1);
+						// Выводим информацию о сброшенных потоках SCTP
+						log->print(
+							"SCTP_STREAM_RESET_EVENT: assoc_id=%u, flags=0x%08x, streams_count=%u",
+							log_t::flag_t::INFO,
+							strres->strreset_assoc_id, strres->strreset_flags, count
+						);
+						// Начинаем сборку массива сброшенных потоков
+						printf("streams: [",
+						// Печатаем список сброшенных потоков
+						for(size_t i = 0; i < count; i++){
+							// Печатаем разделитель
+							if(i > 0)
+								// Добавляем разделитель
+								printf(", ");
+							// Добавляем номер потока
+							printf("%u", streams[i]);
+						}
+						// Завершаем сборку массива
+						printf("]\n");
+					} break;
+					// Для остальных типов событий SCTP
+					default:
+						// Выводим информацию о неизвестном типе события SCTP
+						log->print(
+							"SCTP notification type: %u",
+							log_t::flag_t::WARNING,
+							* reinterpret_cast <uint16_t *> (buffer)
+						);
+				}
+			}
+		}
+	#endif
 };
 
 /**
