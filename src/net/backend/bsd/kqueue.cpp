@@ -9194,7 +9194,7 @@ namespace io {
 							strres->strreset_assoc_id, strres->strreset_flags, count
 						);
 						// Начинаем сборку массива сброшенных потоков
-						printf("streams: [",
+						printf("streams: [");
 						// Печатаем список сброшенных потоков
 						for(size_t i = 0; i < count; i++){
 							// Печатаем разделитель
@@ -9208,13 +9208,14 @@ namespace io {
 						printf("]\n");
 					} break;
 					// Для остальных типов событий SCTP
-					default:
+					default: {
 						// Выводим информацию о неизвестном типе события SCTP
 						log->print(
 							"SCTP notification type: %u",
 							log_t::flag_t::WARNING,
 							* reinterpret_cast <const uint16_t *> (buffer)
 						);
+					}
 				}
 			}
 		}
