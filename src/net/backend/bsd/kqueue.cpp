@@ -5284,6 +5284,8 @@ namespace io {
 															// Первые 2 байта — тип уведомления (sctp_notification.sn_header.sn_type)
 															uint16_t *sn_type = (uint16_t*)buffer;
 
+															cout << " !!!!!!!!!!! " << (*sn_type) << endl;
+
 															switch (*sn_type) {
 																case SCTP_ASSOC_CHANGE:
 																	sac = (struct sctp_assoc_change*)buffer;
