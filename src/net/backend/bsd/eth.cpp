@@ -1873,26 +1873,21 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 	return result;
 }
 /**
- * @brief Метод получения статуса SCTP сокета
+ * @brief Метод инициализации SCTP сокета
  *
- * @param sock   сетевой сокет
- * @param status объект для извлечения статуса инициализации SCTP сокета
- * @return       результат работы функции
+ * @param sock    сетевой сокет
+ * @param initmsg параметры инициализации SCTP сокета
+ * @return        результат работы функции
  */
-bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] net::sctp::status_t & status) const noexcept {
+bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp::initmsg_t & initmsg) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
-		
-		struct sctp_status status1 = {};
-	
-		// Размер структуры статуса SCTP сокета
-		socklen_t length = sizeof(status1);
 		// Выполняем инициализацию SCTP сокета
-		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status1, &length)))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg))))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1912,21 +1907,29 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 	return result;
 }
 /**
- * @brief Метод инициализации SCTP сокета
+ * @brief Метод получения статуса SCTP сокета
  *
- * @param sock    сетевой сокет
- * @param initmsg параметры инициализации SCTP сокета
- * @return        результат работы функции
+ * @param sock   сетевой сокет
+ * @param id     идентификатор ассоциации SCTP
+ * @param status объект для извлечения статуса инициализации SCTP сокета
+ * @return       результат работы функции
  */
-bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp::initmsg_t & initmsg) const noexcept {
+bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] net::sctp::status_t & status) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
+		
+		struct sctp_status status1 = {};
+		// Устанавливаем идентификатор ассоциации
+		status1.sstat_assoc_id = id;
+	
+		// Размер структуры статуса SCTP сокета
+		socklen_t length = sizeof(status1);
 		// Выполняем инициализацию SCTP сокета
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg))))){
+		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status1, &length)))){
 			/**
 			 * Если включён режим отладки
 			 */
