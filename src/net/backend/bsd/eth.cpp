@@ -1914,15 +1914,17 @@ bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, 
  * @param status объект для извлечения статуса инициализации SCTP сокета
  * @return       результат работы функции
  */
-bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] net::sctp::status_t & status) const noexcept {
+bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] net::sctp::status_t & answer) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
+		// Создаём объект статуса SCTP сокета
+		struct sctp_status status = {};
 		// Устанавливаем идентификатор ассоциации
-		status.aid = id;
+		status.sstat_assoc_id = id;
 		// Размер структуры статуса SCTP сокета
 		socklen_t length = sizeof(status);
 		// Выполняем инициализацию SCTP сокета
@@ -1940,6 +1942,26 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
+		// Заполняем объект ответа
+		} else {
+			// Заполняем объект ответа
+			answer.aid = status.sstat_assoc_id;
+			answer.state = status.sstat_state;
+			answer.rateWindow = status.sstat_rwnd;
+			answer.unpackData = status.sstat_unackdata;
+			answer.pendingData = status.sstat_penddata;
+			answer.inputStreams = status.sstat_instrms;
+			answer.outputStreams = status.sstat_outstrms;
+			answer.fragmentsPoint = status.sstat_fragmentation_point;
+			answer.peerRateWindow = status.sstat_peer_rwnd;
+
+			cout << "sstat_inflight: " << status.sstat_inflight << endl;
+			cout << "stat_cwnd: " << status.sstat_cwnd << endl;
+			cout << "sstat_ssthresh: " << status.sstat_ssthresh << endl;
+			cout << "sstat_rto: " << status.sstat_rto << endl;
+			cout << "sstat_mtu: " << status.sstat_mtu << endl;
+	
+		
 		}
 	#endif
 	// Выводим результат
