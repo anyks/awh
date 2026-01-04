@@ -209,14 +209,14 @@ int32_t main(int32_t argc, char * argv[]){
 				const net::sctp::status_t & status = io.sctpStatus(cid);
 				// Выводим статус SCTP-сокета
 				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.aid << endl;
+				cout << "  - ID: " << status.id << endl;
 				cout << "  - State: " << status.state << endl;
-				cout << "  - Outbound Streams: " << status.outputStreams << endl;
-				cout << "  - Inbound Streams: " << status.inputStreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragmentsPoint << endl;
-				cout << "  - Rate Window: " << status.rateWindow << endl;
-				cout << "  - Unpack Data: " << status.unpackData << endl;
-				cout << "  - Pending Data: " << status.pendingData << endl;
+				cout << "  - Outbound Streams: " << status.ostreams << endl;
+				cout << "  - Inbound Streams: " << status.instreams << endl;
+				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
+				cout << "  - Rate Window: " << status.ratewind << endl;
+				cout << "  - Unpack Data: " << status.unackdata << endl;
+				cout << "  - Pending Data: " << status.penddata << endl;
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Устананавливаем опции события

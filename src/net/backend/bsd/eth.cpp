@@ -1931,7 +1931,7 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 					// Создаём объект статуса SCTP сокета
 					struct sctp_status data = {};
 					// Устанавливаем идентификатор ассоциации
-					data.sstat_assoc_id = status.aid;
+					data.sstat_assoc_id = status.id;
 					// Размер структуры статуса SCTP сокета
 					socklen_t length = sizeof(data);
 					// Выполняем инициализацию SCTP сокета
@@ -1952,21 +1952,21 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 					// Заполняем объект ответа
 					} else {
 						// Извлекаем идентификатор ассоциации SCTP сокета
-						status.aid = data.sstat_assoc_id;
+						status.id = data.sstat_assoc_id;
 						// Извлекаем состояние SCTP сокета
 						status.state = data.sstat_state;
 						// Извлекаем количество входящих окон SCTP сокета
-						status.rateWindow = data.sstat_rwnd;
+						status.ratewind = data.sstat_rwnd;
 						// Извлекаем количество отправленных SCTP пакетов
-						status.unpackData = data.sstat_unackdata;
+						status.unackdata = data.sstat_unackdata;
 						// Извлекаем количество ожидающих подтверждений SCTP сокета
-						status.pendingData = data.sstat_penddata;
+						status.penddata = data.sstat_penddata;
 						// Извлекаем количество входящих стримов SCTP сокета
-						status.inputStreams = data.sstat_instrms;
+						status.instreams = data.sstat_instrms;
 						// Извлекаем количество выходящих стримов SCTP сокета
-						status.outputStreams = data.sstat_outstrms;
+						status.ostreams = data.sstat_outstrms;
 						// Извлекаем точку фрагментации SCTP сокета
-						status.fragmentsPoint = data.sstat_fragmentation_point;
+						status.fragpoint = data.sstat_fragmentation_point;
 					}
 				} break;
 			}
@@ -2016,8 +2016,20 @@ bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, 
 			switch(protocol){
 				// Если протокол SCTP
 				case IPPROTO_SCTP: {
+					// Создаём объект инициализации SCTP сокета
+					struct sctp_initmsg init;
+					// Зануляем объект инициализации SCTP сокета
+					::memset(&init, 0, sizeof(init));
+					// Устанавливаем количество попыток инициализации
+					init.sinit_max_attempts = initmsg.attempts;
+					// Устанавливаем таймаут инициализации
+					init.sinit_max_init_timeo = initmsg.timeout;
+					// Устанавливаем количество выходящих стримов
+					init.sinit_num_ostreams = initmsg.outstreams;
+					// Устанавливаем количество входящих стримов
+					init.sinit_max_instreams = initmsg.instreams;
 					// Выполняем инициализацию SCTP сокета
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg))))){
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
 						/**
 						 * Если включён режим отладки
 						 */

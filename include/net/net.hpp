@@ -603,6 +603,29 @@ namespace awh {
 				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
 			};
 			/**
+			 * Состояния ассоциации SCTP
+			 */
+			enum class assoc_state_t : uint8_t {
+				NONE 	      = 0x00, // Состояние ассоциации отсутствует
+				COMM_UP       = 0x01, // Связь установлена
+				COMM_LOST     = 0x02, // Связь потеряна
+				RESTARTED     = 0x03, // Связь перезапущена
+				SHUTDOWN_COMP = 0x04, // Завершение работы выполнено
+				CANT_START    = 0x05  // Не удалось запустить связь
+			};
+			/**
+			 * Состояния адреса однорангового узла SCTP
+			 */
+			enum class paddr_state_t : uint8_t {
+				NONE        = 0x00, // Состояние адреса отсутствует
+				ADDED       = 0x01, // Адрес был добавлен в ассоциацию
+				REMOVED     = 0x02, // Адрес был удалён из ассоциации
+				MADE_PRIM   = 0x03, // Адрес был установлен как основной
+				CONFIRMED   = 0x04, // Адрес подтверждён одноранговым узлом
+				AVAILABLE   = 0x05, // Адрес стал доступен
+				UNREACHABLE = 0x06  // Адрес стал недоступен
+			};
+			/**
 			 * @brief Структура метаданных сообщения SCTP
 			 *
 			 */
@@ -625,45 +648,127 @@ namespace awh {
 			 *
 			 */
 			typedef struct InitMessage {
+				// Максимальное время инициализации SCTP
+				uint16_t timeout;
+				// Максимальное количество попыток подключения
+				uint16_t attempts;
 				// Максимальное количество исходящих потоков
 				uint16_t ostreams;
 				// Максимальное количество входящих потоков
 				uint16_t instreams;
-				// Максимальное количество попыток подключения
-				uint16_t attempts;
-				// Максимальное время инициализации SCTP
-				uint16_t initTimeout;
+				
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				explicit InitMessage() noexcept :
-				 ostreams(5), instreams(5),
-				 attempts(4), initTimeout(0) {}
-			} initmsg_t;
+				 timeout(0), attempts(4),
+				 ostreams(5), instreams(5) {}
+			} __attribute__((packed)) initmsg_t;
 			/**
 			 * @brief Структура статуса SCTP подключения
 			 *
 			 */
 			typedef struct Status {
-				uint32_t aid;            // ID ассоциации
-				int32_t state;           // Текущее состояние ассоциации
-				uint32_t rateWindow;     // Размер окна скорости передачи
-				uint16_t unpackData;     // Количество неподтверждённых DATA чанков
-				uint16_t pendingData;    // Количество ожидающих данных
-				uint16_t inputStreams;   // Количество входящих потоков
-				uint16_t outputStreams;  // Количество исходящих потоков
-				uint32_t fragmentsPoint; // Точка фрагментации в байтах
+				uint32_t id;       // ID ассоциации
+				int32_t state;      // Текущее состояние ассоциации
+				uint32_t ratewind;  // Размер окна скорости передачи
+				uint16_t penddata;  // Количество ожидающих данных
+				uint16_t ostreams;  // Количество исходящих потоков
+				uint16_t instreams; // Количество входящих потоков
+				uint16_t unackdata; // Количество неподтверждённых DATA чанков
+				uint32_t fragpoint; // Точка фрагментации в байтах
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				explicit Status() noexcept :
-				 aid(0), state(0), rateWindow(0),
-				 unpackData(0), pendingData(0),
-				 inputStreams(0), outputStreams(0),
-				 fragmentsPoint(0) {}
-			} status_t;
+				 id(0), state(0),
+				 ratewind(0), penddata(0),
+				 ostreams(0), instreams(0),
+				 unackdata(0), fragpoint(0) {}
+			} __attribute__((packed)) status_t;
+			/**
+			 * @brief Структура ошибки события SCTP
+			 *
+			 */
+			typedef struct Error {
+				int32_t code;   // Код ошибки события
+				string message; // Сообщение ошибки события
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Error() noexcept :
+				 code(0), message{""} {}
+			} error_t;
+			/**
+			 * @brief Структура события SCTP
+			 *
+			 */
+			typedef struct Event {
+				// Идентификатор события
+				uint32_t id;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Event() noexcept : id(0) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~Event() = default;
+			} event_t;
+			/**
+			 * @brief Структура изменения события SCTP
+			 *
+			 */
+			typedef struct EventChange : public event_t {
+				error_t error;           // Код ошибки события
+				uint16_t type;           // Тип события
+				uint16_t flags;          // Флаги события
+				uint16_t ostreams;       // Максимальное количество исходящих потоков
+				uint16_t instreams;      // Максимальное количество входящих потоков
+				assoc_state_t state;     // Состояние события
+				vector <uint8_t> buffer; // Дополнительная информация события
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventChange() noexcept :
+				 type(0), flags(0),
+				 ostreams(0), instreams(0),
+				 state(assoc_state_t::NONE) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventChange() = default;
+			} event_change_t;
+			/**
+			 * @brief Структура изменения адреса однорангового узла SCTP
+			 *
+			 */
+			typedef struct EventAddrChange : public event_t {
+				error_t error;            // Код ошибки события
+				uint16_t type;            // Тип события
+				uint16_t flags;           // Флаги события
+				paddr_state_t state;      // Состояние события
+				unique_ptr <addr_t> addr; // Адрес однорангового узла
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventAddrChange() noexcept :
+				 type(0), flags(0),
+				 state(paddr_state_t::NONE), addr(nullptr) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventAddrChange() = default;
+			} event_addr_change_t;
 		};
 	};
 };
