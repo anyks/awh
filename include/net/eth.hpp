@@ -156,11 +156,11 @@ namespace awh {
 			/**
 			 * @brief Метод инициализации SCTP сокета
 			 *
-			 * @param sock   сетевой сокет
-			 * @param intmes параметры инициализации SCTP сокета
-			 * @return       результат работы функции
+			 * @param sock    сетевой сокет
+			 * @param initmsg параметры инициализации SCTP сокета
+			 * @return        результат работы функции
 			 */
-			bool sctpInitMessages(const net::socket_t sock, const net::sctp::intmes_t & intmes) const noexcept;
+			bool sctpInitMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK

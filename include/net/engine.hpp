@@ -244,10 +244,10 @@ namespace awh {
 			/**
 			 * @brief Метод установки параметров инициализации SCTP
 			 *
-			 * @param id     идентификатор события
-			 * @param intmes параметры инициализации SCTP события
+			 * @param id      идентификатор события
+			 * @param initmsg параметры инициализации SCTP события
 			 */
-			virtual void sctpInitMessages(const event::id_t id, const net::sctp::intmes_t & intmes) noexcept = 0;
+			virtual void sctpInitMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод запуска события

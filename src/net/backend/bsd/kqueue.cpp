@@ -21548,10 +21548,10 @@ awh::net::sctp::status_t awh::IO::sctpStatus(const event::id_t id) const noexcep
 /**
  * @brief Метод установки параметров инициализации SCTP
  *
- * @param id     идентификатор события
- * @param intmes параметры инициализации SCTP события
+ * @param id      идентификатор события
+ * @param initmsg параметры инициализации SCTP события
  */
-void awh::IO::sctpInitMessages(const event::id_t id, const net::sctp::intmes_t & intmes) noexcept {
+void awh::IO::sctpInitMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept {
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
@@ -21579,7 +21579,7 @@ void awh::IO::sctpInitMessages(const event::id_t id, const net::sctp::intmes_t &
 							// Если тип однорангового узла установлен как SEQPACKET
 							if(client->state.type == event::type_t::SEQPACKET)
 								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpInitMessages(client->transfer.fd, intmes);
+								this->_eth.sctpInitMessages(client->transfer.fd, initmsg);
 							// Если тип однорангового узла не установлен как SEQPACKET
 							else {
 								// Если установлена функция обратного вызова
@@ -21648,7 +21648,7 @@ void awh::IO::sctpInitMessages(const event::id_t id, const net::sctp::intmes_t &
 							// Если тип однорангового узла установлен как SEQPACKET
 							if(server->state.type == event::type_t::SEQPACKET)
 								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpInitMessages(server->fd, intmes);
+								this->_eth.sctpInitMessages(server->fd, initmsg);
 							// Если тип однорангового узла не установлен как SEQPACKET
 							else {
 								// Если установлена функция обратного вызова
@@ -26643,7 +26643,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем отправку данных в TCP/IP сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
-																data, size, nullptr, 0,
+																data, size,
+																&::trust_cast <struct sockaddr> (client->endpoint.server),
+																client->endpoint.size,
 																client->transfer.sctp.info.sinfo_ppid,
 																client->transfer.sctp.info.sinfo_flags,
 																client->transfer.sctp.info.sinfo_stream,
@@ -26791,7 +26793,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 															// Выполняем отправку данных в TCP/IP сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
-																data, size, nullptr, 0,
+																data, size,
+																&::trust_cast <struct sockaddr> (client->endpoint.server),
+																client->endpoint.size,
 																client->transfer.sctp.info.sinfo_ppid,
 																client->transfer.sctp.info.sinfo_flags,
 																client->transfer.sctp.info.sinfo_stream,
@@ -26874,7 +26878,9 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															client->transfer.fd,
-															data, size, nullptr, 0,
+															data, size,
+															&::trust_cast <struct sockaddr> (client->endpoint.server),
+															client->endpoint.size,
 															client->transfer.sctp.info.sinfo_ppid,
 															client->transfer.sctp.info.sinfo_flags,
 															client->transfer.sctp.info.sinfo_stream,

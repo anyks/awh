@@ -640,7 +640,7 @@ namespace awh {
 				explicit InitMessage() noexcept :
 				 ostreams(5), instreams(5),
 				 attempts(4), initTimeout(0) {}
-			} intmes_t;
+			} initmsg_t;
 			/**
 			 * @brief Структура статуса SCTP подключения
 			 *
