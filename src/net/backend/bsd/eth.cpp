@@ -1722,187 +1722,6 @@ bool awh::Ethernet::nosigill() const noexcept {
 	return result;
 }
 /**
-* @brief Метод активации получения SCTP-событий для сокета
-*
-* @param sock    сетевой сокет
-* @param options опции активации событий SCTP
-* @return        результат работы функции
-*/
-bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint16_t options) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Переменная для хранения протокола сокета
-		int32_t protocol = 0;
-		// Длина протокола сокета
-		socklen_t length = sizeof(protocol);
-		// Получаем протокол сокета
-		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-			/**
-			 * Определяем протокол сокета
-			 */
-			switch(protocol){
-				// Если протокол SCTP
-				case IPPROTO_SCTP: {
-					/**
-					 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
-					 */
-					#ifdef __AWH_DISABLED__
-						// Создаём объект подписки на события
-						struct sctp_event event;
-						// Зануляем объект события
-						::memset(&event, 0, sizeof(event));
-						// Активируем получение входящих событий
-						event.se_on = 1;
-						// Устанавливаем тип события
-						event.se_type = SCTP_ASSOC_CHANGE;
-						// Устанавливаем идентификатор ассоциации
-						event.se_assoc_id = SCTP_FUTURE_ASSOC;
-						// Выполняем активацию получения событий SCTP для сокета
-						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event))))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, options), log_t::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-							#endif
-						}
-					#endif
-					// Создаём объект подписки на события
-					struct sctp_event_subscribe events;
-					// Зануляем объект события
-					::memset(&events, 0, sizeof(events));
-					// Если необходимо установить уведомления о каждом входящем DATA-пакете
-					if(options & event::sctp::notify::AWH_DATA_IO)
-						// Устанавливаем уведомления о каждом входящем DATA-пакете
-						events.sctp_data_io_event = 1;
-					// Отключаем уведомления о каждом входящем DATA-пакете
-					else events.sctp_data_io_event = 0;
-					// Если необходимо установить события SCTP_ADDR_CHANGE
-					if(options & event::sctp::notify::AWH_ADDRESS)
-						// Устанавливаем события SCTP_ADDR_CHANGE
-						events.sctp_address_event = 1;
-					// Отключаем события SCTP_ADDR_CHANGE
-					else events.sctp_address_event = 0;
-					// Если необходимо установить события SCTP_SHUTDOWN_EVENT
-					if(options & event::sctp::notify::AWH_SHUTDOWN)
-						// Устанавливаем события SCTP_SHUTDOWN_EVENT
-						events.sctp_shutdown_event = 1;
-					// Отключаем события SCTP_SHUTDOWN_EVENT
-					else events.sctp_shutdown_event = 0;
-					// Если необходимо установить события SCTP_PEER_ERROR_EVENT
-					if(options & event::sctp::notify::AWH_PEER_ERROR)
-						// Устанавливаем события SCTP_PEER_ERROR_EVENT
-						events.sctp_peer_error_event = 1;
-					// Отключаем события SCTP_PEER_ERROR_EVENT
-					else events.sctp_peer_error_event = 0;
-					// Если необходимо установить события SCTP_SENDER_DRY_EVENT
-					if(options & event::sctp::notify::AWH_SENDER_DRY)
-						// Устанавливаем события SCTP_SENDER_DRY_EVENT
-						events.sctp_sender_dry_event = 1;
-					// Отключаем события SCTP_SENDER_DRY_EVENT
-					else events.sctp_sender_dry_event = 0;
-					// Если необходимо установить асоциационные события SCTP_ASSOC_CHANGE
-					if(options & event::sctp::notify::AWH_ASSOCIATION)
-						// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-						events.sctp_association_event = 1;
-					// Отключаем асоциационные события SCTP_ASSOC_CHANGE
-					else events.sctp_association_event = 0;
-					/*
-					// Если необходимо установить асоциационные события SCTP_ASSOC_RESET
-					if(options & event::sctp::notify::AWH_ASSOC_RESET)
-						// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-						events.sctp_assoc_reset_event = 1;
-					// Отключаем асоциационные события SCTP_ASSOC_RESET
-					else events.sctp_assoc_reset_event = 0;
-					*/
-					// Если необходимо установить события SCTP_SEND_FAILED_EVENT
-					if(options & event::sctp::notify::AWH_SEND_FAILURE)
-						// Устанавливаем события SCTP_SEND_FAILED_EVENT
-						events.sctp_send_failure_event = 1;
-					// Отключаем события SCTP_SEND_FAILED_EVENT
-					else events.sctp_send_failure_event = 0;
-					/*
-					// Если необходимо установить асоциационные события SCTP_TERMINATION_EVENT
-					if(options & event::sctp::notify::AWH_TERMINATION)
-						// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-						events.sctp_termination_event = 1;
-					// Отключаем асоциационные события SCTP_ASSOC_CHANGE
-					else events.sctp_termination_event = 0;
-					*/
-					// Если необходимо установить асоциационные события SCTP_STREAM_RESET_EVENT
-					if(options & event::sctp::notify::AWH_STREAM_RESET)
-						// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-						events.sctp_stream_reset_event = 1;
-					// Отключаем асоциационные события SCTP_ASSOC_CHANGE
-					else events.sctp_stream_reset_event = 0;
-					// Если необходимо установить события SCTP_AUTHENTICATION_INDICATION
-					if(options & event::sctp::notify::AWH_AUTHENTICATION)
-						// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
-						events.sctp_authentication_event = 1;
-					// Отключаем события SCTP_AUTHENTICATION_INDICATION
-					else events.sctp_authentication_event = 0;
-					// Если необходимо установить события SCTP_PARTIAL_DELIVERY_EVENT
-					if(options & event::sctp::notify::AWH_PARTIAL_DELIVERY)
-						// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
-						events.sctp_partial_delivery_event = 1;
-					// Отключаем события SCTP_PARTIAL_DELIVERY_EVENT
-					else events.sctp_partial_delivery_event = 0;
-					// Если необходимо установить события SCTP_ADAPTATION_INDICATION
-					if(options & event::sctp::notify::AWH_ADAPTATION_LAYER)
-						// Устанавливаем события SCTP_ADAPTATION_INDICATION
-						events.sctp_adaptation_layer_event = 1;
-					// Отключаем события SCTP_ADAPTATION_INDICATION
-					else events.sctp_adaptation_layer_event = 0;
-					// Выполняем активацию получения событий SCTP для сокета
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, options), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод получения статуса SCTP сокета
  *
  * @param sock   сетевой сокет
@@ -2054,6 +1873,168 @@ bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, 
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+* @brief Метод подписки на SCTP события
+*
+* @param sock   сетевой сокет
+* @param events список событий SCTP для активации
+* @return       результат работы функции
+*/
+bool awh::Ethernet::sctpEventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Переменная для хранения протокола сокета
+		int32_t protocol = 0;
+		// Длина протокола сокета
+		socklen_t length = sizeof(protocol);
+		// Получаем протокол сокета
+		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+			/**
+			 * Определяем протокол сокета
+			 */
+			switch(protocol){
+				// Если протокол SCTP
+				case IPPROTO_SCTP: {
+					/**
+					 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
+					 */
+					#ifdef __AWH_DISABLED__
+						// Создаём объект подписки на события
+						struct sctp_event event;
+						// Зануляем объект события
+						::memset(&event, 0, sizeof(event));
+						// Активируем получение входящих событий
+						event.se_on = 1;
+						// Устанавливаем тип события
+						event.se_type = SCTP_ASSOC_CHANGE;
+						// Устанавливаем идентификатор ассоциации
+						event.se_assoc_id = SCTP_FUTURE_ASSOC;
+						// Выполняем активацию получения событий SCTP для сокета
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, options), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					#endif
+					// Создаём объект подписки на события
+					struct sctp_event_subscribe subscribe;
+					// Зануляем объект события
+					::memset(&subscribe, 0, sizeof(subscribe));
+					// Выполняем перебор всех возможных событий SCTP
+					for(auto & event : events){
+						/**
+						 * Определяем тип события SCTP
+						 */
+						switch(static_cast <uint8_t> (event)){
+							// Если требуется уведомление о каждом входящем DATA-пакете
+							case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
+								// Устанавливаем уведомления о каждом входящем DATA-пакете
+								subscribe.sctp_data_io_event = 1;
+							break;
+							// Если ошибка удалённого узла
+							case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
+								// Устанавливаем события SCTP_PEER_ERROR_EVENT
+								subscribe.sctp_peer_error_event = 1;
+							break;
+							// Если изменение ассоциации
+							case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
+								// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+								subscribe.sctp_association_event = 1;
+							break;
+							// Если событие завершения работы
+							case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
+								// Устанавливаем события SCTP_SHUTDOWN_EVENT
+								subscribe.sctp_shutdown_event = 1;
+							break;
+							// Если событие "отправитель сухой"
+							case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
+								// Устанавливаем события SCTP_SENDER_DRY_EVENT
+								subscribe.sctp_sender_dry_event = 1;
+							break;
+							// Если изменение адреса однорангового узла
+							case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
+								// Устанавливаем события SCTP_ADDR_CHANGE
+								subscribe.sctp_address_event = 1;
+							break;
+							// Если событие ошибки отправки
+							case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
+								// Устанавливаем события SCTP_SEND_FAILED_EVENT
+								subscribe.sctp_send_failure_event = 1;
+							break;
+							// Если событие сброса потока
+							case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
+								// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+								subscribe.sctp_stream_reset_event = 1;
+							break;
+							// Если событие аутентификации
+							case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
+								// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
+								subscribe.sctp_authentication_event = 1;
+							break;
+							// Если событие адаптационное указание
+							case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
+								// Устанавливаем события SCTP_ADAPTATION_INDICATION
+								subscribe.sctp_adaptation_layer_event = 1;
+							break;
+							// Если событие частичной доставки
+							case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+								// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
+								subscribe.sctp_partial_delivery_event = 1;
+							break;
+						}
+					}
+					// Выполняем активацию получения событий SCTP для сокета
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				} break;
+			}
+		// Если возникает ошибка получения протокола сокета
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, options), awh::log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/

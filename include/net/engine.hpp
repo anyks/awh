@@ -220,21 +220,6 @@ namespace awh {
 			virtual bool splice(const event::id_t eid, const event::id_t dest) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения опций подписки SCTP событий
-			 *
-			 * @param id идентификатор события
-			 * @return   опции подписки SCTP событий
-			 */
-			virtual uint16_t sctpEventsSubscribed(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки опций подписки SCTP событий
-			 *
-			 * @param id      идентификатор события
-			 * @param options опции подписки SCTP событий
-			 */
-			virtual void sctpEventsSubscribe(const event::id_t id, const uint16_t options) noexcept = 0;
-		public:
-			/**
 			 * @brief Метод получения информационных метаданных SCTP сообщения
 			 *
 			 * @param id идентификатор события
@@ -263,6 +248,21 @@ namespace awh {
 			 * @param initmsg параметры инициализации SCTP события
 			 */
 			virtual void sctpInitMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения опций подписки SCTP событий
+			 *
+			 * @param id идентификатор события
+			 * @return   список событий SCTP на которые выполнена подписка
+			 */
+			virtual const net::sctp::event_types_t & sctpEventsSubscribed(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки опций подписки SCTP событий
+			 *
+			 * @param id     идентификатор события
+			 * @param events список событий SCTP для подписки
+			 */
+			virtual void sctpEventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод запуска события

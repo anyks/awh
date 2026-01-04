@@ -640,18 +640,18 @@ namespace awh {
 			 * Типы событий SCTP
 			 */
 			enum class event_type_t : uint8_t {
-				NONE                        = 0x00, // Тип события отсутствует
-				REMOTE_ERROR                = 0x01, // Ошибка удалённого узла
-				ASSOC_CHANGE                = 0x02, // Изменение ассоциации
-				SHUTDOWN_EVENT              = 0x03, // Событие завершения работы
-				SENDER_DRY_EVENT            = 0x04, // Событие "отправитель сухой"
-				PEER_ADDR_CHANGE            = 0x05, // Изменение адреса однорангового узла
-				SEND_FAILED_EVENT           = 0x06, // Событие ошибки отправки
-				STREAM_RESET_EVENT          = 0x07, // Сброс потока
-				AUTHENTICATION_EVENT        = 0x08, // Событие аутентификации
-				ADAPTATION_INDICATION       = 0x09, // Адаптационное указание
-				PARTIAL_DELIVERY_EVENT      = 0x0A, // Частичная доставка
-				NOTIFICATIONS_STOPPED_EVENT = 0x0B  // События остановлены
+				NONE                   = 0x00, // Тип события отсутствует
+				DATA_IO                = 0x01, // Присылать уведомление о каждом входящем DATA-пакете
+				REMOTE_ERROR           = 0x02, // Ошибка удалённого узла
+				ASSOC_CHANGE           = 0x03, // Изменение ассоциации
+				SHUTDOWN_EVENT         = 0x04, // Событие завершения работы
+				SENDER_DRY_EVENT       = 0x05, // Событие "отправитель сухой"
+				PEER_ADDR_CHANGE       = 0x06, // Изменение адреса однорангового узла
+				SEND_FAILED_EVENT      = 0x07, // Событие ошибки отправки
+				STREAM_RESET_EVENT     = 0x08, // Сброс потока
+				AUTHENTICATION_EVENT   = 0x09, // Событие аутентификации
+				ADAPTATION_INDICATION  = 0x0A, // Адаптационное указание
+				PARTIAL_DELIVERY_EVENT = 0x0B  // Частичная доставка
 			};
 			/**
 			 * Информация об ассоциации SCTP
@@ -689,6 +689,11 @@ namespace awh {
 				AVAILABLE   = 0x05, // Адрес стал доступен
 				UNREACHABLE = 0x06  // Адрес стал недоступен
 			};
+			/**
+			 * @brief Множество типов событий SCTP
+			 *
+			 */
+			using event_types_t = unordered_set <event_type_t>;
 			/**
 			 * @brief Структура метаданных сообщения SCTP
 			 *

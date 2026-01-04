@@ -431,16 +431,16 @@ namespace io {
 			uint32_t id;
 			// Флаги SCTP-событий
 			int32_t flags;
-			// Опции SCTP-событий
-			uint16_t options;
 			// Информация о SCTP-событиях
 			struct sctp_sndrcvinfo info;
+			// Список типов SCTP-событий для подписки
+			net::sctp::event_types_t events;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit SCTP() noexcept :
-			 id(0), flags(0), options(0), info{} {}
+			 id(0), flags(0), info{0} {}
 		} sctp_t;
 	#endif
 
@@ -3374,7 +3374,7 @@ namespace io {
 							if((peer->state.type == event::type_t::SEQPACKET) &&
 							   (peer->state.protocol == event::protocol_t::SCTP))
 								// Выполняем активацию событий SCTP
-								eth->sctpEvents(peer->transfer.fd, peer->transfer.sctp.options);
+								eth->sctpEventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
 						#endif
 						// Выполняем инициализацию объекта MAC-адреса
 						peer->mac = make_unique <net::addr_mac_t> ();
@@ -6568,7 +6568,7 @@ namespace io {
 												if((origin->state.type == event::type_t::SEQPACKET) &&
 												   (origin->state.protocol == event::protocol_t::SCTP))
 													// Выполняем активацию событий SCTP
-													eth->sctpEvents(origin->transfer.fd, origin->transfer.sctp.options);
+													eth->sctpEventsSubscribe(origin->transfer.fd, origin->transfer.sctp.events);
 											#endif
 											// Устанавливаем размер объекта подключения клиента
 											origin->endpoint.size = server->endpoint.size;
@@ -10592,7 +10592,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((client->state.type == event::type_t::SEQPACKET) &&
 													   (client->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(client->transfer.fd, client->transfer.sctp.options);
+														this->_eth.sctpEventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -11078,7 +11078,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((client->state.type == event::type_t::SEQPACKET) &&
 													   (client->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(client->transfer.fd, client->transfer.sctp.options);
+														this->_eth.sctpEventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -12063,7 +12063,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((server->state.type == event::type_t::SEQPACKET) &&
 													   (server->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(server->fd, server->sctp.options);
+														this->_eth.sctpEventsSubscribe(server->fd, server->sctp.events);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -12235,7 +12235,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 													if((server->state.type == event::type_t::SEQPACKET) &&
 													   (server->state.protocol == event::protocol_t::SCTP))
 														// Выполняем активацию событий SCTP
-														this->_eth.sctpEvents(server->fd, server->sctp.options);
+														this->_eth.sctpEventsSubscribe(server->fd, server->sctp.events);
 												#endif
 												/**
 												 * Определяем тип сокета
@@ -21358,120 +21358,6 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	return false;
 }
 /**
- * @brief Метод получения опций подписки SCTP событий
- *
- * @param id идентификатор события
- * @return   опции подписки SCTP событий
- */
-uint16_t awh::IO::sctpEventsSubscribed([[maybe_unused]] const event::id_t id) const noexcept {
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Выполняем поиск идентификатора события
-			auto i = ::__awh_nodes__.find(id);
-			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER):
-						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.options;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT):
-						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.options;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER):
-						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::server_t *> (i->second.get())->sctp.options;
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	#endif
-	// Выводим результат по умолчанию
-	return 0;
-}
-/**
- * @brief Метод установки опций подписки SCTP событий
- *
- * @param id      идентификатор события
- * @param options опции подписки SCTP событий
- */
-void awh::IO::sctpEventsSubscribe([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint16_t options) noexcept {
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Выполняем поиск идентификатора события
-			auto i = ::__awh_nodes__.find(id);
-			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT):
-						// Устанавливаем опции подписки SCTP событий
-						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.options = options;
-					break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER):
-						// Устанавливаем опции подписки SCTP событий
-						awh_cast <::io::server_t *> (i->second.get())->sctp.options = options;
-					break;
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	#endif
-}
-/**
  * @brief Метод получения информационных метаданных SCTP сообщения
  *
  * @param id идентификатор события
@@ -22323,6 +22209,122 @@ void awh::IO::sctpInitMessages([[maybe_unused]] const event::id_t id, [[maybe_un
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+}
+/**
+ * @brief Метод получения опций подписки SCTP событий
+ *
+ * @param id идентификатор события
+ * @return   список событий SCTP на которые выполнена подписка
+ */
+const awh::net::sctp::event_types_t & awh::IO::sctpEventsSubscribed([[maybe_unused]] const event::id_t id) const noexcept {
+	// Результат работы функции
+	static net::sctp::event_types_t result;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Получаем опции подписки SCTP событий
+						return awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.events;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Получаем опции подписки SCTP событий
+						return awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.events;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Получаем опции подписки SCTP событий
+						return awh_cast <::io::server_t *> (i->second.get())->sctp.events;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат по умолчанию
+	return result;
+}
+/**
+ * @brief Метод установки опций подписки SCTP событий
+ *
+ * @param id     идентификатор события
+ * @param events список событий SCTP для подписки
+ */
+void awh::IO::sctpEventsSubscribe([[maybe_unused]] const event::id_t id, [[maybe_unused]] const net::sctp::event_types_t & events) noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем опции подписки SCTP событий
+						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.events = events;
+					break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Устанавливаем опции подписки SCTP событий
+						awh_cast <::io::server_t *> (i->second.get())->sctp.events = events;
+					break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

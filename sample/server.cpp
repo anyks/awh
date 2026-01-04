@@ -60,7 +60,12 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Выполняем подписку на SCTP события
-		io.sctpEventsSubscribe(eid, event::sctp::notify::AWH_ASSOCIATION | event::sctp::notify::AWH_SHUTDOWN | event::sctp::notify::AWH_SEND_FAILURE | event::sctp::notify::AWH_PEER_ERROR);
+		io.sctpEventsSubscribe(eid, {
+			net::sctp::event_type_t::ASSOC_CHANGE,
+			net::sctp::event_type_t::SHUTDOWN_EVENT,
+			net::sctp::event_type_t::SEND_FAILED_EVENT,
+			net::sctp::event_type_t::REMOTE_ERROR
+		});
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера

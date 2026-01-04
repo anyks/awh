@@ -138,14 +138,6 @@ namespace awh {
 			int32_t error(const net::socket_t sock) const noexcept;
 		public:
 			/**
-			* @brief Метод активации получения SCTP-событий для сокета
-			*
-			* @param sock    сетевой сокет
-			* @param options опции активации событий SCTP
-			* @return        результат работы функции
-			*/
-			bool sctpEvents(const net::socket_t sock, const uint16_t options) const noexcept;
-			/**
 			 * @brief Метод получения статуса SCTP сокета
 			 *
 			 * @param sock   сетевой сокет
@@ -161,6 +153,14 @@ namespace awh {
 			 * @return        результат работы функции
 			 */
 			bool sctpInitMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
+			/**
+			* @brief Метод подписки на SCTP события
+			*
+			* @param sock   сетевой сокет
+			* @param events список событий SCTP для активации
+			* @return       результат работы функции
+			*/
+			bool sctpEventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK
