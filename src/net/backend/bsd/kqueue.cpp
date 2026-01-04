@@ -22324,7 +22324,7 @@ void awh::IO::sctpEventsSubscribe([[maybe_unused]] const event::id_t id, [[maybe
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, events.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
