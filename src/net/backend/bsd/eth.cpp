@@ -1921,15 +1921,12 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
-		
-		struct sctp_status status1 = {};
 		// Устанавливаем идентификатор ассоциации
-		status1.sstat_assoc_id = id;
-	
+		status.aid = id;
 		// Размер структуры статуса SCTP сокета
-		socklen_t length = sizeof(status1);
+		socklen_t length = sizeof(status);
 		// Выполняем инициализацию SCTP сокета
-		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status1, &length)))){
+		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status, &length)))){
 			/**
 			 * Если включён режим отладки
 			 */
