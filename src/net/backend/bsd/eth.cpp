@@ -1886,6 +1886,9 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
+		
+		struct sctp_status status = {};
+	
 		// Размер структуры статуса SCTP сокета
 		socklen_t length = sizeof(status);
 		// Выполняем инициализацию SCTP сокета
