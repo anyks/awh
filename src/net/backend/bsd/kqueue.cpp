@@ -9141,7 +9141,7 @@ namespace io {
 						log->print(
 							"SCTP_SEND_FAILED_EVENT: assoc_id=%u, len=%u, error=%d",
 							log_t::flag_t::CRITICAL,
-							ssf->ssfe_assoc_id, ssf->ssfe_len, ssf->ssfe_error
+							ssf->ssfe_assoc_id, ssf->ssfe_length, ssf->ssfe_error
 						);
 						// Проверка минимального размера
 						if(ssf->ssfe_length < offsetof(struct sctp_send_failed_event, ssfe_data)){
