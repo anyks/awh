@@ -9046,7 +9046,7 @@ namespace io {
 						// Получаем структуру ошибки удалённого узла SCTP
 						const struct sctp_remote_error * sre = reinterpret_cast <const struct sctp_remote_error *> (buffer);
 						// Вычисляем смещение данных ошибки
-						const size_t offset = offsetof(struct sctp_remote_error, sre->sre_data);
+						const size_t offset = offsetof(struct sctp_remote_error, sre_data);
 						// Вычисляем длину дополнительных данных ошибки
 						const size_t length = (sre->sre_length - offset);
 						// Выводим информацию о событии ошибки удалённого узла SCTP
@@ -9144,7 +9144,7 @@ namespace io {
 							ssf->ssfe_assoc_id, ssf->ssfe_len, ssf->ssfe_error
 						);
 						// Проверка минимального размера
-						if(ssf->ssfe_length < offsetof(struct sctp_send_failed_event, ssf->ssfe_data)){
+						if(ssf->ssfe_length < offsetof(struct sctp_send_failed_event, ssfe_data)){
 							// Выводим информацию об ошибке некорректной длины
 							log->print(
 								"Invalid ssfe_length: %u",
@@ -9155,7 +9155,7 @@ namespace io {
 							return;
 						}
 						// Получаем длину данных ошибки
-						const size_t length = (ssf->ssfe_length - offsetof(struct sctp_send_failed_event, ssf->ssfe_data));
+						const size_t length = (ssf->ssfe_length - offsetof(struct sctp_send_failed_event, ssfe_data));
 						// Получаем буфер данных ошибки
 						const uint8_t * data = ssf->ssfe_data;
 					} break;
@@ -9171,7 +9171,7 @@ namespace io {
 							(strres->strreset_length - sizeof(struct sctp_stream_reset_event)) / sizeof(uint16_t)
 						);
 						// Проверка минимального размера
-						const size_t min = offsetof(struct sctp_stream_reset_event, strres->strreset_stream_list);
+						const size_t min = offsetof(struct sctp_stream_reset_event, strreset_stream_list);
 						// Если длина структуры меньше минимально необходимой
 						if(strres->strreset_length < min){
 							// Выводим информацию об ошибке некорректной длины
