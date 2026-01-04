@@ -9157,12 +9157,37 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии изменения адреса однорангового узла SCTP
-							log->print(
-								"SCTP_PEER_ADDR_CHANGE: state=%d, error=%d",
-								log_t::flag_t::INFO,
-								spc->spc_state, spc->spc_error
-							);
+							/**
+							 * Преобразуем адрес в строковое представление
+							 */
+							switch(spc->spc_aaddr.ss_family){
+								// Если адрес является IPv4
+								case AF_INET: {
+									// Буфер данных для хранения IPv4 адреса
+									char buffer[INET_ADDRSTRLEN];
+									// Преобразуем IPv4 адрес в строковое представление
+									::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (&spc->spc_aaddr))->sin_addr, buffer, sizeof(buffer));
+									// Выводим информацию о событии изменения адреса однорангового узла SCTP
+									log->print(
+										"SCTP_PEER_ADDR_CHANGE: IP=%s, state=%d, error=%d",
+										log_t::flag_t::INFO,
+										buffer, spc->spc_state, spc->spc_error
+									);
+								} break;
+								// Если адрес является IPv6
+								case AF_INET6: {
+									// Буфер данных для хранения IPv6 адреса
+									char buffer[INET6_ADDRSTRLEN];
+									// Преобразуем IPv6 адрес в строковое представление
+									::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (&spc->spc_aaddr))->sin6_addr, buffer, sizeof(buffer));
+									// Выводим информацию о событии изменения адреса однорангового узла SCTP
+									log->print(
+										"SCTP_PEER_ADDR_CHANGE: IP=%s, state=%d, error=%d",
+										log_t::flag_t::INFO,
+										buffer, spc->spc_state, spc->spc_error
+									);
+								} break;
+							}
 						#endif
 					} break;
 					// Если событие является ошибкой удалённого узла SCTP
