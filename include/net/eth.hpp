@@ -146,6 +146,14 @@ namespace awh {
 			*/
 			bool sctpEvents(const net::socket_t sock, const uint16_t options) const noexcept;
 			/**
+			 * @brief Метод получения статуса SCTP сокета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param status объект для извлечения статуса инициализации SCTP сокета
+			 * @return       результат работы функции
+			 */
+			bool sctpStatus(const net::socket_t sock, net::sctp::status_t & status) const noexcept;
+			/**
 			 * @brief Метод инициализации SCTP сокета
 			 *
 			 * @param sock    сетевой сокет
@@ -153,15 +161,6 @@ namespace awh {
 			 * @return        результат работы функции
 			 */
 			bool sctpInitMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
-			/**
-			 * @brief Метод получения статуса SCTP сокета
-			 *
-			 * @param sock   сетевой сокет
-			 * @param id     идентификатор ассоциации SCTP
-			 * @param status объект для извлечения статуса инициализации SCTP сокета
-			 * @return       результат работы функции
-			 */
-			bool sctpStatus(const net::socket_t sock, const uint32_t id, net::sctp::status_t & status) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK

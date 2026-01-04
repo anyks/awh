@@ -1873,6 +1873,64 @@ bool awh::Ethernet::sctpEvents([[maybe_unused]] const net::socket_t sock, [[mayb
 	return result;
 }
 /**
+ * @brief Метод получения статуса SCTP сокета
+ *
+ * @param sock   сетевой сокет
+ * @param status объект для извлечения статуса инициализации SCTP сокета
+ * @return       результат работы функции
+ */
+bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] net::sctp::status_t & status) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Создаём объект статуса SCTP сокета
+		struct sctp_status data = {};
+		// Устанавливаем идентификатор ассоциации
+		data.sstat_assoc_id = status.aid;
+		// Размер структуры статуса SCTP сокета
+		socklen_t length = sizeof(data);
+		// Выполняем инициализацию SCTP сокета
+		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &data, &length)))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+		// Заполняем объект ответа
+		} else {
+			// Извлекаем идентификатор ассоциации SCTP сокета
+			status.aid = data.sstat_assoc_id;
+			// Извлекаем состояние SCTP сокета
+			status.state = data.sstat_state;
+			// Извлекаем количество входящих окон SCTP сокета
+			status.rateWindow = data.sstat_rwnd;
+			// Извлекаем количество отправленных SCTP пакетов
+			status.unpackData = data.sstat_unackdata;
+			// Извлекаем количество ожидающих подтверждений SCTP сокета
+			status.pendingData = data.sstat_penddata;
+			// Извлекаем количество входящих стримов SCTP сокета
+			status.inputStreams = data.sstat_instrms;
+			// Извлекаем количество выходящих стримов SCTP сокета
+			status.outputStreams = data.sstat_outstrms;
+			// Извлекаем точку фрагментации SCTP сокета
+			status.fragmentsPoint = data.sstat_fragmentation_point;
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод инициализации SCTP сокета
  *
  * @param sock    сетевой сокет
@@ -1901,58 +1959,6 @@ bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, 
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод получения статуса SCTP сокета
- *
- * @param sock   сетевой сокет
- * @param id     идентификатор ассоциации SCTP
- * @param status объект для извлечения статуса инициализации SCTP сокета
- * @return       результат работы функции
- */
-bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] net::sctp::status_t & answer) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Создаём объект статуса SCTP сокета
-		struct sctp_status status = {};
-		// Устанавливаем идентификатор ассоциации
-		status.sstat_assoc_id = id;
-		// Размер структуры статуса SCTP сокета
-		socklen_t length = sizeof(status);
-		// Выполняем инициализацию SCTP сокета
-		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status, &length)))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-		// Заполняем объект ответа
-		} else {
-			// Заполняем объект ответа
-			answer.aid = status.sstat_assoc_id;
-			answer.state = status.sstat_state;
-			answer.rateWindow = status.sstat_rwnd;
-			answer.unpackData = status.sstat_unackdata;
-			answer.pendingData = status.sstat_penddata;
-			answer.inputStreams = status.sstat_instrms;
-			answer.outputStreams = status.sstat_outstrms;
-			answer.fragmentsPoint = status.sstat_fragmentation_point;
 		}
 	#endif
 	// Выводим результат

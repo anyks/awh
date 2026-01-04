@@ -1477,6 +1477,27 @@ int32_t main(int32_t argc, char * argv[]){
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
 				io.on(eid, [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					// Получаем информацию о сообщении SCTP-сокета
+					const net::sctp::minfo_t & minfo = io.sctpMessageInfo(eid);
+					// Выводим информацию о сообщении SCTP-сокета
+					cout << " SCTP Message Info: " << endl;
+					cout << "  - Stream Number: " << minfo.num << endl;
+					cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
+					cout << "  - Context: " << minfo.ctx << endl;
+					cout << "  - Time to Live: " << minfo.ttl << endl;
+					cout << "  - Flags: " << minfo.flags << endl;
+					// Получаем статус SCTP-сокета
+					const net::sctp::status_t & status = io.sctpStatus(eid);
+					// Выводим статус SCTP-сокета
+					cout << " SCTP Status: " << endl;
+					cout << "  - ID: " << status.aid << endl;
+					cout << "  - State: " << status.state << endl;
+					cout << "  - Outbound Streams: " << status.outputStreams << endl;
+					cout << "  - Inbound Streams: " << status.inputStreams << endl;
+					cout << "  - Fragmentation Point: " << status.fragmentsPoint << endl;
+					cout << "  - Rate Window: " << status.rateWindow << endl;
+					cout << "  - Unpack Data: " << status.unpackData << endl;
+					cout << "  - Pending Data: " << status.pendingData << endl;
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Выводим сообщение о переподключении события
@@ -1544,27 +1565,6 @@ int32_t main(int32_t argc, char * argv[]){
 				io.on(eid, static_cast <event::callback::connect_t> ([&io, &log](const event::id_t eid, const bool ok) noexcept -> void {
 					// Выводим сообщение о принятии события
 					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
-					// Получаем информацию о сообщении SCTP-сокета
-					const net::sctp::minfo_t & minfo = io.sctpMessageInfo(eid);
-					// Выводим информацию о сообщении SCTP-сокета
-					cout << " SCTP Message Info: " << endl;
-					cout << "  - Stream Number: " << minfo.num << endl;
-					cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
-					cout << "  - Context: " << minfo.ctx << endl;
-					cout << "  - Time to Live: " << minfo.ttl << endl;
-					cout << "  - Flags: " << minfo.flags << endl;
-					// Получаем статус SCTP-сокета
-					const net::sctp::status_t & status = io.sctpStatus(eid);
-					// Выводим статус SCTP-сокета
-					cout << " SCTP Status: " << endl;
-					cout << "  - ID: " << status.aid << endl;
-					cout << "  - State: " << status.state << endl;
-					cout << "  - Outbound Streams: " << status.outputStreams << endl;
-					cout << "  - Inbound Streams: " << status.inputStreams << endl;
-					cout << "  - Fragmentation Point: " << status.fragmentsPoint << endl;
-					cout << "  - Rate Window: " << status.rateWindow << endl;
-					cout << "  - Unpack Data: " << status.unpackData << endl;
-					cout << "  - Pending Data: " << status.pendingData << endl;
 					// Если подключение успешно
 					if(ok){
 						// Текст исходящего сообщения
