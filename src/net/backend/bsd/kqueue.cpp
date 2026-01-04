@@ -9018,11 +9018,11 @@ namespace io {
 						// Буфер для хранения строкового представления адреса
 						char ip[INET6_ADDRSTRLEN];
 						// Получаем указатель на адрес
-						void * addr = &spc->spc_aaddr;
+						const void * addr = &spc->spc_aaddr;
 						/**
 						 * Преобразуем адрес в строковое представление
 						 */
-						switch(spc->spc_aaddr.sa_family){
+						switch(spc->spc_aaddr.ss_family){
 							// Если адрес является IPv4
 							case AF_INET:
 								// Извлекаем IP-адрес из структуры подключения
@@ -9066,7 +9066,6 @@ namespace io {
 							// Печатаем символ новой строки
 							printf("\n");
 						}
-						// Опционально: sre->sre_data содержит дополнительные данные (длина = sre->sre_length - offsetof(..., sre_data))
 					} break;
 					// Если событие является завершением SCTP
 					case SCTP_SHUTDOWN_EVENT: {
