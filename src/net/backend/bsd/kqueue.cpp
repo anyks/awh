@@ -3204,8 +3204,6 @@ namespace io {
 				}
 				// Заполняем структуру клиента нулями
 				::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
-				// Буфер для отложенных данных
-				vector <uint8_t> pending;
 				/**
 				 * Определяем тип сокета
 				 */
@@ -3250,6 +3248,10 @@ namespace io {
 						 * Если операционной системой является FreeBSD
 						 */
 						#if __FreeBSD__
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							// Буфер для временного хранения данных
+							char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 							// Объявляем дескриптор сокета
 							net::socket_t sock = net::invalid_socket_t;
 							/**
@@ -3274,10 +3276,8 @@ namespace io {
 										break;
 										// Если сокет принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-											// Буфер для временного хранения данных
-											char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 											// Выполняем чтение данных из SCTP-сокета
-											const ssize_t bytes = ::sctp_recvmsg(
+											bytes = ::sctp_recvmsg(
 												node->fd,
 												buffer, AWH_MAX_EVENT_BUFFER_SIZE,
 												&::trust_cast <struct sockaddr> (node->endpoint.client),
@@ -3285,10 +3285,10 @@ namespace io {
 												&node->sctp.info,
 												&node->sctp.flags
 											);
-											// Если данные прочитаны успешно и это не уведомление
-											if((bytes > 0) && !(node->sctp.flags & MSG_NOTIFICATION))
-												// Сохраняем данные в буфер отложенных данных
-												pending.assign(buffer, buffer + bytes);
+											// Если мы получили уведомления SCTP
+											if((bytes <= 0) || (node->sctp.flags & MSG_NOTIFICATION))
+												// Выходим из функции
+												return (bytes > 0);
 											// Получаем дескриптор сокета из информации о сообщении SCTP
 											sock = ::sctp_peeloff(node->fd, node->sctp.info.sinfo_assoc_id);
 										} break;
@@ -3779,13 +3779,18 @@ namespace io {
 							if(node->callbacks.accept != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
 								node->callbacks.accept(node->id, peer->id);
-							// Если есть отложенные данные
-							if(!pending.empty()){
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.read != nullptr)
-									// Вызываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, pending.data(), pending.size());
-							}
+							/**
+							 * Если операционной системой является FreeBSD
+							 */
+							#if __FreeBSD__
+								// Если мы получили данные из SCTP-сокета
+								if(bytes > 0){
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.read != nullptr)
+										// Вызываем функцию обратного вызова для вывода полученных данных
+										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+								}
+							#endif
 							// Если узел не помечен как мусорный
 							if(!guard.isGarbage()){
 								// Активируем или деактивируем работу мютексов для передачи данных
