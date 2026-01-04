@@ -2025,7 +2025,7 @@ bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, 
 					// Устанавливаем таймаут инициализации
 					init.sinit_max_init_timeo = initmsg.timeout;
 					// Устанавливаем количество выходящих стримов
-					init.sinit_num_ostreams = initmsg.outstreams;
+					init.sinit_num_ostreams = initmsg.ostreams;
 					// Устанавливаем количество входящих стримов
 					init.sinit_max_instreams = initmsg.instreams;
 					// Выполняем инициализацию SCTP сокета
