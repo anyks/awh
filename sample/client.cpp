@@ -1565,7 +1565,6 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Rate Window: " << status.rateWindow << endl;
 					cout << "  - Unpack Data: " << status.unpackData << endl;
 					cout << "  - Pending Data: " << status.pendingData << endl;
-					cout << "  - Peer Rate Window: " << status.peerRateWindow << endl;
 					// Если подключение успешно
 					if(ok){
 						// Текст исходящего сообщения

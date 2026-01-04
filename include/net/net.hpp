@@ -654,7 +654,6 @@ namespace awh {
 				uint16_t inputStreams;   // Количество входящих потоков
 				uint16_t outputStreams;  // Количество исходящих потоков
 				uint32_t fragmentsPoint; // Точка фрагментации в байтах
-				uint32_t peerRateWindow; // Размер окна скорости передачи данных одноранговым узлом
 				/**
 				 * @brief Конструктор
 				 *
@@ -663,7 +662,7 @@ namespace awh {
 				 aid(0), state(0), rateWindow(0),
 				 unpackData(0), pendingData(0),
 				 inputStreams(0), outputStreams(0),
-				 fragmentsPoint(0), peerRateWindow(0) {}
+				 fragmentsPoint(0) {}
 			} status_t;
 		};
 	};

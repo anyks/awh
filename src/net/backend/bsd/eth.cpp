@@ -1953,15 +1953,6 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 			answer.inputStreams = status.sstat_instrms;
 			answer.outputStreams = status.sstat_outstrms;
 			answer.fragmentsPoint = status.sstat_fragmentation_point;
-			answer.peerRateWindow = status.sstat_peer_rwnd;
-
-			cout << "sstat_inflight: " << status.sstat_inflight << endl;
-			cout << "stat_cwnd: " << status.sstat_cwnd << endl;
-			cout << "sstat_ssthresh: " << status.sstat_ssthresh << endl;
-			cout << "sstat_rto: " << status.sstat_rto << endl;
-			cout << "sstat_mtu: " << status.sstat_mtu << endl;
-	
-		
 		}
 	#endif
 	// Выводим результат
