@@ -9026,12 +9026,12 @@ namespace io {
 							// Если адрес является IPv4
 							case AF_INET:
 								// Извлекаем IP-адрес из структуры подключения
-								::inet_ntop(AF_INET, &(reinterpret_cast <struct sockaddr_in *> (addr))->sin_addr, ip, sizeof(ip));
+								::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (addr))->sin_addr, ip, sizeof(ip));
 							break;
 							// Если адрес является IPv6
 							case AF_INET6:
 								// Извлекаем IP-адрес из структуры подключения
-								::inet_ntop(AF_INET6, &(reinterpret_cast <struct sockaddr_in6 *> (addr))->sin6_addr, ip, sizeof(ip));
+								::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (addr))->sin6_addr, ip, sizeof(ip));
 							break;
 						}
 						// Выводим информацию о событии изменения адреса однорангового узла SCTP
