@@ -4873,7 +4873,7 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													// Если мы получили уведомления SCTP
-													if(peer->sctp.flags & MSG_NOTIFICATION)
+													if(peer->transfer.sctp.flags & MSG_NOTIFICATION)
 														// Формируем положительный результат
 														return true;
 												}
@@ -4974,7 +4974,7 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													// Если мы получили уведомления SCTP
-													if(peer->sctp.flags & MSG_NOTIFICATION)
+													if(peer->transfer.sctp.flags & MSG_NOTIFICATION)
 														// Формируем положительный результат
 														return true;
 												}
@@ -5273,7 +5273,7 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
 															// Формируем положительный результат
 															return true;
 													}
@@ -5376,7 +5376,7 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
 															// Формируем положительный результат
 															return true;
 													}
@@ -5500,7 +5500,7 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
 															// Формируем положительный результат
 															return true;
 													}
@@ -5614,7 +5614,7 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
 															// Формируем положительный результат
 															return true;
 													}
