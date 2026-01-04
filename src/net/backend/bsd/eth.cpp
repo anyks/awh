@@ -1932,7 +1932,7 @@ bool awh::Ethernet::sctpEventsSubscribe(const net::socket_t sock, const net::sct
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, options), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							* Если режим отладки не включён
 							*/
@@ -2034,7 +2034,7 @@ bool awh::Ethernet::sctpEventsSubscribe(const net::socket_t sock, const net::sct
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, options), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
