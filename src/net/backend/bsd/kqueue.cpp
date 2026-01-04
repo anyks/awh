@@ -3204,6 +3204,8 @@ namespace io {
 				}
 				// Заполняем структуру клиента нулями
 				::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
+				// Буфер для отложенных данных
+				vector <uint8_t> pending;
 				/**
 				 * Определяем тип сокета
 				 */
@@ -3274,41 +3276,19 @@ namespace io {
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Буфер для временного хранения данных
 											char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
-											// Буфер для вспомогательных данных (control message)
-											char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
-											// Структура заголовка сообщения
-											struct msghdr msg = {0};
-											// Структура вектора ввода-вывода
-											struct iovec iov;
-											// Устанавливаем буфер данных
-											iov.iov_base = buffer;
-											iov.iov_len = AWH_MAX_EVENT_BUFFER_SIZE;
-											// Устанавливаем параметры сообщения
-											msg.msg_name = &::trust_cast <struct sockaddr> (node->endpoint.client);
-											msg.msg_namelen = node->endpoint.size;
-											msg.msg_iov = &iov;
-											msg.msg_iovlen = 1;
-											msg.msg_control = cmsgbuf;
-											msg.msg_controllen = sizeof(cmsgbuf);
-											// Выполняем чтение данных из SCTP-сокета с флагом MSG_PEEK
-											const ssize_t bytes = ::recvmsg(node->fd, &msg, MSG_PEEK);
-											// Если данные прочитаны успешно
-											if(bytes >= 0){
-												// Обновляем размер адреса
-												node->endpoint.size = msg.msg_namelen;
-												// Ищем заголовок SCTP в вспомогательных данных
-												for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
-													// Если найден заголовок SCTP
-													if((cmsg->cmsg_level == IPPROTO_SCTP) && (cmsg->cmsg_type == SCTP_SNDRCV)){
-														// Копируем информацию в структуру SCTP
-														::memcpy(&node->sctp.info, CMSG_DATA(cmsg), sizeof(struct sctp_sndrcvinfo));
-														// Прерываем цикл
-														break;
-													}
-												}
-												// Устанавливаем флаги сообщения
-												node->sctp.flags = msg.msg_flags;
-											}
+											// Выполняем чтение данных из SCTP-сокета
+											const ssize_t bytes = ::sctp_recvmsg(
+												node->fd,
+												buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+												&::trust_cast <struct sockaddr> (node->endpoint.client),
+												&node->endpoint.size,
+												&node->sctp.info,
+												&node->sctp.flags
+											);
+											// Если данные прочитаны успешно и это не уведомление
+											if((bytes > 0) && !(node->sctp.flags & MSG_NOTIFICATION))
+												// Сохраняем данные в буфер отложенных данных
+												pending.assign(buffer, buffer + bytes);
 											// Получаем дескриптор сокета из информации о сообщении SCTP
 											sock = ::sctp_peeloff(node->fd, node->sctp.info.sinfo_assoc_id);
 										} break;
@@ -3799,6 +3779,13 @@ namespace io {
 							if(node->callbacks.accept != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
 								node->callbacks.accept(node->id, peer->id);
+							// Если есть отложенные данные
+							if(!pending.empty()){
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.read != nullptr)
+									// Вызываем функцию обратного вызова для вывода полученных данных
+									peer->callbacks.read(peer->id, pending.data(), pending.size());
+							}
 							// Если узел не помечен как мусорный
 							if(!guard.isGarbage()){
 								// Активируем или деактивируем работу мютексов для передачи данных
