@@ -9159,9 +9159,9 @@ namespace io {
 						#if DEBUG_MODE
 							// Выводим информацию о событии изменения адреса однорангового узла SCTP
 							log->print(
-								"SCTP_PEER_ADDR_CHANGE: %s, state=%d, error=%d",
+								"SCTP_PEER_ADDR_CHANGE: state=%d, error=%d",
 								log_t::flag_t::INFO,
-								ip, spc->spc_state, spc->spc_error
+								spc->spc_state, spc->spc_error
 							);
 						#endif
 					} break;
