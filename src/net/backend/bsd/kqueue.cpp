@@ -5273,9 +5273,45 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если мы получили уведомления SCTP
-														if(client->transfer.sctp.flags & MSG_NOTIFICATION)
+														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+
+															// buffer содержит управляющее сообщение
+															struct sctp_assoc_change *sac;
+															struct sctp_shutdown_event *sse;
+															struct sctp_send_failed *ssf;
+															struct sctp_remote_error *sre;
+
+															// Первые 2 байта — тип уведомления (sctp_notification.sn_header.sn_type)
+															uint16_t *sn_type = (uint16_t*)buffer;
+
+															switch (*sn_type) {
+																case SCTP_ASSOC_CHANGE:
+																	sac = (struct sctp_assoc_change*)buffer;
+																	printf("Assoc state: %d\n", sac->sac_state);
+																	break;
+
+																case SCTP_SHUTDOWN_EVENT:
+																	sse = (struct sctp_shutdown_event*)buffer;
+																	printf("Shutdown for assoc %u\n", sse->sse_assoc_id);
+																	break;
+
+																case SCTP_SEND_FAILED:
+																	ssf = (struct sctp_send_failed*)buffer;
+																	printf("Send failed, len=%u, err=%d\n", ssf->ssf_length, ssf->ssf_error);
+																	break;
+
+																case SCTP_PEER_ERROR:
+																	sre = (struct sctp_remote_error*)buffer;
+																	printf("Peer error, cause=%u\n", sre->sre_cause);
+																	break;
+
+																default:
+																	printf("Unknown notification type: %u\n", *sn_type);
+															}
+
 															// Формируем положительный результат
 															return true;
+														}
 													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
