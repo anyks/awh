@@ -1887,12 +1887,12 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 	 */
 	#if __FreeBSD__
 		
-		struct sctp_status status = {};
+		struct sctp_status status1 = {};
 	
 		// Размер структуры статуса SCTP сокета
-		socklen_t length = sizeof(status);
+		socklen_t length = sizeof(status1);
 		// Выполняем инициализацию SCTP сокета
-		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status, &length)))){
+		if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &status1, &length)))){
 			/**
 			 * Если включён режим отладки
 			 */
