@@ -4866,6 +4866,18 @@ namespace io {
 											}
 										// Если мы получили данные из сокета
 										} else if(bytes > 0) {
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP){
+													// Если мы получили уведомления SCTP
+													if(peer->sctp.flags & MSG_NOTIFICATION)
+														// Формируем положительный результат
+														return true;
+												}
+											#endif
 											// Если функция обратного вызова для вывода события установлена
 											if(peer->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
@@ -4955,6 +4967,18 @@ namespace io {
 											return false;
 										// Если мы получили данные из сокета
 										} else if(bytes > 0) {
+											/**
+											 * Если операционной системой является FreeBSD
+											 */
+											#if __FreeBSD__
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP){
+													// Если мы получили уведомления SCTP
+													if(peer->sctp.flags & MSG_NOTIFICATION)
+														// Формируем положительный результат
+														return true;
+												}
+											#endif
 											// Если функция обратного вызова для вывода события установлена
 											if(peer->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова флаг события
@@ -5245,9 +5269,14 @@ namespace io {
 												 */
 												#if __FreeBSD__
 													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
+													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если мы получили уведомления SCTP
+														if(client->sctp.flags & MSG_NOTIFICATION)
+															// Формируем положительный результат
+															return true;
+													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
@@ -5343,9 +5372,14 @@ namespace io {
 												 */
 												#if __FreeBSD__
 													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
+													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если мы получили уведомления SCTP
+														if(client->sctp.flags & MSG_NOTIFICATION)
+															// Формируем положительный результат
+															return true;
+													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
@@ -5462,9 +5496,14 @@ namespace io {
 												 */
 												#if __FreeBSD__
 													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
+													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если мы получили уведомления SCTP
+														if(client->sctp.flags & MSG_NOTIFICATION)
+															// Формируем положительный результат
+															return true;
+													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
@@ -5571,9 +5610,14 @@ namespace io {
 												 */
 												#if __FreeBSD__
 													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP)
+													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если мы получили уведомления SCTP
+														if(client->sctp.flags & MSG_NOTIFICATION)
+															// Формируем положительный результат
+															return true;
+													}
 												#endif
 												// Если функция обратного вызова для вывода события установлена
 												if(client->callbacks.event != nullptr)
