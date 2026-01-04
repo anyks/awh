@@ -204,7 +204,7 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Time to Live: " << minfo.ttl << endl;
 				cout << "  - Flags: " << minfo.flags << endl;
 				// Получаем статус SCTP-сокета
-				const net::sctp::status_t & status = io.sctpStatus(cid);
+				const net::sctp::status_t & status = io.sctpStatus(sid);
 				// Выводим статус SCTP-сокета
 				cout << " SCTP Status: " << endl;
 				cout << "  - ID: " << status.aid << endl;
