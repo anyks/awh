@@ -9089,7 +9089,7 @@ namespace io {
 									// Если ассоциация поддерживает чередование потоков
 									case SCTP_ASSOC_SUPPORTS_INTERLEAVING:
 										// Устанавливаем информационный флаг ассоциации SCTP
-										association->info[i] = net::sctp::assoc_info_t::SUPPORTS_INTERLEAVING;
+										association->info[i] = net::sctp::assoc_info_t::SUPPORTS_INTERLEAVE;
 									break;
 									// Так-как в FreeBSD нет определения SCTP_ASSOC_SUPPORTS_MAX, то используем значение 0x07
 									case 0x07:
@@ -9338,7 +9338,7 @@ namespace io {
 						// Устанавливаем номер потока SCTP
 						association->stream = pdapi->pdapi_stream;
 						// Устанавливаем последовательный номер сообщения SCTP
-						association->sequence = pdapi->pdapi_sequence;
+						association->sequence = pdapi->pdapi_seq;
 						// Если индикатор сброса частичной доставки установлен
 						if(pdapi->pdapi_indication & SCTP_PARTIAL_DELIVERY_ABORTED)
 							// Устанавливаем индикатор частичной доставки SCTP
