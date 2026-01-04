@@ -603,6 +603,70 @@ namespace awh {
 				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
 			};
 			/**
+			 * Типы индикаторов события аутентификации SCTP
+			 */
+			enum class auth_indics_t : uint8_t {
+				NONE     = 0x00, // Тип аутентификации отсутствует
+				NEW_KEY  = 0x01, // Событие нового ключа
+				NO_AUTH  = 0x02, // Событие отсутствия аутентификации
+				FREE_KEY = 0x03  // Событие освобождения ключа
+			};
+			/**
+			 * Флаги отправки сообщения SCTP
+			 */
+			enum class send_failed_t : uint8_t {
+				NONE   = 0x00, // Флаг отсутствует
+				SENT   = 0x01, // Сообщение отправлено
+				UNSENT = 0x02  // Сообщение не отправлено
+			};
+			/**
+			 * Индикаторы доставки SCTP
+			 */
+			enum class pdapi_indics_t : uint8_t {
+				NONE                     = 0x00, // Индикатор отсутствует
+				PARTIAL_DELIVERY_ABORTED = 0x01  // Частичная доставка прервана
+			};
+			/**
+			 * Типы сброса потоков SCTP
+			 */
+			enum class stream_reset_t : uint8_t {
+				NONE         = 0x00, // Тип сброса отсутствует
+				DENIED       = 0x01, // Сброс отклонён
+				FAILED       = 0x02, // Сброс не выполнен
+				OUTGOING_SSN = 0x03, // Сброс исходящих потоков
+				INCOMING_SSN = 0x04  // Сброс входящих потоков
+			};
+			/**
+			 * Типы событий SCTP
+			 */
+			enum class event_type_t : uint8_t {
+				NONE                        = 0x00, // Тип события отсутствует
+				REMOTE_ERROR                = 0x01, // Ошибка удалённого узла
+				ASSOC_CHANGE                = 0x02, // Изменение ассоциации
+				SHUTDOWN_EVENT              = 0x03, // Событие завершения работы
+				SENDER_DRY_EVENT            = 0x04, // Событие "отправитель сухой"
+				PEER_ADDR_CHANGE            = 0x05, // Изменение адреса однорангового узла
+				SEND_FAILED_EVENT           = 0x06, // Событие ошибки отправки
+				STREAM_RESET_EVENT          = 0x07, // Сброс потока
+				AUTHENTICATION_EVENT        = 0x08, // Событие аутентификации
+				ADAPTATION_INDICATION       = 0x09, // Адаптационное указание
+				PARTIAL_DELIVERY_EVENT      = 0x0A, // Частичная доставка
+				NOTIFICATIONS_STOPPED_EVENT = 0x0B  // События остановлены
+			};
+			/**
+			 * Информация об ассоциации SCTP
+			 */
+			enum class assoc_info_t : uint8_t {
+				NONE                = 0x00, // Информация об ассоциации отсутствует
+				SUPPORTS_PR         = 0x01, // Поддерживается частичное надёжное сообщение
+				SUPPORTS_MAX        = 0x02, // Поддерживается максимальное количество сообщений
+				SUPPORTS_AUTH       = 0x03, // Поддерживается аутентификация сообщений
+				SUPPORTS_ASCONF     = 0x04, // Поддерживается динамическая конфигурация адресов
+				SUPPORTS_MULTIBUF   = 0x05, // Поддерживается мультибуферизация сообщений
+				SUPPORTS_RE_CONFIG  = 0x06, // Поддерживается повторная конфигурация ассоциации
+				SUPPORTS_INTERLEAVE = 0x07  // Поддерживается перемежение сообщений
+			};
+			/**
 			 * Состояния ассоциации SCTP
 			 */
 			enum class assoc_state_t : uint8_t {
@@ -709,11 +773,14 @@ namespace awh {
 			typedef struct Event {
 				// Идентификатор события
 				uint32_t id;
+				// Тип события
+				event_type_t type;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Event() noexcept : id(0) {}
+				explicit Event() noexcept :
+				 id(0), type(event_type_t::NONE) {}
 				/**
 				 * @brief Деструктор
 				 *
@@ -721,23 +788,38 @@ namespace awh {
 				virtual ~Event() = default;
 			} event_t;
 			/**
+			 * @brief Структура адаптационного указания SCTP
+			 *
+			 */
+			typedef struct EventAdaptation : public event_t {
+				// Адаптационное указание
+				uint32_t indication;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventAdaptation() noexcept : indication(0) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventAdaptation() = default;
+			} event_adaptation_t;
+			/**
 			 * @brief Структура изменения события SCTP
 			 *
 			 */
 			typedef struct EventChange : public event_t {
-				error_t error;           // Код ошибки события
-				uint16_t type;           // Тип события
-				uint16_t flags;          // Флаги события
-				uint16_t ostreams;       // Максимальное количество исходящих потоков
-				uint16_t instreams;      // Максимальное количество входящих потоков
-				assoc_state_t state;     // Состояние события
-				vector <uint8_t> buffer; // Дополнительная информация события
+				error_t error;              // Ошибка события
+				uint16_t ostreams;          // Максимальное количество исходящих потоков
+				uint16_t instreams;         // Максимальное количество входящих потоков
+				assoc_state_t state;        // Состояние события
+				vector <assoc_info_t> info; // Дополнительная информация события
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				explicit EventChange() noexcept :
-				 type(0), flags(0),
 				 ostreams(0), instreams(0),
 				 state(assoc_state_t::NONE) {}
 				/**
@@ -747,13 +829,29 @@ namespace awh {
 				virtual ~EventChange() = default;
 			} event_change_t;
 			/**
+			 * @brief Структура ошибки удалённого узла SCTP
+			 *
+			 */
+			typedef struct EventRemoteError : public event_t {
+				error_t error;         // Ошибка события
+				vector <uint8_t> data; // Дополнительная информация события
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventRemoteError() noexcept = default;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventRemoteError() = default;
+			} event_remote_error_t;
+			/**
 			 * @brief Структура изменения адреса однорангового узла SCTP
 			 *
 			 */
 			typedef struct EventAddrChange : public event_t {
-				error_t error;            // Код ошибки события
-				uint16_t type;            // Тип события
-				uint16_t flags;           // Флаги события
+				error_t error;            // Ошибка события
 				paddr_state_t state;      // Состояние события
 				unique_ptr <addr_t> addr; // Адрес однорангового узла
 				/**
@@ -761,7 +859,6 @@ namespace awh {
 				 *
 				 */
 				explicit EventAddrChange() noexcept :
-				 type(0), flags(0),
 				 state(paddr_state_t::NONE), addr(nullptr) {}
 				/**
 				 * @brief Деструктор
@@ -769,6 +866,83 @@ namespace awh {
 				 */
 				virtual ~EventAddrChange() = default;
 			} event_addr_change_t;
+			/**
+			 * @brief Структура частичной доставки SCTP
+			 *
+			 */
+			typedef struct PartialDeliveryEvent : public event_t {
+				uint16_t stream;           // Номер потока
+				uint16_t sequence;         // Последовательный номер сообщения
+				pdapi_indics_t indication; // Индикатор частичной доставки
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit PartialDeliveryEvent() noexcept :
+				 stream(0), sequence(0),
+				 indication(pdapi_indics_t::NONE) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~PartialDeliveryEvent() = default;
+			} event_pdapi_t;
+			/**
+			 * @brief Структура аутентификации SCTP
+			 *
+			 */
+			typedef struct EventAuth : public event_t {
+				uint16_t key;             // Номер ключа
+				auth_indics_t indication; // Индикатор аутентификации
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventAuth() noexcept :
+				 key(0), indication(auth_indics_t::NONE) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventAuth() = default;
+			} event_auth_t;
+			/**
+			 * @brief Структура ошибки отправки SCTP
+			 *
+			 */
+			typedef struct EventSendFailed : public event_t {
+				error_t error;         // Ошибка события
+				send_failed_t status;  // Статус отправки сообщения
+				vector <uint8_t> data; // Дополнительная информация события
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventSendFailed() noexcept : status(send_failed_t::NONE) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventSendFailed() = default;
+			} event_send_failed_t;
+			/**
+			 * @brief Структура сброса потоков SCTP
+			 *
+			 */
+			typedef struct EventStreamReset : public event_t {
+				vector <uint16_t> streams;            // Номера сброшенных потоков
+				unordered_set <stream_reset_t> flags; // Типы сброса потоков
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventStreamReset() noexcept {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventStreamReset() = default;
+			} event_stream_reset_t;
 		};
 	};
 };
