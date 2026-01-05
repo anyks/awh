@@ -10054,7 +10054,7 @@ namespace sctp {
 							);
 						#endif
 						// Формируем результат работы функции
-						result = static_cast <size_t> (dry->sender_length);
+						result = static_cast <size_t> (dry->sender_dry_length);
 					} break;
 					// Если событие является остановкой уведомлений SCTP
 					case SCTP_NOTIFICATIONS_STOPPED_EVENT: {
@@ -10069,7 +10069,7 @@ namespace sctp {
 							);
 						#endif
 						// Формируем результат работы функции
-						result = static_cast <size_t> (* reinterpret_cast <uint32_t *> (buffer + 4));
+						result = static_cast <size_t> (* reinterpret_cast <const uint32_t *> (buffer + 4));
 					} break;
 					// Если событие является сбросом ассоциации SCTP
 					case SCTP_ASSOC_RESET_EVENT: {
@@ -10345,7 +10345,7 @@ namespace sctp {
 							);
 						#endif
 						// Формируем результат работы функции
-						result = static_cast <size_t> (* reinterpret_cast <uint32_t *> (buffer + 4));
+						result = static_cast <size_t> (* reinterpret_cast <const uint32_t *> (buffer + 4));
 					}
 				}
 			}
