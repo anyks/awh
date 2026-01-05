@@ -9168,7 +9168,7 @@ namespace sctp {
 						// Устанавливаем количество исходящих потоков SCTP
 						association->ostreams = sac->sac_outbound_streams;
 						// Устанавливаем количество входящих потоков SCTP
-						association->instreams = sac->sac_inbound_streams;
+						association->istreams = sac->sac_inbound_streams;
 						/**
 						 * Обрабатываем состояние ассоциации SCTP
 						 */
@@ -10075,7 +10075,7 @@ namespace sctp {
 						// Устанавливаем тип события SCTP
 						association->type = net::sctp::event_type_t::STREAM_CHANGE_EVENT;
 						// Устанавливаем количество входящих потоков SCTP
-						association->instreams = ssce->strchange_instrms;
+						association->istreams = ssce->strchange_instrms;
 						// Устанавливаем количество исходящих потоков SCTP
 						association->ostreams = ssce->strchange_outstrms;
 						// Если установлен флаг неудачного изменения потоков SCTP
