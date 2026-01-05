@@ -4799,6 +4799,9 @@ namespace io {
 														if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
 															offset = static_cast <ssize_t> (::sctp::events(peer, buffer, bytes, log));
+															
+															cout << "!!!!!! SCTP notification received, offset: " << offset << ", bytes: " << bytes << endl;
+															
 															// Если все полученные байты были уведомлениями SCTP
 															if(offset >= bytes)
 																// Формируем положительный результат
@@ -5313,6 +5316,9 @@ namespace io {
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
 															offset = static_cast <ssize_t> (::sctp::events(client, buffer, bytes, log));
+
+															cout << "!!!!!! SCTP notification received, offset: " << offset << ", bytes: " << bytes << endl;
+
 															// Если все полученные байты были уведомлениями SCTP
 															if(offset >= bytes)
 																// Формируем положительный результат
