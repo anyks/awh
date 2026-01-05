@@ -1781,7 +1781,7 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 						// Извлекаем количество ожидающих подтверждений SCTP сокета
 						status.penddata = data.sstat_penddata;
 						// Извлекаем количество входящих стримов SCTP сокета
-						status.instreams = data.sstat_instrms;
+						status.istreams = data.sstat_instrms;
 						// Извлекаем количество выходящих стримов SCTP сокета
 						status.ostreams = data.sstat_outstrms;
 						// Извлекаем точку фрагментации SCTP сокета
@@ -1846,7 +1846,7 @@ bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, 
 					// Устанавливаем количество выходящих стримов
 					init.sinit_num_ostreams = initmsg.ostreams;
 					// Устанавливаем количество входящих стримов
-					init.sinit_max_instreams = initmsg.instreams;
+					init.sinit_max_instreams = initmsg.istreams;
 					// Выполняем инициализацию SCTP сокета
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
 						/**
