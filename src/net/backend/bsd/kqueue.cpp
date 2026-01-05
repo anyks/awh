@@ -23485,7 +23485,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										/**
 										 * Определяем протокол интернета
 										 */
-										switch(static_cast <uint8_t> (node->state.protocol)){
+										switch(static_cast <uint8_t> (client->state.protocol)){
 											// Если протокол интернета установлен как TCP
 											case static_cast <uint8_t> (event::protocol_t::TCP): {
 												// Если подключение к удаленному серверу не выполнено
