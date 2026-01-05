@@ -217,7 +217,7 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - ID: " << status.id << endl;
 				cout << "  - State: " << status.state << endl;
 				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.instreams << endl;
+				cout << "  - Inbound Streams: " << status.istreams << endl;
 				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
 				cout << "  - Rate Window: " << status.ratewind << endl;
 				cout << "  - Unpack Data: " << status.unackdata << endl;
@@ -466,7 +466,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устанавливаем количество исходящих потоков SCTP
 				initmsg.ostreams = 5;
 				// Устанавливаем количество входящих потоков SCTP
-				initmsg.instreams = 5;
+				initmsg.istreams = 5;
 				// Инициализируем сообщения SCTP
 				io.sctpInitMessages(eid, initmsg);
 				// Если прослушивание события успешно

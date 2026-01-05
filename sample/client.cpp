@@ -1573,7 +1573,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - ID: " << status.id << endl;
 					cout << "  - State: " << status.state << endl;
 					cout << "  - Outbound Streams: " << status.ostreams << endl;
-					cout << "  - Inbound Streams: " << status.instreams << endl;
+					cout << "  - Inbound Streams: " << status.istreams << endl;
 					cout << "  - Fragmentation Point: " << status.fragpoint << endl;
 					cout << "  - Rate Window: " << status.ratewind << endl;
 					cout << "  - Unpack Data: " << status.unackdata << endl;
