@@ -24548,7 +24548,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 																				// Получаем текущее значение объекта сервера
 																				::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 																				// Если событие принятие подключений разрешено
-																				if(server->transfer.actions & ::action::ACCEPT)
+																				if(server->actions & ::action::ACCEPT)
 																					// Добавляем адреса в список для подключения
 																					addrs.push_back(::trust_cast <struct sockaddr> (server->endpoint.server));
 																			} break;
