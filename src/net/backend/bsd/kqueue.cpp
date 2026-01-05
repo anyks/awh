@@ -423,6 +423,22 @@ namespace io {
 	 */
 	#if __FreeBSD__
 		/**
+		 * @brief Структура функций обратного вызова SCTP
+		 *
+		 */
+		typedef struct CallbackSCTP {
+			// Функция обратного вызова для получения информационных собщений SCTP
+			net::sctp::callback::info_t info;
+			// Функция обратного вызова для получения событий SCTP
+			net::sctp::callback::events_t events;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit CallbackSCTP() noexcept :
+			 info(nullptr), events(nullptr) {}
+		} sctp_callback_t;
+		/**
 		 * @brief Структура SCTP-событий
 		 *
 		 */
@@ -435,18 +451,14 @@ namespace io {
 			struct sctp_sndrcvinfo info;
 			// Список типов SCTP-событий для подписки
 			net::sctp::event_types_t events;
-			// Функция обратного вызова для получения информационных собщений SCTP
-			net::sctp::callback::info_t callbackInfo;
-			// Функция обратного вызова для получения событий SCTP
-			net::sctp::callback::events_t callbackEvents;
+			// Объект функций обратного вызова SCTP
+			sctp_callback_t callbacks;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit EndpointSCTP() noexcept :
-			 id(0), flags(0), info{0},
-			 callbackInfo(nullptr),
-			 callbackEvents(nullptr) {}
+			 id(0), flags(0), info{0} {}
 		} sctp_endpoint_t;
 	#endif
 
@@ -4914,13 +4926,13 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-													if(peer->transfer.sctp.callbackInfo != nullptr){
+													if(peer->transfer.sctp.callbacks.info != nullptr){
 														// Объект для хранения информационных метаданных SCTP сообщения
 														net::sctp::minfo_t minfo;
 														// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 														::sctp::info(peer->transfer.sctp.info, minfo);
 														// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-														peer->transfer.sctp.callbackInfo(peer->id, minfo);
+														peer->transfer.sctp.callbacks.info(peer->id, minfo);
 													}
 													// Если мы получили уведомления SCTP
 													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
@@ -5027,13 +5039,13 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
 													// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-													if(peer->transfer.sctp.callbackInfo != nullptr){
+													if(peer->transfer.sctp.callbacks.info != nullptr){
 														// Объект для хранения информационных метаданных SCTP сообщения
 														net::sctp::minfo_t minfo;
 														// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 														::sctp::info(peer->transfer.sctp.info, minfo);
 														// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-														peer->transfer.sctp.callbackInfo(peer->id, minfo);
+														peer->transfer.sctp.callbacks.info(peer->id, minfo);
 													}
 													// Если мы получили уведомления SCTP
 													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
@@ -5338,13 +5350,13 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-														if(client->transfer.sctp.callbackInfo != nullptr){
+														if(client->transfer.sctp.callbacks.info != nullptr){
 															// Объект для хранения информационных метаданных SCTP сообщения
 															net::sctp::minfo_t minfo;
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															client->transfer.sctp.callbackInfo(client->id, minfo);
+															client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
@@ -5453,13 +5465,13 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-														if(client->transfer.sctp.callbackInfo != nullptr){
+														if(client->transfer.sctp.callbacks.info != nullptr){
 															// Объект для хранения информационных метаданных SCTP сообщения
 															net::sctp::minfo_t minfo;
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															client->transfer.sctp.callbackInfo(client->id, minfo);
+															client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
@@ -5589,13 +5601,13 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-														if(client->transfer.sctp.callbackInfo != nullptr){
+														if(client->transfer.sctp.callbacks.info != nullptr){
 															// Объект для хранения информационных метаданных SCTP сообщения
 															net::sctp::minfo_t minfo;
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															client->transfer.sctp.callbackInfo(client->id, minfo);
+															client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
@@ -5715,13 +5727,13 @@ namespace io {
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-														if(client->transfer.sctp.callbackInfo != nullptr){
+														if(client->transfer.sctp.callbacks.info != nullptr){
 															// Объект для хранения информационных метаданных SCTP сообщения
 															net::sctp::minfo_t minfo;
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															client->transfer.sctp.callbackInfo(client->id, minfo);
+															client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
@@ -9269,9 +9281,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9280,9 +9292,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9390,9 +9402,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9401,9 +9413,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9485,9 +9497,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9496,9 +9508,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9535,9 +9547,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9546,9 +9558,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9558,7 +9570,7 @@ namespace sctp {
 							// Выводим информацию о событии завершения SCTP
 							log->print(
 								"SCTP_SHUTDOWN_EVENT: ID=%u",
-								log_t::flag_t::INFO,
+								log_t::flag_t::WARNING,
 								sse->sse_assoc_id
 							);
 						#endif
@@ -9588,9 +9600,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9599,9 +9611,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9648,9 +9660,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9659,9 +9671,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9722,9 +9734,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9733,9 +9745,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9772,9 +9784,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr)
+								if(peer->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9783,9 +9795,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -9850,9 +9862,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbackEvents != nullptr)
+									if(peer->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9861,9 +9873,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbackEvents != nullptr)
+									if(client->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+										client->transfer.sctp.callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -9892,9 +9904,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbackEvents != nullptr)
+									if(peer->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9903,9 +9915,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbackEvents != nullptr)
+									if(client->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+										client->transfer.sctp.callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -9975,9 +9987,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbackEvents != nullptr)
+									if(peer->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9986,9 +9998,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbackEvents != nullptr)
+									if(client->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+										client->transfer.sctp.callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -9998,7 +10010,7 @@ namespace sctp {
 								// Выводим информацию о событии сброса потоков SCTP
 								log->print(
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x, STREAMS=%zu",
-									log_t::flag_t::INFO,
+									log_t::flag_t::WARNING,
 									strres->strreset_assoc_id,
 									strres->strreset_flags, 
 									count
@@ -10017,9 +10029,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbackEvents != nullptr)
+									if(peer->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -10028,9 +10040,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbackEvents != nullptr)
+									if(client->transfer.sctp.callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+										client->transfer.sctp.callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -10040,7 +10052,7 @@ namespace sctp {
 								// Выводим информацию о событии сброса потоков SCTP
 								log->print(
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x",
-									log_t::flag_t::INFO,
+									log_t::flag_t::WARNING,
 									strres->strreset_assoc_id,
 									strres->strreset_flags
 								);
@@ -37679,12 +37691,12 @@ void awh::IO::on(const event::id_t id, [[maybe_unused]] const net::sctp::callbac
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Устанавливаем функцию обратного вызова на получение информационных метаданных SCTP сообщения
-						awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbackInfo = ::move(cb);
+						awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbacks.info = ::move(cb);
 					break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Устанавливаем функцию обратного вызова на получение информационных метаданных SCTP сообщения
-						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbackInfo = ::move(cb);
+						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbacks.info = ::move(cb);
 					break;
 					// Для других типов узлов
 					default: {
@@ -37752,12 +37764,12 @@ void awh::IO::on(const event::id_t id, [[maybe_unused]] const net::sctp::callbac
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Устанавливаем функцию обратного вызова на получение SCTP событий
-						awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbackEvents = ::move(cb);
+						awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbacks.events = ::move(cb);
 					break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Устанавливаем функцию обратного вызова на получение SCTP событий
-						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbackEvents = ::move(cb);
+						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbacks.events = ::move(cb);
 					break;
 					// Для других типов узлов
 					default: {
