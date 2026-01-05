@@ -10775,21 +10775,21 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
-												// Устанавливаем длину структуры
-												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_len = sizeof(struct sockaddr_in);
-												// Устанавливаем длину структуры
-												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = sizeof(struct sockaddr_in);
-												// Устанавливаем протокол интернета
+												// Устанавливаем протокол интернета у клиента
 												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
-												// Устанавливаем протокол интернета
+												// Устанавливаем протокол интернета у сервера
 												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+												// Устанавливаем длину структуры у клиента
+												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_len = client->endpoint.size;
+												// Устанавливаем длину структуры у сервера
+												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
 												// Получаем объект целевой машины
 												net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-												// Устанавливаем произвольный порт для локального подключения
+												// Устанавливаем произвольный порт для локального подключения целевой машины
 												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(target->port);
-												// Устанавливаем порт для локального подключения
+												// Устанавливаем порт для локального подключения целевой машины
 												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
-												// Устанавливаем адрес для удаленного подключения
+												// Устанавливаем адрес для удаленного подключения целевой машины
 												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 												// Если источник сетевого адреса установлен
 												if(client->source != nullptr)
@@ -10859,21 +10859,21 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
-												// Устанавливаем длину структуры у клиента
-												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = sizeof(struct sockaddr_in6);
-												// Устанавливаем длину структуры у сервера
-												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = sizeof(struct sockaddr_in6);
 												// Устанавливаем протокол интернета у клиента
 												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 												// Устанавливаем протокол интернета у сервера
 												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+												// Устанавливаем длину структуры у клиента
+												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = client->endpoint.size;
+												// Устанавливаем длину структуры у сервера
+												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 												// Получаем объект целевой машины
 												net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-												// Устанавливаем произвольный порт для локального подключения
+												// Устанавливаем произвольный порт для локального подключения целевой машины
 												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(target->port);
-												// Устанавливаем порт для локального подключения
+												// Устанавливаем порт для локального подключения целевой машины
 												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
-												// Устанавливаем адрес для удаленного подключения
+												// Устанавливаем адрес для удаленного подключения целевой машины
 												::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 												// Если источник сетевого адреса установлен
 												if(client->source != nullptr)
@@ -11304,7 +11304,11 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 														// Очищаем всю структуру для сервера
 														::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
-														// Устанавливаем протокол интернета
+														// Устанавливаем длину структуры у клиента
+														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_len = client->endpoint.size;
+														// Устанавливаем длину структуры у сервера
+														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
+														// Устанавливаем протокол интернета у клиента
 														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 														// Устанавливаем произвольный порт для локального подключения
 														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
@@ -11316,11 +11320,11 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
 														// Получаем объект целевой машины
 														net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-														// Устанавливаем протокол интернета
+														// Устанавливаем протокол интернета у сервера
 														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-														// Устанавливаем порт для локального подключения
+														// Устанавливаем порт для локального подключения целевой машины
 														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
-														// Устанавливаем адрес для удаленного подключения
+														// Устанавливаем адрес для удаленного подключения целевой машины
 														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 														// Обнуляем серверную структуру
 														::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
@@ -11400,9 +11404,11 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		client->endpoint.size = sizeof(struct sockaddr_in);
 																		// Очищаем всю структуру для клиента
 																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем длину структуры у сервера
+																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
+																		// Устанавливаем протокол интернета у сервера
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-																		// Устанавливаем адрес для удаленного подключения
+																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
@@ -11483,9 +11489,11 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		client->endpoint.size = sizeof(struct sockaddr_in);
 																		// Очищаем всю структуру для клиента
 																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем длину структуры у сервера
+																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
+																		// Устанавливаем протокол интернета у сервера
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-																		// Устанавливаем адрес для удаленного подключения
+																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
@@ -11501,15 +11509,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 																		// Очищаем всю структуру для сервера
 																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+																		// Устанавливаем длину структуры у клиента
+																		::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_len = client->endpoint.size;
+																		// Устанавливаем длину структуры у сервера
+																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
 																		// Получаем объект целевой машины
 																		net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем протокол интернета у клиента
 																		::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем протокол интернета у сервера
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-																		// Устанавливаем произвольный порт для локального подключения
+																		// Устанавливаем произвольный порт для локального подключения у клиента
 																		::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
-																		// Устанавливаем порт для локального подключения
+																		// Устанавливаем порт для локального подключения целевой машины
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
 																		// Если источник сетевого адреса установлен
 																		if(client->source != nullptr)
@@ -11599,13 +11611,17 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
-																// Устанавливаем протокол интернета
+																// Устанавливаем длину структуры у клиента
+																::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_len = client->endpoint.size;
+																// Устанавливаем длину структуры у сервера
+																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
+																// Устанавливаем протокол интернета у клиента
 																::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
-																// Устанавливаем протокол интернета
+																// Устанавливаем протокол интернета у сервера
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-																// Устанавливаем произвольный порт для локального подключения
+																// Устанавливаем произвольный порт для локального подключения у клиента
 																::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
-																// Устанавливаем порт для локального подключения
+																// Устанавливаем порт для локального подключения целевой машины
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(0);
 																// Если источник сетевого адреса установлен
 																if(client->source != nullptr)
@@ -11613,7 +11629,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
 																// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 																else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
-																// Устанавливаем адрес для удаленного подключения
+																// Устанавливаем адрес для удаленного подключения целевой машины
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																client->transfer.actions |= ::action::READ;
@@ -11790,6 +11806,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 														// Очищаем всю структуру для сервера
 														::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+														// Устанавливаем длину структуры у клиента
+														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = client->endpoint.size;
+														// Устанавливаем длину структуры у сервера
+														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 														// Устанавливаем протокол интернета у клиента
 														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 														// Устанавливаем произвольный порт для локального подключения
@@ -11884,9 +11904,11 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																		// Устанавливаем длину структуры у сервера
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 																		// Устанавливаем протокол интернета удаленного сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
-																		// Устанавливаем адрес для удаленного подключения
+																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
@@ -11967,6 +11989,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																		// Устанавливаем длину структуры у сервера
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 																		// Устанавливаем протокол интернета удаленного сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения
@@ -11985,6 +12009,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 																		// Очищаем всю структуру для сервера
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																		// Устанавливаем длину структуры у клиента
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = client->endpoint.size;
+																		// Устанавливаем длину структуры у сервера
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 																		// Получаем объект целевой машины
 																		net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																		// Устанавливаем протокол интернета у клиента
@@ -12001,7 +12029,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
 																		// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 																		else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
-																		// Устанавливаем адрес для удаленного подключения
+																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
@@ -12081,6 +12109,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																// Устанавливаем длину структуры у клиента
+																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = client->endpoint.size;
+																// Устанавливаем длину структуры у сервера
+																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 																// Устанавливаем протокол интернета у клиента
 																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 																// Устанавливаем протокол интернета у сервера
@@ -12097,7 +12129,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
 																// Получаем объект целевой машины
 																net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-																// Устанавливаем адрес для удаленного подключения
+																// Устанавливаем адрес для удаленного подключения целевой машины
 																::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 																// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																client->transfer.actions |= ::action::READ;
@@ -12336,15 +12368,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.server), 0, server->endpoint.size);
-												// Устанавливаем протокол интернета
+												// Устанавливаем длину структуры у клиента
+												::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_len = server->endpoint.size;
+												// Устанавливаем длину структуры у сервера
+												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_len = server->endpoint.size;
+												// Устанавливаем протокол интернета для клиента
 												::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
-												// Устанавливаем протокол интернета
+												// Устанавливаем протокол интернета для сервера
 												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_family = AF_INET;
 												// Получаем объект текущего сервера
 												net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
-												// Устанавливаем порт для локального подключения
+												// Устанавливаем порт для локального подключения целевой машины
 												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
-												// Устанавливаем адрес для удаленного подключения
+												// Устанавливаем адрес для удаленного подключения целевой машины
 												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
@@ -12410,15 +12446,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.server), 0, server->endpoint.size);
-												// Устанавливаем протокол интернета
+												// Устанавливаем длину структуры у клиента
+												::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_len = server->endpoint.size;
+												// Устанавливаем длину структуры у сервера
+												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_len = server->endpoint.size;
+												// Устанавливаем протокол интернета у клиента
 												::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
-												// Устанавливаем протокол интернета
+												// Устанавливаем протокол интернета у сервера
 												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_family = AF_INET6;
 												// Получаем объект текущего сервера
 												net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
-												// Устанавливаем порт для локального подключения
+												// Устанавливаем порт для локального подключения целевой машины
 												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
-												// Устанавливаем адрес для удаленного подключения
+												// Устанавливаем адрес для удаленного подключения целевой машины
 												::memcpy(&::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
@@ -12775,15 +12815,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
 														// Очищаем всю структуру для сервера
 														::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.server), 0, server->endpoint.size);
-														// Устанавливаем протокол интернета
+														// Устанавливаем длину структуры у клиента
+														::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_len = server->endpoint.size;
+														// Устанавливаем длину структуры у сервера
+														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_len = server->endpoint.size;
+														// Устанавливаем протокол интернета у клиента
 														::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
 														// Получаем объект текущего сервера
 														net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
-														// Устанавливаем протокол интернета
+														// Устанавливаем протокол интернета у сервера
 														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_family = AF_INET;
-														// Устанавливаем порт для локального подключения
+														// Устанавливаем порт для локального подключения целевой машины
 														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
-														// Устанавливаем адрес для удаленного подключения
+														// Устанавливаем адрес для удаленного подключения целевой машины
 														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 														// Обнуляем серверную структуру
 														::memset(&(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero), 0, sizeof(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero));
@@ -12947,15 +12991,19 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
 														// Очищаем всю структуру для сервера
 														::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.server), 0, server->endpoint.size);
-														// Устанавливаем протокол интернета
+														// Устанавливаем длину структуры у клиента
+														::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_len = server->endpoint.size;
+														// Устанавливаем длину структуры у сервера
+														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_len = server->endpoint.size;
+														// Устанавливаем протокол интернета у клиента
 														::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
 														// Получаем объект текущего сервера
 														net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
-														// Устанавливаем протокол интернета
+														// Устанавливаем протокол интернета у сервера
 														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_family = AF_INET6;
-														// Устанавливаем порт для локального подключения
+														// Устанавливаем порт для локального подключения целевой машины
 														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
-														// Устанавливаем адрес для удаленного подключения
+														// Устанавливаем адрес для удаленного подключения целевой машины
 														::memcpy(&::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 														// Выполняем бинд на сокет
 														if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
@@ -23422,292 +23470,110 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 								case static_cast <uint8_t> (event::type_t::STREAM):
 								// Если сокет принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства UNIX-доменных сокетов
-										case static_cast <uint8_t> (event::family_t::UDS):
-											// Получаем размер объекта сокета
-											client->endpoint.size = (
-												offsetof(struct sockaddr_un, sun_path) +
-												::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
-											);
-										break;
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Запоминаем размер структуры
-											client->endpoint.size = sizeof(struct sockaddr_in);
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Запоминаем размер структуры
-											client->endpoint.size = sizeof(struct sockaddr_in6);
-										break;
+									// Если сокет является UNIX-сокетом
+									if(client->state.family == event::family_t::UDS){
+										// Получаем размер объекта сокета
+										client->endpoint.size = (
+											offsetof(struct sockaddr_un, sun_path) +
+											::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
+										);
 									}
-									// Если размер структуры сервера установлен
-									if(client->endpoint.size > 0){
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											/**
-											 * Определяем протокол интернета
-											 */
-											switch(static_cast <uint8_t> (client->state.protocol)){
-												// Если протокол интернета установлен как TCP
-												case static_cast <uint8_t> (event::protocol_t::TCP): {
-													// Если подключение к удаленному серверу не выполнено
-													if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
-														// Если ошибка не является ошибкой в процессе подключения
-														if(errno != EINPROGRESS){
-															// Если установлена функция обратного вызова
-															if(client->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																client->callbacks.status(client->id, event::status_t::FAILURE);
-															// Если установлена функция обратного вызова
-															if(client->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-																#endif
-															}
-															// Снимаем флаг ожидания подключения
-															client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-															// Если функция обратного вызова для вывода подключения установлена
-															if(client->callbacks.connect != nullptr)
-																// Вызываем функцию обратного вызова для подключения
-																client->callbacks.connect(client->id, false);
-															// Если установлен режим постоянного подключения
-															if(!(client->state.options & event::options::KEEPALIVE))
-																// Завершаем выполнение функции с ошибкой
-																return result;
-														}
-													}
-												} break;
-												// Если протокол интернета установлен как SCTP
-												case static_cast <uint8_t> (event::protocol_t::SCTP): {
-													// Если подключение к удаленному серверу не выполнено
-													if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->transfer.sctp.id) != 0)){
-														// Если ошибка не является ошибкой в процессе подключения
-														if(errno != EINPROGRESS){
-															// Если установлена функция обратного вызова
-															if(client->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																client->callbacks.status(client->id, event::status_t::FAILURE);
-															// Если установлена функция обратного вызова
-															if(client->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-																#endif
-															}
-															// Снимаем флаг ожидания подключения
-															client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-															// Если функция обратного вызова для вывода подключения установлена
-															if(client->callbacks.connect != nullptr)
-																// Вызываем функцию обратного вызова для подключения
-																client->callbacks.connect(client->id, false);
-															// Если установлен режим постоянного подключения
-															if(!(client->state.options & event::options::KEEPALIVE))
-																// Завершаем выполнение функции с ошибкой
-																return result;
-														}
-													}
-												} break;
+
+									
+
+									// Если подключение к удаленному серверу не выполнено
+									if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->transfer.sctp.id) != 0)){
+
+									// Если подключение к удаленному серверу не выполнено
+									// if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
+										// Если ошибка не является ошибкой в процессе подключения
+										if(errno != EINPROGRESS){
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
 											}
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Если подключение к удаленному серверу не выполнено
-											if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
-												// Если ошибка не является ошибкой в процессе подключения
-												if(errno != EINPROGRESS){
-													// Если установлена функция обратного вызова
-													if(client->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Снимаем флаг ожидания подключения
-													client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-													// Если функция обратного вызова для вывода подключения установлена
-													if(client->callbacks.connect != nullptr)
-														// Вызываем функцию обратного вызова для подключения
-														client->callbacks.connect(client->id, false);
-													// Если установлен режим постоянного подключения
-													if(!(client->state.options & event::options::KEEPALIVE))
-														// Завершаем выполнение функции с ошибкой
-														return result;
-												}
-											}
-										#endif
-									// Если размер структуры сервера не установлен
-									} else {
-										// Если установлена функция обратного вызова
-										if(client->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											client->callbacks.status(client->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Server address structure size is not set";
-										// Если установлена функция обратного вызова
-										if(client->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+											// Снимаем флаг ожидания подключения
+											client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											// Если функция обратного вызова для вывода подключения установлена
+											if(client->callbacks.connect != nullptr)
+												// Вызываем функцию обратного вызова для подключения
+												client->callbacks.connect(client->id, false);
+											// Если установлен режим постоянного подключения
+											if(!(client->state.options & event::options::KEEPALIVE))
+												// Завершаем выполнение функции с ошибкой
+												return result;
 										}
-										// Снимаем флаг ожидания подключения
-										client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 									}
 								} break;
 								// Если сокет принадлежит к типу DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Запоминаем размер структуры
-											client->endpoint.size = sizeof(struct sockaddr_in);
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Запоминаем размер структуры
-											client->endpoint.size = sizeof(struct sockaddr_in6);
-										break;
+									// Если сокет является UNIX-сокетом
+									if(client->state.family == event::family_t::UDS){
+										// Получаем размер объекта сокета
+										client->endpoint.size = (
+											offsetof(struct sockaddr_un, sun_path) +
+											::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
+										);
 									}
-									// Если размер структуры сервера установлен
-									if(client->endpoint.size > 0){
-										// Если подключение к удаленному серверу не выполнено
-										if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
-											// Если ошибка не является ошибкой в процессе подключения
-											if(errno != EINPROGRESS){
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Снимаем флаг ожидания подключения
-												client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-												// Если функция обратного вызова для вывода подключения установлена
-												if(client->callbacks.connect != nullptr)
-													// Вызываем функцию обратного вызова для подключения
-													client->callbacks.connect(client->id, false);
-												// Если установлен режим постоянного подключения
-												if(!(client->state.options & event::options::KEEPALIVE))
-													// Завершаем выполнение функции с ошибкой
-													return result;
+									// Если подключение к удаленному серверу не выполнено
+									if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
+										// Если ошибка не является ошибкой в процессе подключения
+										if(errno != EINPROGRESS){
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
 											}
+											// Снимаем флаг ожидания подключения
+											client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											// Если функция обратного вызова для вывода подключения установлена
+											if(client->callbacks.connect != nullptr)
+												// Вызываем функцию обратного вызова для подключения
+												client->callbacks.connect(client->id, false);
+											// Если установлен режим постоянного подключения
+											if(!(client->state.options & event::options::KEEPALIVE))
+												// Завершаем выполнение функции с ошибкой
+												return result;
 										}
-									// Если размер структуры сервера не установлен
-									} else {
-										// Если установлена функция обратного вызова
-										if(client->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											client->callbacks.status(client->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Server address structure size is not set";
-										// Если установлена функция обратного вызова
-										if(client->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
-										}
-										// Снимаем флаг ожидания подключения
-										client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
 									}
 								} break;
 							}
