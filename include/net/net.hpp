@@ -637,21 +637,40 @@ namespace awh {
 				INCOMING_SSN = 0x04  // Сброс входящих потоков
 			};
 			/**
+			 * Типы изменения потоков SCTP
+			 */
+			enum class stream_change_t : uint8_t {
+				NONE   = 0x00, // Тип изменения отсутствует
+				FAILED = 0x01, // Изменение не выполнено
+				DENIED = 0x02  // Изменение отклонено
+			};
+			/**
 			 * Типы событий SCTP
 			 */
 			enum class event_type_t : uint8_t {
 				NONE                   = 0x00, // Тип события отсутствует
 				DATA_IO                = 0x01, // Присылать уведомление о каждом входящем DATA-пакете
-				REMOTE_ERROR           = 0x02, // Ошибка удалённого узла
-				ASSOC_CHANGE           = 0x03, // Изменение ассоциации
-				SHUTDOWN_EVENT         = 0x04, // Событие завершения работы
-				SENDER_DRY_EVENT       = 0x05, // Событие "отправитель сухой"
-				PEER_ADDR_CHANGE       = 0x06, // Изменение адреса однорангового узла
-				SEND_FAILED_EVENT      = 0x07, // Событие ошибки отправки
-				STREAM_RESET_EVENT     = 0x08, // Сброс потока
-				AUTHENTICATION_EVENT   = 0x09, // Событие аутентификации
-				ADAPTATION_INDICATION  = 0x0A, // Адаптационное указание
-				PARTIAL_DELIVERY_EVENT = 0x0B  // Частичная доставка
+				SEND_FAILED            = 0x02, // Ошибка отправки сообщения
+				REMOTE_ERROR           = 0x03, // Ошибка удалённого узла
+				ASSOC_CHANGE           = 0x04, // Изменение ассоциации
+				SHUTDOWN_EVENT         = 0x05, // Событие завершения работы
+				SENDER_DRY_EVENT       = 0x06, // Событие "отправитель сухой"
+				PEER_ADDR_CHANGE       = 0x07, // Изменение адреса однорангового узла
+				ASSOC_RESET_EVENT      = 0x08, // Сброс ассоциации
+				SEND_FAILED_EVENT      = 0x09, // Событие ошибки отправки
+				STREAM_RESET_EVENT     = 0x0A, // Сброс потока
+				STREAM_CHANGE_EVENT    = 0x0B, // Изменение потоков
+				AUTHENTICATION_EVENT   = 0x0C, // Событие аутентификации
+				ADAPTATION_INDICATION  = 0x0D, // Адаптационное указание
+				PARTIAL_DELIVERY_EVENT = 0x0E  // Частичная доставка
+			};
+			/**
+			 * Типы сброса ассоциации SCTP
+			 */
+			enum class assoc_reset_t : uint8_t {
+				NONE   = 0x00, // Тип сброса отсутствует
+				FAILED = 0x01, // Сброс не выполнен
+				DENIED = 0x02  // Сброс отклонён
 			};
 			/**
 			 * Информация об ассоциации SCTP
@@ -826,10 +845,10 @@ namespace awh {
 				virtual ~EventAdaptation() = default;
 			} event_adaptation_t;
 			/**
-			 * @brief Структура изменения события SCTP
+			 * @brief Структура изменения ассоциации события SCTP
 			 *
 			 */
-			typedef struct EventChange : public event_t {
+			typedef struct EventAssocChange : public event_t {
 				error_t error;              // Ошибка события
 				uint16_t ostreams;          // Максимальное количество исходящих потоков
 				uint16_t instreams;         // Максимальное количество входящих потоков
@@ -839,15 +858,38 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit EventChange() noexcept :
+				explicit EventAssocChange() noexcept :
 				 ostreams(0), instreams(0),
 				 state(assoc_state_t::NONE) {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				virtual ~EventChange() = default;
-			} event_change_t;
+				virtual ~EventAssocChange() = default;
+			} event_assoc_change_t;
+			/**
+			 * @brief Структура сброса ассоциации SCTP
+			 *
+			 */
+			typedef struct EventAssocReset : public event_t {
+				// Последний TSN (Transmission Sequence Number), подтверждённый вами (вы получили его от пира)
+				uint32_t localTSN;
+				// Последний TSN (Transmission Sequence Number), подтверждённый пиром (он получил его от вас)
+				uint32_t remoteTSN;
+				// Флаги сброса ассоциации
+				unordered_set <assoc_reset_t> flags;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventAssocReset() noexcept :
+				 localTSN(0), remoteTSN(0) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventAssocReset() = default;
+			} event_assoc_reset_t;
 			/**
 			 * @brief Структура ошибки удалённого узла SCTP
 			 *
@@ -963,6 +1005,29 @@ namespace awh {
 				 */
 				virtual ~EventStreamReset() = default;
 			} event_stream_reset_t;
+			/**
+			 * @brief Структура изменения потоков SCTP
+			 *
+			 */
+			typedef struct EventStreamChange : public event_t {
+				// Максимальное количество исходящих потоков
+				uint16_t ostreams;
+				// Максимальное количество входящих потоков
+				uint16_t instreams;
+				// Флаги сброса ассоциации
+				unordered_set <stream_change_t> flags;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit EventStreamChange() noexcept :
+				 ostreams(0), instreams(0) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~EventStreamChange() = default;
+			} event_stream_change_t;
 			/**
 			 * @brief пространство имён работы с обратными вызовами
 			 *

@@ -9154,9 +9154,9 @@ namespace sctp {
 						// Получаем структуру изменения ассоциации SCTP
 						const struct sctp_assoc_change * sac = reinterpret_cast <const struct sctp_assoc_change *> (buffer);
 						// Создаём объект события изменения ассоциации SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_change_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_assoc_change_t> ();
 						// Извлекаем объект данных события
-						net::sctp::event_change_t * association = awh_cast <net::sctp::event_change_t *> (event.get());
+						net::sctp::event_assoc_change_t * association = awh_cast <net::sctp::event_assoc_change_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
 						association->id = sac->sac_assoc_id;
 						// Устанавливаем тип ассоциации SCTP
@@ -9507,6 +9507,71 @@ namespace sctp {
 							);
 						#endif
 					} break;
+					// Если событие является ошибкой отправки SCTP
+					case SCTP_SEND_FAILED: {
+						// Получаем структуру ошибки отправки SCTP
+						const struct sctp_send_failed * ssf = reinterpret_cast <const struct sctp_send_failed *> (buffer);
+						// Создаём объект события ошибки отправки SCTP
+						net::sctp_event_t event = make_unique <net::sctp::event_send_failed_t> ();
+						// Извлекаем объект данных события
+						net::sctp::event_send_failed_t * association = awh_cast <net::sctp::event_send_failed_t *> (event.get());
+						// Устанавливаем идентификатор ассоциации SCTP
+						association->id = ssf->ssf_assoc_id;
+						// Устанавливаем тип события SCTP
+						association->type = net::sctp::event_type_t::SEND_FAILED;
+						// Устанавливаем код ошибки ассоциации SCTP
+						association->error.code = ssf->ssf_error;
+						// Устанавливаем текст ошибки ассоциации SCTP
+						association->error.message = ::strerror(static_cast <int32_t> (ssf->ssf_error));
+						// Вычисляем смещение данных ошибки
+						const size_t offset = offsetof(struct sctp_send_failed, ssf_data);
+						// Проверяем целостность уведомления
+						if(ssf->ssf_length > offset){
+							// Вычисляем длину дополнительных данных ошибки
+							const size_t length = (ssf->ssf_length - offset);
+							// Копируем дополнительные данные события
+							association->data.assign(ssf->ssf_data, ssf->ssf_data + length);
+						}
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+							} break;
+						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим информацию о событии ошибки отправки SCTP
+							log->print(
+								"SCTP_SEND_FAILED: ID=%u, ERROR=0x%04x",
+								log_t::flag_t::CRITICAL,
+								ssf->ssf_assoc_id,
+								ssf->ssf_error
+							);
+						#endif
+					} break;
 					// Если событие является завершением SCTP
 					case SCTP_SHUTDOWN_EVENT: {
 						// Получаем структуру завершения SCTP
@@ -9744,177 +9809,6 @@ namespace sctp {
 							);
 						#endif
 					} break;
-					// Если событие является исчерпанием отправителя SCTP
-					case SCTP_SENDER_DRY_EVENT: {
-						// Получаем структуру исчерпания отправителя SCTP
-						const struct sctp_sender_dry_event * dry = reinterpret_cast <const struct sctp_sender_dry_event *> (buffer);
-						// Создаём объект события завершения работы удалённого узла SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_t> ();
-						// Устанавливаем идентификатор ассоциации SCTP
-						event->id = dry->sender_dry_assoc_id;
-						// Устанавливаем тип события SCTP
-						event->type = net::sctp::event_type_t::SENDER_DRY_EVENT;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
-							} break;
-						}
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим информацию о событии исчерпания отправителя SCTP
-							log->print(
-								"SCTP_SENDER_DRY_EVENT: ID=%u",
-								log_t::flag_t::WARNING,
-								dry->sender_dry_assoc_id
-							);
-						#endif
-					} break;
-					// Если событие является ошибкой отправки SCTP
-					case SCTP_SEND_FAILED_EVENT: {
-						// Получаем структуру ошибки отправки SCTP
-						const struct sctp_send_failed_event * ssf = reinterpret_cast <const struct sctp_send_failed_event *> (buffer);
-						// Создаём объект события ошибки отправки SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_send_failed_t> ();
-						// Извлекаем объект данных события
-						net::sctp::event_send_failed_t * association = awh_cast <net::sctp::event_send_failed_t *> (event.get());
-						// Устанавливаем идентификатор ассоциации SCTP
-						association->id = ssf->ssfe_assoc_id;
-						// Устанавливаем тип события SCTP
-						association->type = net::sctp::event_type_t::SEND_FAILED_EVENT;
-						// Устанавливаем код ошибки ассоциации SCTP
-						association->error.code = ssf->ssfe_error;
-						// Устанавливаем текст ошибки ассоциации SCTP
-						association->error.message = ::strerror(static_cast <int32_t> (ssf->ssfe_error));
-						/**
-						 * Обрабатываем флаги ошибки отправки SCTP
-						 */
-						switch(ssf->ssfe_flags){
-							// Если сообщение было отправлено, но не подтверждено
-							case SCTP_DATA_SENT:
-								// Устанавливаем статус отправки сообщения SCTP
-								association->status = net::sctp::send_failed_t::SENT;
-							break;
-							// Если сообщение никогда не было отправлено
-							case SCTP_DATA_UNSENT:
-								// Устанавливаем статус отправки сообщения SCTP
-								association->status = net::sctp::send_failed_t::UNSENT;
-							break;
-						}
-						// Вычисляем смещение данных ошибки
-						const size_t offset = offsetof(struct sctp_send_failed_event, ssfe_data);
-						// Проверяем целостность уведомления
-						if(ssf->ssfe_length > offset){
-							// Вычисляем длину дополнительных данных ошибки
-							const size_t length = (ssf->ssfe_length - offset);
-							// Копируем дополнительные данные события
-							association->data.assign(ssf->ssfe_data, ssf->ssfe_data + length);
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является одноранговым узлом
-								case static_cast <uint8_t> (event::node_t::PEER): {
-									// Создаём охранника узла события
-									::local::guard_t guard(node);
-									// Получаем текущее значение объекта однорангового узла
-									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbacks.events != nullptr)
-										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
-								} break;
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT): {
-									// Создаём охранника узла события
-									::local::guard_t guard(node);
-									// Получаем текущее значение объекта клиента
-									::io::client_t * client = awh_cast <::io::client_t *> (node);
-									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbacks.events != nullptr)
-										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbacks.events(client->id, ::move(event));
-								} break;
-							}
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим информацию о событии ошибки отправки SCTP
-								log->print(
-									"SCTP_SEND_FAILED_EVENT: ID=%u, LENGTH=%zu, ERROR=%d",
-									log_t::flag_t::CRITICAL,
-									ssf->ssfe_assoc_id,
-									length,
-									ssf->ssfe_error
-								);
-							#endif
-						// Если дополнительных данных в событии ошибки отправки SCTP нет
-						} else {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является одноранговым узлом
-								case static_cast <uint8_t> (event::node_t::PEER): {
-									// Создаём охранника узла события
-									::local::guard_t guard(node);
-									// Получаем текущее значение объекта однорангового узла
-									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbacks.events != nullptr)
-										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
-								} break;
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT): {
-									// Создаём охранника узла события
-									::local::guard_t guard(node);
-									// Получаем текущее значение объекта клиента
-									::io::client_t * client = awh_cast <::io::client_t *> (node);
-									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbacks.events != nullptr)
-										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbacks.events(client->id, ::move(event));
-								} break;
-							}
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
-								log->print(
-									"SCTP_SEND_FAILED_EVENT: ID=%u, ERROR=%d",
-									log_t::flag_t::CRITICAL,
-									ssf->ssfe_assoc_id,
-									ssf->ssfe_error
-								);
-							#endif
-						}
-					} break;
 					// Если событие является сбросом потоков SCTP
 					case SCTP_STREAM_RESET_EVENT: {
 						// Получаем структуру сброса потоков SCTP
@@ -10036,6 +9930,322 @@ namespace sctp {
 									log_t::flag_t::WARNING,
 									strres->strreset_assoc_id,
 									strres->strreset_flags
+								);
+							#endif
+						}
+					} break;
+					// Если событие является исчерпанием отправителя SCTP
+					case SCTP_SENDER_DRY_EVENT: {
+						// Получаем структуру исчерпания отправителя SCTP
+						const struct sctp_sender_dry_event * dry = reinterpret_cast <const struct sctp_sender_dry_event *> (buffer);
+						// Создаём объект события завершения работы удалённого узла SCTP
+						net::sctp_event_t event = make_unique <net::sctp::event_t> ();
+						// Устанавливаем идентификатор ассоциации SCTP
+						event->id = dry->sender_dry_assoc_id;
+						// Устанавливаем тип события SCTP
+						event->type = net::sctp::event_type_t::SENDER_DRY_EVENT;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+							} break;
+						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим информацию о событии исчерпания отправителя SCTP
+							log->print(
+								"SCTP_SENDER_DRY_EVENT: ID=%u",
+								log_t::flag_t::WARNING,
+								dry->sender_dry_assoc_id
+							);
+						#endif
+					} break;
+					// Если событие является остановкой уведомлений SCTP
+					case SCTP_NOTIFICATIONS_STOPPED_EVENT: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим информацию о остановке уведомлений SCTP
+							log->print(
+								"SCTP notifications stopped event received",
+								log_t::flag_t::WARNING
+							);
+						#endif
+					} break;
+					// Если событие является сбросом ассоциации SCTP
+					case SCTP_ASSOC_RESET_EVENT: {
+						// Получаем структуру сброса ассоциации SCTP
+						const struct sctp_assoc_reset_event * sare = reinterpret_cast <const struct sctp_assoc_reset_event *> (buffer);
+						// Создаём объект события сброса ассоциации SCTP
+						net::sctp_event_t event = make_unique <net::sctp::event_assoc_reset_t> ();
+						// Извлекаем объект данных события
+						net::sctp::event_assoc_reset_t * association = awh_cast <net::sctp::event_assoc_reset_t *> (event.get());
+						// Устанавливаем идентификатор ассоциации SCTP
+						association->id = sare->assocreset_assoc_id;
+						// Устанавливаем тип события SCTP
+						association->type = net::sctp::event_type_t::ASSOC_RESET_EVENT;
+						// Устанавливаем локальный TSN ассоциации SCTP
+						association->localTSN = sare->assocreset_local_tsn;
+						// Устанавливаем удалённый TSN ассоциации SCTP
+						association->remoteTSN = sare->assocreset_remote_tsn;
+						// Если установлен флаг неудачного сброса ассоциации SCTP
+						if(sare->assocreset_flags & SCTP_ASSOC_RESET_FAILED)
+							// Добавляем флаг неудачного сброса ассоциации
+							association->flags.emplace(net::sctp::assoc_reset_t::FAILED);
+						// Если установлен флаг сброса ассоциации SCTP
+						if(sare->assocreset_flags & SCTP_ASSOC_RESET_DENIED)
+							// Добавляем флаг сброса ассоциации SCTP
+							association->flags.emplace(net::sctp::assoc_reset_t::DENIED);
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+							} break;
+						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим информацию о событии исчерпания отправителя SCTP
+							log->print(
+								"SCTP_ASSOC_RESET_EVENT: ID=%u, LOCAL TSN=%u, REMOTE TSN=%u, FLAGS=0x%08x",
+								log_t::flag_t::WARNING,
+								sare->assocreset_assoc_id,
+								sare->assocreset_local_tsn,
+								sare->assocreset_remote_tsn,
+								sare->assocreset_flags
+							);
+						#endif
+					} break;
+					// Если событие является изменением потоков SCTP
+					case SCTP_STREAM_CHANGE_EVENT: {
+						// Получаем структуру изменения потоков SCTP
+						const struct sctp_stream_change_event * ssce = reinterpret_cast <const struct sctp_stream_change_event *> (buffer);
+						// Создаём объект события изменения потоков SCTP
+						net::sctp_event_t event = make_unique <net::sctp::event_stream_change_t> ();
+						// Извлекаем объект данных события
+						net::sctp::event_stream_change_t * association = awh_cast <net::sctp::event_stream_change_t *> (event.get());
+						// Устанавливаем идентификатор ассоциации SCTP
+						association->id = ssce->strchange_assoc_id;
+						// Устанавливаем тип события SCTP
+						association->type = net::sctp::event_type_t::STREAM_CHANGE_EVENT;
+						// Устанавливаем количество входящих потоков SCTP
+						association->instreams = ssce->strchange_instrms;
+						// Устанавливаем количество исходящих потоков SCTP
+						association->outstreams = ssce->strchange_outstrms;
+						// Если установлен флаг неудачного изменения потоков SCTP
+						if(ssce->strchange_flags & SCTP_STREAM_CHANGE_FAILED)
+							// Добавляем флаг неудачного изменения потоков
+							association->flags.emplace(net::sctp::stream_change_t::FAILED);
+						// Если установлен флаг отклонения изменения потоков SCTP
+						if(ssce->strchange_flags & SCTP_STREAM_CHANGE_DENIED)
+							// Добавляем флаг отклонения изменения потоков SCTP
+							association->flags.emplace(net::sctp::stream_change_t::DENIED);
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbacks.events != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+							} break;
+						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим информацию о событии исчерпания отправителя SCTP
+							log->print(
+								"SCTP_STREAM_CHANGE_EVENT: ID=%u, OUT=%u, INPUT=%u, FLAGS=0x%08x",
+								log_t::flag_t::INFO,
+								ssce->strchange_assoc_id,
+								ssce->strchange_instrms,
+								ssce->strchange_outstrms,
+								ssce->strchange_flags
+							);
+						#endif
+					} break;
+					// Если событие является ошибкой отправки SCTP
+					case SCTP_SEND_FAILED_EVENT: {
+						// Получаем структуру ошибки отправки SCTP
+						const struct sctp_send_failed_event * ssf = reinterpret_cast <const struct sctp_send_failed_event *> (buffer);
+						// Создаём объект события ошибки отправки SCTP
+						net::sctp_event_t event = make_unique <net::sctp::event_send_failed_t> ();
+						// Извлекаем объект данных события
+						net::sctp::event_send_failed_t * association = awh_cast <net::sctp::event_send_failed_t *> (event.get());
+						// Устанавливаем идентификатор ассоциации SCTP
+						association->id = ssf->ssfe_assoc_id;
+						// Устанавливаем тип события SCTP
+						association->type = net::sctp::event_type_t::SEND_FAILED_EVENT;
+						// Устанавливаем код ошибки ассоциации SCTP
+						association->error.code = ssf->ssfe_error;
+						// Устанавливаем текст ошибки ассоциации SCTP
+						association->error.message = ::strerror(static_cast <int32_t> (ssf->ssfe_error));
+						/**
+						 * Обрабатываем флаги ошибки отправки SCTP
+						 */
+						switch(ssf->ssfe_flags){
+							// Если сообщение было отправлено, но не подтверждено
+							case SCTP_DATA_SENT:
+								// Устанавливаем статус отправки сообщения SCTP
+								association->status = net::sctp::send_failed_t::SENT;
+							break;
+							// Если сообщение никогда не было отправлено
+							case SCTP_DATA_UNSENT:
+								// Устанавливаем статус отправки сообщения SCTP
+								association->status = net::sctp::send_failed_t::UNSENT;
+							break;
+						}
+						// Вычисляем смещение данных ошибки
+						const size_t offset = offsetof(struct sctp_send_failed_event, ssfe_data);
+						// Проверяем целостность уведомления
+						if(ssf->ssfe_length > offset){
+							// Вычисляем длину дополнительных данных ошибки
+							const size_t length = (ssf->ssfe_length - offset);
+							// Копируем дополнительные данные события
+							association->data.assign(ssf->ssfe_data, ssf->ssfe_data + length);
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта однорангового узла
+									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(peer->transfer.sctp.callbacks.events != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+								} break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта клиента
+									::io::client_t * client = awh_cast <::io::client_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(client->transfer.sctp.callbacks.events != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										client->transfer.sctp.callbacks.events(client->id, ::move(event));
+								} break;
+							}
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим информацию о событии ошибки отправки SCTP
+								log->print(
+									"SCTP_SEND_FAILED_EVENT: ID=%u, LENGTH=%zu, ERROR=%d",
+									log_t::flag_t::CRITICAL,
+									ssf->ssfe_assoc_id,
+									length,
+									ssf->ssfe_error
+								);
+							#endif
+						// Если дополнительных данных в событии ошибки отправки SCTP нет
+						} else {
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта однорангового узла
+									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(peer->transfer.sctp.callbacks.events != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+								} break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта клиента
+									::io::client_t * client = awh_cast <::io::client_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(client->transfer.sctp.callbacks.events != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										client->transfer.sctp.callbacks.events(client->id, ::move(event));
+								} break;
+							}
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
+								log->print(
+									"SCTP_SEND_FAILED_EVENT: ID=%u, ERROR=%d",
+									log_t::flag_t::CRITICAL,
+									ssf->ssfe_assoc_id,
+									ssf->ssfe_error
 								);
 							#endif
 						}
