@@ -15,6 +15,8 @@
 #include <iostream>
 #include <cinttypes>
 
+#include <netinet/in.h>
+
 /**
  * Подключаем заголовочный файл проекта
  */
