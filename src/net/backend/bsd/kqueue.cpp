@@ -10077,7 +10077,7 @@ namespace sctp {
 						// Устанавливаем количество входящих потоков SCTP
 						association->instreams = ssce->strchange_instrms;
 						// Устанавливаем количество исходящих потоков SCTP
-						association->outstreams = ssce->strchange_outstrms;
+						association->ostreams = ssce->strchange_outstrms;
 						// Если установлен флаг неудачного изменения потоков SCTP
 						if(ssce->strchange_flags & SCTP_STREAM_CHANGE_FAILED)
 							// Добавляем флаг неудачного изменения потоков
