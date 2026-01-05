@@ -330,10 +330,6 @@ namespace awh {
 			 */
 			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
 			/**
-			 * Функция обратного вызова срабатывающая при принятии первых событий однорангового узла-источника
-			 */
-			using origin_t = std::function <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)>;
-			/**
 			 * Функция обратного вызова срабатывающая при изменении каталога
 			 */
 			using change_t = std::function <void (const event::id_t, const action_t, const vnode_t, const std::string &)>;

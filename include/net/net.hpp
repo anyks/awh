@@ -366,15 +366,12 @@ namespace awh {
 			event::callback::event_t event;
 			// Обратный вызов при принятии события
 			event::callback::accept_t accept;
-			// Обратный вызов при принятии первых событий однорангового узла-источника
-			event::callback::origin_t origin;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit ServerCallbacks() noexcept :
-			 write(nullptr), event(nullptr),
-			 accept(nullptr), origin(nullptr) {}
+			 write(nullptr), event(nullptr), accept(nullptr) {}
 		} server_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов клиента
