@@ -22539,39 +22539,47 @@ awh::net::sctp::status_t awh::IO::sctpStatus([[maybe_unused]] const event::id_t 
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP){
-							// Если тип однорангового узла установлен как SEQPACKET
-							if(peer->state.type == event::type_t::SEQPACKET){
-								// Устанавливаем идентификатор ассоциации SCTP
-								result.id = peer->transfer.sctp.id;
-								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpStatus(peer->transfer.fd, result);
-							// Если тип однорангового узла не установлен как SEQPACKET
-							} else {
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									peer->callbacks.status(peer->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "A status is only possible for the SEQPACKET socket type";
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова для вывода события установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (peer->state.type)){
+								// Если сокет принадлежит к типу STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM):
+								// Если сокет принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									// Устанавливаем идентификатор ассоциации SCTP
+									result.id = peer->transfer.sctp.id;
+									// Инициализируем рукопожатие SCTP для клиента
+									this->_eth.sctpStatus(peer->transfer.fd, result);
+								} break;
+								// Если сокет принадлежит к другому типу
+								default: {
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										peer->callbacks.status(peer->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "A status is only possible for the SEQPACKET socket type";
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							}
 						// Если протокол интернета не установлен как SCTP
@@ -22610,39 +22618,47 @@ awh::net::sctp::status_t awh::IO::sctpStatus([[maybe_unused]] const event::id_t 
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP){
-							// Если тип однорангового узла установлен как SEQPACKET
-							if(client->state.type == event::type_t::SEQPACKET){
-								// Устанавливаем идентификатор ассоциации SCTP
-								result.id = client->transfer.sctp.id;
-								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpStatus(client->transfer.fd, result);
-							// Если тип однорангового узла не установлен как SEQPACKET
-							} else {
-								// Если установлена функция обратного вызова
-								if(client->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									client->callbacks.status(client->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "A status is only possible for the SEQPACKET socket type";
-								// Если установлена функция обратного вызова
-								if(client->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова для вывода события установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (client->state.type)){
+								// Если сокет принадлежит к типу STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM):
+								// Если сокет принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									// Устанавливаем идентификатор ассоциации SCTP
+									result.id = client->transfer.sctp.id;
+									// Инициализируем рукопожатие SCTP для клиента
+									this->_eth.sctpStatus(client->transfer.fd, result);
+								} break;
+								// Если сокет принадлежит к другому типу
+								default: {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "A status is only possible for the SEQPACKET socket type";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
 							}
 						// Если протокол интернета не установлен как SCTP
