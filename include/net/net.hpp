@@ -642,6 +642,22 @@ namespace awh {
 				DENIED = 0x02  // Изменение отклонено
 			};
 			/**
+			 * Статусы состояния сокета SCTP
+			 */
+			enum class state_status_t : uint8_t {
+				NONE              = 0x00, // Статус отсутствует
+				BOUND             = 0x01, // Вызван bind(), но ассоциация не установлена
+				CLOSED            = 0x02, // Ассоциация не существует (сокет создан, но не привязан/не использован)
+				LISTEN            = 0x03, // Сервер вызвал listen() и ждёт входящих INIT (только для STREAM)
+				ESTABLISHED       = 0x04, // Ассоциация установлена, можно передавать данные
+				COOKIE_WAIT       = 0x05, // Клиент отправил INIT, ждёт INIT-ACK
+				COOKIE_ECHOED     = 0x06, // Клиент получил INIT-ACK, отправил COOKIE-ECHO, ждёт COOKIE-ACK
+				SHUTDOWN_SENT     = 0x07, // Отправлен SHUTDOWN, ждём SHUTDOWN-ACK
+				SHUTDOWN_PENDING  = 0x08, // Приложение вызвало shutdown(), но есть неподтверждённые данные
+				SHUTDOWN_RECEIVED = 0x09, // Получен SHUTDOWN от пираа, ждём
+				SHUTDOWN_ACK_SENT = 0x0A  // Отправлен SHUTDOWN-ACK, ждём SHUTDOWN-COMPLETE
+			};
+			/**
 			 * Типы событий SCTP
 			 */
 			enum class event_type_t : uint8_t {
@@ -770,23 +786,24 @@ namespace awh {
 			 *
 			 */
 			typedef struct Status {
-				uint32_t id;       // ID ассоциации
-				int32_t state;      // Текущее состояние ассоциации
-				uint32_t ratewind;  // Размер окна скорости передачи
-				uint16_t penddata;  // Количество ожидающих данных
-				uint16_t ostreams;  // Количество исходящих потоков
-				uint16_t istreams;  // Количество входящих потоков
-				uint16_t unackdata; // Количество неподтверждённых DATA чанков
-				uint32_t fragpoint; // Точка фрагментации в байтах
+				uint32_t id;          // ID ассоциации
+				uint32_t ratewind;    // Размер окна скорости передачи
+				uint16_t penddata;    // Количество ожидающих данных
+				uint16_t ostreams;    // Количество исходящих потоков
+				uint16_t istreams;    // Количество входящих потоков
+				uint16_t unackdata;   // Количество неподтверждённых DATA чанков
+				uint32_t fragpoint;   // Точка фрагментации в байтах
+				state_status_t state; // Текущее состояние ассоциации
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				explicit Status() noexcept :
-				 id(0), state(0),
+				 id(0),
 				 ratewind(0), penddata(0),
 				 ostreams(0), istreams(0),
-				 unackdata(0), fragpoint(0) {}
+				 unackdata(0), fragpoint(0),
+				 state(state_status_t::NONE) {}
 			} __attribute__((packed)) status_t;
 			/**
 			 * @brief Структура ошибки события SCTP

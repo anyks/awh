@@ -1571,7 +1571,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим статус SCTP-сокета
 					cout << " SCTP Status: " << endl;
 					cout << "  - ID: " << status.id << endl;
-					cout << "  - State: " << status.state << endl;
+					cout << "  - State: " << (u_short) status.state << endl;
 					cout << "  - Outbound Streams: " << status.ostreams << endl;
 					cout << "  - Inbound Streams: " << status.istreams << endl;
 					cout << "  - Fragmentation Point: " << status.fragpoint << endl;

@@ -22559,7 +22559,7 @@ awh::net::sctp::status_t awh::IO::sctpStatus([[maybe_unused]] const event::id_t 
 										// Вызываем функцию обратного вызова об ошибке отказа
 										peer->callbacks.status(peer->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = "A status is only possible for the SEQPACKET socket type";
+									const string error = "A status is only possible for the STREAM or SEQPACKET socket type";
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -22638,7 +22638,7 @@ awh::net::sctp::status_t awh::IO::sctpStatus([[maybe_unused]] const event::id_t 
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = "A status is only possible for the SEQPACKET socket type";
+									const string error = "A status is only possible for the STREAM or SEQPACKET socket type";
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события

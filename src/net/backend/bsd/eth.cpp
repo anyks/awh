@@ -1772,8 +1772,6 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 					} else {
 						// Извлекаем идентификатор ассоциации SCTP сокета
 						status.id = data.sstat_assoc_id;
-						// Извлекаем состояние SCTP сокета
-						status.state = data.sstat_state;
 						// Извлекаем количество входящих окон SCTP сокета
 						status.ratewind = data.sstat_rwnd;
 						// Извлекаем количество отправленных SCTP пакетов
@@ -1786,6 +1784,61 @@ bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[mayb
 						status.ostreams = data.sstat_outstrms;
 						// Извлекаем точку фрагментации SCTP сокета
 						status.fragpoint = data.sstat_fragmentation_point;
+						/**
+						 * Обрабатываем состояние SCTP сокета
+						 */
+						switch(data.sstat_state){
+							// Если состояние SCTP сокета - привязан
+							case SCTP_BOUND:
+								// Устанавливаем состояние SCTP сокета - привязан
+								status.state = net::sctp::state_status_t::BOUND;
+							break;
+							// Если состояние SCTP сокета - закрытие
+							case SCTP_CLOSED:
+								// Устанавливаем состояние SCTP сокета - закрыт
+								status.state = net::sctp::state_status_t::CLOSED;
+							break;
+							// Если состояние SCTP сокета - прослушивание
+							case SCTP_LISTEN:
+								// Устанавливаем состояние SCTP сокета - прослушивание
+								status.state = net::sctp::state_status_t::LISTEN;
+							break;
+							// Если состояние SCTP сокета - установлено
+							case SCTP_ESTABLISHED:
+								// Устанавливаем состояние SCTP сокета - установлено
+								status.state = net::sctp::state_status_t::ESTABLISHED;
+							break;
+							// Если состояние SCTP сокета - в процессе установления
+							case SCTP_COOKIE_WAIT:
+								// Устанавливаем состояние SCTP сокета - в процессе установления
+								status.state = net::sctp::state_status_t::COOKIE_WAIT;
+							break;
+							// Если состояние SCTP сокета - ожидание подтверждения cookie
+							case SCTP_COOKIE_ECHOED:
+								// Устанавливаем состояние SCTP сокета - ожидание подтверждения cookie
+								status.state = net::sctp::state_status_t::COOKIE_ECHOED;
+							break;
+							// Если состояние SCTP сокета - в процессе завершения
+							case SCTP_SHUTDOWN_SENT:
+								// Устанавливаем состояние SCTP сокета - в процессе завершения
+								status.state = net::sctp::state_status_t::SHUTDOWN_SENT;
+							break;
+							// Если состояние SCTP сокета - завершение
+							case SCTP_SHUTDOWN_PENDING:
+								// Устанавливаем состояние SCTP сокета - завершение
+								status.state = net::sctp::state_status_t::SHUTDOWN_PENDING;
+							break;
+							// Если состояние SCTP сокета - ожидание завершения
+							case SCTP_SHUTDOWN_RECEIVED:
+								// Устанавливаем состояние SCTP сокета - ожидание завершения
+								status.state = net::sctp::state_status_t::SHUTDOWN_RECEIVED;
+							break;
+							// Если состояние SCTP сокета - ожидание завершения
+							case SCTP_SHUTDOWN_ACK_SENT:
+								// Устанавливаем состояние SCTP сокета - ожидание завершения
+								status.state = net::sctp::state_status_t::SHUTDOWN_ACK_SENT;
+							break;
+						}
 					}
 				} break;
 			}
