@@ -470,7 +470,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Инициализируем сообщения SCTP
 				io.sctpInitMessages(eid, initmsg);
 				// Если прослушивание события успешно
-				if(io.listen(eid, 100, true)){
+				// if(io.listen(eid, 100, true)){
 					// Выполняем запуск события
 					if(io.launch(eid)){
 						// Выводим сообщение об успешном запуске события
@@ -481,7 +481,7 @@ int32_t main(int32_t argc, char * argv[]){
 						while(io.poll());
 					// Выводим сообщение об ошибке запуска события
 					} else cout << " Ошибка запуска события!" << endl;
-				}
+				// }
 			}
 		// Если адрес не установлен
 		} else cout << " Ошибка установки адреса события!" << endl;

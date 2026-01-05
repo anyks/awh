@@ -4269,16 +4269,15 @@ namespace io {
 														// Если идентификатор события для передачи данных не установлен
 														if(ipc->transfer.dest == 0){
 															// Если функция обратного вызова для вывода прочитанных данных установлена
-															if(ipc->callbacks.read != nullptr){
+															if(ipc->callbacks.read != nullptr)
 																// Вызываем функцию обратного вызова для вывода полученных данных
 																ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-																// Если дескриптор сокета стал недействительным
-																if(ipc->transfer.fd == net::invalid_socket_t)
-																	// Формируем отрицательный результат
-																	return false;
-															}
 														// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 														} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+														// Если дескриптор сокета стал недействительным
+														if(ipc->transfer.fd == net::invalid_socket_t)
+															// Формируем отрицательный результат
+															return false;
 													// Если произошёл дисконнект
 													} else {
 														// Выполняем обработку закрытия подключения
@@ -4451,16 +4450,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(ipc->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(ipc->callbacks.read != nullptr){
+													if(ipc->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(ipc->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(ipc->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -4759,16 +4757,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(peer->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(peer->callbacks.read != nullptr){
+													if(peer->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(peer->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(peer->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -4826,16 +4823,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(peer->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(peer->callbacks.read != nullptr){
+												if(peer->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(peer->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным
+											if(peer->transfer.fd == net::invalid_socket_t)
+												// Формируем отрицательный результат
+												return false;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4950,16 +4946,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(peer->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(peer->callbacks.read != nullptr){
+												if(peer->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(peer->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным
+											if(peer->transfer.fd == net::invalid_socket_t)
+												// Формируем отрицательный результат
+												return false;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5063,16 +5058,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(peer->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(peer->callbacks.read != nullptr){
+												if(peer->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(peer->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным
+											if(peer->transfer.fd == net::invalid_socket_t)
+												// Формируем отрицательный результат
+												return false;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5179,16 +5173,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -5246,16 +5239,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr){
+												if(client->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным
+											if(client->transfer.fd == net::invalid_socket_t)
+												// Формируем отрицательный результат
+												return false;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5374,16 +5366,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -5489,16 +5480,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -5625,16 +5615,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -5751,16 +5740,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -5834,16 +5822,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr){
+												if(client->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным
+											if(client->transfer.fd == net::invalid_socket_t)
+												// Формируем отрицательный результат
+												return false;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5905,16 +5892,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(client->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(client->callbacks.read != nullptr){
+												if(client->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным
+											if(client->transfer.fd == net::invalid_socket_t)
+												// Формируем отрицательный результат
+												return false;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -5984,16 +5970,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -6050,16 +6035,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -6131,16 +6115,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -6202,16 +6185,15 @@ namespace io {
 												// Если идентификатор события для передачи данных не установлен
 												if(client->transfer.dest == 0){
 													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(client->callbacks.read != nullptr){
+													if(client->callbacks.read != nullptr)
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Формируем отрицательный результат
-															return false;
-													}
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												// Если дескриптор сокета стал недействительным
+												if(client->transfer.fd == net::invalid_socket_t)
+													// Формируем отрицательный результат
+													return false;
 											// Если произошёл дисконнект
 											} else {
 												// Выполняем обработку закрытия подключения
@@ -6592,16 +6574,15 @@ namespace io {
 											// Если идентификатор события для передачи данных не установлен
 											if(i->second->transfer.dest == 0){
 												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(i->second->callbacks.read != nullptr){
+												if(i->second->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
-													if((i->second->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
-														// Формируем отрицательный результат
-														return false;
-												}
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (bytes));
+											// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
+											if((i->second->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
+												// Формируем отрицательный результат
+												return false;
 											// Если сокет является неблокирующим
 											if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
 												// Если необходимо установить таймаут на чтение данных
