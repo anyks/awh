@@ -758,7 +758,7 @@ namespace awh {
 				// Максимальное количество исходящих потоков
 				uint16_t ostreams;
 				// Максимальное количество входящих потоков
-				uint16_t instreams;
+				uint16_t istreams;
 				
 				/**
 				 * @brief Конструктор
@@ -766,7 +766,7 @@ namespace awh {
 				 */
 				explicit InitMessage() noexcept :
 				 timeout(0), attempts(4),
-				 ostreams(5), instreams(5) {}
+				 ostreams(5), istreams(5) {}
 			} __attribute__((packed)) initmsg_t;
 			/**
 			 * @brief Структура статуса SCTP подключения
@@ -778,7 +778,7 @@ namespace awh {
 				uint32_t ratewind;  // Размер окна скорости передачи
 				uint16_t penddata;  // Количество ожидающих данных
 				uint16_t ostreams;  // Количество исходящих потоков
-				uint16_t instreams; // Количество входящих потоков
+				uint16_t istreams;  // Количество входящих потоков
 				uint16_t unackdata; // Количество неподтверждённых DATA чанков
 				uint32_t fragpoint; // Точка фрагментации в байтах
 				/**
@@ -788,7 +788,7 @@ namespace awh {
 				explicit Status() noexcept :
 				 id(0), state(0),
 				 ratewind(0), penddata(0),
-				 ostreams(0), instreams(0),
+				 ostreams(0), istreams(0),
 				 unackdata(0), fragpoint(0) {}
 			} __attribute__((packed)) status_t;
 			/**
@@ -851,7 +851,7 @@ namespace awh {
 			typedef struct EventAssocChange : public event_t {
 				error_t error;              // Ошибка события
 				uint16_t ostreams;          // Максимальное количество исходящих потоков
-				uint16_t instreams;         // Максимальное количество входящих потоков
+				uint16_t istreams;          // Максимальное количество входящих потоков
 				assoc_state_t state;        // Состояние события
 				vector <assoc_info_t> info; // Дополнительная информация события
 				/**
@@ -859,7 +859,7 @@ namespace awh {
 				 *
 				 */
 				explicit EventAssocChange() noexcept :
-				 ostreams(0), instreams(0),
+				 ostreams(0), istreams(0),
 				 state(assoc_state_t::NONE) {}
 				/**
 				 * @brief Деструктор
@@ -1013,7 +1013,7 @@ namespace awh {
 				// Максимальное количество исходящих потоков
 				uint16_t ostreams;
 				// Максимальное количество входящих потоков
-				uint16_t instreams;
+				uint16_t istreams;
 				// Флаги сброса ассоциации
 				unordered_set <stream_change_t> flags;
 				/**
@@ -1021,7 +1021,7 @@ namespace awh {
 				 *
 				 */
 				explicit EventStreamChange() noexcept :
-				 ostreams(0), instreams(0) {}
+				 ostreams(0), istreams(0) {}
 				/**
 				 * @brief Деструктор
 				 *
