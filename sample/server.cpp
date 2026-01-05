@@ -67,7 +67,8 @@ int32_t main(int32_t argc, char * argv[]){
 			net::sctp::event_type_t::REMOTE_ERROR
 		});
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		// if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){ // Так можно обойтись без listen
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -470,7 +471,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Инициализируем сообщения SCTP
 				io.sctpInitMessages(eid, initmsg);
 				// Если прослушивание события успешно
-				if(io.listen(eid, 100, true)){
+				//if(io.listen(eid, 100, true)){
 					// Выполняем запуск события
 					if(io.launch(eid)){
 						// Выводим сообщение об успешном запуске события
@@ -481,7 +482,7 @@ int32_t main(int32_t argc, char * argv[]){
 						while(io.poll());
 					// Выводим сообщение об ошибке запуска события
 					} else cout << " Ошибка запуска события!" << endl;
-				}
+				//}
 			}
 		// Если адрес не установлен
 		} else cout << " Ошибка установки адреса события!" << endl;
