@@ -10775,6 +10775,10 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+												// Устанавливаем длину структуры
+												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_len = sizeof(struct sockaddr_in);
+												// Устанавливаем длину структуры
+												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = sizeof(struct sockaddr_in);
 												// Устанавливаем протокол интернета
 												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 												// Устанавливаем протокол интернета
@@ -10855,10 +10859,14 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+												// Устанавливаем длину структуры
+												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = sizeof(struct sockaddr_in6);
+												// Устанавливаем длину структуры
+												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = sizeof(struct sockaddr_in6);
 												// Устанавливаем протокол интернета
 												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 												// Устанавливаем протокол интернета
-												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
+												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 												// Получаем объект целевой машины
 												net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 												// Устанавливаем произвольный порт для локального подключения
