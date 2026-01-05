@@ -23478,52 +23478,146 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 											::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
 										);
 									}
-
-									
-
-									// Если подключение к удаленному серверу не выполнено
-									if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->transfer.sctp.id) != 0)){
-
-									// Если подключение к удаленному серверу не выполнено
-									// if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
-										// Если ошибка не является ошибкой в процессе подключения
-										if(errno != EINPROGRESS){
-											// Если установлена функция обратного вызова
-											if(client->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												client->callbacks.status(client->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(client->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-												#endif
-											}
-											// Снимаем флаг ожидания подключения
-											client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-											// Если функция обратного вызова для вывода подключения установлена
-											if(client->callbacks.connect != nullptr)
-												// Вызываем функцию обратного вызова для подключения
-												client->callbacks.connect(client->id, false);
-											// Если установлен режим постоянного подключения
-											if(!(client->state.options & event::options::KEEPALIVE))
-												// Завершаем выполнение функции с ошибкой
-												return result;
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										/**
+										 * Определяем протокол интернета
+										 */
+										switch(static_cast <uint8_t> (node->state.protocol)){
+											// Если протокол интернета установлен как TCP
+											case static_cast <uint8_t> (event::protocol_t::TCP): {
+												// Если подключение к удаленному серверу не выполнено
+												if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
+													// Если ошибка не является ошибкой в процессе подключения
+													if(errno != EINPROGRESS){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Снимаем флаг ожидания подключения
+														client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+														// Если функция обратного вызова для вывода подключения установлена
+														if(client->callbacks.connect != nullptr)
+															// Вызываем функцию обратного вызова для подключения
+															client->callbacks.connect(client->id, false);
+														// Если установлен режим постоянного подключения
+														if(!(client->state.options & event::options::KEEPALIVE))
+															// Завершаем выполнение функции с ошибкой
+															return result;
+													}
+												}
+											} break;
+											// Если протокол интернета установлен как SCTP
+											case static_cast <uint8_t> (event::protocol_t::SCTP): {
+												// Если подключение к удаленному серверу не выполнено
+												if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->transfer.sctp.id) != 0)){
+													// Если ошибка не является ошибкой в процессе подключения
+													if(errno != EINPROGRESS){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Снимаем флаг ожидания подключения
+														client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+														// Если функция обратного вызова для вывода подключения установлена
+														if(client->callbacks.connect != nullptr)
+															// Вызываем функцию обратного вызова для подключения
+															client->callbacks.connect(client->id, false);
+														// Если установлен режим постоянного подключения
+														if(!(client->state.options & event::options::KEEPALIVE))
+															// Завершаем выполнение функции с ошибкой
+															return result;
+													}
+												}
+											} break;
 										}
-									}
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Если подключение к удаленному серверу не выполнено
+										if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
+											// Если ошибка не является ошибкой в процессе подключения
+											if(errno != EINPROGRESS){
+												// Если установлена функция обратного вызова
+												if(client->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													client->callbacks.status(client->id, event::status_t::FAILURE);
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													#endif
+												}
+												// Снимаем флаг ожидания подключения
+												client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+												// Если функция обратного вызова для вывода подключения установлена
+												if(client->callbacks.connect != nullptr)
+													// Вызываем функцию обратного вызова для подключения
+													client->callbacks.connect(client->id, false);
+												// Если установлен режим постоянного подключения
+												if(!(client->state.options & event::options::KEEPALIVE))
+													// Завершаем выполнение функции с ошибкой
+													return result;
+											}
+										}
+									#endif
 								} break;
 								// Если сокет принадлежит к типу DATAGRAM
 								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
