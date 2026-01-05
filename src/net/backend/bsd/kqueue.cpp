@@ -10859,13 +10859,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
 												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
-												// Устанавливаем длину структуры
+												// Устанавливаем длину структуры у клиента
 												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_len = sizeof(struct sockaddr_in6);
-												// Устанавливаем длину структуры
+												// Устанавливаем длину структуры у сервера
 												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = sizeof(struct sockaddr_in6);
-												// Устанавливаем протокол интернета
+												// Устанавливаем протокол интернета у клиента
 												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
-												// Устанавливаем протокол интернета
+												// Устанавливаем протокол интернета у сервера
 												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 												// Получаем объект целевой машины
 												net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
@@ -11790,7 +11790,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 														// Очищаем всю структуру для сервера
 														::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
-														// Устанавливаем протокол интернета
+														// Устанавливаем протокол интернета у клиента
 														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 														// Устанавливаем произвольный порт для локального подключения
 														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
@@ -11802,7 +11802,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
 														// Получаем объект целевой машины
 														net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-														// Устанавливаем протокол интернета
+														// Устанавливаем протокол интернета у сервера
 														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 														// Устанавливаем порт для локального подключения
 														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
@@ -11884,7 +11884,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем протокол интернета удаленного сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
@@ -11967,7 +11967,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем протокол интернета удаленного сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
@@ -11987,13 +11987,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 																		// Получаем объект целевой машины
 																		net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем протокол интернета у клиента
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
-																		// Устанавливаем протокол интернета
+																		// Устанавливаем протокол интернета у сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем произвольный порт для локального подключения
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
-																		// Устанавливаем порт для локального подключения
+																		// Устанавливаем порт для локального подключения удаленного сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 																		// Если источник сетевого адреса установлен
 																		if(client->source != nullptr)
@@ -12081,13 +12081,13 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
-																// Устанавливаем протокол интернета
+																// Устанавливаем протокол интернета у клиента
 																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
-																// Устанавливаем протокол интернета
+																// Устанавливаем протокол интернета у сервера
 																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																// Устанавливаем произвольный порт для локального подключения
 																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
-																// Устанавливаем порт для локального подключения
+																// Устанавливаем порт для локального подключения удаленного сервера
 																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(0);
 																// Если источник сетевого адреса установлен
 																if(client->source != nullptr)
