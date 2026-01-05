@@ -690,6 +690,21 @@ namespace awh {
 				UNREACHABLE = 0x06  // Адрес стал недоступен
 			};
 			/**
+			 * Флаги информации о сообщении SCTP
+			 */
+			enum class info_t : uint8_t {
+				NONE               = 0x00, // Флаг отсутствует
+				PR_TTL             = 0x01, // Сообщение имеет ограничение по времени жизни
+				PR_RTX             = 0x02, // Сообщение имеет ограничение по количеству повторных попыток
+				PR_PRIO            = 0x03, // Сообщение имеет приоритет
+				SEND_ALL           = 0x04, // Отправка сообщения всем ассоциациям
+				ADDR_OVER          = 0x05, // Использовать адрес из to, даже если сокет подключён
+				STATUS_EOF 	       = 0x06, // Сообщение содержит признак грациозного завершения
+				STATUS_ABORT       = 0x07, // Сообщение содержит признак аварийного завершения
+				SACK_IMMEDIATELY   = 0x08, // Установка бита последнего фрагмента DATA, для мгновенной отправки
+				DELIVERY_UNORDERED = 0x09  // Сообщение доставляется без учёта порядка в потоке
+			};
+			/**
 			 * @brief Множество типов событий SCTP
 			 *
 			 */
@@ -699,18 +714,18 @@ namespace awh {
 			 *
 			 */
 			typedef struct MessageInfo {
-				ppid_t ppid;    // Идентификатор полезной нагрузки
-				uint16_t num;   // Номер потока
-				uint32_t ttl;   // Время жизни (в миллисекундах)
-				uint32_t ctx;   // Контекст для уведомлений об ошибках
-				uint32_t flags; // Флаги сообщения
+				ppid_t ppid;                  // Идентификатор полезной нагрузки
+				uint16_t num;                 // Номер потока
+				uint32_t ttl;                 // Время жизни (в миллисекундах)
+				uint32_t ctx;                 // Контекст для уведомлений об ошибках
+				unordered_set <info_t> flags; // Флаги сообщения
 				/**
 				 * @brief Конструктор
 				 *
 				 */
 				explicit MessageInfo() noexcept :
-				 ppid(ppid_t::DTLS), num(0),
-				 ttl(0), ctx(0), flags(0) {}
+				 ppid(ppid_t::DTLS),
+				 num(0), ttl(0), ctx(0) {}
 			} __attribute__((packed)) minfo_t;
 			/**
 			 * @brief Структура параметров рукопожатия SCTP
@@ -948,6 +963,20 @@ namespace awh {
 				 */
 				virtual ~EventStreamReset() = default;
 			} event_stream_reset_t;
+			/**
+			 * @brief пространство имён работы с обратными вызовами
+			 *
+			 */
+			namespace callback {
+				/**
+				 * Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
+				 */
+				using info_t = std::function <void (const event::id_t, const minfo_t &)>;
+				/**
+				 * Функция обратного вызова срабатывающая при получении событий SCTP
+				 */
+				using events_t = std::function <void (const event::id_t, unique_ptr <event_t>)>;
+			};
 		};
 	};
 };

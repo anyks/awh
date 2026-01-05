@@ -204,12 +204,12 @@ int32_t main(int32_t argc, char * argv[]){
 				// Получаем информацию о сообщении SCTP-сокета
 				const net::sctp::minfo_t & minfo = io.sctpMessageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info: " << endl;
+				cout << " SCTP Message Info1: " << endl;
 				cout << "  - Stream Number: " << minfo.num << endl;
 				cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
 				cout << "  - Context: " << minfo.ctx << endl;
 				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags << endl;
+				cout << "  - Flags: " << minfo.flags.size() << endl;
 				// Получаем статус SCTP-сокета
 				const net::sctp::status_t & status = io.sctpStatus(cid);
 				// Выводим статус SCTP-сокета
@@ -224,6 +224,81 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Pending Data: " << status.penddata << endl;
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
+				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
+				io.on(cid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+					// Выводим информацию о сообщении SCTP-сокета
+					cout << " SCTP Message Info2: " << endl;
+					cout << "  - Stream Number: " << minfo.num << endl;
+					cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
+					cout << "  - Context: " << minfo.ctx << endl;
+					cout << "  - Time to Live: " << minfo.ttl << endl;
+					cout << "  - Flags: " << minfo.flags.size() << endl;
+				}));
+				// Устанавливаем функцию обратного вызова на создание события
+				io.on(cid, [&log](const event::id_t eid, unique_ptr <net::sctp::event_t> event) noexcept -> void {
+					// Выводим сообщение с идентификатором событий SCTP
+					cout << " SCTP EVENT ID: " << event->id << endl;
+					/**
+					 * Определяем тип события SCTP
+					 */
+					switch(static_cast <uint8_t> (event->type)){
+						// Если требуется уведомление о каждом входящем DATA-пакете
+						case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
+							// Выводим сообщение о событии DATA IO
+							cout << "  - DATA IO EVENT " << endl;
+						break;
+						// Если ошибка удалённого узла
+						case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
+							// Выводим сообщение о событии REMOTE ERROR
+							cout << "  - REMOTE ERROR EVENT " << endl;
+						break;
+						// Если изменение ассоциации
+						case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
+							// Выводим сообщение о событии ASSOC CHANGE
+							cout << "  - ASSOC CHANGE EVENT " << endl;
+						break;
+						// Если событие завершения работы
+						case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
+							// Выводим сообщение о событии SHUTDOWN EVENT
+							cout << "  - SHUTDOWN EVENT " << endl;
+						break;
+						// Если событие "отправитель сухой"
+						case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
+							// Выводим сообщение о событии SENDER DRY EVENT
+							cout << "  - SENDER DRY EVENT " << endl;
+						break;
+						// Если изменение адреса однорангового узла
+						case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
+							// Выводим сообщение о событии PEER ADDR CHANGE
+							cout << "  - PEER ADDR CHANGE EVENT " << endl;
+						break;
+						// Если событие ошибки отправки
+						case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
+							// Выводим сообщение о событии SEND FAILED EVENT
+							cout << "  - SEND FAILED EVENT " << endl;
+						break;
+						// Если событие сброса потока
+						case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
+							// Выводим сообщение о событии STREAM RESET EVENT
+							cout << "  - STREAM RESET EVENT " << endl;
+						break;
+						// Если событие аутентификации
+						case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
+							// Выводим сообщение о событии AUTHENTICATION EVENT
+							cout << "  - AUTHENTICATION EVENT " << endl;
+						break;
+						// Если событие адаптационное указание
+						case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
+							// Выводим сообщение о событии ADAPTATION INDICATION
+							cout << "  - ADAPTATION INDICATION EVENT " << endl;
+						break;
+						// Если событие частичной доставки
+						case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+							// Выводим сообщение о событии PARTIAL DELIVERY EVENT
+							cout << "  - PARTIAL DELIVERY EVENT " << endl;
+						break;
+					}
+				});
 				// Устананавливаем опции события
 				if(io.options(cid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события

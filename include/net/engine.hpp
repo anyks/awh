@@ -614,65 +614,79 @@ namespace awh {
 			 * @brief Методы установки функции обратного вызова на чтение события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::read_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на запись события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::write_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на получение общего события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::event_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на ошибку события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::error_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на изменение статуса события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::status_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на изменение события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::change_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на принятие события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::accept_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова срабатывающая при принятии первых событий однорангового узла-источника
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::origin_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на подключение события
 			 *
 			 * @param id идентификатор события
-			 * @param cb объект обратного вызова события
+			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::connect_t & cb) noexcept = 0;
+			/**
+			 * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
+			 *
+			 * @param id идентификатор события
+			 * @param cb функция обратного вызова
+			 */
+			virtual void on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept = 0;
+			/**
+			 * @brief Методы установки функции обратного вызова на получение SCTP событий
+			 *
+			 * @param id идентификатор события
+			 * @param cb функция обратного вызова
+			 */
+			virtual void on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept = 0;
 		public:
 			/**
 			 * @brief Конструктор

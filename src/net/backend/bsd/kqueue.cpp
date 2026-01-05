@@ -426,7 +426,7 @@ namespace io {
 		 * @brief Структура SCTP-событий
 		 *
 		 */
-		typedef struct SCTP {
+		typedef struct EndpointSCTP {
 			// Идентификатор SCTP-события
 			uint32_t id;
 			// Флаги SCTP-событий
@@ -435,13 +435,19 @@ namespace io {
 			struct sctp_sndrcvinfo info;
 			// Список типов SCTP-событий для подписки
 			net::sctp::event_types_t events;
+			// Функция обратного вызова для получения информационных собщений SCTP
+			net::sctp::callback::info_t callbackInfo;
+			// Функция обратного вызова для получения событий SCTP
+			net::sctp::callback::events_t callbackEvents;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit SCTP() noexcept :
-			 id(0), flags(0), info{0} {}
-		} sctp_t;
+			explicit EndpointSCTP() noexcept :
+			 id(0), flags(0), info{0},
+			 callbackInfo(nullptr),
+			 callbackEvents(nullptr) {}
+		} sctp_endpoint_t;
 	#endif
 
 	/**
@@ -478,7 +484,7 @@ namespace io {
 		 */
 		#if __FreeBSD__
 			// Объект SCTP-событий
-			sctp_t sctp;
+			sctp_endpoint_t sctp;
 		#endif
 		// Очередь отправки данных
 		queue_t queue;
@@ -700,17 +706,17 @@ namespace io {
 		net::socket_t fd;
 		// Флаги активированных событий файла
 		uint16_t actions;
+		// Объект работы с сетевыми адресами
+		net_addr_t addr;
+		// Объект параметров конечной точки
+		endpoint_t endpoint;
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
 		#if __FreeBSD__
 			// Объект SCTP-событий
-			sctp_t sctp;
+			sctp_endpoint_t sctp;
 		#endif
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
-		// Объект параметров конечной точки
-		endpoint_t endpoint;
 		/**
 		 * @brief Конструктор
 		 *
@@ -1213,10 +1219,28 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool processing(struct kevent &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён SCTP
+ */
+namespace sctp {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
+		/**
+		 * @brief Функция преобразования структуры информации SCTP в внутреннюю структуру
+		 *
+		 * @param info   структура информации SCTP
+		 * @param result внутренняя структура информации SCTP
+		 */
+		static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept;
 		/**
 		 * @brief Функция обработки событий SCTP
 		 *
@@ -1225,7 +1249,7 @@ namespace io {
 		 * @param size	 размер буфера данных события
 		 * @param log    объект работы с логами
 		 */
-		static void sctpevents(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept;
+		static void events(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept;
 	#endif
 };
 
@@ -3304,7 +3328,7 @@ namespace io {
 											// Если мы получили уведомления SCTP
 											if((bytes <= 0) || (node->sctp.flags & MSG_NOTIFICATION)){
 												// Обрабатываем события SCTP
-												::io::sctpevents(node, buffer, bytes, log);
+												::sctp::events(node, buffer, bytes, log);
 												// Выходим из функции
 												return (bytes > 0);
 											}
@@ -4889,10 +4913,19 @@ namespace io {
 											#if __FreeBSD__
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
+													// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+													if(peer->transfer.sctp.callbackInfo != nullptr){
+														// Объект для хранения информационных метаданных SCTP сообщения
+														net::sctp::minfo_t minfo;
+														// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+														::sctp::info(peer->transfer.sctp.info, minfo);
+														// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+														peer->transfer.sctp.callbackInfo(peer->id, minfo);
+													}
 													// Если мы получили уведомления SCTP
 													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
 														// Обрабатываем события SCTP
-														::io::sctpevents(peer, buffer, bytes, log);
+														::sctp::events(peer, buffer, bytes, log);
 														// Формируем положительный результат
 														return true;
 													}
@@ -4993,10 +5026,19 @@ namespace io {
 											#if __FreeBSD__
 												// Если протокол интернета установлен как SCTP
 												if(peer->state.protocol == event::protocol_t::SCTP){
+													// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+													if(peer->transfer.sctp.callbackInfo != nullptr){
+														// Объект для хранения информационных метаданных SCTP сообщения
+														net::sctp::minfo_t minfo;
+														// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+														::sctp::info(peer->transfer.sctp.info, minfo);
+														// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+														peer->transfer.sctp.callbackInfo(peer->id, minfo);
+													}
 													// Если мы получили уведомления SCTP
 													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
 														// Обрабатываем события SCTP
-														::io::sctpevents(peer, buffer, bytes, log);
+														::sctp::events(peer, buffer, bytes, log);
 														// Формируем положительный результат
 														return true;
 													}
@@ -5295,10 +5337,19 @@ namespace io {
 													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+														if(client->transfer.sctp.callbackInfo != nullptr){
+															// Объект для хранения информационных метаданных SCTP сообщения
+															net::sctp::minfo_t minfo;
+															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+															::sctp::info(client->transfer.sctp.info, minfo);
+															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+															client->transfer.sctp.callbackInfo(client->id, minfo);
+														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
-															::io::sctpevents(client, buffer, bytes, log);
+															::sctp::events(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
 														}
@@ -5401,10 +5452,19 @@ namespace io {
 													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+														if(client->transfer.sctp.callbackInfo != nullptr){
+															// Объект для хранения информационных метаданных SCTP сообщения
+															net::sctp::minfo_t minfo;
+															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+															::sctp::info(client->transfer.sctp.info, minfo);
+															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+															client->transfer.sctp.callbackInfo(client->id, minfo);
+														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
-															::io::sctpevents(client, buffer, bytes, log);
+															::sctp::events(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
 														}
@@ -5528,10 +5588,19 @@ namespace io {
 													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+														if(client->transfer.sctp.callbackInfo != nullptr){
+															// Объект для хранения информационных метаданных SCTP сообщения
+															net::sctp::minfo_t minfo;
+															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+															::sctp::info(client->transfer.sctp.info, minfo);
+															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+															client->transfer.sctp.callbackInfo(client->id, minfo);
+														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
-															::io::sctpevents(client, buffer, bytes, log);
+															::sctp::events(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
 														}
@@ -5645,10 +5714,19 @@ namespace io {
 													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+														if(client->transfer.sctp.callbackInfo != nullptr){
+															// Объект для хранения информационных метаданных SCTP сообщения
+															net::sctp::minfo_t minfo;
+															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+															::sctp::info(client->transfer.sctp.info, minfo);
+															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+															client->transfer.sctp.callbackInfo(client->id, minfo);
+														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
-															::io::sctpevents(client, buffer, bytes, log);
+															::sctp::events(client, buffer, bytes, log);
 															// Формируем положительный результат
 															return true;
 														}
@@ -8978,10 +9056,91 @@ namespace io {
 		// Выводим результат
 		return true;
 	}
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён SCTP
+ */
+namespace sctp {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
+		/**
+		 * @brief Функция преобразования структуры информации SCTP в внутреннюю структуру
+		 *
+		 * @param info   структура информации SCTP
+		 * @param result внутренняя структура информации SCTP
+		 */
+		static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
+			/**
+			 * Определяем тип полезной нагрузки SCTP
+			 */
+			switch(info.sinfo_ppid){
+				// Если тип полезной нагрузки является WebRTC текстовым
+				case 0x33:
+					// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+					result.ppid = net::sctp::ppid_t::WEBRTC_STR;
+				break;
+				// Если тип полезной нагрузки является WebRTC бинарным
+				case 0x35:
+					// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+					result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
+				break;
+				// Если тип полезной нагрузки является DTLS
+				default:
+					// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
+					result.ppid = net::sctp::ppid_t::DTLS;
+				break;
+			}
+			// Устанавливаем номер потока SCTP в результат работы функции
+			result.num = info.sinfo_stream;
+			// Устанавливаем контекст сообщения SCTP в результат работы функции
+			result.ctx = info.sinfo_context;
+			// Устанавливаем время жизни сообщения SCTP в результат работы функции
+			result.ttl = info.sinfo_timetolive;
+			// Если установлен флаг EOF в сообщении SCTP
+			if(info.sinfo_flags & SCTP_EOF)
+				// Устанавливаем флаг EOF в результат работы функции
+				result.flags.emplace(net::sctp::info_t::STATUS_EOF);
+			// Если установлен флаг ABORT в сообщении SCTP
+			if(info.sinfo_flags & SCTP_ABORT)
+				// Устанавливаем флаг ABORT в результат работы функции
+				result.flags.emplace(net::sctp::info_t::STATUS_ABORT);
+			// Если установлен флаг SENDALL в сообщении SCTP
+			if(info.sinfo_flags & SCTP_SENDALL)
+				// Устанавливаем флаг SENDALL в результат работы функции
+				result.flags.emplace(net::sctp::info_t::SEND_ALL);
+			// Если установлен флаг UNORDERED в сообщении SCTP
+			if(info.sinfo_flags & SCTP_UNORDERED)
+				// Устанавливаем флаг UNORDERED в результат работы функции
+				result.flags.emplace(net::sctp::info_t::DELIVERY_UNORDERED);
+			// Если установлен флаг ADDR_OVER в сообщении SCTP
+			if(info.sinfo_flags & SCTP_ADDR_OVER)
+				// Устанавливаем флаг ADDR_OVER в результат работы функции
+				result.flags.emplace(net::sctp::info_t::ADDR_OVER);
+			// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+			if(info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
+				// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+				result.flags.emplace(net::sctp::info_t::SACK_IMMEDIATELY);
+			// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+			if(info.sinfo_flags & SCTP_PR_SCTP_TTL)
+				// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+				result.flags.emplace(net::sctp::info_t::PR_TTL);
+			// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+			if(info.sinfo_flags & SCTP_PR_SCTP_RTX)
+				// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+				result.flags.emplace(net::sctp::info_t::PR_RTX);
+			// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+			if(info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+				// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+				result.flags.emplace(net::sctp::info_t::PR_PRIO);
+		}
 		/**
 		 * @brief Функция обработки событий SCTP
 		 *
@@ -8990,7 +9149,7 @@ namespace io {
 		 * @param size	 размер буфера данных события
 		 * @param log    объект работы с логами
 		 */
-		static void sctpevents(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept {
+		static void events(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept {
 			// Если буфер данных события корректен и его размер достаточен для обработки
 			if((buffer != nullptr) && (size >= sizeof(uint16_t))){
 				/**
@@ -9100,6 +9259,33 @@ namespace io {
 							}
 						}
 						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
+						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
@@ -9194,6 +9380,33 @@ namespace io {
 							} break;
 						}
 						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
+						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
@@ -9262,6 +9475,33 @@ namespace io {
 							association->data.assign(sre->sre_data, sre->sre_data + length);
 						}
 						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
+						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
@@ -9284,6 +9524,33 @@ namespace io {
 						event->id = sse->sse_assoc_id;
 						// Устанавливаем тип события SCTP
 						event->type = net::sctp::event_type_t::SHUTDOWN_EVENT;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
 						/**
 						 * Если включён режим отладки
 						 */
@@ -9310,6 +9577,33 @@ namespace io {
 						association->type = net::sctp::event_type_t::ADAPTATION_INDICATION;
 						// Устанавливаем значение адаптационной индикации SCTP
 						association->indication = sad->sai_adaptation_ind;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
 						/**
 						 * Если включён режим отладки
 						 */
@@ -9343,6 +9637,33 @@ namespace io {
 						if(pdapi->pdapi_indication & SCTP_PARTIAL_DELIVERY_ABORTED)
 							// Устанавливаем индикатор частичной доставки SCTP
 							association->indication = net::sctp::pdapi_indics_t::PARTIAL_DELIVERY_ABORTED;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
 						/**
 						 * Если включён режим отладки
 						 */
@@ -9391,6 +9712,33 @@ namespace io {
 							break;
 						}
 						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
+						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
@@ -9413,6 +9761,33 @@ namespace io {
 						event->id = dry->sender_dry_assoc_id;
 						// Устанавливаем тип события SCTP
 						event->type = net::sctp::event_type_t::SENDER_DRY_EVENT;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(peer->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Создаём охранника узла события
+								::local::guard_t guard(node);
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если функция обратного вызова для получения событий установлена
+								if(client->transfer.sctp.callbackEvents != nullptr)
+									// Вызываем функцию обратного вызова для получения событий
+									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+							} break;
+						}
 						/**
 						 * Если включён режим отладки
 						 */
@@ -9465,6 +9840,33 @@ namespace io {
 							// Копируем дополнительные данные события
 							association->data.assign(ssf->ssfe_data, ssf->ssfe_data + length);
 							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта однорангового узла
+									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(peer->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+								} break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта клиента
+									::io::client_t * client = awh_cast <::io::client_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(client->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+								} break;
+							}
+							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
@@ -9479,6 +9881,33 @@ namespace io {
 							#endif
 						// Если дополнительных данных в событии ошибки отправки SCTP нет
 						} else {
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта однорангового узла
+									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(peer->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+								} break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта клиента
+									::io::client_t * client = awh_cast <::io::client_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(client->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+								} break;
+							}
 							/**
 							 * Если включён режим отладки
 							 */
@@ -9536,6 +9965,33 @@ namespace io {
 								// Добавляем номер сброшенного потока
 								association->streams[i] = streams[i];
 							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта однорангового узла
+									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(peer->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+								} break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта клиента
+									::io::client_t * client = awh_cast <::io::client_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(client->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+								} break;
+							}
+							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
@@ -9550,6 +10006,33 @@ namespace io {
 							#endif
 						// Если длина структуры недостаточна для обработки
 						} else {
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта однорангового узла
+									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(peer->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
+								} break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT): {
+									// Создаём охранника узла события
+									::local::guard_t guard(node);
+									// Получаем текущее значение объекта клиента
+									::io::client_t * client = awh_cast <::io::client_t *> (node);
+									// Если функция обратного вызова для получения событий установлена
+									if(client->transfer.sctp.callbackEvents != nullptr)
+										// Вызываем функцию обратного вызова для получения событий
+										client->transfer.sctp.callbackEvents(client->id, ::move(event));
+								} break;
+							}
 							/**
 							 * Если включён режим отладки
 							 */
@@ -21385,206 +21868,15 @@ awh::net::sctp::minfo_t awh::IO::sctpMessageInfo([[maybe_unused]] const event::i
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
 					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER): {
-						// Получаем текущее значение объекта однорангового узла
-						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-						/**
-						 * Определяем тип полезной нагрузки SCTP
-						 */
-						switch(peer->transfer.sctp.info.sinfo_ppid){
-							// Если тип полезной нагрузки является WebRTC текстовым
-							case 0x33:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
-							break;
-							// Если тип полезной нагрузки является WebRTC бинарным
-							case 0x35:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
-							break;
-							// Если тип полезной нагрузки является DTLS
-							default:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::DTLS;
-							break;
-						}
-						// Устанавливаем номер потока SCTP в результат работы функции
-						result.num = peer->transfer.sctp.info.sinfo_stream;
-						// Устанавливаем контекст сообщения SCTP в результат работы функции
-						result.ctx = peer->transfer.sctp.info.sinfo_context;
-						// Устанавливаем время жизни сообщения SCTP в результат работы функции
-						result.ttl = peer->transfer.sctp.info.sinfo_timetolive;
-						// Если установлен флаг EOF в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_EOF)
-							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::info::AWH_EOF;
-						// Если установлен флаг ABORT в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
-							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::info::AWH_ABORT;
-						// Если установлен флаг SENDALL в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
-							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::info::AWH_SENDALL;
-						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
-							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::info::AWH_UNORDERED;
-						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
-							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::info::AWH_ADDR_OVER;
-						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
-							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
-						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
-							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
-						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
-							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
-						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(peer->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
-							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
-					} break;
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+						::sctp::info(awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.info, result);
+					break;
 					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						/**
-						 * Определяем тип полезной нагрузки SCTP
-						 */
-						switch(client->transfer.sctp.info.sinfo_ppid){
-							// Если тип полезной нагрузки является WebRTC текстовым
-							case 0x33:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
-							break;
-							// Если тип полезной нагрузки является WebRTC бинарным
-							case 0x35:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
-							break;
-							// Если тип полезной нагрузки является DTLS
-							default:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::DTLS;
-							break;
-						}
-						// Устанавливаем номер потока SCTP в результат работы функции
-						result.num = client->transfer.sctp.info.sinfo_stream;
-						// Устанавливаем контекст сообщения SCTP в результат работы функции
-						result.ctx = client->transfer.sctp.info.sinfo_context;
-						// Устанавливаем время жизни сообщения SCTP в результат работы функции
-						result.ttl = client->transfer.sctp.info.sinfo_timetolive;
-						// Если установлен флаг EOF в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_EOF)
-							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::info::AWH_EOF;
-						// Если установлен флаг ABORT в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_ABORT)
-							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::info::AWH_ABORT;
-						// Если установлен флаг SENDALL в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_SENDALL)
-							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::info::AWH_SENDALL;
-						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_UNORDERED)
-							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::info::AWH_UNORDERED;
-						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_ADDR_OVER)
-							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::info::AWH_ADDR_OVER;
-						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
-							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
-						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
-							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
-						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
-							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
-						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(client->transfer.sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
-							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						/**
-						 * Определяем тип полезной нагрузки SCTP
-						 */
-						switch(server->sctp.info.sinfo_ppid){
-							// Если тип полезной нагрузки является WebRTC текстовым
-							case 0x33:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::WEBRTC_STR;
-							break;
-							// Если тип полезной нагрузки является WebRTC бинарным
-							case 0x35:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::WEBRTC_BIN;
-							break;
-							// Если тип полезной нагрузки является DTLS
-							default:
-								// Устанавливаем тип полезной нагрузки SCTP в результат работы функции
-								result.ppid = net::sctp::ppid_t::DTLS;
-							break;
-						}
-						// Устанавливаем номер потока SCTP в результат работы функции
-						result.num = server->sctp.info.sinfo_stream;
-						// Устанавливаем контекст сообщения SCTP в результат работы функции
-						result.ctx = server->sctp.info.sinfo_context;
-						// Устанавливаем время жизни сообщения SCTP в результат работы функции
-						result.ttl = server->sctp.info.sinfo_timetolive;
-						// Если установлен флаг EOF в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_EOF)
-							// Устанавливаем флаг EOF в результат работы функции
-							result.flags |= event::sctp::info::AWH_EOF;
-						// Если установлен флаг ABORT в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_ABORT)
-							// Устанавливаем флаг ABORT в результат работы функции
-							result.flags |= event::sctp::info::AWH_ABORT;
-						// Если установлен флаг SENDALL в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_SENDALL)
-							// Устанавливаем флаг SENDALL в результат работы функции
-							result.flags |= event::sctp::info::AWH_SENDALL;
-						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_UNORDERED)
-							// Устанавливаем флаг UNORDERED в результат работы функции
-							result.flags |= event::sctp::info::AWH_UNORDERED;
-						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_ADDR_OVER)
-							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							result.flags |= event::sctp::info::AWH_ADDR_OVER;
-						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
-							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							result.flags |= event::sctp::info::AWH_SACK_IMMEDIATELY;
-						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_TTL)
-							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_TTL;
-						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_RTX)
-							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_RTX;
-						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(server->sctp.info.sinfo_flags & SCTP_PR_SCTP_PRIO)
-							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							result.flags |= event::sctp::info::AWH_PR_SCTP_PRIO;
-					} break;
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+						::sctp::info(awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.info, result);
+					break;
 					// Если узел является другим типом узла
 					default: {
 						/**
@@ -21664,42 +21956,64 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						peer->transfer.sctp.info.sinfo_timetolive = info.ttl;
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
 						peer->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
-						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_EOF)
-							// Устанавливаем флаг EOF в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
-						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_ABORT)
-							// Устанавливаем флаг ABORT в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
-						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_SENDALL)
-							// Устанавливаем флаг SENDALL в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
-						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_UNORDERED)
-							// Устанавливаем флаг UNORDERED в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
-						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
-							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
-						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
-							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
-						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
-							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
-						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
-							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
-						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
-							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+						// Выполняем зануление флагов SCTP в результат работы функции
+						peer->transfer.sctp.info.sinfo_flags = 0;
+						// Если флаги SCTP установлены
+						if(!info.flags.empty()){
+							// Выполняем перебор всех возможных информационных флагов SCTP
+							for(auto & flag : info.flags){
+								/**
+								 * Определяем тип информационного флага SCTP
+								 */
+								switch(static_cast <uint8_t> (flag)){
+									// Если установлен флаг EOF в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::STATUS_EOF):
+										// Устанавливаем флаг EOF в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+									break;
+									// Если установлен флаг ABORT в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::STATUS_ABORT):
+										// Устанавливаем флаг ABORT в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+									break;
+									// Если установлен флаг SENDALL в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
+										// Устанавливаем флаг SENDALL в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+									break;
+									// Если установлен флаг UNORDERED в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
+										// Устанавливаем флаг UNORDERED в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+									break;
+									// Если установлен флаг ADDR_OVER в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::ADDR_OVER):
+										// Устанавливаем флаг ADDR_OVER в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+									break;
+									// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::SACK_IMMEDIATELY):
+										// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+									break;
+									// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
+										// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+									break;
+									// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
+										// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+									break;
+									// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
+										// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+										peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+									break;
+								}
+							}
+						}
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -21715,93 +22029,64 @@ void awh::IO::sctpMessageInfo([[maybe_unused]] const event::id_t id, [[maybe_unu
 						client->transfer.sctp.info.sinfo_timetolive = info.ttl;
 						// Устанавливаем тип полезной нагрузки SCTP сообщения
 						client->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
-						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_EOF)
-							// Устанавливаем флаг EOF в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
-						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_ABORT)
-							// Устанавливаем флаг ABORT в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
-						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_SENDALL)
-							// Устанавливаем флаг SENDALL в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
-						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_UNORDERED)
-							// Устанавливаем флаг UNORDERED в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
-						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
-							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
-						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
-							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
-						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
-							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
-						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
-							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
-						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
-							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						// Выполняем зануление объекта информации SCTP
-						::memset(&server->sctp.info, 0, sizeof(server->sctp.info));
-						// Устанавливаем номер потока SCTP в результат работы функции
-						server->sctp.info.sinfo_stream = info.num;
-						// Устанавливаем контекст сообщения SCTP в результат работы функции
-						server->sctp.info.sinfo_context = info.ctx;
-						// Устанавливаем время жизни сообщения SCTP в результат работы функции
-						server->sctp.info.sinfo_timetolive = info.ttl;
-						// Устанавливаем тип полезной нагрузки SCTP сообщения
-						server->sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
-						// Если установлен флаг EOF в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_EOF)
-							// Устанавливаем флаг EOF в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_EOF;
-						// Если установлен флаг ABORT в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_ABORT)
-							// Устанавливаем флаг ABORT в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_ABORT;
-						// Если установлен флаг SENDALL в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_SENDALL)
-							// Устанавливаем флаг SENDALL в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_SENDALL;
-						// Если установлен флаг UNORDERED в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_UNORDERED)
-							// Устанавливаем флаг UNORDERED в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_UNORDERED;
-						// Если установлен флаг ADDR_OVER в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_ADDR_OVER)
-							// Устанавливаем флаг ADDR_OVER в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
-						// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_SACK_IMMEDIATELY)
-							// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
-						// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_TTL)
-							// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
-						// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_RTX)
-							// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
-						// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-						if(info.flags & event::sctp::info::AWH_PR_SCTP_PRIO)
-							// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-							server->sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+						// Выполняем зануление флагов SCTP в результат работы функции
+						client->transfer.sctp.info.sinfo_flags = 0;
+						// Если флаги SCTP установлены
+						if(!info.flags.empty()){
+							// Выполняем перебор всех возможных информационных флагов SCTP
+							for(auto & flag : info.flags){
+								/**
+								 * Определяем тип информационного флага SCTP
+								 */
+								switch(static_cast <uint8_t> (flag)){
+									// Если установлен флаг EOF в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::STATUS_EOF):
+										// Устанавливаем флаг EOF в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+									break;
+									// Если установлен флаг ABORT в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::STATUS_ABORT):
+										// Устанавливаем флаг ABORT в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+									break;
+									// Если установлен флаг SENDALL в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
+										// Устанавливаем флаг SENDALL в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+									break;
+									// Если установлен флаг UNORDERED в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
+										// Устанавливаем флаг UNORDERED в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+									break;
+									// Если установлен флаг ADDR_OVER в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::ADDR_OVER):
+										// Устанавливаем флаг ADDR_OVER в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+									break;
+									// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::SACK_IMMEDIATELY):
+										// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+									break;
+									// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
+										// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+									break;
+									// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
+										// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+									break;
+									// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+									case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
+										// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+										client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+									break;
+								}
+							}
+						}
 					} break;
 					// Если узел является другим типом узла
 					default: {
@@ -36624,7 +36909,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
  * @brief Методы установки функции обратного вызова на чтение события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexcept {
 	/**
@@ -36712,7 +36997,7 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
  * @brief Методы установки функции обратного вызова на запись события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noexcept {
 	/**
@@ -36805,7 +37090,7 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
  * @brief Методы установки функции обратного вызова на получение общего события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noexcept {
 	/**
@@ -36903,7 +37188,7 @@ void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noex
  * @brief Методы установки функции обратного вызова на ошибку события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noexcept {
 	/**
@@ -37008,7 +37293,7 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
  * @brief Методы установки функции обратного вызова на изменение статуса события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noexcept {
 	/**
@@ -37113,7 +37398,7 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
  * @brief Методы установки функции обратного вызова на изменение события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noexcept {
 	/**
@@ -37181,7 +37466,7 @@ void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noe
  * @brief Методы установки функции обратного вызова на принятие события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noexcept {
 	/**
@@ -37244,7 +37529,7 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
  * @brief Методы установки функции обратного вызова срабатывающая при принятии первых событий однорангового узла-источника
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::origin_t & cb) noexcept {
 	/**
@@ -37307,7 +37592,7 @@ void awh::IO::on(const event::id_t id, const event::callback::origin_t & cb) noe
  * @brief Методы установки функции обратного вызова на подключение события
  *
  * @param id идентификатор события
- * @param cb объект обратного вызова события
+ * @param cb функция обратного вызова
  */
 void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) noexcept {
 	/**
@@ -37346,6 +37631,152 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
 					#endif
 				}
 			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::IO::on(const event::id_t id, [[maybe_unused]] const net::sctp::callback::info_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Если операционной системой является FreeBSD
+			 */
+			#if __FreeBSD__
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Устанавливаем функцию обратного вызова на получение информационных метаданных SCTP сообщения
+						awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbackInfo = ::move(cb);
+					break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем функцию обратного вызова на получение информационных метаданных SCTP сообщения
+						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbackInfo = ::move(cb);
+					break;
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("A SCTP info message callback cannot be set for this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Методы установки функции обратного вызова на получение SCTP событий
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::IO::on(const event::id_t id, [[maybe_unused]] const net::sctp::callback::events_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			/**
+			 * Если операционной системой является FreeBSD
+			 */
+			#if __FreeBSD__
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Устанавливаем функцию обратного вызова на получение SCTP событий
+						awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbackEvents = ::move(cb);
+					break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем функцию обратного вызова на получение SCTP событий
+						awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbackEvents = ::move(cb);
+					break;
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("A SCTP events callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("A SCTP events callback cannot be set for this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			#endif
 		}
 	/**
 	 * Если возникает ошибка
