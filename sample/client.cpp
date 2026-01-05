@@ -1739,6 +1739,8 @@ int32_t main(int32_t argc, char * argv[]){
 						if(io.launch(eid)){
 							// Выводим сообщение об успешном запуске события
 							cout << " Событие успешно запущено!" << endl;
+
+							cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! " << socket(AF_UNIX, SOCK_SEQPACKET, IPPROTO_SCTP) << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! " << endl;
 							/*
 							// Текст исходящего сообщения
 							const string message("Hello from async client!");
