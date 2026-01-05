@@ -270,6 +270,15 @@ namespace awh {
 			 * @return      результат выполнения подключения
 			 */
 			bool connect(const event::id_t id, const bool async = false) noexcept;
+			/**
+			 * @brief Метод мультиподключения события к удалённым хостам
+			 *
+			 * @param id    идентификатор события
+			 * @param ids   список идентификаторов событий для подключения
+			 * @param async флаг асинхронного подключения
+			 * @return      результат выполнения подключения
+			 */
+			bool multiconnect(const event::id_t id, const vector <event::id_t> & ids, const bool async = false) noexcept;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений
