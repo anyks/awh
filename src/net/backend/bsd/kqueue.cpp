@@ -4714,6 +4714,8 @@ namespace io {
 										 * Выполняем получение данных пока их не получим
 										 */
 										for(;;){
+											// Обнуляем смещение
+											offset = 0;
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -4799,13 +4801,10 @@ namespace io {
 														if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
 															offset = static_cast <ssize_t> (::sctp::events(peer, buffer, bytes, log));
-															
-															cout << "!!!!!! SCTP notification received, offset: " << offset << ", bytes: " << bytes << endl;
-															
 															// Если все полученные байты были уведомлениями SCTP
 															if(offset >= bytes)
-																// Формируем положительный результат
-																return true;
+																// Продолжаем основной цикл получения данных
+																continue;
 														}
 													}
 												#endif
@@ -4837,8 +4836,6 @@ namespace io {
 										}
 									// Если событие является блокирующим
 									} else {
-										// Количество обработанных байт
-										size_t offset = 0;
 										/**
 										 * Если операционной системой является FreeBSD
 										 */
@@ -4900,6 +4897,8 @@ namespace io {
 											return false;
 										// Если мы получили данные из сокета
 										} else if(bytes > 0) {
+											// Количество обработанных байт
+											size_t offset = 0;
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -5231,6 +5230,8 @@ namespace io {
 										 * Выполняем получение данных пока их не получим
 										 */
 										for(;;){
+											// Обнуляем смещение
+											offset = 0;
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -5316,13 +5317,10 @@ namespace io {
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
 															offset = static_cast <ssize_t> (::sctp::events(client, buffer, bytes, log));
-
-															cout << "!!!!!! SCTP notification received, offset: " << offset << ", bytes: " << bytes << endl;
-
 															// Если все полученные байты были уведомлениями SCTP
 															if(offset >= bytes)
-																// Формируем положительный результат
-																return true;
+																// Продолжаем основной цикл получения данных
+																continue;
 														}
 													}
 												#endif
@@ -5354,8 +5352,6 @@ namespace io {
 										}
 									// Если событие является блокирующим
 									} else {
-										// Количество обработанных байт
-										size_t offset = 0;
 										/**
 										 * Если операционной системой является FreeBSD
 										 */
@@ -5417,6 +5413,8 @@ namespace io {
 											return false;
 										// Если мы получили данные из сокета
 										} else if(bytes > 0) {
+											// Количество обработанных байт
+											size_t offset = 0;
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
