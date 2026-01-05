@@ -23443,7 +23443,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 										
 
 										// Если подключение к удаленному серверу не выполнено
-										if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->endpoint.sctp.id) != 0)){
+										if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->transfer.sctp.id) != 0)){
 										
 										
 										// Если подключение к удаленному серверу не выполнено
