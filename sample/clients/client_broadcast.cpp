@@ -63,7 +63,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "192.168.7.255")){
+			if(io.target(eid, "192.168.3.255")){
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**

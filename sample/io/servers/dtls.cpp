@@ -211,7 +211,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
-			io.on(eid, [tid, &tls, &io, &log](const event::id_t eid, const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+			io.on(eid, static_cast <event::callback::accept_t> ([tid, &tls, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
 				// Устанавливаем клиента DTLS для события
@@ -332,6 +332,12 @@ int32_t main(int32_t argc, char * argv[]){
 						log.print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
 					// Если данные не отправлены
 					} else log.print("Ошибка дешифрования: ID=%u", log_t::flag_t::CRITICAL, eid);
+					// Если рукопожатие DTLS успешно
+					if(tls.handshake(tid))
+						// Выводим сообщение о начале рукопожатия DTLS
+						log.print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", log_t::flag_t::INFO, tid);
+					// Если рукопожатие DTLS не выполнено
+					else log.print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
 				io.on(cid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
@@ -459,19 +465,7 @@ int32_t main(int32_t argc, char * argv[]){
 						break;
 					}
 				});
-				// Если данные успешно дешифрованы DTLS
-				if(tls.decrypt(tid, data, size)){
-					// Выводим сообщение об успешном дешифровании данных DTLS
-					log.print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, tid, size);
-				// Если данные не отправлены
-				} else log.print("Ошибка дешифрования: ID=%u", log_t::flag_t::CRITICAL, eid);
-				// Если рукопожатие DTLS успешно
-				if(tls.handshake(tid))
-					// Выводим сообщение о начале рукопожатия DTLS
-					log.print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", log_t::flag_t::INFO, tid);
-				// Если рукопожатие DTLS не выполнено
-				else log.print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", log_t::flag_t::CRITICAL, tid);
-			});
+			}));
 			// Устанавливаем функцию обратного вызова на общее событие
 			io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
 				/**

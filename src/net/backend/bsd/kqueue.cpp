@@ -24423,18 +24423,23 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 							 * Определяем протокол интернета
 							 */
 							switch(static_cast <uint8_t> (i->second->state.protocol)){
+								// Если протокол интернета установлен как UDP
+								case static_cast <uint8_t> (event::protocol_t::UDP):
 								// Если протокол интернета установлен как TCP
 								case static_cast <uint8_t> (event::protocol_t::TCP): {
-									// Проходим по всем идентификаторам событий для подключения
-									for(const auto & eid : ids){
-										// Если идентификаторы совпадают
-										if(id == eid)
-											// Переходим к следующему идентификатору
-											continue;
-										// Выполняем подключение события к удалённому хосту
-										if(!(result = this->connect(eid, async)))
-											// Завершаем выполнение функции с ошибкой
-											return result;
+									// Выполняем подключение события к удалённому хосту
+									if((result = this->connect(id, async))){
+										// Проходим по всем идентификаторам событий для подключения
+										for(const auto & eid : ids){
+											// Если идентификаторы совпадают
+											if(id == eid)
+												// Переходим к следующему идентификатору
+												continue;
+											// Выполняем подключение события к удалённому хосту
+											if(!(result = this->connect(eid, async)))
+												// Завершаем выполнение функции с ошибкой
+												return result;
+										}
 									}
 								} break;
 								// Если протокол интернета установлен как SCTP
@@ -24866,16 +24871,19 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 						 * Если это другая операционная система
 						 */
 						#else
-							// Проходим по всем идентификаторам событий для подключения
-							for(const auto & eid : ids){
-								// Если идентификаторы совпадают
-								if(id == eid)
-									// Переходим к следующему идентификатору
-									continue;
-								// Выполняем подключение события к удалённому хосту
-								if(!(result = this->connect(eid, async)))
-									// Завершаем выполнение функции с ошибкой
-									return result;
+							// Выполняем подключение события к удалённому хосту
+							if((result = this->connect(id, async))){
+								// Проходим по всем идентификаторам событий для подключения
+								for(const auto & eid : ids){
+									// Если идентификаторы совпадают
+									if(id == eid)
+										// Переходим к следующему идентификатору
+										continue;
+									// Выполняем подключение события к удалённому хосту
+									if(!(result = this->connect(eid, async)))
+										// Завершаем выполнение функции с ошибкой
+										return result;
+								}
 							}
 						#endif
 					// Если событие не подлежит подключению
