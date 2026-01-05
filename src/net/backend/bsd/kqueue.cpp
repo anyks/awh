@@ -9268,17 +9268,10 @@ namespace sctp {
 								::local::guard_t guard(node);
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-
-								cout << "!!!!!!!!!!! SCTP_ASSOC_CHANGE1 event for peer ID=" << peer->id << endl;
-
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbackEvents != nullptr){
-
-									cout << "!!!!!!!!!!! SCTP_ASSOC_CHANGE2 event for peer ID=" << peer->id << endl;
-
+								if(peer->transfer.sctp.callbackEvents != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
 									peer->transfer.sctp.callbackEvents(peer->id, ::move(event));
-								}
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -9286,10 +9279,17 @@ namespace sctp {
 								::local::guard_t guard(node);
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
+
+								cout << "!!!!!!!!!!! SCTP_ASSOC_CHANGE1 event for peer ID=" << client->id << endl;
+
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr)
+								if(client->transfer.sctp.callbackEvents != nullptr){
+
+									cout << "!!!!!!!!!!! SCTP_ASSOC_CHANGE2 event for peer ID=" << client->id << endl;
+
 									// Вызываем функцию обратного вызова для получения событий
 									client->transfer.sctp.callbackEvents(client->id, ::move(event));
+								}
 							} break;
 						}
 						/**
