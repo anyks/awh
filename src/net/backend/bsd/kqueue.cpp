@@ -9279,17 +9279,10 @@ namespace sctp {
 								::local::guard_t guard(node);
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
-
-								cout << "!!!!!!!!!!! SCTP_ASSOC_CHANGE1 event for peer ID=" << client->id << endl;
-
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbackEvents != nullptr){
-
-									cout << "!!!!!!!!!!! SCTP_ASSOC_CHANGE2 event for peer ID=" << client->id << endl;
-
+								if(client->transfer.sctp.callbackEvents != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
 									client->transfer.sctp.callbackEvents(client->id, ::move(event));
-								}
 							} break;
 						}
 						/**
