@@ -444,7 +444,7 @@ namespace io {
 		 */
 		typedef struct EndpointSCTP {
 			// Идентификатор SCTP-события
-			uint32_t id;
+			sctp_assoc_t id;
 			// Флаги SCTP-событий
 			int32_t flags;
 			// Информация о SCTP-событиях
@@ -23439,8 +23439,15 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 									}
 									// Если размер структуры сервера установлен
 									if(client->endpoint.size > 0){
+										
+										
+
 										// Если подключение к удаленному серверу не выполнено
-										if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
+										if((::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->endpoint.sctp.id) != 0)){
+										
+										
+										// Если подключение к удаленному серверу не выполнено
+										// if((::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) != 0)){
 											// Если ошибка не является ошибкой в процессе подключения
 											if(errno != EINPROGRESS){
 												// Если установлена функция обратного вызова
@@ -23479,6 +23486,8 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 													return result;
 											}
 										}
+
+
 									// Если размер структуры сервера не установлен
 									} else {
 										// Если установлена функция обратного вызова
