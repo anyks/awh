@@ -1735,20 +1735,20 @@ int32_t main(int32_t argc, char * argv[]){
 				if(io.commit(eid)){
 					// Если подключение к серверу прошло успешно
 					//if(io.connect(eid, true)){
-						
-						// Текст исходящего сообщения
-						const string message("Hello from async client!");
-						// Отправляем данные обратно клиенту
-						if(io.send(eid, message.c_str(), message.size()))
-							// Если данные успешно отправлены
-							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
-						// Если данные не отправлены
-						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
-						
 						// Выполняем запуск события
 						if(io.launch(eid)){
 							// Выводим сообщение об успешном запуске события
 							cout << " Событие успешно запущено!" << endl;
+
+							// Текст исходящего сообщения
+							const string message("Hello from async client!");
+							// Отправляем данные обратно клиенту
+							if(io.send(eid, message.c_str(), message.size()))
+								// Если данные успешно отправлены
+								log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
+							// Если данные не отправлены
+							else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+
 							/**
 							 * Запускаем опрос событий
 							 */
