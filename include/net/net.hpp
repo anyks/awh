@@ -978,6 +978,11 @@ namespace awh {
 				using events_t = std::function <void (const event::id_t, unique_ptr <event_t>)>;
 			};
 		};
+		/**
+		 * @brief Создаём тип данных SCTP события
+		 *
+		 */
+		using sctp_event_t = unique_ptr <sctp::event_t>;
 	};
 };
 

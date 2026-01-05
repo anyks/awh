@@ -233,7 +233,7 @@ int32_t main(int32_t argc, char * argv[]){
 					);
 				}));
 				// Устанавливаем функцию обратного вызова на создание события
-				io.on(cid, [&log](const event::id_t eid, unique_ptr <net::sctp::event_t> event) noexcept -> void {
+				io.on(cid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
 					// Выводим сообщение с идентификатором событий SCTP
 					cout << " SCTP EVENT ID: " << event->id << endl;
 					/**

@@ -9161,7 +9161,7 @@ namespace sctp {
 						// Получаем структуру изменения ассоциации SCTP
 						const struct sctp_assoc_change * sac = reinterpret_cast <const struct sctp_assoc_change *> (buffer);
 						// Создаём объект события изменения ассоциации SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_change_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_change_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_change_t * association = awh_cast <net::sctp::event_change_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9306,7 +9306,7 @@ namespace sctp {
 						// Получаем структуру изменения адреса однорангового узла SCTP
 						const struct sctp_paddr_change * spc = reinterpret_cast <const struct sctp_paddr_change *> (buffer);
 						// Создаём объект события изменения адреса однорангового узла SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_addr_change_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_addr_change_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_addr_change_t * association = awh_cast <net::sctp::event_addr_change_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9454,7 +9454,7 @@ namespace sctp {
 						// Получаем структуру ошибки удалённого узла SCTP
 						const struct sctp_remote_error * sre = reinterpret_cast <const struct sctp_remote_error *> (buffer);
 						// Создаём объект события ошибки удалённого узла SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_remote_error_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_remote_error_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_remote_error_t * association = awh_cast <net::sctp::event_remote_error_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9519,7 +9519,7 @@ namespace sctp {
 						// Получаем структуру завершения SCTP
 						const struct sctp_shutdown_event * sse = reinterpret_cast <const struct sctp_shutdown_event *> (buffer);
 						// Создаём объект события завершения работы удалённого узла SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_t> ();
 						// Устанавливаем идентификатор ассоциации SCTP
 						event->id = sse->sse_assoc_id;
 						// Устанавливаем тип события SCTP
@@ -9568,7 +9568,7 @@ namespace sctp {
 						// Получаем структуру адаптационной индикации SCTP
 						const struct sctp_adaptation_event * sad = reinterpret_cast <const struct sctp_adaptation_event *> (buffer);
 						// Создаём объект события адаптационной индикации SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_adaptation_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_adaptation_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_adaptation_t * association = awh_cast <net::sctp::event_adaptation_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9622,7 +9622,7 @@ namespace sctp {
 						// Получаем структуру частичной доставки SCTP
 						const struct sctp_pdapi_event * pdapi = reinterpret_cast <const struct sctp_pdapi_event *> (buffer);
 						// Создаём объект события частичной доставки SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_pdapi_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_pdapi_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_pdapi_t * association = awh_cast <net::sctp::event_pdapi_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9682,7 +9682,7 @@ namespace sctp {
 						// Получаем структуру аутентификационной индикации SCTP
 						const struct sctp_authkey_event * auth = reinterpret_cast <const struct sctp_authkey_event *> (buffer);
 						// Создаём объект события аутентификационной индикации SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_auth_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_auth_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_auth_t * association = awh_cast <net::sctp::event_auth_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9756,7 +9756,7 @@ namespace sctp {
 						// Получаем структуру исчерпания отправителя SCTP
 						const struct sctp_sender_dry_event * dry = reinterpret_cast <const struct sctp_sender_dry_event *> (buffer);
 						// Создаём объект события завершения работы удалённого узла SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_t> ();
 						// Устанавливаем идентификатор ассоциации SCTP
 						event->id = dry->sender_dry_assoc_id;
 						// Устанавливаем тип события SCTP
@@ -9805,7 +9805,7 @@ namespace sctp {
 						// Получаем структуру ошибки отправки SCTP
 						const struct sctp_send_failed_event * ssf = reinterpret_cast <const struct sctp_send_failed_event *> (buffer);
 						// Создаём объект события ошибки отправки SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_send_failed_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_send_failed_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_send_failed_t * association = awh_cast <net::sctp::event_send_failed_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
@@ -9927,7 +9927,7 @@ namespace sctp {
 						// Получаем структуру сброса потоков SCTP
 						const struct sctp_stream_reset_event * strres = reinterpret_cast <const struct sctp_stream_reset_event *> (buffer);
 						// Создаём объект события сброса потоков SCTP
-						unique_ptr <net::sctp::event_t> event = make_unique <net::sctp::event_stream_reset_t> ();
+						net::sctp_event_t event = make_unique <net::sctp::event_stream_reset_t> ();
 						// Извлекаем объект данных события
 						net::sctp::event_stream_reset_t * association = awh_cast <net::sctp::event_stream_reset_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
