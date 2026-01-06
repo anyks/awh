@@ -3236,6 +3236,9 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			
+			cout << "kqueue.cpp::accept() " << node->id << endl;
+			
 			// Если событие принятия подключения разрешено
 			if(node->actions & ::action::ACCEPT){
 				// Создаём охранника узла события
