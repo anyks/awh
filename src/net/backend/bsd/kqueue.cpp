@@ -8748,6 +8748,17 @@ namespace io {
 									char buffer[PATH_MAX];
 									// Получаем актуальный путь директории
 									if(::fcntl(dir->fd, F_GETPATH, buffer) == 0){
+										// Множество уже прочитанных записей каталога
+										unordered_map <string, event::vnode_t> entries;
+										// Проходим по всем записям в директории
+										for(auto i = dir->entries.begin(); i != dir->entries.end();){
+											// Добавляем запись в список содержимого директории с новым путём
+											entries.emplace(fmk->format("%s%s", buffer, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
+											// Удаляем старую запись из списка содержимого директории
+											i = dir->entries.erase(i);
+										}
+										// Заменяем старый список записей в дирректории на новый
+										dir->entries = ::move(entries);
 										// Устанавливаем новый путь директории
 										awh_cast <net::addr_fs_t *> (dir->path.get())->address = buffer;
 										// Если событие переименования директории разрешено
