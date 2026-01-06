@@ -11501,6 +11501,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (client->state.protocol)){
+															// Если протокол интернета не установлен
+															case static_cast <uint8_t> (event::protocol_t::NONE):
 															// Если протокол определён как TCP
 															case static_cast <uint8_t> (event::protocol_t::TCP): {
 																// Если активирован режим ручного формирования заголовков
@@ -12011,6 +12013,8 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														 * Определяем протокол
 														 */
 														switch(static_cast <uint8_t> (client->state.protocol)){
+															// Если протокол интернета не установлен
+															case static_cast <uint8_t> (event::protocol_t::NONE):
 															// Если протокол определён как TCP
 															case static_cast <uint8_t> (event::protocol_t::TCP): {
 																// Если активирован режим ручного формирования заголовков
