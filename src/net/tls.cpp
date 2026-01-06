@@ -154,13 +154,13 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Структура печенок SSL
+	 * @brief Структура cookie SSL
 	 *
 	 */
 	typedef struct Cookie {
-		// Буфер секретного слова печенок
+		// Буфер секретного слова cookie
 		uint8_t buffer[16];
-		// Флаг инициализации печенок SSL
+		// Флаг инициализации cookie SSL
 		atomic_bool initialized;
 		/**
 		 * @brief Конструктор
@@ -266,7 +266,7 @@ namespace {
 			alpn_t alpn;
 			// Объект хоста
 			host_t host;
-			// Объект печенок SSL
+			// Объект cookie SSL
 			cookie_t cookie;
 			// Объект обратных вызовов
 			callback_t callback;
@@ -1398,9 +1398,9 @@ namespace cookie {
 	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-		// Если печенки еще не проинициализированны
+		// Если cookie еще не проинициализированы
 		if(!member->cookie.initialized){
-			// Выполняем произвольно генерацию байт в буфере печенок
+			// Выполняем произвольно генерацию байт в буфере cookie
 			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
 				// Выполняем получение идентификатора контекста TLS
 				const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
@@ -1434,7 +1434,7 @@ namespace cookie {
 		}
 		// Получаем объект хоста IPv4-адреса
 		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
-		// Размер буфера и длина сгенерированных печенок
+		// Размер буфера и длина сгенерированных cookie
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
 		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
@@ -1488,15 +1488,15 @@ namespace cookie {
 			// Если производится работа с другими протоколами, выходим
 			default: OPENSSL_assert(0);
 		}
-		// Буфер под генерацию печенок
+		// Буфер под генерацию cookie
 		uint8_t result[EVP_MAX_MD_SIZE];
 		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
 		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
 		// Очищаем ранее выделенную память
 		OPENSSL_free(buffer);
-		// Выполняем копирование полученного результата в буфер печенок
+		// Выполняем копирование полученного результата в буфер cookie
 		::memcpy(cookie, result, length);
-		// Устанавливаем размер буфера печенок
+		// Устанавливаем размер буфера cookie
 		(* size) = length;
 		// Выводим положительный ответ
 		return 1;
@@ -1512,7 +1512,7 @@ namespace cookie {
 	static int32_t generateStateless(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
 		// Размер буфера с печенками
 		uint32_t length = 0;
-		// Выполняем генерацию печенок
+		// Выполняем генерацию cookie
 		const int32_t result = ::cookie::generate(ssl, cookie, &length);
 		// Получаем размер буфера с печенками
 		(* size) = length;
@@ -1530,13 +1530,13 @@ namespace cookie {
 	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-		// Если печенки не проинициализированы, значит куки не валидные
+		// Если cookie не проинициализированы, значит cookie не валидные
 		if(!member->cookie.initialized)
 			// Выходим из функции
 			return 0;
 		// Получаем объект хоста IPv4-адреса
 		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
-		// Размер буфера и длина сгенерированных печенок
+		// Размер буфера и длина сгенерированных cookie
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
 		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
@@ -1590,13 +1590,13 @@ namespace cookie {
 			// Если производится работа с другими протоколами, выходим
 			default: OPENSSL_assert(0);
 		}
-		// Буфер под генерацию печенок
+		// Буфер под генерацию cookie
 		uint8_t result[EVP_MAX_MD_SIZE];
 		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
 		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
 		// Очищаем ранее выделенную память
 		::OPENSSL_free(buffer);
-		// Выполняем проверку печенок, если печенки совпадают, значит всё хорошо
+		// Выполняем проверку cookie, если cookie совпадают, значит всё хорошо
 		if((size == length) && (::memcmp(result, cookie, length) == 0))
 			// Выходим из функции с удачей
 			return 1;
@@ -1612,7 +1612,7 @@ namespace cookie {
 	 * @return       результат проверки
 	 */
 	static int32_t verifyStateless(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
-		// Выполняем проверку печенок
+		// Выполняем проверку cookie
 		return ::cookie::verify(ssl, cookie, static_cast <uint32_t> (size));
 	}
 };
@@ -6167,16 +6167,16 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
 					case static_cast <uint8_t> (event::protocol_t::UDP): {
-						// Выполняем проверку файлов печенок
+						// Выполняем проверку файлов cookie
 						::SSL_CTX_set_cookie_verify_cb((* ret.first)->ctx, &::cookie::verify);
-						// Выполняем генерацию файлов печенок
+						// Выполняем генерацию файлов cookie
 						::SSL_CTX_set_cookie_generate_cb((* ret.first)->ctx, &::cookie::generate);
 					} break;
 					// Если протокол подключения SCTP
 					case static_cast <uint8_t> (event::protocol_t::SCTP): {
-						// Выполняем проверку файлов печенок
+						// Выполняем проверку файлов cookie
 						::SSL_CTX_set_stateless_cookie_verify_cb((* ret.first)->ctx, &::cookie::verifyStateless);
-						// Выполняем генерацию файлов печенок
+						// Выполняем генерацию файлов cookie
 						::SSL_CTX_set_stateless_cookie_generate_cb((* ret.first)->ctx, &::cookie::generateStateless);
 					} break;
 				}
