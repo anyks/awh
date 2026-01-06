@@ -3236,9 +3236,6 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			
-			cout << "kqueue.cpp::accept() " << node->id << endl;
-			
 			// Если событие принятия подключения разрешено
 			if(node->actions & ::action::ACCEPT){
 				// Создаём охранника узла события
@@ -3316,8 +3313,14 @@ namespace io {
 							switch(static_cast <uint8_t> (node->state.protocol)){
 								// Если протокол интернета установлен как TCP
 								case static_cast <uint8_t> (event::protocol_t::TCP):
+
+									cout << " +++++++++1 " << node->id << " == " << node->fd << " == " << node->endpoint.size << endl;
+
 									// Определяем разрешено ли подключение к прокси серверу
 									sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
+
+									cout << " +++++++++2 " << node->id << " === " << node->fd << " || " << sock << " == " << node->endpoint.size << endl;
+
 								break;
 								// Если протокол интернета установлен как SCTP
 								case static_cast <uint8_t> (event::protocol_t::SCTP): {
