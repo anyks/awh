@@ -470,7 +470,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Инициализируем сообщения SCTP
 				io.sctpInitMessages(eid, initmsg);
 				// Если прослушивание события успешно
-				if(io.listen(eid, 100, true)){
+				if(io.listen(eid, 100)){
 					// Выполняем запуск события
 					if(io.launch(eid)){
 						// Выводим сообщение об успешном запуске события

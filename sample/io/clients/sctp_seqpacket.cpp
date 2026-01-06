@@ -1571,7 +1571,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим статус SCTP-сокета
 					cout << " SCTP Status: " << endl;
 					cout << "  - ID: " << status.id << endl;
-					cout << "  - State: " << status.state << endl;
+					cout << "  - State: " << (u_short) status.state << endl;
 					cout << "  - Outbound Streams: " << status.ostreams << endl;
 					cout << "  - Inbound Streams: " << status.istreams << endl;
 					cout << "  - Fragmentation Point: " << status.fragpoint << endl;
@@ -1734,7 +1734,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Если подключение к серверу прошло успешно
-					if(io.connect(eid, true)){
+					if(io.connect(eid)){
 						// Выполняем запуск события
 						if(io.launch(eid)){
 							// Выводим сообщение об успешном запуске события
