@@ -7502,7 +7502,7 @@ namespace io {
 								}
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(ipc->transfer.mtx);
-								// Удаляем запись из очереди отправленных данных
+								// Удаляем запись из очереди отправленых данных
 								ipc->transfer.queue.pop();
 							}
 							// Если в очереди данных больше не осталось данных для отправки
@@ -7802,7 +7802,7 @@ namespace io {
 								}
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(peer->transfer.mtx);
-								// Удаляем запись из очереди отправленных данных
+								// Удаляем запись из очереди отправленых данных
 								peer->transfer.queue.pop();
 							}
 							// Если в очереди данных больше не осталось данных для отправки
@@ -8456,7 +8456,7 @@ namespace io {
 									}
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
-									// Удаляем запись из очереди отправленных данных
+									// Удаляем запись из очереди отправленых данных
 									client->transfer.queue.pop();
 								}
 								// Если в очереди данных больше не осталось данных для отправки
@@ -8651,7 +8651,7 @@ namespace io {
 									}
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(session.second->transfer.mtx);
-									// Удаляем запись из очереди отправленных данных
+									// Удаляем запись из очереди отправленых данных
 									session.second->transfer.queue.pop();
 								}
 							}
@@ -28730,7 +28730,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													if((i != client->timeouts.end()) && (i->second > 0))
 														// Устанавливаем таймаут на отправку данных
 														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
-													// Определяем переменную для хранения количества отправленных байт
+													// Определяем переменную для хранения количества отправленых байт
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
@@ -35082,7 +35082,7 @@ bool awh::IO::reinitialize() noexcept {
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Если событие поставленно на паузу
+					// Если событие поставлено на паузу
 					} else if(dir->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
 						// Выполняем сброс статуса ожидания события
 						dir->state.status.store(event::status_t::NONE, std::memory_order_release);
@@ -35117,7 +35117,7 @@ bool awh::IO::reinitialize() noexcept {
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
-					// Если событие поставленно на паузу
+					// Если событие поставлено на паузу
 					} else if(file->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
 						// Выполняем сброс статуса ожидания события
 						file->state.status.store(event::status_t::NONE, std::memory_order_release);
@@ -35173,7 +35173,7 @@ bool awh::IO::reinitialize() noexcept {
 						}
 						// Увеличиваем значение итератора
 						++i;
-					// Если событие поставленно на паузу
+					// Если событие поставлено на паузу
 					} else if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
@@ -36644,7 +36644,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 				for(ssize_t i = 0; i < events; i++){
 					// Получаем текущее значение события
 					struct kevent & ev = ::__awh_events__[i];
-					// Если узел события не получена, значит узел уже удалён
+					// Если узел события не получен, значит узел уже удалён
 					if(reinterpret_cast <net::node_t *> (ev.udata) == nullptr)
 						// Пропускаем событие
 						continue;
