@@ -3236,10 +3236,16 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			
+			cout << " !!!!!!!!1 " << node->id << " == " << node->fd << endl;
+			
 			// Если событие принятия подключения разрешено
 			if(node->actions & ::action::ACCEPT){
 				// Создаём охранника узла события
 				::local::guard_t guard(node);
+				
+				cout << " !!!!!!!!2 " << node->id << " == " << node->fd << endl;
+				
 				// Если количество текущих подключений уже максимальное
 				if(node->backlog.count == node->backlog.max){
 					// Принимаем подключение и сразу закрываем его
@@ -3257,6 +3263,9 @@ namespace io {
 				}
 				// Заполняем структуру клиента нулями
 				::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
+				
+				cout << " !!!!!!!!3 " << node->id << " == " << node->fd << endl;
+				
 				/**
 				 * Определяем тип сокета
 				 */
@@ -3265,6 +3274,9 @@ namespace io {
 					case static_cast <uint8_t> (event::type_t::STREAM):
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						
+						cout << " !!!!!!!!4 " << node->id << " == " << node->fd << endl;
+						
 						/**
 						 * Определяем семейство события
 						 */
@@ -3277,6 +3289,11 @@ namespace io {
 								::memset(&::trust_cast <struct sockaddr_un> (node->endpoint.client), 0, node->endpoint.size);
 								// Устанавливаем протокол интернета
 								::trust_cast <struct sockaddr_un> (node->endpoint.client).sun_family = AF_UNIX;
+								// Устанавливаем длину структуры у клиента
+								::trust_cast <struct sockaddr_un> (node->endpoint.client).sun_len = node->endpoint.size;
+
+								cout << " !!!!!!!!5 " << node->id << " == " << node->fd << endl;
+
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
@@ -3286,6 +3303,8 @@ namespace io {
 								::memset(&::trust_cast <struct sockaddr_in> (node->endpoint.client), 0, node->endpoint.size);
 								// Устанавливаем протокол интернета
 								::trust_cast <struct sockaddr_in> (node->endpoint.client).sin_family = AF_INET;
+								// Устанавливаем длину структуры у клиента
+								::trust_cast <struct sockaddr_in> (node->endpoint.client).sin_len = node->endpoint.size;
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -3295,8 +3314,13 @@ namespace io {
 								::memset(&::trust_cast <struct sockaddr_in6> (node->endpoint.client), 0, node->endpoint.size);
 								// Устанавливаем протокол интернета
 								::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_family = AF_INET6;
+								// Устанавливаем длину структуры у клиента
+								::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_len = node->endpoint.size;
 							} break;
 						}
+
+						cout << " !!!!!!!!6 " << node->id << " == " << node->fd << endl;
+
 						/**
 						 * Если операционной системой является FreeBSD
 						 */
@@ -3307,6 +3331,9 @@ namespace io {
 							char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 							// Объявляем дескриптор сокета
 							net::socket_t sock = net::invalid_socket_t;
+							
+							cout << " !!!!!!!!7 " << node->id << " == " << node->fd << endl;
+							
 							/**
 							 * Определяем протокол интернета
 							 */
@@ -30428,12 +30455,12 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 										struct sockaddr_in endpoint;
 										// Очищаем всю структуру конечной точки
 										::memset(&endpoint, 0, sizeof(endpoint));
-										// Устанавливаем длину структуры
-										endpoint.sin_len = sizeof(struct sockaddr_in);
 										// Устанавливаем протокол интернета
 										endpoint.sin_family = AF_INET;
 										// Устанавливаем произвольный порт с которого выполняется подключение
 										endpoint.sin_port = htons(port);
+										// Устанавливаем длину структуры
+										endpoint.sin_len = sizeof(struct sockaddr_in);
 										// Устанавливаем адрес для локального подключения
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
@@ -30561,12 +30588,12 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 										struct sockaddr_in6 endpoint;
 										// Очищаем всю структуру конечной точки
 										::memset(&endpoint, 0, sizeof(endpoint));
-										// Устанавливаем длину структуры
-										endpoint.sin6_len = sizeof(struct sockaddr_in6);
 										// Устанавливаем протокол интернета
 										endpoint.sin6_family = AF_INET6;
 										// Устанавливаем произвольный порт с которого выполняется подключение
 										endpoint.sin6_port = htons(port);
+										// Устанавливаем длину структуры
+										endpoint.sin6_len = sizeof(struct sockaddr_in6);
 										// Устанавливаем адрес для локального подключения
 										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
 										// Выполняем бинд на сокет
@@ -30702,10 +30729,10 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 										struct sockaddr_in endpoint;
 										// Очищаем всю структуру конечной точки
 										::memset(&endpoint, 0, sizeof(endpoint));
-										// Устанавливаем длину структуры
-										endpoint.sin_len = sizeof(struct sockaddr_in);
 										// Устанавливаем протокол интернета
 										endpoint.sin_family = AF_INET;
+										// Устанавливаем длину структуры
+										endpoint.sin_len = sizeof(struct sockaddr_in);
 										// Если порт подписки для сервера не указан
 										if(port == 0){
 											// Получаем объект хоста текущего сервера
@@ -30841,10 +30868,10 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
 										struct sockaddr_in6 endpoint;
 										// Очищаем всю структуру конечной точки
 										::memset(&endpoint, 0, sizeof(endpoint));
-										// Устанавливаем длину структуры
-										endpoint.sin6_len = sizeof(struct sockaddr_in6);
 										// Устанавливаем протокол интернета
 										endpoint.sin6_family = AF_INET6;
+										// Устанавливаем длину структуры
+										endpoint.sin6_len = sizeof(struct sockaddr_in6);
 										// Если порт подписки для сервера не указан
 										if(port == 0){
 											// Получаем объект хоста текущего сервера
