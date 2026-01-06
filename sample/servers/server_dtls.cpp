@@ -59,7 +59,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем объект транспортного уровня безопасности
 		tls_t::id_t tid = tls.create(event::node_t::SERVER, event::protocol_t::UDP);
 		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(tid, vector <tls_t::alpn_t> {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		tls.alpn(tid, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// Устанавливаем файл центра сертификации DTLS
 		tls.ca(tid, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста DTLS

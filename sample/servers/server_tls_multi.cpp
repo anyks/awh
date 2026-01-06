@@ -221,7 +221,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Регистрируем объект транспортного уровня безопасности
 					tls_t::id_t tid2 = tls.create(event::node_t::SERVER, event::protocol_t::TCP);
 					// Устанавливаем ALPN протоколы TLS
-					tls.alpn(tid2, vector <tls_t::alpn_t> {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+					tls.alpn(tid2, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 					// Устанавливаем файл центра сертификации TLS
 					tls.ca(tid2, "../sh/certificates", "ca.pem");
 					// Включаем проверку имени хоста TLS
@@ -480,7 +480,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Если прослушивание события успешно
-				if(io.listen(eid, 100, true)){
+				if(io.listen(eid, 100)){
 					// Выполняем запуск события
 					if(io.launch(eid)){
 						// Выводим сообщение об успешном запуске события
