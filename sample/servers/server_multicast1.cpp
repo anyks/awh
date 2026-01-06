@@ -152,7 +152,7 @@ int32_t main(int32_t argc, char * argv[]){
 								}
 							});
 							// Устанавливаем функцию обратного вызова на подключение нового клиента
-							io.on(eid, [&io, &log](const event::id_t eid, const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+							io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 								// Выводим сообщение о принятии события
 								log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
 								// Устанавливаем функцию обратного вызова на событие таймера
@@ -233,12 +233,35 @@ int32_t main(int32_t argc, char * argv[]){
 									// Выводим сообщение о переподключении события
 									log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 								}));
+								// Флаг отправки сообщений
+								static bool sending = false;
 								// Устанавливаем функцию обратного вызова на чтение из события
-								io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+								io.on(cid, [eid, &io, &log](const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
 									// Текст входящего сообщения
-									const string message(reinterpret_cast <const char *> (data), size);
+									string message(reinterpret_cast <const char *> (data), size);
 									// Выводим сообщение о переподключении события
-									log.print("Прочитано2: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+									log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, cid, size, message.c_str());
+									// Если сообщение ещё не отправлено
+									if(!sending){
+										// Устанавливаем флаг отправки сообщения
+										sending = !sending;
+										// Помечаем сообщение
+										message.append("1");
+										// Отправляем данные обратно клиенту
+										if(io.send(eid, message.c_str(), message.length()))
+											// Если данные успешно отправлены
+											log.print("Отправлено в группу: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.length());
+										// Если данные не отправлены
+										else log.print("Ошибка отправки в группу: ID=%u", log_t::flag_t::CRITICAL, eid);
+										// Помечаем сообщение
+										message.append("2");
+										// Отправляем данные обратно клиенту
+										if(io.send(cid, message.c_str(), message.length()))
+											// Если данные успешно отправлены
+											log.print("Отправлено клиенту: ID=%u, %zu байт", log_t::flag_t::INFO, cid, message.length());
+										// Если данные не отправлены
+										else log.print("Ошибка отправки клиенту: ID=%u", log_t::flag_t::CRITICAL, cid);
+									}
 								});
 								// Устанавливаем функцию обратного вызова на ошибку события
 								io.on(cid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
@@ -366,27 +389,7 @@ int32_t main(int32_t argc, char * argv[]){
 										break;
 									}
 								});
-								// Текст входящего сообщения
-								string message(reinterpret_cast <const char *> (data), size);
-								// Выводим сообщение о переподключении события
-								log.print("Прочитано1: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, cid, size, message.c_str());
-								// Помечаем сообщение
-								message.append("1");
-								// Отправляем данные обратно клиенту
-								if(io.send(eid, message.c_str(), message.length()))
-									// Если данные успешно отправлены
-									log.print("Отправлено в группу: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.length());
-								// Если данные не отправлены
-								else log.print("Ошибка отправки в группу: ID=%u", log_t::flag_t::CRITICAL, eid);
-								// Помечаем сообщение
-								message.append("2");
-								// Отправляем данные обратно клиенту
-								if(io.send(cid, message.c_str(), message.length()))
-									// Если данные успешно отправлены
-									log.print("Отправлено клиенту: ID=%u, %zu байт", log_t::flag_t::INFO, cid, message.length());
-								// Если данные не отправлены
-								else log.print("Ошибка отправки клиенту: ID=%u", log_t::flag_t::CRITICAL, cid);
-							});
+							}));
 							// Устанавливаем функцию обратного вызова на запись в событие
 							io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
 								// Выводим сообщение о переподключении события

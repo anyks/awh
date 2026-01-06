@@ -1197,7 +1197,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool connect(::io::client_t *, const io_t *, const eth_t *, const log_t *) noexcept;
+	static bool connected(::io::client_t *, const io_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события чтения
 	 *
@@ -3942,7 +3942,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool connect(::io::client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool connected(::io::client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -7833,7 +7833,7 @@ namespace io {
 								// Устанавливаем статус события в состояние подключено
 								client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
 								// Выполняем обработку события подключения клиента
-								return ::io::connect(client, io, eth, log);
+								return ::io::connected(client, io, eth, log);
 							// Если статус события просто запись данных в сокет
 							} else {
 								// Если есть данные для отправки в сокет
@@ -23519,854 +23519,37 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 	return false;
 }
 /**
- * @brief Метод подключения события к удалённому хосту
+ * @brief Метод мультиподключения события к удалённым хостам
  *
- * @param id    идентификатор события
- * @param async флаг асинхронного подключения
- * @return      результат выполнения подключения
+ * @param id  идентификатор события
+ * @param ... список идентификаторов событий для подключения
+ * @return    результат выполнения подключения
  */
-bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
+bool awh::IO::connect(event::id_t id, ...) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден
-		if(i != ::__awh_nodes__.end()){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			// Если событие уже инициализировано
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						// Если событие подключение к серверу разрешено
-						if(client->transfer.actions & ::action::CONNECT){
-							// Устанавливаем статус события в состояние успешного подключения
-							client->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
-							// Если нам необходимо выполнить асинхронное подключение
-							if(async){
-								// Если сокет является блокирующим
-								if(!(client->state.options & event::options::NOIOBLOCK) && !(client->state.options & event::options::SMIOBLOCK)){
-									// Устанавливаем неблокирующий режим ввода/вывода
-									if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED)){
-										// Устанавливаем опция неблокирующего режима события
-										client->state.options |= event::options::NOIOBLOCK;
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-									}
-								}
-							// Если сокет является блокирующим
-							} else {
-								// Если сокет является неблокирующим
-								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
-									// Устанавливаем блокирующий режим ввода/вывода
-									if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
-										// Если установлена опция SMIOBLOCK
-										if(client->state.options & event::options::SMIOBLOCK)
-											// Снимаем опция неблокирующего режима события
-											client->state.options ^= event::options::SMIOBLOCK;
-										// Если установлена опция NOIOBLOCK
-										else if(client->state.options & event::options::NOIOBLOCK)
-											// Снимаем опция неблокирующего режима события
-											client->state.options ^= event::options::NOIOBLOCK;
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-									}
-								}
-							}
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (client->state.type)){
-								// Если сокет принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM):
-								// Если сокет принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__
-										/**
-										 * Определяем протокол интернета
-										 */
-										switch(static_cast <uint8_t> (client->state.protocol)){
-											// Если протокол интернета установлен как TCP
-											case static_cast <uint8_t> (event::protocol_t::TCP): {
-												// Если сокет является UNIX-сокетом
-												if(client->state.family == event::family_t::UDS){
-													// Получаем размер объекта сокета
-													client->endpoint.size = (
-														offsetof(struct sockaddr_un, sun_path) +
-														::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
-													);
-												}
-												// Если подключение к удаленному серверу не выполнено
-												if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
-													// Если ошибка не является ошибкой в процессе подключения
-													if(errno != EINPROGRESS){
-														// Если установлена функция обратного вызова
-														if(client->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Снимаем флаг ожидания подключения
-														client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-														// Если функция обратного вызова для вывода подключения установлена
-														if(client->callbacks.connect != nullptr)
-															// Вызываем функцию обратного вызова для подключения
-															client->callbacks.connect(client->id, false);
-														// Если установлен режим постоянного подключения
-														if(!(client->state.options & event::options::KEEPALIVE))
-															// Завершаем выполнение функции с ошибкой
-															return result;
-													}
-												}
-											} break;
-											// Если протокол интернета установлен как SCTP
-											case static_cast <uint8_t> (event::protocol_t::SCTP): {
-												// Если подключение к удаленному серверу не выполнено
-												if(!(result = (::sctp_connectx(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), 1, &client->transfer.sctp.id) == 0))){
-													// Если ошибка не является ошибкой в процессе подключения
-													if(errno != EINPROGRESS){
-														// Если установлена функция обратного вызова
-														if(client->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Снимаем флаг ожидания подключения
-														client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-														// Если функция обратного вызова для вывода подключения установлена
-														if(client->callbacks.connect != nullptr)
-															// Вызываем функцию обратного вызова для подключения
-															client->callbacks.connect(client->id, false);
-														// Если установлен режим постоянного подключения
-														if(!(client->state.options & event::options::KEEPALIVE))
-															// Завершаем выполнение функции с ошибкой
-															return result;
-													}
-												}
-											} break;
-										}
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Если сокет является UNIX-сокетом
-										if(client->state.family == event::family_t::UDS){
-											// Получаем размер объекта сокета
-											client->endpoint.size = (
-												offsetof(struct sockaddr_un, sun_path) +
-												::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
-											);
-										}
-										// Если подключение к удаленному серверу не выполнено
-										if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
-											// Если ошибка не является ошибкой в процессе подключения
-											if(errno != EINPROGRESS){
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Снимаем флаг ожидания подключения
-												client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-												// Если функция обратного вызова для вывода подключения установлена
-												if(client->callbacks.connect != nullptr)
-													// Вызываем функцию обратного вызова для подключения
-													client->callbacks.connect(client->id, false);
-												// Если установлен режим постоянного подключения
-												if(!(client->state.options & event::options::KEEPALIVE))
-													// Завершаем выполнение функции с ошибкой
-													return result;
-											}
-										}
-									#endif
-								} break;
-								// Если сокет принадлежит к типу DATAGRAM
-								case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-									// Если сокет является UNIX-сокетом
-									if(client->state.family == event::family_t::UDS){
-										// Получаем размер объекта сокета
-										client->endpoint.size = (
-											offsetof(struct sockaddr_un, sun_path) +
-											::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
-										);
-									}
-									// Если подключение к удаленному серверу не выполнено
-									if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
-										// Если ошибка не является ошибкой в процессе подключения
-										if(errno != EINPROGRESS){
-											// Если установлена функция обратного вызова
-											if(client->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												client->callbacks.status(client->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(client->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-												#endif
-											}
-											// Снимаем флаг ожидания подключения
-											client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-											// Если функция обратного вызова для вывода подключения установлена
-											if(client->callbacks.connect != nullptr)
-												// Вызываем функцию обратного вызова для подключения
-												client->callbacks.connect(client->id, false);
-											// Если установлен режим постоянного подключения
-											if(!(client->state.options & event::options::KEEPALIVE))
-												// Завершаем выполнение функции с ошибкой
-												return result;
-										}
-									}
-								} break;
-							}
-						}
-					} break;
-					// Для других типов узлов
-					default: {
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::NOTIFY): {
-								// Получаем текущее значение объекта пользовательского события
-								::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(user->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									user->callbacks.status(user->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(user->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									user->callbacks.error(user->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является директорией
-							case static_cast <uint8_t> (event::node_t::DIR): {
-								// Получаем текущее значение объекта директории
-								::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(dir->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									dir->callbacks.status(dir->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(dir->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE): {
-								// Получаем текущее значение объекта файловой системы
-								::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(fs->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									fs->callbacks.status(fs->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(fs->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMEOUT):
-							// Если узел является интервалом
-							case static_cast <uint8_t> (event::node_t::INTERVAL): {
-								// Получаем текущее значение объекта таймера
-								::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(timer->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									timer->callbacks.status(timer->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(timer->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC): {
-								// Получаем текущее значение объекта межпроцессного взаимодействия
-								::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(ipc->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(ipc->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									peer->callbacks.status(peer->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN): {
-								// Получаем текущее значение объекта однорангового узла-источника
-								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(origin->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									origin->callbacks.status(origin->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(origin->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Получаем текущее значение объекта сервера
-								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(server->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									server->callbacks.status(server->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Connection is only allowed from the client node";
-								// Если установлена функция обратного вызова
-								if(server->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							} break;
-						}
-					}
-				}
-			// Если событие не подлежит подключению
-			} else {
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::NOTIFY): {
-						// Получаем текущее значение объекта пользовательского события
-						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(user->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							user->callbacks.status(user->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(user->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							user->callbacks.error(user->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Получаем текущее значение объекта директории
-						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(dir->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							dir->callbacks.status(dir->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(dir->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Получаем текущее значение объекта файловой системы
-						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							fs->callbacks.status(fs->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMEOUT):
-					// Если узел является интервалом
-					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Получаем текущее значение объекта таймера
-						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(timer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							timer->callbacks.status(timer->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(timer->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является межпроцессным взаимодействием
-					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпроцессного взаимодействия
-						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(ipc->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(ipc->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER): {
-						// Получаем текущее значение объекта однорангового узла
-						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							peer->callbacks.status(peer->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является одноранговым узлом-источником
-					case static_cast <uint8_t> (event::node_t::ORIGIN): {
-						// Получаем текущее значение объекта однорангового узла-источника
-						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(origin->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							origin->callbacks.status(origin->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(origin->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(client->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							client->callbacks.status(client->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(client->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(server->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							server->callbacks.status(server->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Event cannot be used to connect";
-						// Если установлена функция обратного вызова
-						if(server->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-				}
-			}
-		}
+		// Инициализируем список аргументов
+		va_list args;
+		// Начинаем обработку аргументов
+		va_start(args, id);
+		// Текущий идентификатор события
+		event::id_t eid = 0;
+		// Список идентификаторов событий для подключения
+		vector <event::id_t> ids = {id};
+		/**
+		 * Проходим по всем переданным идентификаторам событий для подключения
+		 */
+		while((eid = va_arg(args, event::id_t)) != 0)
+			// Добавляем идентификатор события в список
+			ids.push_back(eid);
+		// Завершаем обработку аргументов
+		va_end(args);
+		// Выполняем подключение к списку удалённых серверов
+		return this->connect(ids);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -24376,7 +23559,7 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -24391,12 +23574,10 @@ bool awh::IO::connect(const event::id_t id, const bool async) noexcept {
 /**
  * @brief Метод мультиподключения события к удалённым хостам
  *
- * @param id    идентификатор события
- * @param ids   список идентификаторов событий для подключения
- * @param async флаг асинхронного подключения
- * @return      результат выполнения подключения
+ * @param ids список идентификаторов событий для подключения
+ * @return    результат выполнения подключения
  */
-bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & ids, const bool async) noexcept {
+bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -24405,8 +23586,8 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 	try {
 		// Если список идентификаторов событий для подключения не пустой
 		if(!ids.empty()){
-			// Если идентификатор события передан
-			if(id != 0){
+			// Выполняем перебор всех идентификаторов
+			for(auto & id : ids){
 				// Выполняем поиск идентификатора события
 				auto i = ::__awh_nodes__.find(id);
 				// Если идентификатор события найден
@@ -24416,93 +23597,90 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 					// Если событие уже инициализировано
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						/**
-						 * Если операционной системой является FreeBSD
+						 * Определяем чем является текущий узел
 						 */
-						#if __FreeBSD__
-							/**
-							 * Определяем протокол интернета
-							 */
-							switch(static_cast <uint8_t> (i->second->state.protocol)){
-								// Если протокол интернета установлен как UDP
-								case static_cast <uint8_t> (event::protocol_t::UDP):
-								// Если протокол интернета установлен как TCP
-								case static_cast <uint8_t> (event::protocol_t::TCP): {
-									// Выполняем подключение события к удалённому хосту
-									if((result = this->connect(id, async))){
-										// Проходим по всем идентификаторам событий для подключения
-										for(const auto & eid : ids){
-											// Если идентификаторы совпадают
-											if(id == eid)
-												// Переходим к следующему идентификатору
-												continue;
-											// Выполняем подключение события к удалённому хосту
-											if(!(result = this->connect(eid, async)))
-												// Завершаем выполнение функции с ошибкой
-												return result;
-										}
-									}
-								} break;
-								// Если протокол интернета установлен как SCTP
-								case static_cast <uint8_t> (event::protocol_t::SCTP): {
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+								// Если событие подключение к серверу разрешено
+								if(client->transfer.actions & ::action::CONNECT){
+									// Устанавливаем статус события в состояние успешного подключения
+									client->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
 									/**
-									 * Определяем чем является текущий узел
+									 * Определяем протокол интернета
 									 */
-									switch(static_cast <uint8_t> (i->second->state.node)){
-										// Если узел является клиентом
-										case static_cast <uint8_t> (event::node_t::CLIENT): {
-											// Получаем текущее значение объекта клиента
-											::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-											// Если событие подключение к серверу разрешено
-											if(client->transfer.actions & ::action::CONNECT){
-												// Устанавливаем статус события в состояние успешного подключения
-												client->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
-												// Если нам необходимо выполнить асинхронное подключение
-												if(async){
-													// Если сокет является блокирующим
-													if(!(client->state.options & event::options::NOIOBLOCK) && !(client->state.options & event::options::SMIOBLOCK)){
-														// Устанавливаем неблокирующий режим ввода/вывода
-														if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED)){
-															// Устанавливаем опция неблокирующего режима события
-															client->state.options |= event::options::NOIOBLOCK;
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем событие на чтение
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+									switch(static_cast <uint8_t> (client->state.protocol)){
+										// Если протокол интернета установлен как NONE
+										case static_cast <uint8_t> (event::protocol_t::NONE):
+										// Если протокол интернета установлен как UDP
+										case static_cast <uint8_t> (event::protocol_t::UDP):
+										// Если протокол интернета установлен как TCP
+										case static_cast <uint8_t> (event::protocol_t::TCP): {
+											/**
+											 * Определяем тип сокета
+											 */
+											switch(static_cast <uint8_t> (client->state.type)){
+												// Если сокет принадлежит к типу STREAM
+												case static_cast <uint8_t> (event::type_t::STREAM):
+												// Если сокет принадлежит к типу DATAGRAM
+												case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+													// Если сокет является UNIX-сокетом
+													if(client->state.family == event::family_t::UDS){
+														// Получаем размер объекта сокета
+														client->endpoint.size = (
+															offsetof(struct sockaddr_un, sun_path) +
+															::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
+														);
+													}
+													// Если подключение к удаленному серверу не выполнено
+													if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
+														// Если ошибка не является ошибкой в процессе подключения
+														if(errno != EINPROGRESS){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																#endif
+															}
+															// Устанавливаем флаг инициализации события
+															client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+															// Если функция обратного вызова для вывода подключения установлена
+															if(client->callbacks.connect != nullptr)
+																// Вызываем функцию обратного вызова для подключения
+																client->callbacks.connect(client->id, false);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
-												// Если сокет является блокирующим
-												} else {
-													// Если сокет является неблокирующим
-													if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
-														// Устанавливаем блокирующий режим ввода/вывода
-														if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
-															// Если установлена опция SMIOBLOCK
-															if(client->state.options & event::options::SMIOBLOCK)
-																// Снимаем опция неблокирующего режима события
-																client->state.options ^= event::options::SMIOBLOCK;
-															// Если установлена опция NOIOBLOCK
-															else if(client->state.options & event::options::NOIOBLOCK)
-																// Снимаем опция неблокирующего режима события
-																client->state.options ^= event::options::NOIOBLOCK;
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем событие на чтение
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														}
-													}
-												}
+												} break;
+											}
+										} break;
+										/**
+										 * Если операционной системой является FreeBSD
+										 */
+										#if __FreeBSD__
+											// Если протокол интернета установлен как SCTP
+											case static_cast <uint8_t> (event::protocol_t::SCTP): {
 												/**
 												 * Определяем тип сокета
 												 */
@@ -24516,13 +23694,9 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 														// Добавляем адреса в список для подключения
 														addrs.push_back(::trust_cast <struct sockaddr> (client->endpoint.server));
 														// Проходим по всем идентификаторам событий для подключения
-														for(const auto & eid : ids){
-															// Если идентификаторы совпадают
-															if(id == eid)
-																// Переходим к следующему идентификатору
-																continue;
+														for(size_t j = 1; j < ids.size(); j++){
 															// Выполняем поиск идентификатора события
-															auto i = ::__awh_nodes__.find(eid);
+															auto i = ::__awh_nodes__.find(ids[j]);
 															// Если идентификатор события найден
 															if(i != ::__awh_nodes__.end()){
 																/**
@@ -24581,7 +23755,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, ::strerror(errno));
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
 																	/**
 																	 * Если режим отладки не включён
 																	 */
@@ -24596,296 +23770,276 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 																if(client->callbacks.connect != nullptr)
 																	// Вызываем функцию обратного вызова для подключения
 																	client->callbacks.connect(client->id, false);
-																// Если установлен режим постоянного подключения
-																if(!(client->state.options & event::options::KEEPALIVE))
-																	// Завершаем выполнение функции с ошибкой
-																	return result;
 															}
 														}
 													} break;
 												}
-											}
-										} break;
-										// Для других типов узлов
-										default: {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если узел является пользовательским событием
-												case static_cast <uint8_t> (event::node_t::NOTIFY): {
-													// Получаем текущее значение объекта пользовательского события
-													::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(user->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														user->callbacks.status(user->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(user->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														user->callbacks.error(user->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является директорией
-												case static_cast <uint8_t> (event::node_t::DIR): {
-													// Получаем текущее значение объекта директории
-													::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(dir->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														dir->callbacks.status(dir->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(dir->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является файловой системой
-												case static_cast <uint8_t> (event::node_t::FILE): {
-													// Получаем текущее значение объекта файловой системы
-													::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(fs->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														fs->callbacks.status(fs->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(fs->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является таймаутом
-												case static_cast <uint8_t> (event::node_t::TIMEOUT):
-												// Если узел является интервалом
-												case static_cast <uint8_t> (event::node_t::INTERVAL): {
-													// Получаем текущее значение объекта таймера
-													::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(timer->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														timer->callbacks.status(timer->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(timer->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является межпроцессным взаимодействием
-												case static_cast <uint8_t> (event::node_t::IPC): {
-													// Получаем текущее значение объекта межпроцессного взаимодействия
-													::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(ipc->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(ipc->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является одноранговым узлом
-												case static_cast <uint8_t> (event::node_t::PEER): {
-													// Получаем текущее значение объекта однорангового узла
-													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														peer->callbacks.status(peer->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является одноранговым узлом-источником
-												case static_cast <uint8_t> (event::node_t::ORIGIN): {
-													// Получаем текущее значение объекта однорангового узла-источника
-													::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER): {
-													// Получаем текущее значение объекта сервера
-													::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-													// Если установлена функция обратного вызова
-													if(server->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														server->callbacks.status(server->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = "Connection is only allowed from the client node";
-													// Если установлена функция обратного вызова
-													if(server->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
-													// Если функция обратного вызова вывода ошибки не установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, async), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													}
-												} break;
-											}
-										}
+												// Выводим результат работы функции
+												return result;
+											} break;
+										#endif
 									}
-								} break;
-							}
-						/**
-						 * Если это другая операционная система
-						 */
-						#else
-							// Выполняем подключение события к удалённому хосту
-							if((result = this->connect(id, async))){
-								// Проходим по всем идентификаторам событий для подключения
-								for(const auto & eid : ids){
-									// Если идентификаторы совпадают
-									if(id == eid)
-										// Переходим к следующему идентификатору
-										continue;
-									// Выполняем подключение события к удалённому хосту
-									if(!(result = this->connect(eid, async)))
-										// Завершаем выполнение функции с ошибкой
-										return result;
+								}
+							} break;
+							// Для других типов узлов
+							default: {
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является пользовательским событием
+									case static_cast <uint8_t> (event::node_t::NOTIFY): {
+										// Получаем текущее значение объекта пользовательского события
+										::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(user->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											user->callbacks.status(user->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(user->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											user->callbacks.error(user->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является директорией
+									case static_cast <uint8_t> (event::node_t::DIR): {
+										// Получаем текущее значение объекта директории
+										::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(dir->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											dir->callbacks.status(dir->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(dir->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является файловой системой
+									case static_cast <uint8_t> (event::node_t::FILE): {
+										// Получаем текущее значение объекта файловой системы
+										::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(fs->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											fs->callbacks.status(fs->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(fs->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является таймаутом
+									case static_cast <uint8_t> (event::node_t::TIMEOUT):
+									// Если узел является интервалом
+									case static_cast <uint8_t> (event::node_t::INTERVAL): {
+										// Получаем текущее значение объекта таймера
+										::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(timer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											timer->callbacks.status(timer->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(timer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является межпроцессным взаимодействием
+									case static_cast <uint8_t> (event::node_t::IPC): {
+										// Получаем текущее значение объекта межпроцессного взаимодействия
+										::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(ipc->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является одноранговым узлом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Получаем текущее значение объекта однорангового узла
+										::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											peer->callbacks.status(peer->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является одноранговым узлом-источником
+									case static_cast <uint8_t> (event::node_t::ORIGIN): {
+										// Получаем текущее значение объекта однорангового узла-источника
+										::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											origin->callbacks.status(origin->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(server->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from the client node";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
 								}
 							}
-						#endif
+						}
 					// Если событие не подлежит подключению
 					} else {
 						/**
@@ -24913,7 +24067,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -24944,7 +24098,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -24975,7 +24129,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25008,7 +24162,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25039,7 +24193,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25070,7 +24224,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25101,7 +24255,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25132,7 +24286,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25163,7 +24317,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25176,15 +24330,6 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 						}
 					}
 				}
-			// Если идентификатор события не передан
-			} else {
-				// Проходим по всем идентификаторам событий для подключения
-				for(const auto & eid : ids){
-					// Выполняем подключение события к удалённому хосту
-					if(!(result = this->connect(eid, async)))
-						// Завершаем выполнение функции с ошибкой
-						return result;
-				}
 			}
 		}
 	/**
@@ -25196,7 +24341,7 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ids.size(), async), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ids.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -25211,12 +24356,11 @@ bool awh::IO::multiconnect(const event::id_t id, const vector <event::id_t> & id
 /**
  * @brief Метод перевода события в режим прослушивания входящих соединений
  *
- * @param id    идентификатор события
- * @param max   максимальное количество входящих соединений
- * @param async флаг асинхронного прослушивания
- * @return      результат выполнения перевода в режим прослушивания
+ * @param id  идентификатор события
+ * @param max максимальное количество входящих соединений
+ * @return    результат выполнения перевода в режим прослушивания
  */
-bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async) noexcept {
+bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -25245,53 +24389,6 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							server->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
 							// Устанавливаем максимальное количество входящих соединений
 							server->backlog.max = max;
-							// Если нам необходимо выполнить асинхронное подключение
-							if(async){
-								// Если сокет является блокирующим
-								if(!(server->state.options & event::options::NOIOBLOCK) && !(server->state.options & event::options::SMIOBLOCK)){
-									// Устанавливаем неблокирующий режим ввода/вывода
-									if(this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED)){
-										// Устанавливаем опция неблокирующего режима события
-										server->state.options |= event::options::NOIOBLOCK;
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-									}
-								}
-							// Если сокет является блокирующим
-							} else {
-								// Если сокет является неблокирующим
-								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
-									// Устанавливаем блокирующий режим ввода/вывода
-									if(this->_eth.noblocking(server->fd, net::socket_mode_t::DISABLED)){
-										// Если установлена опция SMIOBLOCK
-										if(server->state.options & event::options::SMIOBLOCK)
-											// Снимаем опция неблокирующего режима события
-											server->state.options ^= event::options::SMIOBLOCK;
-										// Если установлена опция NOIOBLOCK
-										else if(server->state.options & event::options::NOIOBLOCK)
-											// Снимаем опция неблокирующего режима события
-											server->state.options ^= event::options::NOIOBLOCK;
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем событие на чтение
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем событие на чтение но отключаем его
-										EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-									}
-								}
-							}
 							/**
 							 * Определяем тип сокета
 							 */
@@ -25315,7 +24412,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -25353,7 +24450,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -25384,7 +24481,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -25417,7 +24514,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -25459,7 +24556,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25490,7 +24587,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25521,7 +24618,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25554,7 +24651,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25585,7 +24682,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25616,7 +24713,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25647,7 +24744,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25678,7 +24775,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25718,7 +24815,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25749,7 +24846,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25780,7 +24877,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25813,7 +24910,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25844,7 +24941,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25875,7 +24972,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25906,7 +25003,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25937,7 +25034,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25968,7 +25065,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -25990,7 +25087,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max, const bool async)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max, async), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/

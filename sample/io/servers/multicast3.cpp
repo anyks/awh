@@ -170,7 +170,7 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на подключение нового клиента
-					io.on(eid, [&io, &log](const event::id_t eid, const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+					io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 						// Выводим сообщение о принятии события
 						log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
 						// Устанавливаем функцию обратного вызова на событие таймера
@@ -256,7 +256,7 @@ int32_t main(int32_t argc, char * argv[]){
 							// Текст входящего сообщения
 							const string message(reinterpret_cast <const char *> (data), size);
 							// Выводим сообщение о переподключении события
-							log.print("Прочитано2: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+							log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 						});
 						// Устанавливаем функцию обратного вызова на ошибку события
 						io.on(cid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
@@ -384,11 +384,7 @@ int32_t main(int32_t argc, char * argv[]){
 								break;
 							}
 						});
-						// Текст входящего сообщения
-						const string message(reinterpret_cast <const char *> (data), size);
-						// Выводим сообщение о переподключении события
-						log.print("Прочитано1: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, cid, size, message.c_str());
-					});
+					}));
 					// Устанавливаем функцию обратного вызова на запись в событие
 					io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
 						// Выводим сообщение о переподключении события

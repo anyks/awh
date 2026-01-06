@@ -12,11 +12,11 @@
  * @copyright: Copyright © 2025
  */
 
-/*
+/**
  * 1. Peer-to-peer discovery (mDNS, SSDP)
  * Клиент отправляет запрос в мультикаст (224.0.0.251:5353 для mDNS),
  * Серверы слушают этот адрес и отвечают либо в мультикаст, либо напрямую клиенту.
-*/
+ */
 
 #include <iostream>
 #include <cinttypes>

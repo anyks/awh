@@ -262,33 +262,31 @@ namespace awh {
 			 * @return   результат выполнения отключения
 			 */
 			bool disconnect(const event::id_t id) noexcept;
-			/**
-			 * @brief Метод подключения события к удалённому хосту
-			 *
-			 * @param id    идентификатор события
-			 * @param async флаг асинхронного подключения
-			 * @return      результат выполнения подключения
-			 */
-			bool connect(const event::id_t id, const bool async = false) noexcept;
+		public:
 			/**
 			 * @brief Метод мультиподключения события к удалённым хостам
 			 *
-			 * @param id    идентификатор события
-			 * @param ids   список идентификаторов событий для подключения
-			 * @param async флаг асинхронного подключения
-			 * @return      результат выполнения подключения
+			 * @param id  идентификатор события
+			 * @param ... список идентификаторов событий для подключения
+			 * @return    результат выполнения подключения
 			 */
-			bool multiconnect(const event::id_t id, const vector <event::id_t> & ids, const bool async = false) noexcept;
+			bool connect(event::id_t id, ...) noexcept;
+			/**
+			 * @brief Метод мультиподключения события к удалённым хостам
+			 *
+			 * @param ids список идентификаторов событий для подключения
+			 * @return    результат выполнения подключения
+			 */
+			bool connect(const vector <event::id_t> & ids) noexcept;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений
 			 *
-			 * @param id    идентификатор события
-			 * @param max   максимальное количество входящих соединений
-			 * @param async флаг асинхронного прослушивания
-			 * @return      результат выполнения перевода в режим прослушивания
+			 * @param id  идентификатор события
+			 * @param max максимальное количество входящих соединений
+			 * @return    результат выполнения перевода в режим прослушивания
 			 */
-			bool listen(const event::id_t id, const uint16_t max, const bool async = true) noexcept;
+			bool listen(const event::id_t id, const uint16_t max) noexcept;
 		public:
 			/**
 			 * @brief Метод приёма данных события
