@@ -23640,46 +23640,49 @@ bool awh::IO::connect(initializer_list <event::id_t> ids) noexcept {
 														vector <struct sockaddr> addrs;
 														// Добавляем адреса в список для подключения
 														addrs.push_back(::trust_cast <struct sockaddr> (client->endpoint.server));
-														// Проходим по всем идентификаторам событий для подключения
-														for(size_t j = 1; j < ids.size(); j++){
-															// Выполняем поиск идентификатора события
-															auto i = ::__awh_nodes__.find(ids[j]);
-															// Если идентификатор события найден
-															if(i != ::__awh_nodes__.end()){
-																/**
-																 * Определяем тип сокета
-																 */
-																switch(static_cast <uint8_t> (i->second->state.type)){
-																	// Если сокет принадлежит к типу STREAM
-																	case static_cast <uint8_t> (event::type_t::STREAM):
-																	// Если сокет принадлежит к типу SEQPACKET
-																	case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																		// Создаём охранника узла события
-																		::local::guard_t guard(i->second.get());
-																		/**
-																		 * Определяем чем является текущий узел
-																		 */
-																		switch(static_cast <uint8_t> (i->second->state.node)){
-																			// Если узел является клиентом
-																			case static_cast <uint8_t> (event::node_t::CLIENT): {
-																				// Получаем текущее значение объекта клиента
-																				::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-																				// Если событие подключение к серверу разрешено
-																				if(client->transfer.actions & ::action::CONNECT)
-																					// Добавляем адреса в список для подключения
-																					addrs.push_back(::trust_cast <struct sockaddr> (client->endpoint.server));
-																			} break;
-																			// Если узел является сервером
-																			case static_cast <uint8_t> (event::node_t::SERVER): {
-																				// Получаем текущее значение объекта сервера
-																				::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-																				// Если событие принятие подключений разрешено
-																				if(server->actions & ::action::ACCEPT)
-																					// Добавляем адреса в список для подключения
-																					addrs.push_back(::trust_cast <struct sockaddr> (server->endpoint.server));
-																			} break;
-																		}
-																	} break;
+														// Если в списке идентификаторов ещё есть идентификаторы
+														if(ids.size() > 1){
+															// Проходим по всем идентификаторам событий для подключения
+															for(auto j = ids.begin() + 1, j != ids.end(); j++){
+																// Выполняем поиск идентификатора события
+																auto i = ::__awh_nodes__.find(* j);
+																// Если идентификатор события найден
+																if(i != ::__awh_nodes__.end()){
+																	/**
+																	 * Определяем тип сокета
+																	 */
+																	switch(static_cast <uint8_t> (i->second->state.type)){
+																		// Если сокет принадлежит к типу STREAM
+																		case static_cast <uint8_t> (event::type_t::STREAM):
+																		// Если сокет принадлежит к типу SEQPACKET
+																		case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+																			// Создаём охранника узла события
+																			::local::guard_t guard(i->second.get());
+																			/**
+																			 * Определяем чем является текущий узел
+																			 */
+																			switch(static_cast <uint8_t> (i->second->state.node)){
+																				// Если узел является клиентом
+																				case static_cast <uint8_t> (event::node_t::CLIENT): {
+																					// Получаем текущее значение объекта клиента
+																					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+																					// Если событие подключение к серверу разрешено
+																					if(client->transfer.actions & ::action::CONNECT)
+																						// Добавляем адреса в список для подключения
+																						addrs.push_back(::trust_cast <struct sockaddr> (client->endpoint.server));
+																				} break;
+																				// Если узел является сервером
+																				case static_cast <uint8_t> (event::node_t::SERVER): {
+																					// Получаем текущее значение объекта сервера
+																					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+																					// Если событие принятие подключений разрешено
+																					if(server->actions & ::action::ACCEPT)
+																						// Добавляем адреса в список для подключения
+																						addrs.push_back(::trust_cast <struct sockaddr> (server->endpoint.server));
+																				} break;
+																			}
+																		} break;
+																	}
 																}
 															}
 														}
