@@ -23643,7 +23643,7 @@ bool awh::IO::connect(initializer_list <event::id_t> ids) noexcept {
 														// Если в списке идентификаторов ещё есть идентификаторы
 														if(ids.size() > 1){
 															// Проходим по всем идентификаторам событий для подключения
-															for(auto j = ids.begin() + 1, j != ids.end(); j++){
+															for(auto j = ids.begin() + 1; j != ids.end(); j++){
 																// Выполняем поиск идентификатора события
 																auto i = ::__awh_nodes__.find(* j);
 																// Если идентификатор события найден
