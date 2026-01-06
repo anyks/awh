@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <unordered_set>
 #include <unordered_map>
+#include <initializer_list>
 
 /**
  * Наши модули
@@ -407,7 +408,7 @@ namespace awh {
 			 * @param delim разделитель
 			 * @return      строка полученная после объединения
 			 */
-			string join(const vector <string> & items, const string & delim) const noexcept;
+			string join(initializer_list <string> items, const string & delim) const noexcept;
 			/**
 			 * @brief Метод объединения списка строк в одну строку
 			 *
@@ -415,7 +416,7 @@ namespace awh {
 			 * @param delim разделитель
 			 * @return      строка полученная после объединения
 			 */
-			wstring join(const vector <wstring> & items, const wstring & delim) const noexcept;
+			wstring join(initializer_list <wstring> items, const wstring & delim) const noexcept;
 		public:
 			/**
 			 * @brief Метод разделения строк на токены
@@ -707,7 +708,7 @@ namespace awh {
 			 * @param items  список аргументов строки
 			 * @return       сформированная строка
 			 */
-			string format(const string & format, const vector <string> & items) const noexcept;
+			string format(const string & format, initializer_list <string> items) const noexcept;
 			/**
 			 * @brief Метод реализации функции формирования форматированной строки
 			 *
@@ -715,7 +716,7 @@ namespace awh {
 			 * @param items  список аргументов строки
 			 * @return       сформированная строка
 			 */
-			wstring format(const wstring & format, const vector <wstring> & items) const noexcept;
+			wstring format(const wstring & format, initializer_list <wstring> items) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки существования слова в тексте
@@ -781,7 +782,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			std::unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
+			std::unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", initializer_list <string> escaping = {string{"\""}}) const noexcept;
 			/**
 			 * @brief Метод извлечения ключей и значений из текста
 			 *
@@ -791,7 +792,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			std::unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
+			std::unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", initializer_list <wstring> escaping = {wstring{L"\""}}) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки пользовательской зоны

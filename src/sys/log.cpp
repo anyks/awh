@@ -15,6 +15,7 @@
 /**
  * Стандартные модули
  */
+#include <vector>
 #include <sstream>
 #include <fstream>
 #include <cstring>
@@ -792,9 +793,9 @@ void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
-void awh::Log::print(const string & format, flag_t flag, const vector <string> & args) const noexcept {
+void awh::Log::print(const string & format, flag_t flag, initializer_list <string> args) const noexcept {
 	// Если формат передан
-	if(!format.empty() && !args.empty()){
+	if(!format.empty() && !std::empty(args)){
 		// Если уровень логирования соответствует
 		if((this->_level == level_t::ALL) ||
 		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
@@ -889,9 +890,9 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
-void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept {
+void awh::Log::print(const wstring & format, flag_t flag, initializer_list <wstring> args) const noexcept {
 	// Если формат передан
-	if(!format.empty() && !args.empty()){
+	if(!format.empty() && !std::empty(args)){
 		// Если уровень логирования соответствует
 		if((this->_level == level_t::ALL) ||
 		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||

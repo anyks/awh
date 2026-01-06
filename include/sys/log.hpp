@@ -36,9 +36,9 @@
  */
 #include <tuple>
 #include <string>
-#include <vector>
 #include <functional>
 #include <unordered_map>
+#include <initializer_list>
 
 /**
  * Наши модули
@@ -213,7 +213,7 @@ namespace awh {
 			const fmk_t * _fmk;
 		private:
 			/**
-			 * @brief Шаблон типа аргументов
+			 * @brief Шаблон метода определения количества аргументов
 			 *
 			 * @tparam TupType тип аргументов
 			 */
@@ -230,7 +230,7 @@ namespace awh {
 			}
 		private:
 			/**
-			 * @brief Шаблон входных параметров для серриализатора
+			 * @brief Шаблон метода формирования строки аргументов
 			 *
 			 * @tparam TupType тип аргументов
 			 * @tparam I       список последовательности
@@ -301,7 +301,7 @@ namespace awh {
 			std::pair <string, string> components(const string & filename) const noexcept;
 		public:
 			/**
-			 * @brief Шаблон входных аргументов функции
+			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
 			 *
 			 * @tparam T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
@@ -345,7 +345,7 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Шаблон входных аргументов функции
+			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
 			 *
 			 * @tparam T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
@@ -390,7 +390,7 @@ namespace awh {
 			}
 		public:
 			/**
-			 * @brief Шаблон входных аргументов функции
+			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
 			 *
 			 * @tparam T тип входных аргументов функции
 			 */
@@ -404,7 +404,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void debug(const string & format, const string & method, const tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
+			void debug(const string & format, const string & method, const tuple <T...> & params, flag_t flag, initializer_list <string> args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -433,7 +433,7 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Шаблон входных аргументов функции
+			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
 			 *
 			 * @tparam T тип входных аргументов функции
 			 */
@@ -447,7 +447,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void debug(const wstring & format, const string & method, const tuple <T...> & params, flag_t flag, const vector <wstring> & args) const noexcept {
+			void debug(const wstring & format, const string & method, const tuple <T...> & params, flag_t flag, initializer_list <wstring> args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -498,7 +498,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void print(const string & format, flag_t flag, const vector <string> & args) const noexcept;
+			void print(const string & format, flag_t flag, initializer_list <string> args) const noexcept;
 			/**
 			 * @brief Метод вывода текстовой информации в консоль или файл
 			 *
@@ -506,7 +506,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept;
+			void print(const wstring & format, flag_t flag, initializer_list <wstring> args) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения установленных режимов вывода логов

@@ -22,6 +22,7 @@
 #include <string>
 #include <cstdint>
 #include <unordered_set>
+#include <initializer_list>
 
 /**
  * Наши модули
@@ -279,22 +280,13 @@ namespace awh {
 			 * @return   результат выполнения отключения
 			 */
 			virtual bool disconnect(const event::id_t id) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод мультиподключения события к удалённым хостам
-			 *
-			 * @param id  идентификатор события
-			 * @param ... список идентификаторов событий для подключения
-			 * @return    результат выполнения подключения
-			 */
-			virtual bool connect(event::id_t id, ...) noexcept = 0;
 			/**
 			 * @brief Метод мультиподключения события к удалённым хостам
 			 *
 			 * @param ids список идентификаторов событий для подключения
 			 * @return    результат выполнения подключения
 			 */
-			virtual bool connect(const vector <event::id_t> & ids) noexcept = 0;
+			virtual bool connect(initializer_list <event::id_t> ids) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений

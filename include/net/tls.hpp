@@ -278,7 +278,7 @@ namespace awh {
 			 * @param id      идентификатор события
 			 * @param ciphers список алгоритмов шифрования для установки
 			 */
-			void ciphers(const id_t id, const vector <string> & ciphers) noexcept;
+			void ciphers(const id_t id, initializer_list <string> ciphers) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения активного протокола
@@ -293,7 +293,7 @@ namespace awh {
 			 * @param id   идентификатор события
 			 * @param alpn список поддерживаемых ALPN-протоколов
 			 */
-			void alpn(const id_t id, const vector <alpn_t> & alpn) noexcept;
+			void alpn(const id_t id, initializer_list <alpn_t> alpn) noexcept;
 		public:
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации

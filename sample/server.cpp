@@ -48,7 +48,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -59,13 +59,6 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
-		// Выполняем подписку на SCTP события
-		io.sctpEventsSubscribe(eid, {
-			net::sctp::event_type_t::ASSOC_CHANGE,
-			net::sctp::event_type_t::SHUTDOWN_EVENT,
-			net::sctp::event_type_t::SEND_FAILED_EVENT,
-			net::sctp::event_type_t::REMOTE_ERROR
-		});
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -141,6 +134,24 @@ int32_t main(int32_t argc, char * argv[]){
 					break;
 				}
 			});
+			// Устанавливаем функцию обратного вызова на запись в событие
+			io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
+				// Выводим сообщение о переподключении события
+				log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+			}));
+			// Устанавливаем функцию обратного вызова на чтение из события
+			io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Текст входящего сообщения
+				const string message(reinterpret_cast <const char *> (data), size);
+				// Выводим сообщение о переподключении события
+				log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+				// Отправляем данные обратно клиенту
+				if(io.send(eid, reinterpret_cast <const char *> (data), size))
+					// Если данные успешно отправлены
+					log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+				// Если данные не отправлены
+				else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+			});
 			// Устанавливаем функцию обратного вызова на ошибку события
 			io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 				/**
@@ -201,102 +212,8 @@ int32_t main(int32_t argc, char * argv[]){
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
 			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
-				// Получаем информацию о сообщении SCTP-сокета
-				const net::sctp::minfo_t & minfo = io.sctpMessageInfo(cid);
-				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info1: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
-				// Получаем статус SCTP-сокета
-				const net::sctp::status_t & status = io.sctpStatus(cid);
-				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << (u_short) status.state << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
-				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				io.on(cid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
-					// Выводим информацию о сообщении SCTP-сокета
-					log.print(
-						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
-						log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
-					);
-				}));
-				// Устанавливаем функцию обратного вызова на создание события
-				io.on(cid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
-					// Выводим сообщение с идентификатором событий SCTP
-					cout << " SCTP EVENT ID: " << event->id << endl;
-					/**
-					 * Определяем тип события SCTP
-					 */
-					switch(static_cast <uint8_t> (event->type)){
-						// Если требуется уведомление о каждом входящем DATA-пакете
-						case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
-							// Выводим сообщение о событии DATA IO
-							cout << "  - DATA IO EVENT " << endl;
-						break;
-						// Если ошибка удалённого узла
-						case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
-							// Выводим сообщение о событии REMOTE ERROR
-							cout << "  - REMOTE ERROR EVENT " << endl;
-						break;
-						// Если изменение ассоциации
-						case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
-							// Выводим сообщение о событии ASSOC CHANGE
-							cout << "  - ASSOC CHANGE EVENT " << endl;
-						break;
-						// Если событие завершения работы
-						case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
-							// Выводим сообщение о событии SHUTDOWN EVENT
-							cout << "  - SHUTDOWN EVENT " << endl;
-						break;
-						// Если событие "отправитель сухой"
-						case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
-							// Выводим сообщение о событии SENDER DRY EVENT
-							cout << "  - SENDER DRY EVENT " << endl;
-						break;
-						// Если изменение адреса однорангового узла
-						case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
-							// Выводим сообщение о событии PEER ADDR CHANGE
-							cout << "  - PEER ADDR CHANGE EVENT " << endl;
-						break;
-						// Если событие ошибки отправки
-						case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
-							// Выводим сообщение о событии SEND FAILED EVENT
-							cout << "  - SEND FAILED EVENT " << endl;
-						break;
-						// Если событие сброса потока
-						case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
-							// Выводим сообщение о событии STREAM RESET EVENT
-							cout << "  - STREAM RESET EVENT " << endl;
-						break;
-						// Если событие аутентификации
-						case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
-							// Выводим сообщение о событии AUTHENTICATION EVENT
-							cout << "  - AUTHENTICATION EVENT " << endl;
-						break;
-						// Если событие адаптационное указание
-						case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
-							// Выводим сообщение о событии ADAPTATION INDICATION
-							cout << "  - ADAPTATION INDICATION EVENT " << endl;
-						break;
-						// Если событие частичной доставки
-						case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
-							// Выводим сообщение о событии PARTIAL DELIVERY EVENT
-							cout << "  - PARTIAL DELIVERY EVENT " << endl;
-						break;
-					}
-				});
 				// Устананавливаем опции события
 				if(io.options(cid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::NOIOBLOCK | event::options::CLOSEONEXEC | event::options::TCPNODELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
@@ -454,9 +371,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 10000);
+			io.timeout(eid, event::action_t::READ, 5000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 7000);
+			io.timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Если прослушивание события успешно

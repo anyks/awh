@@ -262,22 +262,29 @@ namespace awh {
 			 * @return   результат выполнения отключения
 			 */
 			bool disconnect(const event::id_t id) noexcept;
-		public:
+			/**
+			 * @brief Шаблон метода мультиподключения события к удалённым хостам
+			 *
+			 * @tparam Args список идентификаторов событий для подключения
+			 */
+			template <typename... Args>
 			/**
 			 * @brief Метод мультиподключения события к удалённым хостам
 			 *
-			 * @param id  идентификатор события
-			 * @param ... список идентификаторов событий для подключения
-			 * @return    результат выполнения подключения
+			 * @param args список идентификаторов событий для подключения
+			 * @return     результат выполнения подключения
 			 */
-			bool connect(event::id_t id, ...) noexcept;
+			bool connect(Args&&... args) noexcept {
+				// Выполняем подключение к списку удалённых серверов
+				return this->connect({args...});
+			}
 			/**
 			 * @brief Метод мультиподключения события к удалённым хостам
 			 *
 			 * @param ids список идентификаторов событий для подключения
 			 * @return    результат выполнения подключения
 			 */
-			bool connect(const vector <event::id_t> & ids) noexcept;
+			bool connect(initializer_list <event::id_t> ids) noexcept;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений

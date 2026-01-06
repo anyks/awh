@@ -23521,63 +23521,10 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
 /**
  * @brief Метод мультиподключения события к удалённым хостам
  *
- * @param id  идентификатор события
- * @param ... список идентификаторов событий для подключения
- * @return    результат выполнения подключения
- */
-bool awh::IO::connect(event::id_t id, ...) noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Инициализируем список аргументов
-		va_list args;
-		// Начинаем обработку аргументов
-		va_start(args, id);
-		// Текущий идентификатор события
-		event::id_t eid = 0;
-		// Список идентификаторов событий для подключения
-		vector <event::id_t> ids = {id};
-		/**
-		 * Проходим по всем переданным идентификаторам событий для подключения
-		 */
-		while((eid = va_arg(args, event::id_t)) != 0)
-			// Добавляем идентификатор события в список
-			ids.push_back(eid);
-		// Завершаем обработку аргументов
-		va_end(args);
-		// Выполняем подключение к списку удалённых серверов
-		return this->connect(ids);
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем результат работы функции
-	return result;
-}
-/**
- * @brief Метод мультиподключения события к удалённым хостам
- *
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
  */
-bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
+bool awh::IO::connect(initializer_list <event::id_t> ids) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -23585,7 +23532,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 	 */
 	try {
 		// Если список идентификаторов событий для подключения не пустой
-		if(!ids.empty()){
+		if(!std::empty(ids)){
 			// Выполняем перебор всех идентификаторов
 			for(auto & id : ids){
 				// Выполняем поиск идентификатора события
@@ -23637,7 +23584,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 													// Если подключение к удаленному серверу не выполнено
 													if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
 														// Если ошибка не является ошибкой в процессе подключения
-														if(errno != EINPROGRESS){
+														if(!(result = (errno == EINPROGRESS))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -23739,7 +23686,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 														// Если подключение к удаленному серверу не выполнено
 														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения
-															if(errno != EINPROGRESS){
+															if(!(result = (errno == EINPROGRESS))){
 																// Если установлена функция обратного вызова
 																if(client->callbacks.status != nullptr)
 																	// Вызываем функцию обратного вызова об ошибке отказа
