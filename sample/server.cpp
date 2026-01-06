@@ -50,7 +50,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.port(eid, 2223);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
