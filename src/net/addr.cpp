@@ -1531,55 +1531,51 @@ uint32_t awh::NetworkAddress::v4(const endian_t endian) const noexcept {
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
 void awh::NetworkAddress::v4(const uint32_t addr, const endian_t endian) noexcept {
-	// Если IPv4 адрес передан
-	if(addr > 0){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Устанавливаем тип IP-адреса
+		this->_type = type_t::IPV4;
+		// Выполняем выделение памяти для IPv4 адреса
+		this->_buffer.resize(4, 0);
 		/**
-		 * Выполняем отлов ошибок
+		 * Определяем какой порядок следования байт установлен
 		 */
-		try {
-			// Устанавливаем тип IP-адреса
-			this->_type = type_t::IPV4;
-			// Выполняем выделение памяти для IPv4 адреса
-			this->_buffer.resize(4, 0);
-			/**
-			 * Определяем какой порядок следования байт установлен
-			 */
-			switch(static_cast <uint8_t> (endian)){
-				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG):
-					// Устанавливаем буфер данных IP-адреса
-					::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
-				break;
-				// Если установлен порядок следования байт от младшего к старшему
-				case static_cast <uint8_t> (endian_t::LITTLE):
-					// Выполняем копирование данных адреса IPv4
-					::memcpy(&this->_buffer[0], &addr, sizeof(addr));
-				break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug(
-					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(addr, static_cast <uint16_t> (endian)),
-					log_t::flag_t::CRITICAL, error.what()
-				);
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+		switch(static_cast <uint8_t> (endian)){
+			// Если установлен порядок следования байт от старшего к младшему
+			case static_cast <uint8_t> (endian_t::BIG):
+				// Устанавливаем буфер данных IP-адреса
+				::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
+			break;
+			// Если установлен порядок следования байт от младшего к старшему
+			case static_cast <uint8_t> (endian_t::LITTLE):
+				// Выполняем копирование данных адреса IPv4
+				::memcpy(&this->_buffer[0], &addr, sizeof(addr));
+			break;
 		}
-	// Выполняем очистку буфера данных
-	} else this->_buffer.clear();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(addr, static_cast <uint16_t> (endian)),
+				log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Извлечения адреса IPv6 в чистом виде
@@ -1644,55 +1640,51 @@ std::array <uint8_t, 16> awh::NetworkAddress::v6(const endian_t endian) const no
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
 void awh::NetworkAddress::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) noexcept {
-	// Если IPv6 адрес передан
-	if(!addr.empty()){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Устанавливаем тип IP-адреса
+		this->_type = type_t::IPV6;
+		// Выполняем выделение памяти для IPv6 адреса
+		this->_buffer.resize(16, 0);
 		/**
-		 * Выполняем отлов ошибок
+		 * Определяем какой порядок следования байт установлен
 		 */
-		try {
-			// Устанавливаем тип IP-адреса
-			this->_type = type_t::IPV6;
-			// Выполняем выделение памяти для IPv6 адреса
-			this->_buffer.resize(16, 0);
-			/**
-			 * Определяем какой порядок следования байт установлен
-			 */
-			switch(static_cast <uint8_t> (endian)){
-				// Если установлен порядок следования байт от старшего к младшему
-				case static_cast <uint8_t> (endian_t::BIG):
-					// Устанавливаем буфер данных IP-адреса
-					::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
-				break;
-				// Если установлен порядок следования байт от младшего к старшему
-				case static_cast <uint8_t> (endian_t::LITTLE):
-					// Выполняем копирование данных адреса IPv6
-					::memcpy(&this->_buffer[0], &addr[0], sizeof(addr));
-				break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug(
-					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(addr.front(), addr.back()),
-					log_t::flag_t::CRITICAL, error.what()
-				);
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+		switch(static_cast <uint8_t> (endian)){
+			// Если установлен порядок следования байт от старшего к младшему
+			case static_cast <uint8_t> (endian_t::BIG):
+				// Устанавливаем буфер данных IP-адреса
+				::convertEndian <16> (reinterpret_cast <const uint8_t *> (&addr[0]), &this->_buffer[0]);
+			break;
+			// Если установлен порядок следования байт от младшего к старшему
+			case static_cast <uint8_t> (endian_t::LITTLE):
+				// Выполняем копирование данных адреса IPv6
+				::memcpy(&this->_buffer[0], &addr[0], sizeof(addr));
+			break;
 		}
-	// Выполняем очистку буфера данных
-	} else this->_buffer.clear();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(addr.front(), addr.back()),
+				log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод проверки валидности IP-адреса

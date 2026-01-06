@@ -17,6 +17,7 @@
 #include <iostream>
 #include <cinttypes>
 #include <algorithm>
+#include <netinet/ip.h>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -1483,6 +1484,7 @@ int32_t main(int32_t argc, char * argv[]){
 	net_addr_t addr(&fmk, &log);
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
+	// event::id_t eid = io.event(awh::event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::ICMP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -1504,12 +1506,41 @@ int32_t main(int32_t argc, char * argv[]){
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
 				io.on(eid, [&addr, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-					// Результат полученных данных
-					auto icmpResponseHeader = reinterpret_cast <const struct IcmpHeader *> (data);
-					// Добавляем полученный IP-адрес
-					addr.v4(icmpResponseHeader->meta.redirect.gatewayAddress);
-					// Выводим сообщение о переподключении события
-					log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, static_cast <string> (addr).c_str());
+					// Если данные пришли с IP-заголовком
+					if(size >= 20 && (data[0] & 0xF0) == 0x40){
+
+						if(size < sizeof(struct ip))
+							return;
+						
+						struct ip * iph = (struct ip*)data;
+
+						size_t iphl = iph->ip_hl * 4;
+						if(iphl < 20 || size < iphl + 8)
+							return; // минимум ICMP-заголовок
+
+						// Длина IP-заголовка: iph->ip_hl * 4
+						size_t ip_hdr_len = iph->ip_hl * 4;
+
+						if (size >= ip_hdr_len + 8) { // минимум 8 байт ICMP
+							const struct IcmpHeader * icmp = (const struct IcmpHeader *)(data + ip_hdr_len);
+
+							printf("ICMP type: %u\n", icmp->type); // будет 0 (Echo Reply)
+							printf("ID: %u, Seq: %u\n", ntohs(icmp->meta.echo.identifier), ntohs(icmp->meta.echo.sequence));
+
+							// Добавляем полученный IP-адрес
+							addr.v4(icmp->meta.redirect.gatewayAddress);
+							// Выводим сообщение о переподключении события
+							log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, static_cast <string> (addr).c_str());
+						}
+					// Если данные пришли с читсым ICMP
+					} else {
+						// Результат полученных данных
+						auto icmpResponseHeader = reinterpret_cast <const struct IcmpHeader *> (data);
+						// Добавляем полученный IP-адрес
+						addr.v4(icmpResponseHeader->meta.redirect.gatewayAddress);
+						// Выводим сообщение о переподключении события
+						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, static_cast <string> (addr).c_str());
+					}
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
 				io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
@@ -1659,6 +1690,9 @@ int32_t main(int32_t argc, char * argv[]){
 				io.timeout(eid, event::action_t::READ, 10000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
+
+					io.launch(eid);
+
 					// Выполняем инициализацию генератора
 					std::random_device randev;
 					// Подключаем устройство генератора
