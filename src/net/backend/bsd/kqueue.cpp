@@ -3236,16 +3236,10 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			
-			cout << " !!!!!!!!1 " << node->id << " == " << node->fd << endl;
-			
 			// Если событие принятия подключения разрешено
 			if(node->actions & ::action::ACCEPT){
 				// Создаём охранника узла события
 				::local::guard_t guard(node);
-				
-				cout << " !!!!!!!!2 " << node->id << " == " << node->fd << endl;
-				
 				// Если количество текущих подключений уже максимальное
 				if(node->backlog.count == node->backlog.max){
 					// Принимаем подключение и сразу закрываем его
@@ -3263,9 +3257,6 @@ namespace io {
 				}
 				// Заполняем структуру клиента нулями
 				::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
-				
-				cout << " !!!!!!!!3 " << node->id << " == " << node->fd << endl;
-				
 				/**
 				 * Определяем тип сокета
 				 */
@@ -3274,9 +3265,6 @@ namespace io {
 					case static_cast <uint8_t> (event::type_t::STREAM):
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-						
-						cout << " !!!!!!!!4 " << node->id << " == " << node->fd << endl;
-						
 						/**
 						 * Определяем семейство события
 						 */
@@ -3291,9 +3279,6 @@ namespace io {
 								::trust_cast <struct sockaddr_un> (node->endpoint.client).sun_family = AF_UNIX;
 								// Устанавливаем длину структуры у клиента
 								::trust_cast <struct sockaddr_un> (node->endpoint.client).sun_len = node->endpoint.size;
-
-								cout << " !!!!!!!!5 " << node->id << " == " << node->fd << endl;
-
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
@@ -3318,9 +3303,6 @@ namespace io {
 								::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_len = node->endpoint.size;
 							} break;
 						}
-
-						cout << " !!!!!!!!6 " << node->id << " == " << node->fd << endl;
-
 						/**
 						 * Если операционной системой является FreeBSD
 						 */
@@ -3331,23 +3313,16 @@ namespace io {
 							char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 							// Объявляем дескриптор сокета
 							net::socket_t sock = net::invalid_socket_t;
-							
-							cout << " !!!!!!!!7 " << node->id << " == " << node->fd << endl;
-							
 							/**
 							 * Определяем протокол интернета
 							 */
 							switch(static_cast <uint8_t> (node->state.protocol)){
+								// Если протокол интернета не установлен
+								case static_cast <uint8_t> (event::protocol_t::NONE):
 								// Если протокол интернета установлен как TCP
 								case static_cast <uint8_t> (event::protocol_t::TCP):
-
-									cout << " +++++++++1 " << node->id << " == " << node->fd << " == " << node->endpoint.size << endl;
-
 									// Определяем разрешено ли подключение к прокси серверу
 									sock = ::accept(node->fd, &::trust_cast <struct sockaddr> (node->endpoint.client), &node->endpoint.size);
-
-									cout << " +++++++++2 " << node->id << " === " << node->fd << " || " << sock << " == " << node->endpoint.size << endl;
-
 								break;
 								// Если протокол интернета установлен как SCTP
 								case static_cast <uint8_t> (event::protocol_t::SCTP): {
@@ -23592,7 +23567,7 @@ bool awh::IO::connect(initializer_list <event::id_t> ids) noexcept {
 									 * Определяем протокол интернета
 									 */
 									switch(static_cast <uint8_t> (client->state.protocol)){
-										// Если протокол интернета установлен как NONE
+										// Если протокол интернета не установлен
 										case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Если протокол интернета установлен как UDP
 										case static_cast <uint8_t> (event::protocol_t::UDP):
