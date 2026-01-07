@@ -2497,6 +2497,9 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 		}
 		// Получаем протокол сокета
 		if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, &authchunks, &length) == 0))){
+			
+			cout << "sctpAuthenticateChunks: id=" << id << ", number_of_chunks=" << authchunks.gauth_number_of_chunks << endl;
+			
 			// Перебираем все полученные чанки аутентификации
 			for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
 				/**
