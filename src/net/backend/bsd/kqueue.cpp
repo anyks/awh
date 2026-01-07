@@ -25393,9 +25393,15 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP){
 							// Если тип таймаута является HEARTBEAT
-							if(type == net::sctp::timeout_t::HEARTBEAT)
+							if(type == net::sctp::timeout_t::HEARTBEAT){
+
+								struct sockaddr_storage ss;
+								::memset(&ss, 0, sizeof(ss));
+								ss.ss_family = AF_INET;
+
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &server->endpoint.server);
+								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &ss);
+							}
 							// Устанавливаем значение таймаута SCTP события
 							else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
