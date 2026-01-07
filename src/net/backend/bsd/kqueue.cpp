@@ -3351,8 +3351,6 @@ namespace io {
 												// Выходим из функции
 												return (bytes > 0);
 											}
-											// Запоминаем идентификатор ассоциации SCTP
-											node->sctp.id = node->sctp.info.sinfo_assoc_id;
 											// Получаем дескриптор сокета из информации о сообщении SCTP
 											sock = ::sctp_peeloff(node->fd, node->sctp.info.sinfo_assoc_id);
 										} break;
@@ -25529,9 +25527,9 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(server->fd, 0, type, timeout, &server->endpoint.server);
+								return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout, &server->endpoint.server);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(server->fd, 0, type, timeout);
+							else return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
