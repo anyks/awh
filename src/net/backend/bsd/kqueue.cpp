@@ -26607,6 +26607,13 @@ bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] cons
 				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Извлекаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(peer->transfer.fd, origin, peer->transfer.sctp.id, chunks);
+					}
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
@@ -26963,6 +26970,10 @@ bool awh::IO::sctpAuthenticateSupportAlgorithms(const event::id_t id, [[maybe_un
 				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateSupportAlgorithms(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd, types);
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
