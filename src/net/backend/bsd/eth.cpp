@@ -2354,16 +2354,6 @@ bool awh::Ethernet::sctpAuthenticate([[maybe_unused]] const net::socket_t sock, 
 					// Устанавливаем номер ключа аутентификации для HMAC-SHA256
 					authkey->sca_keynumber = 2;
 				break;
-				// Если тип аутентификации - HMAC_SHA384
-				case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA384):
-					// Устанавливаем номер ключа аутентификации для HMAC_SHA384
-					authkey->sca_keynumber = 3;
-				break;
-				// Если тип аутентификации - HMAC_SHA512
-				case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA512):
-					// Устанавливаем номер ключа аутентификации для HMAC_SHA512
-					authkey->sca_keynumber = 4;
-				break;
 			}
 			// Копируем ключ аутентификации в структуру
 			::memcpy(authkey->sca_key, key.c_str(), key.length());
@@ -2399,16 +2389,6 @@ bool awh::Ethernet::sctpAuthenticate([[maybe_unused]] const net::socket_t sock, 
 					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA256):
 						// Устанавливаем номер ключа аутентификации для HMAC-SHA256
 						auth.auth_keynumber = 2;
-					break;
-					// Если тип аутентификации - HMAC_SHA384
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA384):
-						// Устанавливаем номер ключа аутентификации для HMAC_SHA384
-						auth.auth_keynumber = 3;
-					break;
-					// Если тип аутентификации - HMAC_SHA512
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA512):
-						// Устанавливаем номер ключа аутентификации для HMAC_SHA512
-						auth.auth_keynumber = 4;
 					break;
 				}
 				// Активируем ключ аутентификации SCTP сокета
