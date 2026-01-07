@@ -25011,8 +25011,8 @@ uint32_t awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(server->callbacks.status != nullptr)
+						// Если протокол интернета установлен как SCTP
+						if(server->state.protocol == event::protocol_t::SCTP)
 							// Получаем значение таймаута SCTP события
 							return this->_eth.sctpTimeout(server->fd, server->sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
@@ -25480,9 +25480,6 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-
-						cout << " --------- " << (u_short) server->state.protocol << endl;
-
 						// Если протокол интернета установлен как SCTP
 						if(server->state.protocol == event::protocol_t::SCTP){
 							// Если тип таймаута является HEARTBEAT
