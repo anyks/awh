@@ -2677,6 +2677,9 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 			authkey->sca_keylength = static_cast <uint16_t> (key.length());
 			// Копируем ключ аутентификации в структуру
 			::memcpy(authkey->sca_key, key.c_str(), key.length());
+
+			cout << " 	Setting SCTP auth key: " << key << " (length: " << key.length() << ")" << " || " << size << endl;
+
 			// Устанавливаем ключ аутентификации SCTP сокета
 			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
 				/**
