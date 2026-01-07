@@ -2677,9 +2677,6 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 			authkey->sca_keylength = static_cast <uint16_t> (key.length());
 			// Копируем ключ аутентификации в структуру
 			::memcpy(authkey->sca_key, key.c_str(), key.length());
-
-			cout << " 	Setting SCTP auth key: " << key << " (length: " << key.length() << ")" << " || " << size << endl;
-
 			// Устанавливаем ключ аутентификации SCTP сокета
 			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
 				/**
@@ -2687,7 +2684,7 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("^^^ %s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2699,6 +2696,8 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 			} else {
 				// Создаём объект активации ключа аутентификации
 				struct sctp_authinfo auth;
+				// Зануляем объект активации ключа аутентификации
+				::memset(&auth, 0, sizeof(auth));
 				// Устанавливаем номер ключа аутентификации
 				auth.auth_keynumber = num;
 				// Активируем ключ аутентификации SCTP сокета
@@ -2708,7 +2707,7 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("!!! %s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
