@@ -1393,6 +1393,12 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
+		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
+		io.sctpAuthenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
+		// Устанавливаем ключ аутентификации SCTP-сокета
+		io.sctpAuthenticateKey(eid, 1, "your_auth_key_here");
+		// Устанавливаем чанки аутентификации SCTP-сокета
+		io.sctpAuthenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
 		// Выполняем подписку на SCTP события
 		io.sctpEventsSubscribe(eid, {
 			net::sctp::event_type_t::ASSOC_CHANGE,
@@ -1400,12 +1406,6 @@ int32_t main(int32_t argc, char * argv[]){
 			net::sctp::event_type_t::SEND_FAILED_EVENT,
 			net::sctp::event_type_t::REMOTE_ERROR
 		});
-		// Устанавливаем ключ аутентификации SCTP-сокета
-		io.sctpAuthenticateKey(eid, 1, "your_auth_key_here");
-		// Устанавливаем чанки аутентификации SCTP-сокета
-		io.sctpAuthenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
-		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-		io.sctpAuthenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
