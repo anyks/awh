@@ -23034,6 +23034,427 @@ void awh::IO::sctpEventsSubscribe([[maybe_unused]] const event::id_t id, [[maybe
 	#endif
 }
 /**
+ * @brief Метод получения таймаута SCTP события
+ *
+ * @param id   идентификатор события
+ * @param type тип таймаута
+ * @return     значение таймаута в миллисекундах
+ */
+uint32_t awh::IO::sctpTimeout([[maybe_unused]] const event::id_t id, [[maybe_unused]] const net::sctp::timeout_t type) const noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Получаем значение таймаута SCTP события
+						return this->_eth.sctpTimeout(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd, type);
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Получаем значение таймаута SCTP события
+						return this->_eth.sctpTimeout(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, type);
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Получаем значение таймаута SCTP события
+						return this->_eth.sctpTimeout(awh_cast <::io::server_t *> (i->second.get())->fd, type);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки таймаута SCTP события
+ *
+ * @param id      идентификатор события
+ * @param type    тип таймаута
+ * @param timeout значение таймаута в миллисекундах
+ * @return        результат работы функции
+ */
+bool awh::IO::sctpTimeout([[maybe_unused]] const event::id_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] const uint32_t timeout) noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Устанавливаем значение таймаута SCTP события
+						return this->_eth.sctpTimeout(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd, type, timeout);
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем значение таймаута SCTP события
+						return this->_eth.sctpTimeout(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, type, timeout);
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Устанавливаем значение таймаута SCTP события
+						return this->_eth.sctpTimeout(awh_cast <::io::server_t *> (i->second.get())->fd, type, timeout);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод установки ключа аутентификации SCTP сокета
+ *
+ * @param id  идентификатор события
+ * @param num номер ключа аутентификации
+ * @param key ключ аутентификации
+ * @return    результат работы функции
+ */
+bool awh::IO::sctpAuthenticateKey([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint16_t num, [[maybe_unused]] const string & key) noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем ключ аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateKey(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, num, key);
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Устанавливаем ключ аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateKey(awh_cast <::io::server_t *> (i->second.get())->fd, num, key);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, num, key), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+ *
+ * @param id   идентификатор события
+ * @param mode режим установки действия события
+ * @param num  номер ключа аутентификации
+ * @return     результат работы функции
+ */
+bool awh::IO::sctpAuthenticateKey([[maybe_unused]] const event::id_t id, [[maybe_unused]] const event::mode_t mode, [[maybe_unused]] const uint16_t num) noexcept {
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Активируем/деактивируем ключ аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateKey(client->transfer.fd, mode, client->transfer.sctp.id, num);
+					}
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						// Активируем/деактивируем ключ аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateKey(server->fd, mode, server->sctp.id, num);
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод извлечения чанков аутентификации SCTP сокета
+ *
+ * @param id      идентификатор события
+ * @param chunks список чанков подлежащих аутентификации
+ * @return       результат работы функции
+ */
+bool awh::IO::sctpAuthenticateChunks([[maybe_unused]] const event::id_t id, [[maybe_unused]] vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Извлекаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(client->transfer.fd, client->transfer.sctp.id, chunks);
+					}
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						// Извлекаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(server->fd, server->sctp.id, chunks);
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, chunks.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки чанков аутентификации SCTP сокета
+ *
+ * @param id     идентификатор события
+ * @param chunks список чанков подлежащих аутентификации
+ * @return       результат работы функции
+ */
+bool awh::IO::sctpAuthenticateChunks([[maybe_unused]] const event::id_t id, [[maybe_unused]] initializer_list <net::sctp::auth_chunk_t> chunks) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, chunks);
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Устанавливаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(awh_cast <::io::server_t *> (i->second.get())->fd, chunks);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, chunks.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+ *
+ * @param id    идентификатор события
+ * @param types список поддерживаемых алгоритмов аутентификации
+ * @return      результат работы функции
+ */
+bool awh::IO::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const event::id_t id, [[maybe_unused]] initializer_list <net::sctp::auth_type_t> types) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateSupportAlgorithms(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, types);
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER):
+						// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateSupportAlgorithms(awh_cast <::io::server_t *> (i->second.get())->fd, types);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, types.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод запуска события
  *
  * @param id идентификатор события

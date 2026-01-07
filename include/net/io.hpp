@@ -248,6 +248,69 @@ namespace awh {
 			void sctpEventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept;
 		public:
 			/**
+			 * @brief Метод получения таймаута SCTP события
+			 *
+			 * @param id   идентификатор события
+			 * @param type тип таймаута
+			 * @return     значение таймаута в миллисекундах
+			 */
+			uint32_t sctpTimeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept;
+			/**
+			 * @brief Метод установки таймаута SCTP события
+			 *
+			 * @param id      идентификатор события
+			 * @param type    тип таймаута
+			 * @param timeout значение таймаута в миллисекундах
+			 * @return        результат работы функции
+			 */
+			bool sctpTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
+		public:
+			/**
+			 * @brief Метод установки ключа аутентификации SCTP сокета
+			 *
+			 * @param id  идентификатор события
+			 * @param num номер ключа аутентификации
+			 * @param key ключ аутентификации
+			 * @return    результат работы функции
+			 */
+			bool sctpAuthenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept;
+			/**
+			 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+			 *
+			 * @param id   идентификатор события
+			 * @param mode режим установки действия события
+			 * @param num  номер ключа аутентификации
+			 * @return     результат работы функции
+			 */
+			bool sctpAuthenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept;
+		public:
+			/**
+			 * @brief Метод извлечения чанков аутентификации SCTP сокета
+			 *
+			 * @param id      идентификатор события
+			 * @param chunks список чанков подлежащих аутентификации
+			 * @return       результат работы функции
+			 */
+			bool sctpAuthenticateChunks(const event::id_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+			/**
+			 * @brief Метод установки чанков аутентификации SCTP сокета
+			 *
+			 * @param id     идентификатор события
+			 * @param chunks список чанков подлежащих аутентификации
+			 * @return       результат работы функции
+			 */
+			bool sctpAuthenticateChunks(const event::id_t id, initializer_list <net::sctp::auth_chunk_t> chunks) noexcept;
+		public:
+			/**
+			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+			 *
+			 * @param id    идентификатор события
+			 * @param types список поддерживаемых алгоритмов аутентификации
+			 * @return      результат работы функции
+			 */
+			bool sctpAuthenticateSupportAlgorithms(const event::id_t id, initializer_list <net::sctp::auth_type_t> types) noexcept;
+		public:
+			/**
 			 * @brief Метод запуска события
 			 *
 			 * @param id идентификатор события

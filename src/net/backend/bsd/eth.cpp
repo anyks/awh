@@ -1759,7 +1759,7 @@ int32_t awh::Ethernet::error(const net::socket_t sock) const noexcept {
  * @param type тип таймаута
  * @return     значение таймаута в миллисекундах
  */
-uint32_t awh::Ethernet::sctpGetTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type) const noexcept {
+uint32_t awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type) const noexcept {
 	// Результат работы функции
 	uint32_t result = 0;
 	/**
@@ -1845,7 +1845,7 @@ uint32_t awh::Ethernet::sctpGetTimeout([[maybe_unused]] const net::socket_t sock
  * @param timeout значение таймаута в миллисекундах
  * @return        результат работы функции
  */
-bool awh::Ethernet::sctpSetTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] const uint32_t timeout) const noexcept {
+bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] const uint32_t timeout) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**

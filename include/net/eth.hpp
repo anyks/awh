@@ -145,7 +145,7 @@ namespace awh {
 			 * @param type тип таймаута
 			 * @return     значение таймаута в миллисекундах
 			 */
-			uint32_t sctpGetTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type) const noexcept;
+			uint32_t sctpTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type) const noexcept;
 			/**
 			 * @brief Метод установки таймаута SCTP сокета
 			 *
@@ -155,7 +155,7 @@ namespace awh {
 			 * @param timeout значение таймаута в миллисекундах
 			 * @return        результат работы функции
 			 */
-			bool sctpSetTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout) const noexcept;
+			bool sctpTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения статуса SCTP сокета
