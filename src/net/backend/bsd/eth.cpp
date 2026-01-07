@@ -2430,6 +2430,9 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 						authchunk.sauth_chunk = 0x0F;
 					break;
 				}
+
+				cout << "sctpAuthenticateChunks: sock=" << sock << ", chunk=" << static_cast <uint16_t> (authchunk.sauth_chunk) << endl;
+
 				// Активируем чанк аутентификации SCTP сокета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_CHUNK, &authchunk, sizeof(authchunk))))){
 					/**
