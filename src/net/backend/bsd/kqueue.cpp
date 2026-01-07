@@ -25529,9 +25529,9 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout, &server->endpoint.server);
+								return this->_eth.sctpTimeout(server->fd, 0, type, timeout, &server->endpoint.server);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout);
+							else return this->_eth.sctpTimeout(server->fd, 0, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
