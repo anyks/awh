@@ -24946,7 +24946,7 @@ uint32_t awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::
 								/**
 								 * Определяем тип подключения
 								 */
-								switch(static_cast <uint8_t> (family)){
+								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
 									case static_cast <uint8_t> (event::family_t::IPV4):
 										// Устанавливаем семейство адресов
@@ -25432,7 +25432,7 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 								/**
 								 * Определяем тип подключения
 								 */
-								switch(static_cast <uint8_t> (family)){
+								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
 									case static_cast <uint8_t> (event::family_t::IPV4):
 										// Устанавливаем семейство адресов
