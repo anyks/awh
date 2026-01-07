@@ -181,15 +181,7 @@ namespace awh {
 			* @return       результат работы функции
 			*/
 			bool sctpEventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
-			/**
-			 * @brief Метод установки аутентификации SCTP сокета
-			 *
-			 * @param sock сетевой сокет
-			 * @param type тип аутентификации
-			 * @param key  ключ аутентификации
-			 * @return     результат работы функции
-			 */
-			bool sctpAuthenticate(const net::socket_t sock, const net::sctp::auth_type_t type, const string & key) const noexcept;
+		public:
 			/**
 			 * @brief Метод установки чанков аутентификации SCTP сокета
 			 *
@@ -207,6 +199,7 @@ namespace awh {
 			 * @return       результат работы функции
 			 */
 			bool sctpAuthenticateChunks(const net::socket_t sock, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+		public:
 			/**
 			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
 			 *
@@ -215,6 +208,26 @@ namespace awh {
 			 * @return      результат работы функции
 			 */
 			bool sctpAuthenticateSupportAlgorithms(const net::socket_t sock, initializer_list <net::sctp::auth_type_t> types) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки ключа аутентификации SCTP сокета
+			 *
+			 * @param sock сетевой сокет
+			 * @param num  номер ключа аутентификации
+			 * @param key  ключ аутентификации
+			 * @return     результат работы функции
+			 */
+			bool sctpAuthenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept;
+			/**
+			 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+			 *
+			 * @param sock сетевой сокет
+			 * @param mode режим установки типа сокета
+			 * @param id   идентификатор ассоциации
+			 * @param num  номер ключа аутентификации
+			 * @return     результат работы функции
+			 */
+			bool sctpAuthenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK

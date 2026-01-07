@@ -2318,105 +2318,6 @@ bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t soc
 	return result;
 }
 /**
- * @brief Метод установки аутентификации SCTP сокета
- *
- * @param sock сетевой сокет
- * @param type тип аутентификации
- * @param key  ключ аутентификации
- * @return     результат работы функции
- */
-bool awh::Ethernet::sctpAuthenticate([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp::auth_type_t type, [[maybe_unused]] const string & key) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Если ключ аутентификации передан
-		if(!key.empty()){
-			// Получаем размер ключа аутентификации
-			const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.length());
-			// Выделяем память под ключ аутентификации
-			struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
-			// Устанавливаем размер ключа аутентификации
-			authkey->sca_keylength = static_cast <uint16_t> (key.length());
-			/**
-			 * Определяем тип аутентификации
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если тип аутентификации - HMAC-SHA1
-				case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA1):
-					// Устанавливаем номер ключа аутентификации для HMAC-SHA1
-					authkey->sca_keynumber = 1;
-				break;
-				// Если тип аутентификации - HMAC-SHA256
-				case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA256):
-					// Устанавливаем номер ключа аутентификации для HMAC-SHA256
-					authkey->sca_keynumber = 2;
-				break;
-			}
-			// Копируем ключ аутентификации в структуру
-			::memcpy(authkey->sca_key, key.c_str(), key.length());
-			// Устанавливаем ключ аутентификации SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (type), key), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			// Если ключ аутентификации успешно активирован
-			} else {
-				// Создаём объект активации ключа аутентификации
-				struct sctp_authinfo auth;
-				/**
-				 * Определяем тип аутентификации
-				 */
-				switch(static_cast <uint8_t> (type)){
-					// Если тип аутентификации - HMAC-SHA1
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA1):
-						// Устанавливаем номер ключа аутентификации для HMAC-SHA1
-						auth.auth_keynumber = 1;
-					break;
-					// Если тип аутентификации - HMAC-SHA256
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA256):
-						// Устанавливаем номер ключа аутентификации для HMAC-SHA256
-						auth.auth_keynumber = 2;
-					break;
-				}
-				// Активируем ключ аутентификации SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &auth, sizeof(auth))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (type), key), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				// Если ключ аутентификации успешно активирован
-				}
-			}
-			// Очищаем память под ключ аутентификации
-			::free(authkey);
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод установки чанков аутентификации SCTP сокета
  *
  * @param sock   сетевой сокет
@@ -2742,6 +2643,150 @@ bool awh::Ethernet::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const net
 			}
 			// Очищаем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
 			::free(hmac);
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки ключа аутентификации SCTP сокета
+ *
+ * @param sock сетевой сокет
+ * @param num  номер ключа аутентификации
+ * @param key  ключ аутентификации
+ * @return     результат работы функции
+ */
+bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint16_t num, [[maybe_unused]] const string & key) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Если ключ аутентификации передан
+		if(!key.empty()){
+			// Получаем размер ключа аутентификации
+			const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.length());
+			// Выделяем память под ключ аутентификации
+			struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
+			// Устанавливаем номер ключа аутентификации
+			authkey->sca_keynumber = num;
+			// Устанавливаем размер ключа аутентификации
+			authkey->sca_keylength = static_cast <uint16_t> (key.length());
+			// Копируем ключ аутентификации в структуру
+			::memcpy(authkey->sca_key, key.c_str(), key.length());
+			// Устанавливаем ключ аутентификации SCTP сокета
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			// Если ключ аутентификации успешно активирован
+			} else {
+				// Создаём объект активации ключа аутентификации
+				struct sctp_authinfo auth;
+				// Устанавливаем номер ключа аутентификации
+				auth.auth_keynumber = num;
+				// Активируем ключ аутентификации SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &auth, sizeof(auth))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				// Если ключ аутентификации успешно активирован
+				}
+			}
+			// Очищаем память под ключ аутентификации
+			::free(authkey);
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+ *
+ * @param sock сетевой сокет
+ * @param mode режим установки типа сокета
+ * @param id   идентификатор ассоциации
+ * @param num  номер ключа аутентификации
+ * @return     результат работы функции
+ */
+bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_mode_t mode, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const uint16_t num) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		// Создаём объект идентификатора ключа аутентификации
+		struct sctp_authkeyid authkeyid;
+		// Зануляем объект идентификатора ключа аутентификации
+		::memset(&authkeyid, 0, sizeof(authkeyid));
+		// Устанавливаем идентификатор ассоциации
+		authkeyid.scact_assoc_id = id;
+		// Устанавливаем номер ключа аутентификации
+		authkeyid.scact_keynumber = num;
+		/**
+		 * Определяем режим активации/деактивации ключа аутентификации SCTP сокета
+		 */
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо активировать ключ аутентификации SCTP сокета
+			case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+				// Активируем ключ аутентификации SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &authkeyid, sizeof(authkeyid))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			break;
+			// Если необходимо деактивировать ключ аутентификации SCTP сокета
+			case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+				// Деактивируем ключ аутентификации SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, &authkeyid, sizeof(authkeyid))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			break;
 		}
 	#endif
 	// Выводим результат
