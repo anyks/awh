@@ -252,7 +252,8 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устанавливаем таймаут heartbeat SCTP-сокета
 				io.sctpTimeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
 				// Выводим heartbeat timeout SCTP-сокета
-				cout << " TIMEOUT: " << io.sctpTimeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+				cout << " TIMEOUT PEER: " << io.sctpTimeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+				cout << " TIMEOUT SERVER: " << io.sctpTimeout(sid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
