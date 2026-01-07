@@ -2583,21 +2583,21 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 	 */
 	#if __FreeBSD__
 		// Объект чанков аутентификации SCTP сокета
-		struct sctp_authchunks chunks;
+		struct sctp_authchunks authchunks;
 		// Зануляем объект чанков аутентификации SCTP сокета
-		::memset(&chunks, 0, sizeof(chunks));
+		::memset(&authchunks, 0, sizeof(authchunks));
 		// Устанавливаем идентификатор ассоциации
-		chunks.gauth_assoc_id = id;
+		authchunks.gauth_assoc_id = id;
 		// Максимум 256 типов чанков — более чем достаточно
-		socklen_t length = (sizeof(chunks) + 256);
+		socklen_t length = (sizeof(authchunks) + 256);
 		// Получаем протокол сокета
-		if((result = (::getsockopt(sock, IPPROTO_SCTP, SCTP_PEER_AUTH_CHUNKS, &chunks, &length) == 0))){
+		if((result = (::getsockopt(sock, IPPROTO_SCTP, SCTP_PEER_AUTH_CHUNKS, &authchunks, &length) == 0))){
 			// Перебираем все полученные чанки аутентификации
-			for(uint32_t i = 0; i < chunks.gauth_number_of_chunks; i++){
+			for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
 				/**
 				 * Определяем тип чанка аутентификации
 				 */
-				switch(chunks.gauth_chunks[i]){
+				switch(authchunks.gauth_chunks[i]){
 					// Если чанк аутентификации - DATA
 					case 0x00:
 						// Добавляем чанк аутентификации DATA
