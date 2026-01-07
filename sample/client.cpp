@@ -1586,6 +1586,8 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Rate Window: " << status.ratewind << endl;
 					cout << "  - Unpack Data: " << status.unackdata << endl;
 					cout << "  - Pending Data: " << status.penddata << endl;
+					// Устанавливаем таймаут heartbeat SCTP-сокета
+					io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
 					// Выводим heartbeat timeout SCTP-сокета
 					cout << " HEARTBEAT TIMEOUT: " << io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 					// Текст входящего сообщения
