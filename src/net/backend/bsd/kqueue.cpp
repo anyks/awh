@@ -88,8 +88,6 @@
 #include <sys/locker.hpp>
 #include <sys/threadpool.hpp>
 
-
-
 /**
  * Подписываемся на стандартное пространство имён
  */
@@ -9979,7 +9977,7 @@ namespace sctp {
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x, STREAMS=%zu",
 									log_t::flag_t::WARNING,
 									strres->strreset_assoc_id,
-									strres->strreset_flags, 
+									strres->strreset_flags,
 									count
 								);
 							#endif

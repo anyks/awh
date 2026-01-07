@@ -814,7 +814,6 @@ namespace awh {
 				uint16_t ostreams;
 				// Максимальное количество входящих потоков
 				uint16_t istreams;
-				
 				/**
 				 * @brief Конструктор
 				 *
