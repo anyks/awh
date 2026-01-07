@@ -2749,6 +2749,9 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 		authkeyid.scact_assoc_id = id;
 		// Устанавливаем номер ключа аутентификации
 		authkeyid.scact_keynumber = num;
+
+		cout << "id: " << authkeyid.scact_assoc_id << ", keynum: " << authkeyid.scact_keynumber << endl;
+
 		/**
 		 * Определяем режим активации/деактивации ключа аутентификации SCTP сокета
 		 */
