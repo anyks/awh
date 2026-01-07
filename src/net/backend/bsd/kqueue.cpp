@@ -23258,16 +23258,38 @@ bool awh::IO::sctpAuthenticateKey([[maybe_unused]] const event::id_t id, [[maybe
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						// Активируем/деактивируем ключ аутентификации SCTP сокета
-						return this->_eth.sctpAuthenticateKey(client->transfer.fd, mode, client->transfer.sctp.id, num);
-					}
+						/**
+						 * Определяем режим установки действия события
+						 */
+						switch(static_cast <uint8_t> (mode)){
+							// Если необходимо активировать ключ аутентификации SCTP сокета
+							case static_cast <uint8_t> (event::mode_t::ENABLED):
+								// Активируем ключ аутентификации SCTP сокета
+								return this->_eth.sctpAuthenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctp.id, num);
+							// Если необходимо деактивировать ключ аутентификации SCTP сокета
+							case static_cast <uint8_t> (event::mode_t::DISABLED):
+								// Деактивируем ключ аутентификации SCTP сокета
+								return this->_eth.sctpAuthenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctp.id, num);
+						}
+					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						// Активируем/деактивируем ключ аутентификации SCTP сокета
-						return this->_eth.sctpAuthenticateKey(server->fd, mode, server->sctp.id, num);
-					}
+						/**
+						 * Определяем режим установки действия события
+						 */
+						switch(static_cast <uint8_t> (mode)){
+							// Если необходимо активировать ключ аутентификации SCTP сокета
+							case static_cast <uint8_t> (event::mode_t::ENABLED):
+								// Активируем ключ аутентификации SCTP сокета
+								return this->_eth.sctpAuthenticateKey(server->fd, net::socket_mode_t::ENABLED, server->sctp.id, num);
+							// Если необходимо деактивировать ключ аутентификации SCTP сокета
+							case static_cast <uint8_t> (event::mode_t::DISABLED):
+								// Деактивируем ключ аутентификации SCTP сокета
+								return this->_eth.sctpAuthenticateKey(server->fd, net::socket_mode_t::DISABLED, server->sctp.id, num);
+						}
+					} break;
 				}
 			}
 		/**
