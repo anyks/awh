@@ -616,11 +616,9 @@ namespace awh {
 			 * Типы аутентификации события SCTP
 			 */
 			enum class auth_type_t : uint8_t {
-				NONE         = 0x00, // Тип аутентификации отсутствует
+				HMAC_RSVD    = 0x00, // Зарезервировано
 				HMAC_SHA1    = 0x01, // HMAC-SHA1 аутентификация
-				HMAC_SHA256  = 0x02, // HMAC-SHA256 аутентификация
-				HMAC_SHA384  = 0x03, // HMAC-SHA384 аутентификация
-				HMAC_SHA512  = 0x04  // HMAC-SHA512 аутентификация
+				HMAC_SHA256  = 0x02  // HMAC-SHA256 аутентификация
 			};
 			/**
 			 * Типы чанков попадающие под аутентификацию SCTP

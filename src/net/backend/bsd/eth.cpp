@@ -2742,16 +2742,6 @@ bool awh::Ethernet::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const net
 						// Устанавливаем номер ключа аутентификации для HMAC-SHA256
 						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA256; // = 3
 					break;
-					// Если тип аутентификации - HMAC_SHA384
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA384):
-						// Устанавливаем номер ключа аутентификации для HMAC_SHA384
-						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA384; // = 4
-					break;
-					// Если тип аутентификации - HMAC_SHA512
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA512):
-						// Устанавливаем номер ключа аутентификации для HMAC_SHA512
-						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA512; // = 5
-					break;
 				}
 			}
 			// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
