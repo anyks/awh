@@ -600,6 +600,50 @@ namespace awh {
 				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
 			};
 			/**
+			 * Статусы таймаутов SCTP
+			 */
+			enum class timeout_t : uint8_t {
+				NONE        = 0x00, // Таймаут отсутствует
+				INIT        = 0x01, // Таймаут INIT
+				DATA        = 0x02, // Таймаут DATA
+				SACK        = 0x03, // Таймаут SACK
+				SHUTDOWN    = 0x04, // Таймаут SHUTDOWN
+				HEARTBEAT   = 0x05, // Таймаут HEARTBEAT
+				COOKIE      = 0x06, // Таймаут COOKIE-ECHO
+				SHUTDOWNACK = 0x07  // Таймаут SHUTDOWN-ACK
+			};
+			/**
+			 * Типы аутентификации события SCTP
+			 */
+			enum class auth_type_t : uint8_t {
+				NONE         = 0x00, // Тип аутентификации отсутствует
+				HMAC_SHA1    = 0x01, // HMAC-SHA1 аутентификация
+				HMAC_SHA256  = 0x02, // HMAC-SHA256 аутентификация
+				HMAC_SHA384  = 0x03, // HMAC-SHA384 аутентификация
+				HMAC_SHA512  = 0x04  // HMAC-SHA512 аутентификация
+			};
+			/**
+			 * Типы чанков попадающие под аутентификацию SCTP
+			 */
+			enum class auth_chunk_t : uint8_t {
+				DATA              = 0x00, // Чанк DATA подлежит аутентификации
+				INIT              = 0x01, // Чанк INIT подлежит аутентификации
+				INIT_ACK          = 0x02, // Чанк INIT-ACK подлежит аутентификации
+				SACK              = 0x03, // Чанк SACK подлежит аутентификации
+				HEARTBEAT         = 0x04, // Чанк HEARTBEAT подлежит аутентификации
+				HEARTBEAT_ACK     = 0x05, // Чанк HEARTBEAT-ACK подлежит аутентификации
+				ABORT             = 0x06, // Чанк ABORT подлежит аутентификации
+				SHUTDOWN          = 0x07, // Чанк SHUTDOWN подлежит аутентификации
+				SHUTDOWN_ACK      = 0x08, // Чанк SHUTDOWN-ACK подлежит аутентификации
+				ERROR             = 0x09, // Чанк ERROR подлежит аутентификации
+				COOKIE_ECHO       = 0x0A, // Чанк COOKIE-ECHO подлежит аутентификации
+				COOKIE_ACK        = 0x0B, // Чанк COOKIE-ACK подлежит аутентификации
+				ECNE              = 0x0C, // Чанк ECNE подлежит аутентификации
+				CWR               = 0x0D, // Чанк CWR подлежит аутентификации
+				SHUTDOWN_COMPLETE = 0x0E, // Чанк SHUTDOWN-COMPLETE подлежит аутентификации
+				AUTH              = 0x0F  // Чанк AUTH подлежит аутентификации
+			};
+			/**
 			 * Типы индикаторов события аутентификации SCTP
 			 */
 			enum class auth_indics_t : uint8_t {

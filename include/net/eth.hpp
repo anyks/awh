@@ -138,6 +138,26 @@ namespace awh {
 			int32_t error(const net::socket_t sock) const noexcept;
 		public:
 			/**
+			 * @brief Метод получения таймаута SCTP сокета
+			 *
+			 * @param sock сетевой сокет
+			 * @param id   идентификатор ассоциации
+			 * @param type тип таймаута
+			 * @return     значение таймаута в миллисекундах
+			 */
+			uint32_t sctpGetTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type) const noexcept;
+			/**
+			 * @brief Метод установки таймаута SCTP сокета
+			 *
+			 * @param sock    сетевой сокет
+			 * @param id      идентификатор ассоциации
+			 * @param type    тип таймаута
+			 * @param timeout значение таймаута в миллисекундах
+			 * @return        результат работы функции
+			 */
+			bool sctpSetTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout) const noexcept;
+		public:
+			/**
 			 * @brief Метод получения статуса SCTP сокета
 			 *
 			 * @param sock   сетевой сокет
@@ -161,6 +181,40 @@ namespace awh {
 			* @return       результат работы функции
 			*/
 			bool sctpEventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
+			/**
+			 * @brief Метод установки аутентификации SCTP сокета
+			 *
+			 * @param sock сетевой сокет
+			 * @param type тип аутентификации
+			 * @param key  ключ аутентификации
+			 * @return     результат работы функции
+			 */
+			bool sctpAuthenticate(const net::socket_t sock, const net::sctp::auth_type_t type, const string & key) const noexcept;
+			/**
+			 * @brief Метод установки чанков аутентификации SCTP сокета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param chunks список чанков подлежащих аутентификации
+			 * @return       результат работы функции
+			 */
+			bool sctpAuthenticateChunks(const net::socket_t sock, initializer_list <net::sctp::auth_chunk_t> chunks) const noexcept;
+			/**
+			 * @brief Метод извлечения чанков аутентификации SCTP сокета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param id     идентификатор ассоциации
+			 * @param chunks список чанков подлежащих аутентификации
+			 * @return       результат работы функции
+			 */
+			bool sctpAuthenticateChunks(const net::socket_t sock, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+			/**
+			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+			 *
+			 * @param sock  сетевой сокет
+			 * @param types список поддерживаемых алгоритмов аутентификации
+			 * @return      результат работы функции
+			 */
+			bool sctpAuthenticateSupportAlgorithms(const net::socket_t sock, initializer_list <net::sctp::auth_type_t> types) const noexcept;
 		public:
 			/**
 			 * @brief Метод активации TCP/CORK
