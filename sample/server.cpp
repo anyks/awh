@@ -83,6 +83,8 @@ int32_t main(int32_t argc, char * argv[]){
 		for(auto & chunk : chunks)
 			// Выводим информацию о чанках аутентификации SCTP-сокета
 			cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
+		// Устанавливаем таймаут heartbeat SCTP-сокета
+		io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -245,8 +247,6 @@ int32_t main(int32_t argc, char * argv[]){
 				for(auto & chunk : chunks)
 					// Выводим информацию о чанках аутентификации SCTP-сокета
 					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
-				// Устанавливаем таймаут heartbeat SCTP-сокета
-				io.sctpTimeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
 				// Выводим heartbeat timeout SCTP-сокета
 				cout << " TIMEOUT: " << io.sctpTimeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 				// Выводим сообщение о принятии события
