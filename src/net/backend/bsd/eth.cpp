@@ -2453,16 +2453,23 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 				}
 
 				{
-					struct sctp_authchunks chunks = {0};
-					chunks.gauth_assoc_id = 0; // для сокета (будущие ассоциации)
-					socklen_t len = sizeof(chunks) + 10;
-					if (getsockopt(sock, IPPROTO_SCTP, SCTP_LOCAL_AUTH_CHUNKS, &chunks, &len) == 0) {
+					// Выделяем буфер достаточного размера
+					size_t buf_size = sizeof(struct sctp_authchunks) + 20; // 20 байт на чанки
+					char *buf = (char*)calloc(1, buf_size);
+					struct sctp_authchunks *chunks = (struct sctp_authchunks*)buf;
+
+					chunks->gauth_assoc_id = 0;
+					socklen_t len = buf_size;
+
+					if (getsockopt(sock, IPPROTO_SCTP, SCTP_LOCAL_AUTH_CHUNKS, chunks, &len) == 0) {
 						printf("Подписываю чанки: ");
-						for (uint32_t i = 0; i < chunks.gauth_number_of_chunks; i++) {
-							printf("0x%02x ", chunks.gauth_chunks[i]);
+						for (uint32_t i = 0; i < chunks->gauth_number_of_chunks; i++) {
+							printf("0x%02x ", chunks->gauth_chunks[i]);
 						}
 						printf("\n");
 					}
+
+					free(buf);
 				}
 			}
 		}
