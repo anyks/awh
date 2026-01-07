@@ -670,7 +670,7 @@ namespace io {
 		// Флаг таймаута события
 		event::action_t timeout;
 		// Общее количество подключений сервера
-		uint16_t & peers;
+		uint16_t & origins;
 		/**
 		 * @brief Конструктор
 		 *
@@ -680,7 +680,7 @@ namespace io {
 		 */
 		explicit Origin(uint16_t & num, const fmk_t * fmk, const log_t * log) noexcept :
 		 addr(fmk, log), transfer(fmk, log),
-		 timeout(event::action_t::NONE), peers(num) {}
+		 timeout(event::action_t::NONE), origins(num) {}
 	} origin_t;
 
 	/**
@@ -1496,9 +1496,9 @@ namespace io {
 						}
 					}
 					// Уменьшаем общее количество подключений сервера
-					if(origin->peers > 0)
+					if(origin->origins > 0)
 						// Уменьшаем общее количество подключений сервера
-						origin->peers--;
+						origin->origins--;
 					// Если событие отключения от сервера разрешено
 					if(origin->transfer.actions & ::action::DISCONNECT){
 						// Создаём охранника узла события
@@ -7075,7 +7075,7 @@ namespace io {
 											// Извлекаем параметры таймаутов для нового подключения
 											origin->timeouts = server->timeouts;
 											// Увеличиваем текущее количество подключений
-											origin->peers++;
+											origin->origins++;
 											// Устанавливаем флаг разрешающий выполнять чтение из сокета
 											origin->transfer.actions |= ::action::READ;
 											// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -25395,7 +25395,7 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &peer->endpoint.server);
+								return false;
 							// Устанавливаем значение таймаута SCTP события
 							else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
@@ -27463,7 +27463,7 @@ bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] cons
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
