@@ -69,11 +69,11 @@ int32_t main(int32_t argc, char * argv[]){
 		io.sctpAuthenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
 		// Выполняем подписку на SCTP события
 		io.sctpEventsSubscribe(eid, {
-			net::sctp::event_type_t::EVENTS,
 			net::sctp::event_type_t::ASSOC_CHANGE,
 			net::sctp::event_type_t::SHUTDOWN_EVENT,
 			net::sctp::event_type_t::SEND_FAILED_EVENT,
-			net::sctp::event_type_t::REMOTE_ERROR
+			net::sctp::event_type_t::REMOTE_ERROR,
+			net::sctp::event_type_t::AUTHENTICATION_EVENT
 		});
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
