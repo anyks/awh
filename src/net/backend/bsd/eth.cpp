@@ -2687,7 +2687,7 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("^^^ %s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2708,7 +2708,7 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("!!! %s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
