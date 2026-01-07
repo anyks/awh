@@ -26227,364 +26227,6 @@ bool awh::IO::sctpAuthenticateKey(const event::id_t id, [[maybe_unused]] const e
 	return false;
 }
 /**
- * @brief Метод извлечения чанков аутентификации SCTP сокета
- *
- * @param id     идентификатор события
- * @param chunks список чанков подлежащих аутентификации
- * @return       результат работы функции
- */
-bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Если операционной системой является FreeBSD
-			 */
-			#if __FreeBSD__
-				// Очищаем список чанков
-				chunks.clear();
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						// Извлекаем чанки аутентификации SCTP сокета
-						return this->_eth.sctpAuthenticateChunks(client->transfer.fd, client->transfer.sctp.id, chunks);
-					}
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						// Извлекаем чанки аутентификации SCTP сокета
-						return this->_eth.sctpAuthenticateChunks(server->fd, server->sctp.id, chunks);
-					}
-				}
-			/**
-			 * Если это другая операционная система
-			 */
-			#else
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::NOTIFY): {
-						// Получаем текущее значение объекта пользовательского события
-						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(user->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							user->callbacks.status(user->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(user->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							user->callbacks.error(user->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Получаем текущее значение объекта директории
-						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(dir->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							dir->callbacks.status(dir->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(dir->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Получаем текущее значение объекта файловой системы
-						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							fs->callbacks.status(fs->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMEOUT):
-					// Если узел является интервалом
-					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Получаем текущее значение объекта таймера
-						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(timer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							timer->callbacks.status(timer->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(timer->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является межпроцессным взаимодействием
-					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпроцессного взаимодействия
-						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(ipc->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(ipc->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER): {
-						// Получаем текущее значение объекта однорангового узла
-						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							peer->callbacks.status(peer->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является одноранговым узлом-источником
-					case static_cast <uint8_t> (event::node_t::ORIGIN): {
-						// Получаем текущее значение объекта однорангового узла-источника
-						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(origin->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							origin->callbacks.status(origin->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(origin->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(client->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							client->callbacks.status(client->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(client->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(server->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							server->callbacks.status(server->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "SCTP-protocol is not supported in MacOS X";
-						// Если установлена функция обратного вызова
-						if(server->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова вывода ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					} break;
-				}
-			#endif
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод установки чанков аутентификации SCTP сокета
  *
  * @param id     идентификатор события
@@ -26923,6 +26565,365 @@ bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] init
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, chunks.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод извлечения чанков аутентификации SCTP сокета
+ *
+ * @param id     идентификатор события
+ * @param origin источник события
+ * @param chunks список чанков подлежащих аутентификации
+ * @return       результат работы функции
+ */
+bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] const event::origin_t origin, [[maybe_unused]] vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Если операционной системой является FreeBSD
+			 */
+			#if __FreeBSD__
+				// Очищаем список чанков
+				chunks.clear();
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Извлекаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(client->transfer.fd, origin, client->transfer.sctp.id, chunks);
+					}
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						// Извлекаем чанки аутентификации SCTP сокета
+						return this->_eth.sctpAuthenticateChunks(server->fd, origin, server->sctp.id, chunks);
+					}
+				}
+			/**
+			 * Если это другая операционная система
+			 */
+			#else
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
+						// Получаем текущее значение объекта пользовательского события
+						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(user->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							user->callbacks.status(user->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(user->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							user->callbacks.error(user->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(dir->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							dir->callbacks.status(dir->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(dir->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							fs->callbacks.status(fs->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
+						// Получаем текущее значение объекта таймера
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(timer->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							timer->callbacks.status(timer->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(timer->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпроцессного взаимодействия
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(ipc->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(ipc->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(peer->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							peer->callbacks.status(peer->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(peer->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является одноранговым узлом-источником
+					case static_cast <uint8_t> (event::node_t::ORIGIN): {
+						// Получаем текущее значение объекта однорангового узла-источника
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(origin->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							origin->callbacks.status(origin->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(origin->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(client->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							client->callbacks.status(client->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(client->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(server->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							server->callbacks.status(server->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "SCTP-protocol is not supported in MacOS X";
+						// Если установлена функция обратного вызова
+						if(server->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+				}
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

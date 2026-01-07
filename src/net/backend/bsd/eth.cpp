@@ -2430,9 +2430,6 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 						authchunk.sauth_chunk = 0x0F;
 					break;
 				}
-
-				cout << "sctpAuthenticateChunks: sock=" << sock << ", chunk=" << static_cast <uint16_t> (authchunk.sauth_chunk) << endl;
-
 				// Активируем чанк аутентификации SCTP сокета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_CHUNK, &authchunk, sizeof(authchunk))))){
 					/**
@@ -2451,26 +2448,6 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 					// Прекращаем дальнейшую обработку чанков аутентификации
 					break;
 				}
-
-				{
-					// Выделяем буфер достаточного размера
-					size_t buf_size = sizeof(struct sctp_authchunks) + 20; // 20 байт на чанки
-					char *buf = (char*)calloc(1, buf_size);
-					struct sctp_authchunks *chunks = (struct sctp_authchunks*)buf;
-
-					chunks->gauth_assoc_id = 0;
-					socklen_t len = buf_size;
-
-					if (getsockopt(sock, IPPROTO_SCTP, SCTP_LOCAL_AUTH_CHUNKS, chunks, &len) == 0) {
-						printf("Подписываю чанки: ");
-						for (uint32_t i = 0; i < chunks->gauth_number_of_chunks; i++) {
-							printf("0x%02x ", chunks->gauth_chunks[i]);
-						}
-						printf("\n");
-					}
-
-					free(buf);
-				}
 			}
 		}
 	#endif
@@ -2481,11 +2458,12 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
  * @brief Метод извлечения чанков аутентификации SCTP сокета
  *
  * @param sock   сетевой сокет
+ * @param origin источник события
  * @param id     идентификатор ассоциации
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
  */
-bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::origin_t origin, [[maybe_unused]] const uint32_t id, [[maybe_unused]] vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2500,8 +2478,25 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 		authchunks.gauth_assoc_id = id;
 		// Максимум 256 типов чанков — более чем достаточно
 		socklen_t length = (sizeof(authchunks) + 256);
+		// Переменная для хранения типа опции
+		int32_t optname = 0;
+		/**
+		 * Определяем источник события
+		 */
+		switch(static_cast <uint8_t> (origin)){
+			// Если источник события - локальный
+			case static_cast <uint8_t> (event::origin_t::LOCAL):
+				// Устанавливаем тип опции - локальные чанки аутентификации
+				optname = SCTP_LOCAL_AUTH_CHUNKS;
+			break;
+			// Если источник события - удалённый
+			case static_cast <uint8_t> (event::origin_t::REMOTE):
+				// Устанавливаем тип опции - удалённые чанки аутентификации
+				optname = SCTP_PEER_AUTH_CHUNKS;
+			break;
+		}
 		// Получаем протокол сокета
-		if((result = (::getsockopt(sock, IPPROTO_SCTP, SCTP_PEER_AUTH_CHUNKS, &authchunks, &length) == 0))){
+		if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, &authchunks, &length) == 0))){
 			// Перебираем все полученные чанки аутентификации
 			for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
 				/**
@@ -2587,6 +2582,16 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 					case 0x0F:
 						// Добавляем чанк аутентификации AUTH
 						chunks.push_back(net::sctp::auth_chunk_t::AUTH);
+					break;
+					// Если чанк аутентификации - FORWARD_TSN
+					case 0x80:
+						// Добавляем чанк аутентификации FORWARD_TSN
+						chunks.push_back(net::sctp::auth_chunk_t::FORWARD_TSN);
+					break;
+					// Если чанк аутентификации - RE_CONFIG
+					case 0xC1:
+						// Добавляем чанк аутентификации RE_CONFIG
+						chunks.push_back(net::sctp::auth_chunk_t::RE_CONFIG);
 					break;
 				}
 			}

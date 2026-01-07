@@ -194,11 +194,12 @@ namespace awh {
 			 * @brief Метод извлечения чанков аутентификации SCTP сокета
 			 *
 			 * @param sock   сетевой сокет
+			 * @param origin источник события
 			 * @param id     идентификатор ассоциации
 			 * @param chunks список чанков подлежащих аутентификации
 			 * @return       результат работы функции
 			 */
-			bool sctpAuthenticateChunks(const net::socket_t sock, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+			bool sctpAuthenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета

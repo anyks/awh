@@ -285,14 +285,6 @@ namespace awh {
 			bool sctpAuthenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept;
 		public:
 			/**
-			 * @brief Метод извлечения чанков аутентификации SCTP сокета
-			 *
-			 * @param id     идентификатор события
-			 * @param chunks список чанков подлежащих аутентификации
-			 * @return       результат работы функции
-			 */
-			bool sctpAuthenticateChunks(const event::id_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
-			/**
 			 * @brief Метод установки чанков аутентификации SCTP сокета
 			 *
 			 * @param id     идентификатор события
@@ -300,6 +292,15 @@ namespace awh {
 			 * @return       результат работы функции
 			 */
 			bool sctpAuthenticateChunks(const event::id_t id, initializer_list <net::sctp::auth_chunk_t> chunks) noexcept;
+			/**
+			 * @brief Метод извлечения чанков аутентификации SCTP сокета
+			 *
+			 * @param id     идентификатор события
+			 * @param origin источник события
+			 * @param chunks список чанков подлежащих аутентификации
+			 * @return       результат работы функции
+			 */
+			bool sctpAuthenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета

@@ -75,6 +75,14 @@ int32_t main(int32_t argc, char * argv[]){
 			net::sctp::event_type_t::REMOTE_ERROR,
 			net::sctp::event_type_t::AUTHENTICATION_EVENT
 		});
+		// Извлекаем чанки аутентификации SCTP-сокета
+		vector <net::sctp::auth_chunk_t> chunks;
+		// Выполняем извлечение чанков аутентификации SCTP-сокета
+		io.sctpAuthenticateChunks(eid, event::origin_t::LOCAL, chunks);
+		// Перебираем все извлечённые чанки
+		for(auto & chunk : chunks)
+			// Выводим информацию о чанках аутентификации SCTP-сокета
+			cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -209,7 +217,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			io.on(eid, static_cast <event::callback::accept_t> ([&chunks, &io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const net::sctp::minfo_t & minfo = io.sctpMessageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
@@ -231,6 +239,12 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Rate Window: " << status.ratewind << endl;
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
+				// Выполняем извлечение чанков аутентификации SCTP-сокета
+				io.sctpAuthenticateChunks(cid, event::origin_t::REMOTE, chunks);
+				// Перебираем все извлечённые чанки
+				for(auto & chunk : chunks)
+					// Выводим информацию о чанках аутентификации SCTP-сокета
+					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
 				io.sctpTimeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
 				// Выводим heartbeat timeout SCTP-сокета

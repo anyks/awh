@@ -616,7 +616,7 @@ namespace awh {
 			 * Типы аутентификации события SCTP
 			 */
 			enum class auth_type_t : uint8_t {
-				HMAC_RSVD    = 0x00, // Зарезервировано
+				HMAC_RSVD    = 0x00, // ЗаSCTPрезервировано
 				HMAC_SHA1    = 0x01, // HMAC-SHA1 аутентификация
 				HMAC_SHA256  = 0x02  // HMAC-SHA256 аутентификация
 			};
@@ -639,10 +639,12 @@ namespace awh {
 				ECNE              = 0x0C, // Чанк ECNE подлежит аутентификации
 				CWR               = 0x0D, // Чанк CWR подлежит аутентификации
 				SHUTDOWN_COMPLETE = 0x0E, // Чанк SHUTDOWN-COMPLETE подлежит аутентификации
-				AUTH              = 0x0F  // Чанк AUTH подлежит аутентификации
+				AUTH              = 0x0F, // Чанк AUTH подлежит аутентификации
+				FORWARD_TSN       = 0x10, // Чанк FORWARD-TSN подлежит аутентификации
+				RE_CONFIG         = 0x11  // Чанк RE-CONFIG подлежит аутентификации
 			};
 			/**
-			 * Типы индикаторов события аутентификации SCTP
+			 * Типы индикаторов события аутентификации 
 			 */
 			enum class auth_indics_t : uint8_t {
 				NONE     = 0x00, // Тип аутентификации отсутствует
