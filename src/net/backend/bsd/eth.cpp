@@ -1843,102 +1843,132 @@ uint32_t awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [
  * @param id      идентификатор ассоциации
  * @param type    тип таймаута
  * @param timeout значение таймаута в миллисекундах
+ * @param ctx     контекст установки таймаута
  * @return        результат работы функции
  */
-bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] const uint32_t timeout) const noexcept {
+bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] const uint32_t timeout, [[maybe_unused]] void * ctx) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
 	#if __FreeBSD__
-		// Объект таймаутов SCTP сокета
-		struct sctp_timeouts to;
-		// Зануляем объект таймаутов
-		::memset(&to, 0, sizeof(to));
-		// Устанавливаем идентификатор ассоциации или 0 для сокета по умолчанию
-		to.stimo_assoc_id = id;
-		// Устанавливаем длину объекта таймаутов
-		socklen_t length = sizeof(to);
-
-		cout << "sctpTimeout1: id=" << id << ", type=" << static_cast <uint16_t> (type) << ", timeout=" << timeout << endl;
-
-		// Извлекаем таймауты SCTP сокета
-		if(::getsockopt(sock, IPPROTO_SCTP, SCTP_TIMEOUTS, &to, &length) == 0){
-			/**
-			 * Определяем тип таймаута
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если тип таймаута - INIT
-				case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
-					// Устанавливаем новое значение таймаута
-					to.stimo_init = timeout;
-				break;
-				// Если тип таймаута - DATA
-				case static_cast <uint8_t> (net::sctp::timeout_t::DATA):
-					// Устанавливаем новое значение таймаута
-					to.stimo_data = timeout;
-				break;
-				// Если тип таймаута - SACK
-				case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
-					// Устанавливаем новое значение таймаута
-					to.stimo_sack = timeout;
-				break;
-				// Если тип таймаута - SHUTDOWN
-				case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN):
-					// Устанавливаем новое значение таймаута
-					to.stimo_shutdown = timeout;
-				break;
-				// Если тип таймаута - COOKIE
-				case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT):
-					// Устанавливаем новое значение таймаута
-					to.stimo_heartbeat = timeout;
-				break;
-				// Если тип таймаута - COOKIE
-				case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE):
-					// Устанавливаем новое значение таймаута
-					to.stimo_cookie = timeout;
-				break;
-				// Если тип таймаута - SHUTDOWNACK
-				case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK):
-					// Устанавливаем новое значение таймаута
-					to.stimo_shutdownack = timeout;
-				break;
-			}
-			
-			cout << "sctpTimeout2: id=" << id << ", type=" << static_cast <uint16_t> (type) << ", timeout=" << to.stimo_heartbeat << endl;
-			
-			// Активируем новые таймауты SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_TIMEOUTS, &to, sizeof(to))))){
+		/**
+		 * Определяем тип таймаута
+		 */
+		switch(static_cast <uint8_t> (type)){
+			// Если тип таймаута - INIT
+			case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
+			// Если тип таймаута - DATA
+			case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_rtoinfo params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.srto_assoc_id = id;
+				// Устанавливаем новое значение таймаута
+				params.srto_initial = timeout;
+				// Активируем новые таймауты SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_RTOINFO, &params, sizeof(params))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если тип таймаута - SACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
+			// Если тип таймаута - SHUTDOWN
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN): {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 				#endif
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
+			} break;
+			// Если тип таймаута - COOKIE
+			case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_paddrparams params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.spp_assoc_id = id;
+				// Устанавливаем новое значение таймаута
+				params.spp_hbinterval = timeout;
+				// Если передан контекст установки таймаута
+				if(ctx != nullptr)
+					// Устанавливаем адрес удалённой стороны из контекста
+					::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
+				// Устанавливаем флаг принудительного включения HB с новым интервалом
+				params.spp_flags = SPP_HB_ENABLE;
+				// Активируем новые таймауты SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если тип таймаута - COOKIE
+			case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_assocparams params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.sasoc_assoc_id = id;
+				// Устанавливаем новое значение таймаута
+				params.sasoc_cookie_life = timeout;
+				// Активируем новые таймауты SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_ASSOCINFO, &params, sizeof(params))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если тип таймаута - SHUTDOWNACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK):
+				// Устанавливаем новое значение таймаута
+				to.stimo_shutdownack = timeout;
+			break;
 		}
 	#endif
 	// Выводим результат

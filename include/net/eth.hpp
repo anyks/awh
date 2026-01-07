@@ -153,9 +153,10 @@ namespace awh {
 			 * @param id      идентификатор ассоциации
 			 * @param type    тип таймаута
 			 * @param timeout значение таймаута в миллисекундах
+			 * @param ctx     контекст установки таймаута
 			 * @return        результат работы функции
 			 */
-			bool sctpTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout) const noexcept;
+			bool sctpTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения статуса SCTP сокета
