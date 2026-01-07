@@ -23058,17 +23058,26 @@ uint32_t awh::IO::sctpTimeout([[maybe_unused]] const event::id_t id, [[maybe_unu
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
 					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER):
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Получаем значение таймаута SCTP события
-						return this->_eth.sctpTimeout(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd, type);
+						return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type);
+					}
 					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT):
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Получаем значение таймаута SCTP события
-						return this->_eth.sctpTimeout(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, type);
+						return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type);
+					}
 					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER):
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Получаем значение таймаута SCTP события
-						return this->_eth.sctpTimeout(awh_cast <::io::server_t *> (i->second.get())->fd, type);
+						return this->_eth.sctpTimeout(server->fd, server->sctp.id, type);
+					}
 				}
 			}
 		/**
@@ -23119,17 +23128,26 @@ bool awh::IO::sctpTimeout([[maybe_unused]] const event::id_t id, [[maybe_unused]
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
 					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER):
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Устанавливаем значение таймаута SCTP события
-						return this->_eth.sctpTimeout(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd, type, timeout);
+						return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
+					}
 					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT):
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Устанавливаем значение таймаута SCTP события
-						return this->_eth.sctpTimeout(awh_cast <::io::client_t *> (i->second.get())->transfer.fd, type, timeout);
+						return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type, timeout);
+					}
 					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER):
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Устанавливаем значение таймаута SCTP события
-						return this->_eth.sctpTimeout(awh_cast <::io::server_t *> (i->second.get())->fd, type, timeout);
+						return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout);
+					}
 				}
 			}
 		/**
