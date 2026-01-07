@@ -1938,6 +1938,20 @@ bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[may
 						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
+
+				socklen_t check_len = sizeof(params);
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.spp_assoc_id = id;
+				// Если передан контекст установки таймаута
+				if(ctx != nullptr)
+					// Устанавливаем адрес удалённой стороны из контекста
+					::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
+
+				if (::getsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &check_len) == 0) {
+					std::cout << "CHECK HB: " << params.spp_hbinterval << " (expected: " << timeout << ")" << std::endl;
+				}
+
 			} break;
 			// Если тип таймаута - COOKIE
 			case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
