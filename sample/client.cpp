@@ -1393,10 +1393,10 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
-		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-		io.sctpAuthenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
 		// Устанавливаем ключ аутентификации SCTP-сокета
 		io.sctpAuthenticateKey(eid, 1, "0123456789abcdef0123456789abcdef");
+		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
+		io.sctpAuthenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
 		// Устанавливаем чанки аутентификации SCTP-сокета
 		io.sctpAuthenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
 		// Выполняем подписку на SCTP события
