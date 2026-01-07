@@ -2451,6 +2451,19 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 					// Прекращаем дальнейшую обработку чанков аутентификации
 					break;
 				}
+
+				{
+					struct sctp_authchunks chunks = {0};
+					chunks.gauth_assoc_id = 0; // для сокета (будущие ассоциации)
+					socklen_t len = sizeof(chunks) + 10;
+					if (getsockopt(sock, IPPROTO_SCTP, SCTP_LOCAL_AUTH_CHUNKS, &chunks, &len) == 0) {
+						printf("Подписываю чанки: ");
+						for (uint32_t i = 0; i < chunks.gauth_number_of_chunks; i++) {
+							printf("0x%02x ", chunks.gauth_chunks[i]);
+						}
+						printf("\n");
+					}
+				}
 			}
 		}
 	#endif
