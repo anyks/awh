@@ -24936,11 +24936,34 @@ uint32_t awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::
 						// Получаем текущее значение объекта однорангового узла
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
-						if(peer->state.protocol == event::protocol_t::SCTP)
+						if(peer->state.protocol == event::protocol_t::SCTP){
+							// Если тип таймаута является HEARTBEAT
+							if(type == net::sctp::timeout_t::HEARTBEAT){
+								// Создаём структуру конечного узла
+								struct sockaddr_storage endpoint;
+								// Заполняем структуру конечного узла
+								::memset(&endpoint, 0, sizeof(endpoint));
+								/**
+								 * Определяем тип подключения
+								 */
+								switch(static_cast <uint8_t> (family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Устанавливаем семейство адресов
+										endpoint.ss_family = AF_INET;
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Устанавливаем семейство адресов
+										endpoint.ss_family = AF_INET6;
+									break;
+								}
+								// Получаем значение таймаута SCTP события
+								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, &endpoint);
 							// Получаем значение таймаута SCTP события
-							return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type);
+							} else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
-						else {
+						} else {
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -24974,11 +24997,15 @@ uint32_t awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
-						if(client->state.protocol == event::protocol_t::SCTP)
+						if(client->state.protocol == event::protocol_t::SCTP){
+							// Если тип таймаута является HEARTBEAT
+							if(type == net::sctp::timeout_t::HEARTBEAT)
+								// Получаем значение таймаута SCTP события
+								return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type, &client->endpoint.server);
 							// Получаем значение таймаута SCTP события
-							return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type);
+							else return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
-						else {
+						} else {
 							// Если установлена функция обратного вызова
 							if(client->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -25012,11 +25039,15 @@ uint32_t awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
-						if(server->state.protocol == event::protocol_t::SCTP)
+						if(server->state.protocol == event::protocol_t::SCTP){
+							// Если тип таймаута является HEARTBEAT
+							if(type == net::sctp::timeout_t::HEARTBEAT)
+								// Получаем значение таймаута SCTP события
+								return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, &server->endpoint.server);
 							// Получаем значение таймаута SCTP события
-							return this->_eth.sctpTimeout(server->fd, server->sctp.id, type);
+							else return this->_eth.sctpTimeout(server->fd, server->sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
-						else {
+						} else {
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -25394,16 +25425,29 @@ bool awh::IO::sctpTimeout(const event::id_t id, [[maybe_unused]] const net::sctp
 						if(peer->state.protocol == event::protocol_t::SCTP){
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT){
-
-								struct sockaddr_storage ss;
-								::memset(&ss, 0, sizeof(ss));
-								ss.ss_family = AF_INET;
-
+								// Создаём структуру конечного узла
+								struct sockaddr_storage endpoint;
+								// Заполняем структуру конечного узла
+								::memset(&endpoint, 0, sizeof(endpoint));
+								/**
+								 * Определяем тип подключения
+								 */
+								switch(static_cast <uint8_t> (family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Устанавливаем семейство адресов
+										endpoint.ss_family = AF_INET;
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Устанавливаем семейство адресов
+										endpoint.ss_family = AF_INET6;
+									break;
+								}
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &ss);
-							}
+								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &endpoint);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
+							} else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
