@@ -46,10 +46,10 @@ namespace awh {
 	class LockState {
 		private:
 			/**
-			* @brief Шаблон формата данных локера
-			*
-			* @tparam T тип данных локера
-			*/
+			 * @brief Шаблон формата данных локера
+			 *
+			 * @tparam T тип данных локера
+			 */
 			template <typename T>
 			/**
 			 * @brief Устанавливаем дружбу с локером
@@ -76,15 +76,15 @@ namespace awh {
 			}
 		public:
 			/**
-			* @brief Оператор копирования
-			*
-			*/
+			 * @brief Оператор копирования
+			 *
+			 */
 			LockState & operator = (const LockState &) = delete;
 		public:
 			/**
-			* @brief Конструктор копирования
-			*
-			*/
+			 * @brief Конструктор копирования
+			 *
+			 */
 			explicit LockState(const LockState &) = delete;
 		public:
 			/**
@@ -125,22 +125,22 @@ namespace awh {
 			LockState <MutexType> & _state;
 		public:
 			/**
-			* @brief Оператор копирования
-			*
-			*/
+			 * @brief Оператор копирования
+			 *
+			 */
 			Locker & operator = (const Locker &) = delete;
 		public:
 			/**
-			* @brief Конструктор копирования
-			*
-			*/
+			 * @brief Конструктор копирования
+			 *
+			 */
 			explicit Locker(const Locker &) = delete;
 		public:
 			/**
-			* @brief Конструктор
-			*
-			* @param state объект состояния блокировок
-			*/
+			 * @brief Конструктор
+			 *
+			 * @param state объект состояния блокировок
+			 */
 			explicit Locker(LockState <MutexType> & state) noexcept : _locked(false), _state(state) {
 				// Если идентификатор процесса не совпадает
 				if(this->_state._pid.load(std::memory_order_acquire) != ::getpid()){
@@ -164,9 +164,9 @@ namespace awh {
 			}
 		public:
 			/**
-			* @brief Деструктор
-			*
-			*/
+			 * @brief Деструктор
+			 *
+			 */
 			~Locker() noexcept {
 				// Если мютекс не пустой и захвачен
 				if((this->_state._mtx != nullptr) && this->_locked)

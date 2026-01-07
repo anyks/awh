@@ -312,8 +312,8 @@ bool awh::FDS::limit(const uint32_t limit) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, limit);
@@ -336,8 +336,8 @@ bool awh::FDS::limit(const uint32_t limit) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
@@ -399,8 +399,8 @@ bool awh::FDS::limit(const uint32_t limit) const noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->debug("Failed to raise hard FD limit to %u (need root?): %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("Failed to raise hard FD limit to %u (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
@@ -418,8 +418,8 @@ bool awh::FDS::limit(const uint32_t limit) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
@@ -467,8 +467,8 @@ std::pair <uint32_t, uint32_t> awh::FDS::limit() const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, result.first);
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, result.first);
@@ -521,8 +521,8 @@ std::pair <uint32_t, uint32_t> awh::FDS::limit() const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -549,8 +549,8 @@ std::pair <uint32_t, uint32_t> awh::FDS::limit() const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
@@ -573,8 +573,8 @@ std::pair <uint32_t, uint32_t> awh::FDS::limit() const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());

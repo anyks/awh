@@ -152,8 +152,8 @@ void awh::Chrono::clear() noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -218,8 +218,8 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -324,8 +324,8 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -370,8 +370,8 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(expression, static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, string(buffer, size).c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, string(buffer, size).c_str());
@@ -981,8 +981,8 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1110,8 +1110,8 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1292,8 +1292,8 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3009,8 +3009,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3403,8 +3403,8 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3508,8 +3508,8 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(seconds), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3620,8 +3620,8 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3660,8 +3660,8 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3710,8 +3710,8 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3768,8 +3768,8 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3817,8 +3817,8 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3887,8 +3887,8 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3934,8 +3934,8 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(year), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3971,8 +3971,8 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4482,8 +4482,8 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4959,8 +4959,8 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, date, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5733,8 +5733,8 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6577,8 +6577,8 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6629,8 +6629,8 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8024,8 +8024,8 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8072,8 +8072,8 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (std), static_cast <uint16_t> (sum)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8150,8 +8150,8 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8186,8 +8186,8 @@ void awh::Chrono::clearTimeZones() noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8220,8 +8220,8 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, offset), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8335,8 +8335,8 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8574,8 +8574,8 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -9289,8 +9289,8 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -10148,8 +10148,8 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (zone)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -11076,8 +11076,8 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(date, format1, format2, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());

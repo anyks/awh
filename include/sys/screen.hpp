@@ -156,8 +156,8 @@ namespace awh {
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -271,8 +271,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -304,8 +304,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -337,8 +337,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -371,8 +371,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -413,8 +413,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -454,8 +454,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -528,8 +528,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());

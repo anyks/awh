@@ -150,8 +150,8 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -165,8 +165,8 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -254,8 +254,8 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
@@ -269,8 +269,8 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
@@ -291,8 +291,8 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -306,8 +306,8 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -397,8 +397,8 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
@@ -412,8 +412,8 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
@@ -434,8 +434,8 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -449,8 +449,8 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -588,8 +588,8 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, initializer_list <
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
@@ -603,8 +603,8 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, initializer_list <
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
@@ -625,8 +625,8 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, initializer_list <
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -640,8 +640,8 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, initializer_list <
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());

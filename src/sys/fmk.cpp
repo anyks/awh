@@ -130,8 +130,8 @@ namespace {
 					// Выводим сообщение об ошибке
 					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(number), awh::log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
@@ -145,8 +145,8 @@ namespace {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -232,8 +232,8 @@ namespace {
 								// Выводим сообщение об ошибке
 								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data, from, to), awh::log_t::flag_t::CRITICAL, error.what());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
@@ -247,8 +247,8 @@ namespace {
 								// Выводим сообщение об ошибке
 								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -312,8 +312,8 @@ namespace {
 						// Выводим сообщение об ошибке
 						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim, container.size()), awh::log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
@@ -327,8 +327,8 @@ namespace {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -388,8 +388,8 @@ namespace {
 					// Выводим сообщение об ошибке
 					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim, container.size()), awh::log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
@@ -403,8 +403,8 @@ namespace {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -464,8 +464,8 @@ namespace {
 						// Выводим сообщение об ошибке
 						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str.size(), delim.size(), container.size()), awh::log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
@@ -479,8 +479,8 @@ namespace {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -540,8 +540,8 @@ namespace {
 					// Выводим сообщение об ошибке
 					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str.size(), delim.size(), container.size()), awh::log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
@@ -555,8 +555,8 @@ namespace {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -936,8 +936,8 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(letter, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -951,8 +951,8 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1032,8 +1032,8 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(letter, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1047,8 +1047,8 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1369,8 +1369,8 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1384,8 +1384,8 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1706,8 +1706,8 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(text), static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1721,8 +1721,8 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2050,8 +2050,8 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (type), text), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2065,8 +2065,8 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2268,8 +2268,8 @@ string awh::Framework::transcode(const string & text, const codepage_t codepage)
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, static_cast <uint16_t> (codepage)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2283,8 +2283,8 @@ string awh::Framework::transcode(const string & text, const codepage_t codepage)
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2428,8 +2428,8 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2443,8 +2443,8 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2536,8 +2536,8 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(text), static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2551,8 +2551,8 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2702,8 +2702,8 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2717,8 +2717,8 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2737,8 +2737,8 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2752,8 +2752,8 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2806,8 +2806,8 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2821,8 +2821,8 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2841,8 +2841,8 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2856,8 +2856,8 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -2955,8 +2955,8 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2970,8 +2970,8 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -3077,8 +3077,8 @@ bool awh::Framework::isGreater(const void * value1, const void * value2, const s
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value1, value2, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3092,8 +3092,8 @@ bool awh::Framework::isGreater(const void * value1, const void * value2, const s
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -3279,8 +3279,8 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "ERROR! %s\n\n", "Binary data buffer cannot be cast to a number");
@@ -3303,8 +3303,8 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, size, static_cast <uint16_t> (radix)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3318,8 +3318,8 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -3697,8 +3697,8 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, length, static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
@@ -3712,8 +3712,8 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 								// Выводим сообщение об ошибке
 								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								::fprintf(stderr, "ERROR! %s\n\n", "Only binary number can be converted to binary buffer");
@@ -3737,8 +3737,8 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, length, static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3752,8 +3752,8 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -3821,8 +3821,8 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(number, static_cast <uint8_t> (step)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3836,8 +3836,8 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -3939,8 +3939,8 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(number, onlyNum), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3954,8 +3954,8 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -3997,8 +3997,8 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(a, b), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4012,8 +4012,8 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4052,8 +4052,8 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(x, static_cast <uint8_t> (n)), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4067,8 +4067,8 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4210,8 +4210,8 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(word), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4225,8 +4225,8 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4369,8 +4369,8 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4384,8 +4384,8 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4440,8 +4440,8 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(number), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4455,8 +4455,8 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4499,8 +4499,8 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(word), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4514,8 +4514,8 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4558,8 +4558,8 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4573,8 +4573,8 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4614,8 +4614,8 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pos, start), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4629,8 +4629,8 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4680,8 +4680,8 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word), letter), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4695,8 +4695,8 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4784,8 +4784,8 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(format), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4799,8 +4799,8 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4890,8 +4890,8 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(format)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4905,8 +4905,8 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -4971,8 +4971,8 @@ string awh::Framework::format(const string & format, initializer_list <string> i
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(format, items.size()), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4986,8 +4986,8 @@ string awh::Framework::format(const string & format, initializer_list <string> i
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5024,8 +5024,8 @@ string awh::Framework::format(const string & format, initializer_list <string> i
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(format, items.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5039,8 +5039,8 @@ string awh::Framework::format(const string & format, initializer_list <string> i
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5103,8 +5103,8 @@ wstring awh::Framework::format(const wstring & format, initializer_list <wstring
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(format), items.size()), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5118,8 +5118,8 @@ wstring awh::Framework::format(const wstring & format, initializer_list <wstring
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5156,8 +5156,8 @@ wstring awh::Framework::format(const wstring & format, initializer_list <wstring
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(format), items.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5171,8 +5171,8 @@ wstring awh::Framework::format(const wstring & format, initializer_list <wstring
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5225,8 +5225,8 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(word, text), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5240,8 +5240,8 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5294,8 +5294,8 @@ bool awh::Framework::exists(const wstring & word, const wstring & text) const no
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word), this->convert(text)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5309,8 +5309,8 @@ bool awh::Framework::exists(const wstring & word, const wstring & text) const no
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5362,8 +5362,8 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, word, alt), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5377,8 +5377,8 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5430,8 +5430,8 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(text), this->convert(word), this->convert(alt)), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5445,8 +5445,8 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5616,8 +5616,8 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, delim, separator, escaping.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5631,8 +5631,8 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5778,8 +5778,8 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(text), this->convert(delim), this->convert(separator), escaping.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5793,8 +5793,8 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -5897,8 +5897,8 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(locale), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5912,8 +5912,8 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.c_str());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s (%s)\n\n", error.what(), locale.c_str());
@@ -5977,8 +5977,8 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(const string & text) co
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5992,8 +5992,8 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(const string & text) co
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -6106,8 +6106,8 @@ double awh::Framework::bytes(const string & str) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6121,8 +6121,8 @@ double awh::Framework::bytes(const string & str) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -6201,8 +6201,8 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, onlyNum), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6216,8 +6216,8 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -6302,8 +6302,8 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6317,8 +6317,8 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());

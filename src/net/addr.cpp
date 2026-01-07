@@ -1202,8 +1202,8 @@ void awh::NetworkAddress::initLocalNet() noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1251,8 +1251,8 @@ bool awh::NetworkAddress::broadcastIPv6ToIPv4() const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1294,8 +1294,8 @@ void awh::NetworkAddress::zone(const string & zone) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1376,8 +1376,8 @@ awh::NetworkAddress::type_t awh::NetworkAddress::host(const string & host) const
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1414,8 +1414,8 @@ std::array <uint8_t, 6> awh::NetworkAddress::mac() const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1458,8 +1458,8 @@ void awh::NetworkAddress::mac(const std::array <uint8_t, 6> & addr) noexcept {
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1513,8 +1513,8 @@ uint32_t awh::NetworkAddress::v4(const endian_t endian) const noexcept {
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1569,8 +1569,8 @@ void awh::NetworkAddress::v4(const uint32_t addr, const endian_t endian) noexcep
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1622,8 +1622,8 @@ std::array <uint8_t, 16> awh::NetworkAddress::v6(const endian_t endian) const no
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1678,8 +1678,8 @@ void awh::NetworkAddress::v6(const std::array <uint8_t, 16> & addr, const endian
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1897,8 +1897,8 @@ bool awh::NetworkAddress::check(const string_view addr, const type_t type) const
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2102,8 +2102,8 @@ void awh::NetworkAddress::impose(const uint8_t prefix, const addr_t addr, const 
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2188,8 +2188,8 @@ uint8_t awh::NetworkAddress::mask2Prefix(const string & mask, const type_t type)
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2273,8 +2273,8 @@ string awh::NetworkAddress::prefix2Mask(const uint8_t prefix, const type_t type)
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2400,8 +2400,8 @@ bool awh::NetworkAddress::range(const NetworkAddress & begin, const NetworkAddre
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2524,8 +2524,8 @@ bool awh::NetworkAddress::range(const string & begin, const string & end, const 
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2633,8 +2633,8 @@ bool awh::NetworkAddress::mapping(const string & network, const type_t type) con
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2772,8 +2772,8 @@ bool awh::NetworkAddress::mapping(const string & network, const uint8_t prefix, 
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2886,8 +2886,8 @@ awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2962,8 +2962,8 @@ string awh::NetworkAddress::arpa() const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3086,8 +3086,8 @@ bool awh::NetworkAddress::arpa(const string & addr) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3184,8 +3184,8 @@ bool awh::NetworkAddress::parse(const string & addr) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3284,8 +3284,8 @@ bool awh::NetworkAddress::parse(const string & addr, const type_t type) noexcept
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4802,8 +4802,8 @@ string awh::NetworkAddress::print(const format_size_t size, const format_flag_t 
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4898,8 +4898,8 @@ bool awh::NetworkAddress::operator < (const net_addr_t & addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4959,8 +4959,8 @@ bool awh::NetworkAddress::operator > (const net_addr_t & addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5032,8 +5032,8 @@ bool awh::NetworkAddress::operator <= (const net_addr_t & addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5105,8 +5105,8 @@ bool awh::NetworkAddress::operator >= (const net_addr_t & addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5160,8 +5160,8 @@ bool awh::NetworkAddress::operator != (const net_addr_t & addr) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5216,8 +5216,8 @@ bool awh::NetworkAddress::operator == (const net_addr_t & addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5269,8 +5269,8 @@ awh::NetworkAddress & awh::NetworkAddress::operator = (const net_addr_t & addr) 
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());

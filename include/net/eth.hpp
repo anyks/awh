@@ -130,11 +130,11 @@ namespace awh {
 			 */
 			bool nosigill() const noexcept;
 			/**
-			* @brief Метод получения кода ошибки
-			*
-			* @param sock сетевой сокет
-			* @return     код ошибки на сокете если присутствует
-			*/
+			 * @brief Метод получения кода ошибки
+			 *
+			 * @param sock сетевой сокет
+			 * @return     код ошибки на сокете если присутствует
+			 */
 			int32_t error(const net::socket_t sock) const noexcept;
 		public:
 			/**
@@ -174,12 +174,12 @@ namespace awh {
 			 */
 			bool sctpInitMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
 			/**
-			* @brief Метод подписки на SCTP события
-			*
-			* @param sock   сетевой сокет
-			* @param events список событий SCTP для активации
-			* @return       результат работы функции
-			*/
+			 * @brief Метод подписки на SCTP события
+			 *
+			 * @param sock   сетевой сокет
+			 * @param events список событий SCTP для активации
+			 * @return       результат работы функции
+			 */
 			bool sctpEventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
 		public:
 			/**

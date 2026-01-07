@@ -1192,8 +1192,8 @@ namespace ssl {
 							// Выводим сообщение об ошибке
 							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -1239,8 +1239,8 @@ namespace ssl {
 								// Выводим сообщение об ошибке
 								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -1421,8 +1421,8 @@ namespace cookie {
 						// Выводим сообщение об ошибке
 						log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
@@ -1459,8 +1459,8 @@ namespace cookie {
 					// Выводим сообщение об ошибке
 					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
@@ -1561,8 +1561,8 @@ namespace cookie {
 					// Выводим сообщение об ошибке
 					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
@@ -1778,8 +1778,8 @@ namespace verify {
 					// Выводим сообщение об ошибке
 					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
@@ -2021,8 +2021,8 @@ namespace verify {
 								// Выводим сообщение об ошибке
 								log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
@@ -2053,8 +2053,8 @@ namespace verify {
 									// Выводим сообщение об ошибке
 									log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 								/**
-								* Если режим отладки не включён
-								*/
+								 * Если режим отладки не включён
+								 */
 								#else
 									// Выводим сообщение об ошибке
 									log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
@@ -2140,8 +2140,8 @@ namespace verify {
 										// Выводим сообщение об ошибке
 										log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 									/**
-									* Если режим отладки не включён
-									*/
+									 * Если режим отладки не включён
+									 */
 									#else
 										// Выводим сообщение об ошибке
 										log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
@@ -2347,8 +2347,8 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2415,8 +2415,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Выводим в лог сообщение
 							this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим в лог сообщение
 						this->_log->print(
@@ -2453,8 +2453,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 						// Выводим в лог сообщение
 						this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим в лог сообщение
 						this->_log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
@@ -2549,8 +2549,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -2576,8 +2576,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -2611,8 +2611,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2647,8 +2647,8 @@ string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2729,8 +2729,8 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2777,8 +2777,8 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -2804,8 +2804,8 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -2839,8 +2839,8 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2916,8 +2916,8 @@ string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noex
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2966,8 +2966,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
@@ -2997,8 +2997,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3026,8 +3026,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3055,8 +3055,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
@@ -3120,8 +3120,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3188,8 +3188,8 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, mode), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3227,8 +3227,8 @@ awh::TransportLayerSecurity::mode_t awh::TransportLayerSecurity::mode(const id_t
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3292,8 +3292,8 @@ void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcep
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3326,8 +3326,8 @@ string awh::TransportLayerSecurity::hostname(const id_t id) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3387,8 +3387,8 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.c_str());
 								/**
-								* Если режим отладки не включён
-								*/
+								 * Если режим отладки не включён
+								 */
 								#else
 									// Выводим сообщение об ошибке
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3433,8 +3433,8 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3507,8 +3507,8 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 								/**
-								* Если режим отладки не включён
-								*/
+								 * Если режим отладки не включён
+								 */
 								#else
 									// Выводим сообщение об ошибке
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3535,8 +3535,8 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3560,8 +3560,8 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3598,8 +3598,8 @@ bool awh::TransportLayerSecurity::shutdown(const id_t id) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3652,8 +3652,8 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3735,8 +3735,8 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3800,8 +3800,8 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -3870,8 +3870,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -3956,8 +3956,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
@@ -3976,8 +3976,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4072,8 +4072,8 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4092,8 +4092,8 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4133,8 +4133,8 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4190,8 +4190,8 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, initializer_list <strin
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4212,8 +4212,8 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, initializer_list <strin
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4246,8 +4246,8 @@ uint8_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4315,8 +4315,8 @@ void awh::TransportLayerSecurity::alpn(const id_t id, initializer_list <alpn_t> 
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alpn.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4361,8 +4361,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4388,8 +4388,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4415,8 +4415,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4462,8 +4462,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4499,8 +4499,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4532,8 +4532,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4560,8 +4560,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4610,8 +4610,8 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4637,8 +4637,8 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4668,8 +4668,8 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4691,8 +4691,8 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -4748,8 +4748,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 											// Выводим сообщение об ошибке
 											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4778,8 +4778,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 											// Выводим сообщение об ошибке
 											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4807,8 +4807,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
-								* Если режим отладки не включён
-								*/
+								 * Если режим отладки не включён
+								 */
 								#else
 									// Выводим сообщение об ошибке
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4843,8 +4843,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4873,8 +4873,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4902,8 +4902,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 										// Выводим сообщение об ошибке
 										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 									/**
-									* Если режим отладки не включён
-									*/
+									 * Если режим отладки не включён
+									 */
 									#else
 										// Выводим сообщение об ошибке
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4935,8 +4935,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4965,8 +4965,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -4994,8 +4994,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 										// Выводим сообщение об ошибке
 										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 									/**
-									* Если режим отладки не включён
-									*/
+									 * Если режим отладки не включён
+									 */
 									#else
 										// Выводим сообщение об ошибке
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5018,8 +5018,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5075,8 +5075,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Выводим сообщение об ошибке
 											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5103,8 +5103,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Выводим сообщение об ошибке
 											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 										/**
-										* Если режим отладки не включён
-										*/
+										 * Если режим отладки не включён
+										 */
 										#else
 											// Выводим сообщение об ошибке
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5141,8 +5141,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5169,8 +5169,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5204,8 +5204,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5232,8 +5232,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 												// Выводим сообщение об ошибке
 												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5258,8 +5258,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5312,8 +5312,8 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -5416,8 +5416,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5522,8 +5522,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								), log_t::flag_t::CRITICAL, error.c_str()
 							);
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5556,8 +5556,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								), log_t::flag_t::CRITICAL, error.c_str()
 							);
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5589,8 +5589,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5620,8 +5620,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							static_cast <uint16_t> (proto)
 						), log_t::flag_t::WARNING, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
@@ -5653,8 +5653,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5701,8 +5701,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5739,8 +5739,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5840,8 +5840,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5952,8 +5952,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -5984,8 +5984,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								), log_t::flag_t::CRITICAL, error.c_str()
 							);
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6018,8 +6018,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								), log_t::flag_t::CRITICAL, error.c_str()
 							);
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6051,8 +6051,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6079,8 +6079,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6106,8 +6106,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							static_cast <uint16_t> (proto)
 						), log_t::flag_t::WARNING, error.c_str());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
@@ -6139,8 +6139,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6218,8 +6218,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6256,8 +6256,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 							), log_t::flag_t::CRITICAL, error.c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
@@ -6312,8 +6312,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 						), log_t::flag_t::WARNING
 					);
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("Invalid event node type", log_t::flag_t::WARNING);
@@ -6337,8 +6337,8 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				), log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6381,8 +6381,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, read_callback_t callback) no
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6425,8 +6425,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, write_callback_t callback) n
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6469,8 +6469,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6513,8 +6513,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, handshake_callback_t callbac
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -6545,8 +6545,8 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 				// Выводим сообщение об ошибке
 				this->_log->debug("Failed to ignoring signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("Failed to ignoring signal SIGPIPE", log_t::flag_t::CRITICAL);
@@ -6675,8 +6675,8 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 				// Выводим сообщение об ошибке
 				this->_log->debug("Rand poll is not allow", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("Rand poll is not allow", log_t::flag_t::CRITICAL);

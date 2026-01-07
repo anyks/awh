@@ -94,8 +94,8 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -109,8 +109,8 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -216,8 +216,8 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -231,8 +231,8 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -556,8 +556,8 @@ T awh::Buffer::at(const size_t index) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, std::make_tuple(index), log_t::flag_t::WARNING, index);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("There is no data in the buffer at INDEX=%zu", log_t::flag_t::WARNING, index);
@@ -571,8 +571,8 @@ T awh::Buffer::at(const size_t index) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\nThere is no data in the buffer at INDEX=%zu\n\n", __PRETTY_FUNCTION__, index);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "WARNING! There is no data in the buffer at INDEX=%zu\n\n", index);
@@ -640,8 +640,8 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, std::make_tuple(value, index), log_t::flag_t::WARNING, index);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("There is no data in the buffer at INDEX=%zu", log_t::flag_t::WARNING, index);
@@ -655,8 +655,8 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\nThere is no data in the buffer at INDEX=%zu\n\n", __PRETTY_FUNCTION__, index);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "WARNING! There is no data in the buffer at INDEX=%zu\n\n", index);
@@ -734,8 +734,8 @@ void awh::Buffer::erase(const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -749,8 +749,8 @@ void awh::Buffer::erase(const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -784,8 +784,8 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -799,8 +799,8 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -916,8 +916,8 @@ bool awh::Buffer::push(buffer_t && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -931,8 +931,8 @@ bool awh::Buffer::push(buffer_t && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1005,8 +1005,8 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
@@ -1020,8 +1020,8 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer is corrupted");
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "ERROR! %s\n\n", "Binary data buffer is corrupted");
@@ -1050,8 +1050,8 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 							this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
 						);
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print(
@@ -1069,8 +1069,8 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "There is not enough memory in the reserved buffer to add a new portion of data");
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved buffer to add a new portion of data");
@@ -1096,8 +1096,8 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1111,8 +1111,8 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1181,8 +1181,8 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1196,8 +1196,8 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1273,8 +1273,8 @@ awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1288,8 +1288,8 @@ awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1333,8 +1333,8 @@ awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1348,8 +1348,8 @@ awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1391,8 +1391,8 @@ awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1406,8 +1406,8 @@ awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1447,8 +1447,8 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1462,8 +1462,8 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1503,8 +1503,8 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1518,8 +1518,8 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1573,8 +1573,8 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1588,8 +1588,8 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1639,8 +1639,8 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1654,8 +1654,8 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1698,8 +1698,8 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1713,8 +1713,8 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1767,8 +1767,8 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1782,8 +1782,8 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
@@ -1830,8 +1830,8 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1845,8 +1845,8 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
