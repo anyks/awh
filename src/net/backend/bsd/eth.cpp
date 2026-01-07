@@ -1860,6 +1860,9 @@ bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[may
 		to.stimo_assoc_id = id;
 		// Устанавливаем длину объекта таймаутов
 		socklen_t length = sizeof(to);
+
+		cout << "sctpTimeout1: id=" << id << ", type=" << static_cast <uint16_t> (type) << ", timeout=" << timeout << endl;
+
 		// Извлекаем таймауты SCTP сокета
 		if(::getsockopt(sock, IPPROTO_SCTP, SCTP_TIMEOUTS, &to, &length) == 0){
 			/**
@@ -1902,6 +1905,9 @@ bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[may
 					to.stimo_shutdownack = timeout;
 				break;
 			}
+			
+			cout << "sctpTimeout2: id=" << id << ", type=" << static_cast <uint16_t> (type) << ", timeout=" << to.stimo_heartbeat << endl;
+			
 			// Активируем новые таймауты SCTP сокета
 			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_TIMEOUTS, &to, sizeof(to))))){
 				/**
