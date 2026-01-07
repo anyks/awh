@@ -1889,7 +1889,9 @@ bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[may
 			// Если тип таймаута - SACK
 			case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
 			// Если тип таймаута - SHUTDOWN
-			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN): {
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN):
+			// Если тип таймаута - SHUTDOWNACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK): {
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1964,11 +1966,6 @@ bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[may
 					#endif
 				}
 			} break;
-			// Если тип таймаута - SHUTDOWNACK
-			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK):
-				// Устанавливаем новое значение таймаута
-				to.stimo_shutdownack = timeout;
-			break;
 		}
 	#endif
 	// Выводим результат
