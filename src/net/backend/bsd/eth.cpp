@@ -2669,6 +2669,8 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 			const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.length());
 			// Выделяем память под ключ аутентификации
 			struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
+			// Устанавливаем идентификатор ассоциации
+			authkey->sca_assoc_id = 0;
 			// Устанавливаем номер ключа аутентификации
 			authkey->sca_keynumber = num;
 			// Устанавливаем размер ключа аутентификации
