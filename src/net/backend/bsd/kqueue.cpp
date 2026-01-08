@@ -5587,7 +5587,7 @@ namespace io {
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															// client->transfer.sctp.callbacks.info(client->id, minfo);
+															client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
