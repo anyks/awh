@@ -5580,7 +5580,7 @@ namespace io {
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
-															::sctp::events(client, buffer, bytes, log);
+															cout << " --- " << ::sctp::events(client, buffer, bytes, log) << " === " << bytes << endl;
 															// Формируем положительный результат
 															return true;
 														}
