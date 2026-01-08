@@ -1527,8 +1527,13 @@ namespace io {
 						 * Если операционной системой является FreeBSD
 						 */
 						#if __FreeBSD__
+
+							auto callbacks = ::move(client->transfer.sctp.callbacks);
+
 							// Выполняем зануление объекта информации SCTP
 							::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
+
+							client->transfer.sctp.callbacks = ::move(callbacks);
 						#endif
 						/**
 						 * Определяем тип сокета
@@ -9057,9 +9062,6 @@ namespace io {
 			} break;
 			// Если мы детектировали событие готовности сокета на чтение данных
 			case EVFILT_READ: {
-				
-				cout << "EVFILT_READ detected" << endl;
-				
 				// Если мы детектировали событие закрытия подключения или ошибку
 				if(ev.flags & EV_ERROR){
 					// Если мы детектировали наличие ошибки
@@ -9081,9 +9083,6 @@ namespace io {
 			} break;
 			// Если мы детектировали событие готовности сокета на запись данных
 			case EVFILT_WRITE: {
-				
-				cout << "EVFILT_WRITE detected" << endl;
-				
 				// Если мы детектировали событие закрытия подключения или ошибку
 				if(ev.flags & EV_ERROR){
 					// Если мы детектировали наличие ошибки
@@ -9119,9 +9118,6 @@ namespace io {
 			} break;
 			// Для остальных типов событий
 			default: {
-				
-				cout << "Other event detected: " << ev.filter << endl;
-				
 				// Если мы детектировали событие закрытия подключения или ошибку
 				if((ev.flags & EV_EOF) || (ev.flags & EV_ERROR)){
 					// Если мы детектировали наличие ошибки
@@ -41675,9 +41671,6 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
-
-			cout << " KQUEUE EVENTS: " << events << endl;
-
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				/**
