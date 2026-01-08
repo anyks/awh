@@ -302,6 +302,10 @@ namespace awh {
 		 */
 		namespace callback {
 			/**
+			 * Функция обратного вызова срабатывающая при возрождении события
+			 */
+			using rebirth_t = std::function <void (const event::id_t)>;
+			/**
 			 * Функция обратного вызова срабатывающая при подключении события
 			 */
 			using connect_t = std::function <void (const event::id_t, const bool)>;

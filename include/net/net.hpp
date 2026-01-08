@@ -386,13 +386,16 @@ namespace awh {
 			event::callback::event_t event;
 			// Обратный вызов при подключении события
 			event::callback::connect_t connect;
+			// Обратный вызов при возрождении клиента
+			event::callback::rebirth_t rebirth;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit ClientCallbacks() noexcept :
 			 read(nullptr), write(nullptr),
-			 event(nullptr), connect(nullptr) {}
+			 event(nullptr), connect(nullptr),
+			 rebirth(nullptr) {}
 		} client_callbacks_t;
 		/**
 		 * @brief Структура обратных вызовов подключённого клиента
