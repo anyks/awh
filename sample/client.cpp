@@ -1451,14 +1451,8 @@ int32_t main(int32_t argc, char * argv[]){
 					for(auto & chunk : chunks)
 						// Выводим информацию о чанках аутентификации SCTP-сокета
 						cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
-
-					cout << " Попытка переподключения SCTP-сокета1 ... " << endl;
-					
 					// Устанавливаем таймаут heartbeat SCTP-сокета
 					io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
-
-					cout << " Попытка переподключения SCTP-сокета2 ... " << endl;
-
 				});
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {

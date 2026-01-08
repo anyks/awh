@@ -9016,10 +9016,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для возрождения клиента
 											client->callbacks.rebirth(client->id);
 										// Выполняем повторное подключение клиента
-										if(!self->connect(client->id, static_cast <bool> (
-											(client->state.options & event::options::NOIOBLOCK) ||
-											(client->state.options & event::options::SMIOBLOCK)
-										)) || !self->launch(client->id)){
+										if(!self->connect({client->id}) || !self->launch(client->id)){
 											// Если функция обратного вызова для вывода подключения установлена
 											if(client->callbacks.connect != nullptr)
 												// Вызываем функцию обратного вызова для подключения
