@@ -1229,6 +1229,19 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool processing(struct kevent &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  буфер данных подключения
+	 * @param  размер буфера данных подключения
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 */
+	static bool origin(::io::server_t *, const char *, const size_t, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 };
 
 /**
@@ -6582,50 +6595,71 @@ namespace io {
 									char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 									// Если событие является неблокирующим
 									if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
-										// Выполняем чтение данных из UDP-сокета или RAW-сокета
-										bytes = ::recvfrom(
-											server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
-											&::trust_cast <struct sockaddr> (server->endpoint.client),
-											&server->endpoint.size
-										);
-										// Если мы получили ошибку
-										if(bytes < 0){
-											// Если нам нужно повторить попытку позже
-											if((errno == EAGAIN) || (errno == EWOULDBLOCK))
-												// Формируем отрицательный результат
-												return true;
-											// Если мы получили другую ошибку
-											else {
-												// Если установлена функция обратного вызова
-												if(server->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													server->callbacks.status(server->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = fmk->format("Failed to receive data for origin: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(server->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
+										/**
+										 * Выполняем получение данных пока их не получим
+										 */
+										for(;;){
+											// Выполняем чтение данных из UDP-сокета или RAW-сокета
+											bytes = ::recvfrom(
+												server->fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL,
+												&::trust_cast <struct sockaddr> (server->endpoint.client),
+												&server->endpoint.size
+											);
+											// Если мы получили ошибку
+											if(bytes < 0){
+												// Если нам нужно повторить попытку позже
+												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													// Выходим из цикла
+													break;
+												// Если мы получили другую ошибку
 												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Failed to receive data for origin: %s", ::strerror(errno));
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
 												}
+												// Выходим из функции
+												return true;
+											// Если мы получили данные из сокета
+											} else if(bytes > 0) {
+												// Выполняем обработку полученных данных
+												if(!::io::origin(server, buffer, bytes, io, eth, fmk, log))
+													// Формируем отрицательный результат
+													return false;
+											// Если произошёл дисконнект
+											} else {
+												// Выполняем обработку закрытия подключения
+												if(::io::close(node, log))
+													// Выполняем удаление узла
+													::io::destroy(node, log);
+												// Формируем отрицательный результат
+												return false;
 											}
-											// Выходим из функции
-											return true;
 										}
+										// Выходим из функции
+										return true;
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из UDP-сокета или RAW-сокета
@@ -6664,560 +6698,20 @@ namespace io {
 											}
 											// Выходим из функции
 											return true;
+										// Если мы получили данные из сокета
+										} else if(bytes > 0)
+											// Выполняем обработку полученных данных
+											return ::io::origin(server, buffer, bytes, io, eth, fmk, log);
+										// Если произошёл дисконнект
+										else {
+											// Выполняем обработку закрытия подключения
+											if(::io::close(node, log))
+												// Выполняем удаление узла
+												::io::destroy(node, log);
+											// Формируем отрицательный результат
+											return false;
 										}
 									}
-									// Идентификатор сессии источника
-									origin_id_t sid;
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (server->state.family)){
-										// Для семейства UNIX-доменных сокетов
-										case static_cast <uint8_t> (event::family_t::UDS):
-											// Формируем идентификатор источника
-											sid.from(::trust_cast <struct sockaddr_un> (server->endpoint.client));
-										break;
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Формируем идентификатор источника
-											sid.from(::trust_cast <struct sockaddr_in> (server->endpoint.client));
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Формируем идентификатор источника
-											sid.from(::trust_cast <struct sockaddr_in6> (server->endpoint.client));
-										break;
-									}
-									// Ищем сессию по идентификатору источника
-									auto i = ::__awh_origin_sessions__.find(sid);
-									// Если сессия найдена
-									if(i != ::__awh_origin_sessions__.end()){
-										// Если событие находится не в состоянии паузы
-										if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-											// Создаём охранника узла события
-											::local::guard_t guard2(i->second);
-											// Если функция обратного вызова для вывода события установлена
-											if(i->second->callbacks.event != nullptr)
-												// Вызываем функцию обратного вызова флаг события
-												i->second->callbacks.event(i->second->id, event::action_t::READ);
-											// Если идентификатор события для передачи данных не установлен
-											if(i->second->transfer.dest == 0){
-												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(i->second->callbacks.read != nullptr)
-													// Вызываем функцию обратного вызова для вывода полученных данных
-													i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (bytes));
-											// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
-											if((i->second->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
-												// Формируем отрицательный результат
-												return false;
-											// Если сокет является неблокирующим
-											if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
-												// Если необходимо установить таймаут на чтение данных
-												auto j= i->second->timeouts.find(event::action_t::READ);
-												// Если таймаут на подключение найден
-												if((j != i->second->timeouts.end()) && (j->second > 0)){
-													// Выполняем блокировку потоков
-													const locker_t <> lock(::local::mtx);
-													// Активируем таймаут события
-													i->second->timeout = j->first;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
-												}
-											}
-										}
-										// Заполняем структуру клиента нулями после того как извлекли данные
-										::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
-									// Если клиент ранее ещё ничего не присылал
-									} else {
-										// Если событие принятия подключения разрешено
-										if(server->actions & ::action::ACCEPT){
-											// Если количество текущих подключений уже максимальное
-											if(server->backlog.count == server->backlog.max){
-												// Если установлена функция обратного вызова
-												if(server->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об отмене подключения
-													server->callbacks.status(server->id, event::status_t::CANCELLED);
-												// Выходим из функции
-												return true;
-											}
-											// Выполняем создание нового объекта однорангового узла-источника
-											unique_ptr <::io::origin_t> origin = make_unique <::io::origin_t> (server->backlog.count, fmk, log);
-											// Устанавливаем файловый дескриптор сокета
-											origin->transfer.fd = server->fd;
-											// Устанавливаем тип узла
-											origin->state.node = event::node_t::ORIGIN;
-											// Устанавливаем тип сокета
-											origin->state.type = server->state.type;
-											// Устанавливаем семейство события
-											origin->state.family = server->state.family;
-											// Устанавливаем тип адреса события
-											origin->state.address = server->state.address;
-											// Устанавливаем параметры события
-											origin->state.options = server->state.options;
-											// Устанавливаем протокол сокета
-											origin->state.protocol = server->state.protocol;
-											// Устанавливаем размер объекта подключения клиента
-											origin->endpoint.size = server->endpoint.size;
-											// Выполняем копирование объект подключения клиента в сторейдж
-											::memcpy(&origin->endpoint.client, &server->endpoint.client, origin->endpoint.size);
-											// Заполняем структуру клиента нулями после того как извлекли данные
-											::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
-											// Выполняем инициализацию объекта MAC-адреса
-											origin->mac = make_unique <net::addr_mac_t> ();
-											/**
-											 * Определяем семейство события
-											 */
-											switch(static_cast <uint8_t> (origin->state.family)){
-												// Для семейства UNIX-доменных сокетов
-												case static_cast <uint8_t> (event::family_t::UDS): {
-													// Получаем путь UDS-сокета сервера к которому мы подключились
-													string address = ::move(::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size));
-													// Если адрес UDS-сокета не пустой
-													if(!address.empty()){
-														// Выполняем инициализацию объекта хоста UDS-сокета
-														origin->remote = make_unique <net::attr_uds_t> ();
-														// Получаем объект хоста UDS-сокета
-														net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
-														// Выполняем инициализацию объекта адреса файловой системы
-														remote->path = make_unique <net::addr_fs_t> ();
-														// Устанавливаем адрес файловой системы
-														awh_cast <net::addr_fs_t *> (remote->path.get())->address = ::move(address);
-													// Если адрес UDS-сокета пустой
-													} else {
-														// Если установлена функция обратного вызова
-														if(server->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															server->callbacks.status(server->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = "Server's Unix socket address is corrupted";
-														// Если установлена функция обратного вызова
-														if(server->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return true;
-													}
-												} break;
-												// Для семейства IPv4
-												case static_cast <uint8_t> (event::family_t::IPV4): {
-													// Выполняем инициализацию объекта хоста IPv4-адреса
-													origin->remote = make_unique <net::attr_net_t> ();
-													// Получаем объект хоста IPv4-адреса
-													net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
-													// Выполняем инициализацию объекта IP-адреса
-													remote->ip = make_unique <net::addr_net_ipv4_t> ();
-													// Устанавливаем порт
-													remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
-													// Устанавливаем IP-адрес
-													awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-													// Устанавливаем полученный IP-адрес во временный объект
-													awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-													// Выполняем извлечение сетевых параметров
-													eth->fillsource(event::node_t::PEER, source);
-													// Если чёрный или белый список адресов не пустой
-													if(!server->blacklist.empty() || !server->whitelist.empty()){
-														// Временный объект для извлечения сетевого интерфейса
-														net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-														// Устанавливаем полученный IP-адрес во временный объект
-														awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-														// Выполняем извлечение сетевых параметров
-														eth->fillsource(event::node_t::PEER, source);
-														// Если MAC-адрес успешно получен
-														if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-															// Устанавливаем полученный MAC-адрес в объект события
-															server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-															// Получаем MAC-адрес для проверки
-															string mac = ::move(static_cast <string> (server->addr));
-															// Если адрес находится в чёрном списке
-															if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
-																// Если установлена функция обратного вызова
-																if(server->callbacks.status != nullptr)
-																	// Вызываем функцию обратного вызова об ошибке отказа
-																	server->callbacks.status(server->id, event::status_t::FAILURE);
-																// Устанавливаем текст ошибки
-																const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
-																// Если установлена функция обратного вызова
-																if(server->callbacks.error != nullptr)
-																	// Вызываем функцию обратного вызова ошибки события
-																	server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-																// Если функция обратного вызова для вывода события установлена
-																else {
-																	/**
-																	 * Если включён режим отладки
-																	 */
-																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
-																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																	/**
-																	 * Если режим отладки не включён
-																	 */
-																	#else
-																		// Выводим сообщение об ошибке
-																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																	#endif
-																}
-																// Формируем положительный результат
-																return true;
-															}
-															// Если в белом списке нет адреса
-															if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
-																// Если установлена функция обратного вызова
-																if(server->callbacks.status != nullptr)
-																	// Вызываем функцию обратного вызова об ошибке отказа
-																	server->callbacks.status(server->id, event::status_t::FAILURE);
-																// Устанавливаем текст ошибки
-																const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
-																// Если установлена функция обратного вызова
-																if(server->callbacks.error != nullptr)
-																	// Вызываем функцию обратного вызова ошибки события
-																	server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-																// Если функция обратного вызова для вывода события установлена
-																else {
-																	/**
-																	 * Если включён режим отладки
-																	 */
-																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
-																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																	/**
-																	 * Если режим отладки не включён
-																	 */
-																	#else
-																		// Выводим сообщение об ошибке
-																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																	#endif
-																}
-																// Формируем положительный результат
-																return true;
-															}
-														}
-														// Устанавливаем полученный IP-адрес
-														server->addr.v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-														// Получаем IP-адрес для проверки
-														string ip = ::move(static_cast <string> (server->addr));
-														// Если адрес находится в чёрном списке
-														if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
-															// Если установлена функция обратного вызова
-															if(server->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																server->callbacks.status(server->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
-															// Если установлена функция обратного вызова
-															if(server->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																#endif
-															}
-															// Формируем положительный результат
-															return true;
-														}
-														// Если в белом списке нет адреса
-														if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
-															// Если установлена функция обратного вызова
-															if(server->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																server->callbacks.status(server->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
-															// Если установлена функция обратного вызова
-															if(server->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																#endif
-															}
-															// Формируем положительный результат
-															return true;
-														}
-													}
-													// Копируем MAC-адрес из временного объекта
-													origin->mac = ::move(source.mac);
-												} break;
-												// Для семейства IPv6
-												case static_cast <uint8_t> (event::family_t::IPV6): {
-													// Выполняем инициализацию объекта хоста IPv6-адреса
-													origin->remote = make_unique <net::attr_net_t> ();
-													// Получаем объект хоста IPv6-адреса
-													net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
-													// Выполняем инициализацию объекта IP-адреса
-													remote->ip = make_unique <net::addr_net_ipv6_t> ();
-													// Устанавливаем порт
-													remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
-													// Устанавливаем IP-адрес
-													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
-													// Устанавливаем полученный IP-адрес во временный объект
-													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-													// Выполняем извлечение сетевых параметров
-													eth->fillsource(event::node_t::PEER, source);
-													// Если чёрный или белый список адресов не пустой
-													if(!server->blacklist.empty() || !server->whitelist.empty()){
-														// Если MAC-адрес успешно получен
-														if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
-															// Устанавливаем полученный MAC-адрес в объект события
-															origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-															// Получаем MAC-адрес для проверки
-															string mac = ::move(static_cast <string> (origin->addr));
-															// Если адрес находится в чёрном списке
-															if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
-																// Если установлена функция обратного вызова
-																if(server->callbacks.status != nullptr)
-																	// Вызываем функцию обратного вызова об ошибке отказа
-																	server->callbacks.status(server->id, event::status_t::FAILURE);
-																// Устанавливаем текст ошибки
-																const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
-																// Если установлена функция обратного вызова
-																if(server->callbacks.error != nullptr)
-																	// Вызываем функцию обратного вызова ошибки события
-																	server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-																// Если функция обратного вызова для вывода события установлена
-																else {
-																	/**
-																	 * Если включён режим отладки
-																	 */
-																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
-																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																	/**
-																	 * Если режим отладки не включён
-																	 */
-																	#else
-																		// Выводим сообщение об ошибке
-																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																	#endif
-																}
-																// Выходим из функции
-																return true;
-															}
-															// Если в белом списке нет адреса
-															if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
-																// Если установлена функция обратного вызова
-																if(server->callbacks.status != nullptr)
-																	// Вызываем функцию обратного вызова об ошибке отказа
-																	server->callbacks.status(server->id, event::status_t::FAILURE);
-																// Устанавливаем текст ошибки
-																const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
-																// Если установлена функция обратного вызова
-																if(server->callbacks.error != nullptr)
-																	// Вызываем функцию обратного вызова ошибки события
-																	server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-																// Если функция обратного вызова для вывода события установлена
-																else {
-																	/**
-																	 * Если включён режим отладки
-																	 */
-																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
-																		log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																	/**
-																	 * Если режим отладки не включён
-																	 */
-																	#else
-																		// Выводим сообщение об ошибке
-																		log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																	#endif
-																}
-																// Выходим из функции
-																return true;
-															}
-														}
-														// Устанавливаем полученный IP-адрес
-														origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
-														// Получаем IP-адрес для проверки
-														string ip = ::move(static_cast <string> (origin->addr));
-														// Если адрес находится в чёрном списке
-														if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
-															// Если установлена функция обратного вызова
-															if(server->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																server->callbacks.status(server->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
-															// Если установлена функция обратного вызова
-															if(server->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																#endif
-															}
-															// Выходим из функции
-															return true;
-														}
-														// Если в белом списке нет адреса
-														if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
-															// Если установлена функция обратного вызова
-															if(server->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																server->callbacks.status(server->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
-															// Если установлена функция обратного вызова
-															if(server->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::ACCESS_DENIED, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-																#endif
-															}
-															// Выходим из функции
-															return true;
-														}
-													}
-													// Копируем MAC-адрес из временного объекта
-													origin->mac = ::move(source.mac);
-												} break;
-											}
-											// Извлекаем параметры таймаутов для нового подключения
-											origin->timeouts = server->timeouts;
-											// Увеличиваем текущее количество подключений
-											origin->origins++;
-											// Устанавливаем флаг разрешающий выполнять чтение из сокета
-											origin->transfer.actions |= ::action::READ;
-											// Устанавливаем флаг разрешающий выполнять запись в сокет
-											origin->transfer.actions |= ::action::WRITE;
-											// Устанавливаем флаг разрешающий закрытие сокета
-											origin->transfer.actions |= ::action::CLOSE;
-											// Устанавливаем флаг разрешающий выполнять отключение от сервера
-											origin->transfer.actions |= ::action::DISCONNECT;
-											// Выполняем блокировку потоков
-											const locker_t <> lock(::__awh_mtx__);
-											// Выполняем создание события
-											auto ret = ::__awh_nodes__.emplace(::io::identifier(), ::move(origin));
-											{
-												// Получаем текущее значение объекта однорангового узла-источника
-												::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
-												// Устанавливаем идентификатор объекта однорангового узла-источника
-												origin->id = ret.first->first;
-												// Регистрируем сессию источника по идентификатору источника
-												::__awh_origin_sessions__.emplace(sid, origin);
-												// Создаём охранника узла события
-												::local::guard_t guard(origin);
-												// Если установлена функция обратного вызова
-												if(server->callbacks.event != nullptr)
-													// Вызываем функцию обратного вызова флаг события
-													server->callbacks.event(server->id, event::action_t::ACCEPT);
-												// Если установлена функция обратного вызова
-												if(server->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об принятии подключения
-													server->callbacks.status(server->id, event::status_t::ACCEPTED);
-												// Если установлена функция обратного вызова
-												if(server->callbacks.accept != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.accept(server->id, origin->id);
-												// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
-												if((origin->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
-													// Формируем отрицательный результат
-													return false;
-												// Если установлена функция обратного вызова
-												if(origin->callbacks.read != nullptr)
-													// Вызываем функцию обратного вызова для вывода полученных данных
-													origin->callbacks.read(origin->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-												// Если узел не помечен как мусорный
-												if(!guard.isGarbage()){
-													// Активируем или деактивируем работу мютексов для передачи данных
-													origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-													// Устанавливаем статус события в состояние успешного подключения
-													origin->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
-													// Если сокет является неблокирующим
-													if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
-														// Если необходимо установить таймаут на получение данных
-														auto i = origin->timeouts.find(event::action_t::READ);
-														// Если таймаут на получение данных найден
-														if((i != origin->timeouts.end()) && (i->second > 0)){
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Активируем таймаут события
-															origin->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
-														}
-													}
-													// Выводим положительный результат
-													return !guard.isGarbage();
-												}
-											}
-										}
-									}
-									// Формируем положительный результат
-									return !guard.isGarbage();
 								}
 							} break;
 							// Для остальных типов сокетов
@@ -7229,7 +6723,7 @@ namespace io {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only RAW, DATAGRAM and SEQPACKET socket types are supported for server nodes";
+								const string error = "Only RAW and DATAGRAM socket types are supported for server nodes";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -9190,6 +8684,572 @@ namespace io {
 			}
 		}
 		// Выводим результат
+		return true;
+	}
+	/**
+	 * @brief Функция обработки события принятия подключения от однорангового узла-источника
+	 *
+	 * @param node   узел в котором произошло событие
+	 * @param buffer буфер данных подключения
+	 * @param size   размер буфера данных подключения
+	 * @param io     объект работы с асинхронными событиями
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param fmk    объект фреймворка
+	 * @param log    объект работы с логами
+	 * @return       результат выполнения обработки
+	 */
+	static bool origin(::io::server_t * node, const char * buffer, const size_t size, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+		// Идентификатор сессии источника
+		origin_id_t sid;
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (node->state.family)){
+			// Для семейства UNIX-доменных сокетов
+			case static_cast <uint8_t> (event::family_t::UDS):
+				// Формируем идентификатор источника
+				sid.from(::trust_cast <struct sockaddr_un> (node->endpoint.client));
+			break;
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4):
+				// Формируем идентификатор источника
+				sid.from(::trust_cast <struct sockaddr_in> (node->endpoint.client));
+			break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6):
+				// Формируем идентификатор источника
+				sid.from(::trust_cast <struct sockaddr_in6> (node->endpoint.client));
+			break;
+		}
+		// Ищем сессию по идентификатору источника
+		auto i = ::__awh_origin_sessions__.find(sid);
+		// Если сессия найдена
+		if(i != ::__awh_origin_sessions__.end()){
+			// Если событие находится не в состоянии паузы
+			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second);
+				// Если функция обратного вызова для вывода события установлена
+				if(i->second->callbacks.event != nullptr)
+					// Вызываем функцию обратного вызова флаг события
+					i->second->callbacks.event(i->second->id, event::action_t::READ);
+				// Если идентификатор события для передачи данных не установлен
+				if(i->second->transfer.dest == 0){
+					// Если функция обратного вызова для вывода прочитанных данных установлена
+					if(i->second->callbacks.read != nullptr)
+						// Вызываем функцию обратного вызова для вывода полученных данных
+						i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+				// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+				} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (size));
+				// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
+				if((i->second->transfer.fd == net::invalid_socket_t) || (node->fd == net::invalid_socket_t))
+					// Формируем отрицательный результат
+					return false;
+				// Если сокет является неблокирующим
+				if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
+					// Если необходимо установить таймаут на чтение данных
+					auto j= i->second->timeouts.find(event::action_t::READ);
+					// Если таймаут на подключение найден
+					if((j != i->second->timeouts.end()) && (j->second > 0)){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::local::mtx);
+						// Активируем таймаут события
+						i->second->timeout = j->first;
+						// Добавляем новое событие в список изменений
+						::local::change.push_back((struct kevent){});
+						// Устанавливаем таймаут на получение данных
+						EV_SET(&::local::change.back(), i->second->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), i->second);
+					}
+				}
+			}
+			// Заполняем структуру клиента нулями после того как извлекли данные
+			::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
+		// Если клиент ранее ещё ничего не присылал
+		} else {
+			// Если событие принятия подключения разрешено
+			if(node->actions & ::action::ACCEPT){
+				// Если количество текущих подключений уже максимальное
+				if(node->backlog.count == node->backlog.max){
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об отмене подключения
+						node->callbacks.status(node->id, event::status_t::CANCELLED);
+					// Выходим из функции
+					return true;
+				}
+				// Выполняем создание нового объекта однорангового узла-источника
+				unique_ptr <::io::origin_t> origin = make_unique <::io::origin_t> (node->backlog.count, fmk, log);
+				// Устанавливаем файловый дескриптор сокета
+				origin->transfer.fd = node->fd;
+				// Устанавливаем тип узла
+				origin->state.node = event::node_t::ORIGIN;
+				// Устанавливаем тип сокета
+				origin->state.type = node->state.type;
+				// Устанавливаем семейство события
+				origin->state.family = node->state.family;
+				// Устанавливаем тип адреса события
+				origin->state.address = node->state.address;
+				// Устанавливаем параметры события
+				origin->state.options = node->state.options;
+				// Устанавливаем протокол сокета
+				origin->state.protocol = node->state.protocol;
+				// Устанавливаем размер объекта подключения клиента
+				origin->endpoint.size = node->endpoint.size;
+				// Выполняем копирование объект подключения клиента в сторейдж
+				::memcpy(&origin->endpoint.client, &node->endpoint.client, origin->endpoint.size);
+				// Заполняем структуру клиента нулями после того как извлекли данные
+				::memset(&node->endpoint.client, 0, sizeof(node->endpoint.client));
+				// Выполняем инициализацию объекта MAC-адреса
+				origin->mac = make_unique <net::addr_mac_t> ();
+				/**
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (origin->state.family)){
+					// Для семейства UNIX-доменных сокетов
+					case static_cast <uint8_t> (event::family_t::UDS): {
+						// Получаем путь UDS-сокета сервера к которому мы подключились
+						string address = ::move(::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size));
+						// Если адрес UDS-сокета не пустой
+						if(!address.empty()){
+							// Выполняем инициализацию объекта хоста UDS-сокета
+							origin->remote = make_unique <net::attr_uds_t> ();
+							// Получаем объект хоста UDS-сокета
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
+							// Выполняем инициализацию объекта адреса файловой системы
+							remote->path = make_unique <net::addr_fs_t> ();
+							// Устанавливаем адрес файловой системы
+							awh_cast <net::addr_fs_t *> (remote->path.get())->address = ::move(address);
+						// Если адрес UDS-сокета пустой
+						} else {
+							// Если установлена функция обратного вызова
+							if(node->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								node->callbacks.status(node->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "Server's Unix socket address is corrupted";
+							// Если установлена функция обратного вызова
+							if(node->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								node->callbacks.error(node->id, event::error_t::INVALID_ADDRESS, error);
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+								#endif
+							}
+							// Выходим из функции
+							return true;
+						}
+					} break;
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4): {
+						// Выполняем инициализацию объекта хоста IPv4-адреса
+						origin->remote = make_unique <net::attr_net_t> ();
+						// Получаем объект хоста IPv4-адреса
+						net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+						// Выполняем инициализацию объекта IP-адреса
+						remote->ip = make_unique <net::addr_net_ipv4_t> ();
+						// Устанавливаем порт
+						remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
+						// Устанавливаем IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+						// Временный объект для извлечения сетевого интерфейса
+						net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+						// Устанавливаем полученный IP-адрес во временный объект
+						awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+						// Выполняем извлечение сетевых параметров
+						eth->fillsource(event::node_t::PEER, source);
+						// Если чёрный или белый список адресов не пустой
+						if(!node->blacklist.empty() || !node->whitelist.empty()){
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							// Устанавливаем полученный IP-адрес во временный объект
+							awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+							// Выполняем извлечение сетевых параметров
+							eth->fillsource(event::node_t::PEER, source);
+							// Если MAC-адрес успешно получен
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+								// Устанавливаем полученный MAC-адрес в объект события
+								node->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+								// Получаем MAC-адрес для проверки
+								string mac = ::move(static_cast <string> (node->addr));
+								// Если адрес находится в чёрном списке
+								if(!node->blacklist.empty() && (node->blacklist.find(mac) != node->blacklist.end())){
+									// Если установлена функция обратного вызова
+									if(node->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										node->callbacks.status(node->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+									// Формируем положительный результат
+									return true;
+								}
+								// Если в белом списке нет адреса
+								if(!node->whitelist.empty() && (node->whitelist.find(mac) == node->whitelist.end())){
+									// Если установлена функция обратного вызова
+									if(node->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										node->callbacks.status(node->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+									// Формируем положительный результат
+									return true;
+								}
+							}
+							// Устанавливаем полученный IP-адрес
+							node->addr.v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+							// Получаем IP-адрес для проверки
+							string ip = ::move(static_cast <string> (node->addr));
+							// Если адрес находится в чёрном списке
+							if(!node->blacklist.empty() && (node->blacklist.find(ip) != node->blacklist.end())){
+								// Если установлена функция обратного вызова
+								if(node->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									node->callbacks.status(node->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Peer with IP-address \"%s\" is blacklisted", ip.c_str());
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+								// Формируем положительный результат
+								return true;
+							}
+							// Если в белом списке нет адреса
+							if(!node->whitelist.empty() && (node->whitelist.find(ip) == node->whitelist.end())){
+								// Если установлена функция обратного вызова
+								if(node->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									node->callbacks.status(node->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Peer with IP-address \"%s\" is not whitelisted", ip.c_str());
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+								// Формируем положительный результат
+								return true;
+							}
+						}
+						// Копируем MAC-адрес из временного объекта
+						origin->mac = ::move(source.mac);
+					} break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Выполняем инициализацию объекта хоста IPv6-адреса
+						origin->remote = make_unique <net::attr_net_t> ();
+						// Получаем объект хоста IPv6-адреса
+						net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+						// Выполняем инициализацию объекта IP-адреса
+						remote->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Устанавливаем порт
+						remote->port = ntohs(::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_port);
+						// Устанавливаем IP-адрес
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_addr, 16);
+						// Временный объект для извлечения сетевого интерфейса
+						net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+						// Устанавливаем полученный IP-адрес во временный объект
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_addr, 16);
+						// Выполняем извлечение сетевых параметров
+						eth->fillsource(event::node_t::PEER, source);
+						// Если чёрный или белый список адресов не пустой
+						if(!node->blacklist.empty() || !node->whitelist.empty()){
+							// Если MAC-адрес успешно получен
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+								// Устанавливаем полученный MAC-адрес в объект события
+								origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+								// Получаем MAC-адрес для проверки
+								string mac = ::move(static_cast <string> (origin->addr));
+								// Если адрес находится в чёрном списке
+								if(!node->blacklist.empty() && (node->blacklist.find(mac) != node->blacklist.end())){
+									// Если установлена функция обратного вызова
+									if(node->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										node->callbacks.status(node->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with MAC-address \"%s\" is blacklisted", mac.c_str());
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+									// Выходим из функции
+									return true;
+								}
+								// Если в белом списке нет адреса
+								if(!node->whitelist.empty() && (node->whitelist.find(mac) == node->whitelist.end())){
+									// Если установлена функция обратного вызова
+									if(node->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										node->callbacks.status(node->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Peer with MAC-address \"%s\" is not whitelisted", mac.c_str());
+									// Если установлена функция обратного вызова
+									if(node->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+									// Выходим из функции
+									return true;
+								}
+							}
+							// Устанавливаем полученный IP-адрес
+							origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
+							// Получаем IP-адрес для проверки
+							string ip = ::move(static_cast <string> (origin->addr));
+							// Если адрес находится в чёрном списке
+							if(!node->blacklist.empty() && (node->blacklist.find(ip) != node->blacklist.end())){
+								// Если установлена функция обратного вызова
+								if(node->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									node->callbacks.status(node->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Peer with IP-address \"[%s]\" is blacklisted", ip.c_str());
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+								// Выходим из функции
+								return true;
+							}
+							// Если в белом списке нет адреса
+							if(!node->whitelist.empty() && (node->whitelist.find(ip) == node->whitelist.end())){
+								// Если установлена функция обратного вызова
+								if(node->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									node->callbacks.status(node->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Peer with IP-address \"[%s]\" is not whitelisted", ip.c_str());
+								// Если установлена функция обратного вызова
+								if(node->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									node->callbacks.error(node->id, event::error_t::ACCESS_DENIED, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+								// Выходим из функции
+								return true;
+							}
+						}
+						// Копируем MAC-адрес из временного объекта
+						origin->mac = ::move(source.mac);
+					} break;
+				}
+				// Извлекаем параметры таймаутов для нового подключения
+				origin->timeouts = node->timeouts;
+				// Увеличиваем текущее количество подключений
+				origin->origins++;
+				// Устанавливаем флаг разрешающий выполнять чтение из сокета
+				origin->transfer.actions |= ::action::READ;
+				// Устанавливаем флаг разрешающий выполнять запись в сокет
+				origin->transfer.actions |= ::action::WRITE;
+				// Устанавливаем флаг разрешающий закрытие сокета
+				origin->transfer.actions |= ::action::CLOSE;
+				// Устанавливаем флаг разрешающий выполнять отключение от сервера
+				origin->transfer.actions |= ::action::DISCONNECT;
+				// Выполняем блокировку потоков
+				const locker_t <> lock(::__awh_mtx__);
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::io::identifier(), ::move(origin));
+				{
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
+					// Устанавливаем идентификатор объекта однорангового узла-источника
+					origin->id = ret.first->first;
+					// Регистрируем сессию источника по идентификатору источника
+					::__awh_origin_sessions__.emplace(sid, origin);
+					// Создаём охранника узла события
+					::local::guard_t guard(origin);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.event != nullptr)
+						// Вызываем функцию обратного вызова флаг события
+						node->callbacks.event(node->id, event::action_t::ACCEPT);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об принятии подключения
+						node->callbacks.status(node->id, event::status_t::ACCEPTED);
+					// Если установлена функция обратного вызова
+					if(node->callbacks.accept != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						node->callbacks.accept(node->id, origin->id);
+					// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
+					if((origin->transfer.fd == net::invalid_socket_t) || (node->fd == net::invalid_socket_t))
+						// Формируем отрицательный результат
+						return false;
+					// Если установлена функция обратного вызова
+					if(origin->callbacks.read != nullptr)
+						// Вызываем функцию обратного вызова для вывода полученных данных
+						origin->callbacks.read(origin->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+					// Если узел не помечен как мусорный
+					if(!guard.isGarbage()){
+						// Активируем или деактивируем работу мютексов для передачи данных
+						origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+						// Устанавливаем статус события в состояние успешного подключения
+						origin->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+						// Если сокет является неблокирующим
+						if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+							// Если необходимо установить таймаут на получение данных
+							auto i = origin->timeouts.find(event::action_t::READ);
+							// Если таймаут на получение данных найден
+							if((i != origin->timeouts.end()) && (i->second > 0)){
+								// Выполняем блокировку потоков
+								const locker_t <> lock(::local::mtx);
+								// Активируем таймаут события
+								origin->timeout = i->first;
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Устанавливаем таймаут на получение данных
+								EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
+							}
+						}
+						// Выводим положительный результат
+						return !guard.isGarbage();
+					}
+				}
+			}
+		}
+		// Возвращаем результат работы функции
 		return true;
 	}
 };
