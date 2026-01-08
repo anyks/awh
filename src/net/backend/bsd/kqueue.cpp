@@ -5583,7 +5583,7 @@ namespace io {
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 														if(client->transfer.sctp.callbacks.info != nullptr){
 															
-															std::thread([this]() -> void {
+															std::thread([client]() -> void {
 															
 															
 															
