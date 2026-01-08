@@ -1534,11 +1534,16 @@ int32_t main(int32_t argc, char * argv[]){
 				}));
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
 				io.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+					
+					cout << " !!!! " << eid << " == " << minfo.num << " == " << (u_short) minfo.ppid << " == " << minfo.ctx << " == " << minfo.ttl << " == " << minfo.flags.size() << endl;
+					
+					/*
 					// Выводим информацию о сообщении SCTP-сокета
 					log.print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
 						log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
 					);
+					*/
 				}));
 				// Устанавливаем функцию обратного вызова на создание события
 				io.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
