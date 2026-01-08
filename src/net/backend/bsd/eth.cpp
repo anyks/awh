@@ -2788,9 +2788,6 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 			authkey->sca_keylength = static_cast <uint16_t> (key.length());
 			// Копируем ключ аутентификации в структуру
 			::memcpy(authkey->sca_key, key.c_str(), key.length());
-			
-			cout << " ----------1 " << sock << " || " << authkey->sca_assoc_id << endl;
-			
 			// Устанавливаем ключ аутентификации SCTP сокета
 			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
 				/**
@@ -2807,9 +2804,6 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
-
-			cout << " ----------2 " << sock << " || " << authkey->sca_assoc_id << endl;
-
 			// Очищаем память под ключ аутентификации
 			::free(authkey);
 		}
@@ -2846,10 +2840,7 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать ключ аутентификации SCTP сокета
-			case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
-			
-				cout << " ^^^^^^^^^^1 " << sock << " || " << authkeyid.scact_assoc_id << endl;
-			
+			case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
 				// Активируем ключ аутентификации SCTP сокета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &authkeyid, sizeof(authkeyid))))){
 					/**
@@ -2866,12 +2857,9 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
-
-				cout << " ^^^^^^^^^^2 " << sock << " || " << authkeyid.scact_assoc_id << endl;
-
-			break;
+			} break;
 			// Если необходимо деактивировать ключ аутентификации SCTP сокета
-			case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+			case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
 				// Деактивируем ключ аутентификации SCTP сокета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, &authkeyid, sizeof(authkeyid))))){
 					/**
@@ -2888,7 +2876,7 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
-			break;
+			} break;
 		}
 	#endif
 	// Выводим результат
