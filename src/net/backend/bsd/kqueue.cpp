@@ -1527,13 +1527,14 @@ namespace io {
 						 * Если операционной системой является FreeBSD
 						 */
 						#if __FreeBSD__
-
-							auto callbacks = ::move(client->transfer.sctp.callbacks);
-
-							// Выполняем зануление объекта информации SCTP
-							::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
-
-							client->transfer.sctp.callbacks = ::move(callbacks);
+							{
+								// Сохраняем объект функции обратного вызова SCTP
+								auto callbacks = ::move(client->transfer.sctp.callbacks);
+								// Выполняем зануление объекта информации SCTP
+								::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
+								// Восстанавливаем объект функции обратного вызова SCTP
+								client->transfer.sctp.callbacks = ::move(callbacks);
+							}
 						#endif
 						/**
 						 * Определяем тип сокета
@@ -1608,8 +1609,14 @@ namespace io {
 						 * Если операционной системой является FreeBSD
 						 */
 						#if __FreeBSD__
-							// Выполняем зануление объекта информации SCTP
-							::memset(&server->sctp, 0, sizeof(server->sctp));
+							{
+								// Сохраняем объект функции обратного вызова SCTP
+								auto callbacks = ::move(server->sctp.callbacks);
+								// Выполняем зануление объекта информации SCTP
+								::memset(&server->sctp, 0, sizeof(server->sctp));
+								// Восстанавливаем объект функции обратного вызова SCTP
+								server->sctp.callbacks = ::move(callbacks);
+							}
 						#endif
 						// Выводим результат выполнения функции
 						return !guard.isGarbage();
@@ -5573,6 +5580,7 @@ namespace io {
 													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+														/*
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 														if(client->transfer.sctp.callbacks.info != nullptr){
 															// Объект для хранения информационных метаданных SCTP сообщения
@@ -5582,6 +5590,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
 															client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
+														*/
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
