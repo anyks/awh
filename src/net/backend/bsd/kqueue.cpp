@@ -9009,12 +9009,12 @@ namespace io {
 									client->state.options = event::options::NONE;
 									// Получаем объект работы с асинхронными событиями
 									io_t * self = const_cast <io_t *> (io);
+									// Если функция обратного вызова для вывода возрождения установлена
+									if(client->callbacks.rebirth != nullptr)
+										// Вызываем функцию обратного вызова для возрождения клиента
+										client->callbacks.rebirth(client->id);
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
-										// Если функция обратного вызова для вывода возрождения установлена
-										if(client->callbacks.rebirth != nullptr)
-											// Вызываем функцию обратного вызова для возрождения клиента
-											client->callbacks.rebirth(client->id);
 										// Выполняем повторное подключение клиента
 										if(!self->connect({client->id}) || !self->launch(client->id)){
 											// Если функция обратного вызова для вывода подключения установлена
