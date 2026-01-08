@@ -1524,6 +1524,13 @@ namespace io {
 							// Вызываем функцию обратного вызова флаг события
 							client->callbacks.event(client->id, event::action_t::DISCONNECT);
 						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							// Выполняем зануление объекта информации SCTP
+							::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
+						#endif
+						/**
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
@@ -1592,6 +1599,13 @@ namespace io {
 						if(server->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова флаг события
 							server->callbacks.event(server->id, event::action_t::CLOSE);
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							// Выполняем зануление объекта информации SCTP
+							::memset(&server->sctp, 0, sizeof(server->sctp));
+						#endif
 						// Выводим результат выполнения функции
 						return !guard.isGarbage();
 					}
@@ -8989,10 +9003,6 @@ namespace io {
 								client->state.status.store(event::status_t::NONE, std::memory_order_release);
 								// Обрабатываем событие сокета
 								if(::io::socket(client, log)){
-									// Если функция обратного вызова для вывода возрождения установлена
-									if(client->callbacks.rebirth != nullptr)
-										// Вызываем функцию обратного вызова для возрождения клиента
-										client->callbacks.rebirth(client->id);
 									// Запоминаем текущие опции события
 									const uint16_t options = client->state.options;
 									// Сбрасываем опции события
@@ -9001,6 +9011,10 @@ namespace io {
 									io_t * self = const_cast <io_t *> (io);
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
+										// Если функция обратного вызова для вывода возрождения установлена
+										if(client->callbacks.rebirth != nullptr)
+											// Вызываем функцию обратного вызова для возрождения клиента
+											client->callbacks.rebirth(client->id);
 										// Выполняем повторное подключение клиента
 										if(!self->connect(client->id, static_cast <bool> (
 											(client->state.options & event::options::NOIOBLOCK) ||
