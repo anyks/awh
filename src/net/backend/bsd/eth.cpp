@@ -2256,23 +2256,14 @@ bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t soc
 		int32_t protocol = 0;
 		// Длина протокола сокета
 		socklen_t length = sizeof(protocol);
-
-		cout << " !!!!!!!!1 " << sock << endl;
-
 		// Получаем протокол сокета
 		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-			
-			cout << " !!!!!!!!2 " << sock << endl;
-			
 			/**
 			 * Определяем протокол сокета
 			 */
 			switch(protocol){
 				// Если протокол SCTP
 				case IPPROTO_SCTP: {
-					
-					cout << " !!!!!!!!3 " << sock << endl;
-					
 					/**
 					 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
 					 */
@@ -2308,14 +2299,8 @@ bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t soc
 					struct sctp_event_subscribe subscribe;
 					// Зануляем объект события
 					::memset(&subscribe, 0, sizeof(subscribe));
-
-					cout << " -------1 " << sock << " == " << events.size() << endl;
-
 					// Выполняем перебор всех возможных событий SCTP
 					for(auto & event : events){
-						
-						cout << " -------2 " << sock << " == " << (u_short) event << endl;
-						
 						/**
 						 * Определяем тип события SCTP
 						 */
@@ -2394,10 +2379,6 @@ bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t soc
 						#endif
 					}
 				} break;
-				default: {
-				
-					cout << " !!!!!!!!4 " << sock << endl;
-				}
 			}
 		// Если возникает ошибка получения протокола сокета
 		} else {
