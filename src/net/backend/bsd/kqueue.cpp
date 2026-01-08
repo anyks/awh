@@ -5580,7 +5580,6 @@ namespace io {
 													if(client->state.protocol == event::protocol_t::SCTP){
 														// Запоминаем идентификатор ассоциации SCTP
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
-														/*
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 														if(client->transfer.sctp.callbacks.info != nullptr){
 															// Объект для хранения информационных метаданных SCTP сообщения
@@ -5588,9 +5587,8 @@ namespace io {
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															client->transfer.sctp.callbacks.info(client->id, minfo);
+															// client->transfer.sctp.callbacks.info(client->id, minfo);
 														}
-														*/
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
 															// Обрабатываем события SCTP
