@@ -5582,12 +5582,19 @@ namespace io {
 														client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
 														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 														if(client->transfer.sctp.callbacks.info != nullptr){
+															
+															std::thread([this]() -> void {
+															
+															
+															
 															// Объект для хранения информационных метаданных SCTP сообщения
 															net::sctp::minfo_t minfo;
 															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
 															::sctp::info(client->transfer.sctp.info, minfo);
 															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
 															client->transfer.sctp.callbacks.info(client->id, minfo);
+
+															}).detach();
 														}
 														// Если мы получили уведомления SCTP
 														if(client->transfer.sctp.flags & MSG_NOTIFICATION){
