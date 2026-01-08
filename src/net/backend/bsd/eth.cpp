@@ -2308,8 +2308,14 @@ bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t soc
 					struct sctp_event_subscribe subscribe;
 					// Зануляем объект события
 					::memset(&subscribe, 0, sizeof(subscribe));
+
+					cout << " -------1 " << sock << endl;
+
 					// Выполняем перебор всех возможных событий SCTP
 					for(auto & event : events){
+						
+						cout << " -------2 " << sock << " == " << (u_short) event << endl;
+						
 						/**
 						 * Определяем тип события SCTP
 						 */
