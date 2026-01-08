@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <initializer_list>
 
 /**
  * Наши модули
@@ -206,7 +205,7 @@ namespace awh {
 			 * @param options список опций для сборки регулярного выражения
 			 * @return        результат собранного регулярного выражения
 			 */
-			exp_t build(const string & pattern, initializer_list <option_t> options = {}) const noexcept;
+			exp_t build(const string & pattern, const vector <option_t> & options = {}) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта логирования

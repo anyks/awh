@@ -291,7 +291,7 @@ namespace awh {
 			 * @param chunks список чанков подлежащих аутентификации
 			 * @return       результат работы функции
 			 */
-			bool sctpAuthenticateChunks(const event::id_t id, initializer_list <net::sctp::auth_chunk_t> chunks) noexcept;
+			bool sctpAuthenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept;
 			/**
 			 * @brief Метод извлечения чанков аутентификации SCTP сокета
 			 *
@@ -309,7 +309,7 @@ namespace awh {
 			 * @param types список поддерживаемых алгоритмов аутентификации
 			 * @return      результат работы функции
 			 */
-			bool sctpAuthenticateSupportAlgorithms(const event::id_t id, initializer_list <net::sctp::auth_type_t> types) noexcept;
+			bool sctpAuthenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept;
 		public:
 			/**
 			 * @brief Метод запуска события
@@ -348,7 +348,7 @@ namespace awh {
 			 * @param ids список идентификаторов событий для подключения
 			 * @return    результат выполнения подключения
 			 */
-			bool connect(initializer_list <event::id_t> ids) noexcept;
+			bool connect(const vector <event::id_t> & ids) noexcept;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений

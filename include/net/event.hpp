@@ -294,7 +294,7 @@ namespace awh {
 			/**
 			 * Опция включения мультикастовой петли
 			 */
-			static constexpr uint16_t MULTICASTLOOP = 0x4000;
+			static constexpr uint16_t MULTICAST_LOOPBACK = 0x4000;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами

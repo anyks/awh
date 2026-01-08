@@ -64,7 +64,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем TTL для мультикастового события
 			if(io.hops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
-				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICASTLOOP))
+				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события

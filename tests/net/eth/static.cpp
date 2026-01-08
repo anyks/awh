@@ -92,30 +92,58 @@ TEST_F(EthFixture, EthSuiteTest){
 	 */
 	#if __FreeBSD__ || __Linux__
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_TRUE(this->_eth->sctpEvents(sock, awh::event::type_t::STREAM));
-		// Объект для хранения параметров инициализации SCTP сокета
-		awh::net::sctp_handshake_t handshake;
+		ASSERT_TRUE(this->_eth->sctpEventsSubscribe(sock, {
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+			awh::net::sctp::event_type_t::REMOTE_ERROR,
+			awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
+		}));
+		// Текст инициализационных сообщений SCTP
+		awh::net::sctp::initmsg_t initmsg;
+		// Устанавливаем количество попыток подключения SCTP
+		initmsg.attempts = 4;
+		// Устанавливаем количество исходящих потоков SCTP
+		initmsg.ostreams = 5;
+		// Устанавливаем количество входящих потоков SCTP
+		initmsg.istreams = 5;
 		// Инициализируем рукопожатие SCTP для сокета
-		ASSERT_TRUE(this->_eth->sctpInit(sock, handshake));
+		ASSERT_TRUE(this->_eth->sctpInitMessages(sock, initmsg));
+		// Объект для извлечения статуса SCTP сокета
+		awh::net::sctp::status_t status;
 		// Получаем статус SCTP сокета
-		ASSERT_TRUE(this->_eth->sctpStatus(sock, handshake));
+		ASSERT_TRUE(this->_eth->sctpStatus(sock, status));
 	/**
 	 * Для остальных операционных систем
 	 */
 	#else
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_FALSE(this->_eth->sctpEvents(sock, awh::event::type_t::STREAM));
-		// Объект для хранения параметров инициализации SCTP сокета
-		awh::net::sctp_handshake_t handshake;
+		ASSERT_FALSE(this->_eth->sctpEventsSubscribe(sock, {
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+			awh::net::sctp::event_type_t::REMOTE_ERROR,
+			awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
+		}));
+		// Текст инициализационных сообщений SCTP
+		awh::net::sctp::initmsg_t initmsg;
+		// Устанавливаем количество попыток подключения SCTP
+		initmsg.attempts = 4;
+		// Устанавливаем количество исходящих потоков SCTP
+		initmsg.ostreams = 5;
+		// Устанавливаем количество входящих потоков SCTP
+		initmsg.istreams = 5;
 		// Инициализируем рукопожатие SCTP для сокета
-		ASSERT_FALSE(this->_eth->sctpInit(sock, handshake));
+		ASSERT_FALSE(this->_eth->sctpInitMessages(sock, initmsg));
+		// Объект для извлечения статуса SCTP сокета
+		awh::net::sctp::status_t status;
 		// Получаем статус SCTP сокета
-		ASSERT_FALSE(this->_eth->sctpStatus(sock, handshake));
+		ASSERT_FALSE(this->_eth->sctpStatus(sock, status));
 	#endif
 	// Получаем код ошибки сокета
 	ASSERT_EQ(0, this->_eth->error(sock));
 	// Включаем режим cork для TCP-сокета
-	ASSERT_FALSE(this->_eth->tcpcork(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->cork(sock, awh::net::socket_mode_t::ENABLED));
 	// Включаем или отключаем режим отображения IPv4 => IPv6
 	ASSERT_FALSE(this->_eth->ipv6only(sock, awh::net::socket_mode_t::ENABLED));
 	// Устанавливаем повторное использование адреса сокета
@@ -127,7 +155,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Разрешаем широковещательный адрес
 	ASSERT_TRUE(this->_eth->broadcast(sock, awh::net::socket_mode_t::ENABLED));
 	// Отключаем алгоритм Нейгла
-	ASSERT_FALSE(this->_eth->tcpnodelay(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->nodelay(sock, awh::net::socket_mode_t::ENABLED));
 	// Устанавливаем блокирующий сокет
 	ASSERT_TRUE(this->_eth->noblocking(sock, awh::net::socket_mode_t::ENABLED));
 	// Устанавливаем режим автоматического закрытия файлового дескриптора при вызове exec

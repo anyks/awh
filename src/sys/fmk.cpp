@@ -2592,11 +2592,11 @@ const wstring & awh::Framework::transform(const wstring & text, const transform_
  * @param delim разделитель
  * @return      строка полученная после объединения
  */
-string awh::Framework::join(initializer_list <string> items, const string & delim) const noexcept {
+string awh::Framework::join(const vector <string> & items, const string & delim) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если список строк которые необходимо объединить переданы
-	if(!std::empty(items)){
+	if(!items.empty()){
 		// Выполняем перебор всего списка строк
 		for(auto & item : items){
 			// Если результат ещё не сформирован
@@ -2617,11 +2617,11 @@ string awh::Framework::join(initializer_list <string> items, const string & deli
  * @param delim разделитель
  * @return      строка полученная после объединения
  */
-wstring awh::Framework::join(initializer_list <wstring> items, const wstring & delim) const noexcept {
+wstring awh::Framework::join(const vector <wstring> & items, const wstring & delim) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если список строк которые необходимо объединить переданы
-	if(!std::empty(items)){
+	if(!items.empty()){
 		// Выполняем перебор всего списка строк
 		for(auto & item : items){
 			// Если результат ещё не сформирован
@@ -4926,11 +4926,11 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
  * @param items  список аргументов строки
  * @return       сформированная строка
  */
-string awh::Framework::format(const string & format, initializer_list <string> items) const noexcept {
+string awh::Framework::format(const string & format, const vector <string> & items) const noexcept {
 	// Результат работы функции
 	string result = format;
 	// Если данные переданы
-	if(!format.empty() && !std::empty(items)){
+	if(!format.empty() && !items.empty()){
 		/**
 		 * @brief Функция заменты подстроки в строке
 		 *
@@ -5058,11 +5058,11 @@ string awh::Framework::format(const string & format, initializer_list <string> i
  * @param items  список аргументов строки
  * @return       сформированная строка
  */
-wstring awh::Framework::format(const wstring & format, initializer_list <wstring> items) const noexcept {
+wstring awh::Framework::format(const wstring & format, const vector <wstring> & items) const noexcept {
 	// Результат работы функции
 	wstring result = format;
 	// Если данные переданы
-	if(!format.empty() && !std::empty(items)){
+	if(!format.empty() && !items.empty()){
 		/**
 		 * @brief Функция заменты подстроки в строке
 		 *
@@ -5490,11 +5490,11 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-std::unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, initializer_list <string> escaping) const noexcept {
+std::unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const vector <string> & escaping) const noexcept {
 	// Результат работы функции
 	std::unordered_map <string, string> result;
 	// Если данные для обработки текста передан
-	if(!text.empty() && !delim.empty() && !separator.empty() && !std::empty(escaping)){
+	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5652,11 +5652,11 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, initializer_list <wstring> escaping) const noexcept {
+std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const vector <wstring> & escaping) const noexcept {
 	// Результат работы функции
 	std::unordered_map <wstring, wstring> result;
 	// Если данные для обработки текста передан
-	if(!text.empty() && !delim.empty() && !separator.empty() && !std::empty(escaping)){
+	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */

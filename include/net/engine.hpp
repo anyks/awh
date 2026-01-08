@@ -22,7 +22,6 @@
 #include <string>
 #include <cstdint>
 #include <unordered_set>
-#include <initializer_list>
 
 /**
  * Наши модули
@@ -309,7 +308,7 @@ namespace awh {
 			 * @param chunks список чанков подлежащих аутентификации
 			 * @return       результат работы функции
 			 */
-			virtual bool sctpAuthenticateChunks(const event::id_t id, initializer_list <net::sctp::auth_chunk_t> chunks) noexcept = 0;
+			virtual bool sctpAuthenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept = 0;
 			/**
 			 * @brief Метод извлечения чанков аутентификации SCTP сокета
 			 *
@@ -327,7 +326,7 @@ namespace awh {
 			 * @param types список поддерживаемых алгоритмов аутентификации
 			 * @return      результат работы функции
 			 */
-			virtual bool sctpAuthenticateSupportAlgorithms(const event::id_t id, initializer_list <net::sctp::auth_type_t> types) noexcept = 0;
+			virtual bool sctpAuthenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод запуска события
@@ -350,7 +349,7 @@ namespace awh {
 			 * @param ids список идентификаторов событий для подключения
 			 * @return    результат выполнения подключения
 			 */
-			virtual bool connect(initializer_list <event::id_t> ids) noexcept = 0;
+			virtual bool connect(const vector <event::id_t> & ids) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений

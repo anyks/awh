@@ -2407,7 +2407,7 @@ bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t soc
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
  */
-bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] initializer_list <net::sctp::auth_chunk_t> chunks) const noexcept {
+bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2415,7 +2415,7 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
 	 */
 	#if __FreeBSD__
 		// Если количество чанков аутентификации передано
-		if(!std::empty(chunks)){
+		if(!chunks.empty()){
 			// Создаём объект чанка аутентификации SCTP сокета
 			struct sctp_authchunk authchunk;
 			// Зануляем объект чанка аутентификации SCTP сокета
@@ -2699,7 +2699,7 @@ bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t 
  * @param types список поддерживаемых алгоритмов аутентификации
  * @return      результат работы функции
  */
-bool awh::Ethernet::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] initializer_list <net::sctp::auth_type_t> types) const noexcept {
+bool awh::Ethernet::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const vector <net::sctp::auth_type_t> & types) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2707,7 +2707,7 @@ bool awh::Ethernet::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const net
 	 */
 	#if __FreeBSD__
 		// Если количество поддерживаемых алгоритмов аутентификации передано
-		if(!std::empty(types)){
+		if(!types.empty()){
 			// Объект поддерживаемых алгоритмов аутентификации SCTP сокета
 			struct sctp_hmacalgo * hmac = nullptr;
 			// Вычисляем длину структуры поддерживаемых алгоритмов аутентификации SCTP сокета

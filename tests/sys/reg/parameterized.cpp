@@ -148,10 +148,10 @@ struct RegMatchParameter {
 	std::string text = "";
 	// Шаблон регулярного выражения
 	std::string pattern = "";
-	// Опции регулярного выражения
-	std::vector <awh::regexp_t::option_t> options;
 	// Ожидаемый результат
 	std::vector <std::pair <size_t, size_t>> result;
+	// Опции регулярного выражения
+	std::vector <awh::regexp_t::option_t> options;
 };
 
 /**
@@ -186,14 +186,14 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, RegMatchParameterizedFixture,
 		RegMatchParameter({
 			"125AB-32-CD",
 			"^\\d+([a-z]+)[^a-z]+([a-z]+)$",
-			{awh::regexp_t::option_t::CASELESS},
-			{{0,11},{3,2},{9,2}}
+			{{0,11},{3,2},{9,2}},
+			{awh::regexp_t::option_t::CASELESS}
 		}),
 		RegMatchParameter({
 			"Привет этот дивный мир!!!",
 			"^([^\\s]+)\\s([^\\s]+)\\s([^\\s]+)\\s([^\\s]+)!!!$",
-			{awh::regexp_t::option_t::UTF8,awh::regexp_t::option_t::CASELESS},
-			{{0,44},{0,12},{13,8},{22,12},{35,6}}
+			{{0,44},{0,12},{13,8},{22,12},{35,6}},
+			{awh::regexp_t::option_t::UTF8,awh::regexp_t::option_t::CASELESS}
 		})
 	)
 );

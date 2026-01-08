@@ -468,7 +468,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
  * @param options список опций для сборки регулярного выражения
  * @return        результат собранного регулярного выражения
  */
-awh::RegExp::exp_t awh::RegExp::build(const string & pattern, initializer_list <option_t> options) const noexcept {
+awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <option_t> & options) const noexcept {
 	// Результат работы функции
 	exp_t result = nullptr;
 	// Если регулярное выражение передано
@@ -480,7 +480,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, initializer_list <
 			// Список основных опций
 			int32_t option = 0;
 			// Если опции переданы
-			if(!std::empty(options)){
+			if(!options.empty()){
 				// Выполняем перебор всех переданных опций
 				for(auto & item : options){
 					/**

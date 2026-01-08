@@ -113,14 +113,213 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(this->_io->iface(eid1).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
 			ASSERT_EQ(source.iface, this->_io->iface(eid1));
-			// Извлекаем информационные метаданные SCTP сообщения
-			const awh::net::sctp_minfo_t minfo = this->_io->sctpMessageInfo(eid1);
-			// Устанавливаем информационные метаданные SCTP сообщения
-			this->_io->sctpMessageInfo(eid1, minfo);
-			// Извлекаем параметры рукопожатия SCTP
-			const awh::net::sctp_handshake_t handshake = this->_io->sctpHandshake(eid1);
-			// Устанавливаем параметры рукопожатия SCTP
-			this->_io->sctpHandshake(eid1, handshake);
+
+			/**
+			 * Для операционной системы FreeBSD
+			 */
+			#if __FreeBSD__
+				// Извлекаем информационные метаданные SCTP сообщения
+				const awh::net::sctp::minfo_t & minfo = this->_io->sctpMessageInfo(eid1);
+				// Выводим информацию о сообщении SCTP-сокета
+				std::cout << " SCTP Message Info: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
+				// Устанавливаем информационные метаданные SCTP сообщения
+				this->_io->sctpMessageInfo(eid1, minfo);
+				// Извлекаем статус SCTP событий SCTP
+				const awh::net::sctp::status_t & status = this->_io->sctpStatus(eid1);
+				// Выводим статус SCTP-сокета
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << (u_short) status.state << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
+
+				// Текст инициализационных сообщений SCTP
+				awh::net::sctp::initmsg_t initmsg;
+				// Устанавливаем количество попыток подключения SCTP
+				initmsg.attempts = 4;
+				// Устанавливаем количество исходящих потоков SCTP
+				initmsg.ostreams = 5;
+				// Устанавливаем количество входящих потоков SCTP
+				initmsg.istreams = 5;
+				// Инициализируем сообщения SCTP
+				this->_io->sctpInitMessages(eid1, initmsg);
+				// Типы SCTP событий для подписки
+				awh::net::sctp::event_types_t types = {
+					awh::net::sctp::event_type_t::ASSOC_CHANGE,
+					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+					awh::net::sctp::event_type_t::REMOTE_ERROR,
+					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
+				};
+				// Выполняем подписку на SCTP события
+				this->_io->sctpEventsSubscribe(eid1, types);
+
+				// Проверяем что типы SCTP событий совпадают с установленными ранее
+				ASSERT_EQ(types, this->_io->sctpEventsSubscribed(eid1));
+
+				// Устанавливаем таймаут INIT SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
+				// Проверяем что таймаут INIT SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT));
+
+				// Устанавливаем таймаут DATA SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
+				// Проверяем что таймаут DATA SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA));
+
+				// Устанавливаем таймаут SACK SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
+				// Проверяем что таймаут SACK SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK));
+
+				// Устанавливаем таймаут COOKIE SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
+				// Проверяем что таймаут COOKIE SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE));
+
+				// Устанавливаем таймаут SHUTDOWN SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
+				// Проверяем что таймаут SHUTDOWN SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
+
+				// Устанавливаем таймаут HEARTBEAT SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				// Проверяем что таймаут HEARTBEAT SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
+
+				// Устанавливаем таймаут SHUTDOWNACK SCTP события
+				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
+				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
+				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
+
+				// Устанавливаем ключ аутентификации SCTP-сокета
+				ASSERT_TRUE(this->_io->sctpAuthenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
+				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
+				ASSERT_TRUE(this->_io->sctpAuthenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
+				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
+				ASSERT_TRUE(this->_io->sctpAuthenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+				// Устанавливаем чанки аутентификации SCTP-сокета
+				ASSERT_TRUE(this->_io->sctpAuthenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+
+				// Извлекаем чанки аутентификации SCTP-сокета
+				std::vector <awh::net::sctp::auth_chunk_t> chunks;
+				// Выполняем извлечение чанков аутентификации SCTP-сокета
+				ASSERT_TRUE(this->_io->sctpAuthenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
+				// Проверяем что чанки аутентификации SCTP-сокета получены
+				ASSERT_FALSE(chunks.empty());
+				// Перебираем все извлечённые чанки
+				for(auto & chunk : chunks)
+					// Выводим информацию о чанках аутентификации SCTP-сокета
+					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Извлекаем информационные метаданные SCTP сообщения
+				const awh::net::sctp::minfo_t & minfo = this->_io->sctpMessageInfo(eid1);
+				// Выводим информацию о сообщении SCTP-сокета
+				std::cout << " SCTP Message Info: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
+				// Устанавливаем информационные метаданные SCTP сообщения
+				this->_io->sctpMessageInfo(eid1, minfo);
+				// Извлекаем статус SCTP событий SCTP
+				const awh::net::sctp::status_t & status = this->_io->sctpStatus(eid1);
+				// Выводим статус SCTP-сокета
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << (u_short) status.state << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
+
+				// Текст инициализационных сообщений SCTP
+				awh::net::sctp::initmsg_t initmsg;
+				// Устанавливаем количество попыток подключения SCTP
+				initmsg.attempts = 4;
+				// Устанавливаем количество исходящих потоков SCTP
+				initmsg.ostreams = 5;
+				// Устанавливаем количество входящих потоков SCTP
+				initmsg.istreams = 5;
+				// Инициализируем сообщения SCTP
+				this->_io->sctpInitMessages(eid1, initmsg);
+				// Типы SCTP событий для подписки
+				awh::net::sctp::event_types_t types = {
+					awh::net::sctp::event_type_t::ASSOC_CHANGE,
+					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+					awh::net::sctp::event_type_t::REMOTE_ERROR,
+					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
+				};
+				// Выполняем подписку на SCTP события
+				this->_io->sctpEventsSubscribe(eid1, types);
+				// Проверяем что типы SCTP событий совпадают с установленными ранее
+				ASSERT_EQ(awh::net::sctp::event_types_t{}, this->_io->sctpEventsSubscribed(eid1));
+				// Устанавливаем таймаут INIT SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
+				// Проверяем что таймаут INIT SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT));
+				// Устанавливаем таймаут DATA SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
+				// Проверяем что таймаут DATA SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA));
+				// Устанавливаем таймаут SACK SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
+				// Проверяем что таймаут SACK SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK));
+				// Устанавливаем таймаут COOKIE SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
+				// Проверяем что таймаут COOKIE SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE));
+				// Устанавливаем таймаут SHUTDOWN SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
+				// Проверяем что таймаут SHUTDOWN SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
+				// Устанавливаем таймаут HEARTBEAT SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				// Проверяем что таймаут HEARTBEAT SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
+				// Устанавливаем таймаут SHUTDOWNACK SCTP события
+				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
+				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
+				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
+			
+				// Устанавливаем ключ аутентификации SCTP-сокета
+				ASSERT_FALSE(this->_io->sctpAuthenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
+				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
+				ASSERT_FALSE(this->_io->sctpAuthenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
+				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
+				ASSERT_FALSE(this->_io->sctpAuthenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+				// Устанавливаем чанки аутентификации SCTP-сокета
+				ASSERT_FALSE(this->_io->sctpAuthenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+			
+				// Извлекаем чанки аутентификации SCTP-сокета
+				std::vector <awh::net::sctp::auth_chunk_t> chunks;
+				// Выполняем извлечение чанков аутентификации SCTP-сокета
+				ASSERT_FALSE(this->_io->sctpAuthenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
+				// Проверяем что чанки аутентификации SCTP-сокета получены
+				ASSERT_TRUE(chunks.empty());
+				// Перебираем все извлечённые чанки
+				for(auto & chunk : chunks)
+					// Выводим информацию о чанках аутентификации SCTP-сокета
+					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
+			#endif
+
 			// Извлекаем IP-адрес сетевого интерфейса
 			ip = this->_io->address(eid1, awh::event::address_t::IPV4);
 			// Извлекаем MAC-адрес сетевого интерфейса
@@ -736,7 +935,7 @@ TEST_F(IoFixture, IoTCPTest){
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Выполняем прослушивание сервера
-		ASSERT_TRUE(this->_io->listen(events[1], 100, true));
+		ASSERT_TRUE(this->_io->listen(events[1], 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(this->_io->launch(events[1]));
 	}
@@ -1108,7 +1307,7 @@ TEST_F(IoFixture, IoUDPTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -1328,17 +1527,7 @@ TEST_F(IoFixture, IoUDPTest){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			const std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(cid, reinterpret_cast <const char *> (data), size))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 			/**
@@ -1834,7 +2023,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -2054,17 +2243,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			const std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(cid, reinterpret_cast <const char *> (data), size))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 			/**
@@ -2781,7 +2960,7 @@ TEST_F(IoFixture, IoUDSTest){
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(sid));
 		// Выполняем прослушивание сервера
-		ASSERT_TRUE(this->_io->listen(sid, 100, true));
+		ASSERT_TRUE(this->_io->listen(sid, 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(this->_io->launch(sid));
 	}
@@ -3140,7 +3319,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(sid, [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(sid, static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::UDS).c_str());
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -3360,17 +3539,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			const std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(cid, reinterpret_cast <const char *> (data), size))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(sid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 			/**
@@ -3866,7 +4035,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -4086,17 +4255,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			const std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(cid, reinterpret_cast <const char *> (data), size))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 			/**
@@ -4613,7 +4772,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -4833,17 +4992,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			const std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(cid, reinterpret_cast <const char *> (data), size))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на ошибку события
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 			/**
@@ -6132,7 +6281,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Устанавливаем TTL для мультикастового события
 		ASSERT_TRUE(this->_io->hops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
@@ -6213,7 +6362,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -6294,12 +6443,35 @@ TEST_F(IoFixture, IoMulticast1Test){
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
+			// Флаг отправки сообщений
+			static bool sending = false;
 			// Устанавливаем функцию обратного вызова на чтение из события
-			this->_io->on(cid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			this->_io->on(cid, [eid, this](const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Текст входящего сообщения
-				const std::string message(reinterpret_cast <const char *> (data), size);
+				std::string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события
-				this->_log->print("Прочитано2: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
+				this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
+				// Если сообщение ещё не отправлено
+				if(!sending){
+					// Устанавливаем флаг отправки сообщения
+					sending = !sending;
+					// Помечаем сообщение
+					message.append("1");
+					// Отправляем данные обратно клиенту
+					if(this->_io->send(eid, message.c_str(), message.length()))
+						// Если данные успешно отправлены
+						this->_log->print("Отправлено в группу: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, message.length());
+					// Если данные не отправлены
+					else this->_log->print("Ошибка отправки в группу: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					// Помечаем сообщение
+					message.append("2");
+					// Отправляем данные обратно клиенту
+					if(this->_io->send(cid, message.c_str(), message.length()))
+						// Если данные успешно отправлены
+						this->_log->print("Отправлено клиенту: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, message.length());
+					// Если данные не отправлены
+					else this->_log->print("Ошибка отправки клиенту: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
+				}
 			});
 			// Устанавливаем функцию обратного вызова на ошибку события
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -6427,27 +6599,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано1: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-			// Помечаем сообщение
-			message.append("1");
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(eid, message.c_str(), message.length()))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено в группу: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, message.length());
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки в группу: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
-			// Помечаем сообщение
-			message.append("2");
-			// Отправляем данные обратно клиенту
-			if(this->_io->send(cid, message.c_str(), message.length()))
-				// Если данные успешно отправлены
-				this->_log->print("Отправлено клиенту: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, message.length());
-			// Если данные не отправлены
-			else this->_log->print("Ошибка отправки клиенту: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на запись в событие
 		this->_io->on(events[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
@@ -6591,7 +6743,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Устанавливаем количество хопов события
 		ASSERT_TRUE(this->_io->hops(events[0], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICASTLOOP));
+		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->target(events[0], "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
@@ -6879,7 +7031,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Устанавливаем TTL для мультикастового события
 		ASSERT_TRUE(this->_io->hops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICASTLOOP));
+		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Выполняем фиксацию настроек события сервера
@@ -6958,7 +7110,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -7044,7 +7196,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события
-				this->_log->print("Прочитано2: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
+				this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
 			});
 			// Устанавливаем функцию обратного вызова на ошибку события
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -7172,11 +7324,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 					break;
 				}
 			});
-			// Текст входящего сообщения
-			const std::string message(reinterpret_cast <const char *> (data), size);
-			// Выводим сообщение о переподключении события
-			this->_log->print("Прочитано1: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, cid, size, message.c_str());
-		});
+		}));
 		// Устанавливаем функцию обратного вызова на запись в событие
 		this->_io->on(events[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события

@@ -191,7 +191,7 @@ namespace awh {
 			 * @param chunks список чанков подлежащих аутентификации
 			 * @return       результат работы функции
 			 */
-			bool sctpAuthenticateChunks(const net::socket_t sock, initializer_list <net::sctp::auth_chunk_t> chunks) const noexcept;
+			bool sctpAuthenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
 			/**
 			 * @brief Метод извлечения чанков аутентификации SCTP сокета
 			 *
@@ -210,7 +210,7 @@ namespace awh {
 			 * @param types список поддерживаемых алгоритмов аутентификации
 			 * @return      результат работы функции
 			 */
-			bool sctpAuthenticateSupportAlgorithms(const net::socket_t sock, initializer_list <net::sctp::auth_type_t> types) const noexcept;
+			bool sctpAuthenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки ключа аутентификации SCTP сокета

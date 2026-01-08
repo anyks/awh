@@ -4147,13 +4147,13 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
  * @param id      идентификатор события
  * @param ciphers список алгоритмов шифрования для установки
  */
-void awh::TransportLayerSecurity::ciphers(const id_t id, initializer_list <string> ciphers) noexcept {
+void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> & ciphers) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если список алгоритмов шифрования не пустой
-		if(!std::empty(ciphers)){
+		if(!ciphers.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Результирующая строка алгоритмов шифрования
@@ -4262,13 +4262,13 @@ uint8_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
  * @param id   идентификатор события
  * @param alpn список поддерживаемых ALPN-протоколов
  */
-void awh::TransportLayerSecurity::alpn(const id_t id, initializer_list <alpn_t> alpn) noexcept {
+void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если список поддерживаемых ALPN-протоколов не пустой
-		if(!std::empty(alpn)){
+		if(!alpn.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Выполняем извлечение уровня защищённых сокетов из глобального контейнера уровней защищённых сокетов

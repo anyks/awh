@@ -83,10 +83,10 @@ int32_t main(int32_t argc, char * argv[]){
 			if(io.hops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
 				/**
-				 * event::options::MULTICASTLOOP разрешает или запрещает отправку сообщений в локальный порт 127.0.0.1 если клиент висит на 0.0.0.0 то он получит две копии сообщений
+				 * event::options::MULTICAST_LOOPBACK разрешает или запрещает отправку сообщений в локальный порт 127.0.0.1 если клиент висит на 0.0.0.0 то он получит две копии сообщений
 				 */
-				// if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::MULTICASTLOOP))
-				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::MULTICASTLOOP))
+				// if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::MULTICAST_LOOPBACK))
+				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::MULTICAST_LOOPBACK))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события

@@ -4274,7 +4274,7 @@ namespace io {
 													// Если мы получили ошибку
 													if(bytes < 0){
 														// Если нам нужно повторить попытку позже
-														if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+														if(errno == EAGAIN)
 															// Выходим из цикла
 															break;
 														// Если мы получили другую ошибку
@@ -4455,7 +4455,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -4607,7 +4607,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -4796,7 +4796,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -5042,7 +5042,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -5317,7 +5317,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -5565,7 +5565,7 @@ namespace io {
 												// Если мы получили ошибку
 												if(bytes < 0){
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Выходим из цикла
 														break;
 													// Если мы получили другую ошибку
@@ -5819,7 +5819,7 @@ namespace io {
 												// Если мы получили ошибку
 												if(bytes < 0){
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Выходим из цикла
 														break;
 													// Если мы получили другую ошибку
@@ -6059,7 +6059,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -6214,7 +6214,7 @@ namespace io {
 												// Если мы получили ошибку
 												if(bytes < 0){
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Выходим из цикла
 														break;
 													// Если мы получили другую ошибку
@@ -6366,7 +6366,7 @@ namespace io {
 												// Если мы получили ошибку
 												if(bytes < 0){
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Выходим из цикла
 														break;
 													// Если мы получили другую ошибку
@@ -6608,7 +6608,7 @@ namespace io {
 											// Если мы получили ошибку
 											if(bytes < 0){
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Выходим из цикла
 													break;
 												// Если мы получили другую ошибку
@@ -6840,7 +6840,7 @@ namespace io {
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Формируем положительный результат
 														return true;
 													// Если произошла ошибка при отправке данных
@@ -6946,7 +6946,7 @@ namespace io {
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
-											if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+											if(errno == EAGAIN)
 												// Формируем положительный результат
 												return true;
 											// Если произошла ошибка при отправке данных
@@ -7014,7 +7014,7 @@ namespace io {
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
-											if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+											if(errno == EAGAIN)
 												// Формируем положительный результат
 												return true;
 											// Если произошла ошибка при отправке данных
@@ -7193,7 +7193,7 @@ namespace io {
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
-											if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+											if(errno == EAGAIN)
 												// Формируем положительный результат
 												return true;
 											// Если произошла ошибка при отправке данных
@@ -7314,7 +7314,7 @@ namespace io {
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
-											if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+											if(errno == EAGAIN)
 												// Формируем положительный результат
 												return true;
 											// Если произошла ошибка при отправке данных
@@ -7510,7 +7510,7 @@ namespace io {
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+												if(errno == EAGAIN)
 													// Формируем положительный результат
 													return true;
 												// Если произошла ошибка при отправке данных
@@ -7635,7 +7635,7 @@ namespace io {
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Формируем положительный результат
 														return true;
 													// Если произошла ошибка при отправке данных
@@ -7769,7 +7769,7 @@ namespace io {
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Формируем положительный результат
 														return true;
 													// Если произошла ошибка при отправке данных
@@ -7867,7 +7867,7 @@ namespace io {
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Формируем положительный результат
 														return true;
 													// Если произошла ошибка при отправке данных
@@ -7967,7 +7967,7 @@ namespace io {
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+													if(errno == EAGAIN)
 														// Формируем положительный результат
 														return true;
 													// Если произошла ошибка при отправке данных
@@ -8165,7 +8165,7 @@ namespace io {
 									// Если мы отправили не все данные
 									} else if(bytes == -1) {
 										// Если нам нужно повторить попытку позже
-										if((errno == EAGAIN) || (errno == EWOULDBLOCK))
+										if(errno == EAGAIN)
 											// Формируем положительный результат
 											return true;
 										// Если произошла ошибка при отправке данных
@@ -20905,18 +20905,18 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 						result = isSetup;
 					// Для типа трансляции пакетов MULTICAST
 					if(i->second->state.delivery == event::delivery_mode_t::MULTICAST){
-						// Если опция передана как MULTICASTLOOP
-						if(event::options::MULTICASTLOOP & options){
+						// Если опция передана как MULTICAST_LOOPBACK
+						if(event::options::MULTICAST_LOOPBACK & options){
 							// Устанавливаем режим обратной связи многоадресной передачи
 							if((isSetup = this->_eth.multicastLoopback(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
 								// Устанавливаем опцию события
-								i->second->state.options |= event::options::MULTICASTLOOP;
-						// Если опция не передана как MULTICASTLOOP
+								i->second->state.options |= event::options::MULTICAST_LOOPBACK;
+						// Если опция не передана как MULTICAST_LOOPBACK
 						} else {
 							// Снимаем режим обратной связи многоадресной передачи
 							if((isSetup = this->_eth.multicastLoopback(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
 								// Снимаем опцию события
-								i->second->state.options &= ~event::options::MULTICASTLOOP;
+								i->second->state.options &= ~event::options::MULTICAST_LOOPBACK;
 						}
 						// Если опция не установлена
 						if(result && !isSetup)
@@ -21471,8 +21471,8 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							}
 						}
 					} break;
-					// Если опция передана как MULTICASTLOOP
-					case event::options::MULTICASTLOOP: {
+					// Если опция передана как MULTICAST_LOOPBACK
+					case event::options::MULTICAST_LOOPBACK: {
 						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
@@ -21491,9 +21491,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											// Если необходимо активировать режим обратной петли для мультикаст-сообщений сокета
 											if(mode)
 												// Устанавливаем опцию события
-												i->second->state.options |= event::options::MULTICASTLOOP;
+												i->second->state.options |= event::options::MULTICAST_LOOPBACK;
 											// Если необходимо деактивировать режим обратной петли для мультикаст-сообщений сокета
-											else i->second->state.options ^= event::options::MULTICASTLOOP;
+											else i->second->state.options ^= event::options::MULTICAST_LOOPBACK;
 										}
 									} break;
 								}
@@ -26871,7 +26871,7 @@ bool awh::IO::sctpAuthenticateKey(const event::id_t id, [[maybe_unused]] const e
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
  */
-bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] initializer_list <net::sctp::auth_chunk_t> chunks) noexcept {
+bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -27748,7 +27748,7 @@ bool awh::IO::sctpAuthenticateChunks(const event::id_t id, [[maybe_unused]] cons
  * @param types список поддерживаемых алгоритмов аутентификации
  * @return      результат работы функции
  */
-bool awh::IO::sctpAuthenticateSupportAlgorithms(const event::id_t id, [[maybe_unused]] initializer_list <net::sctp::auth_type_t> types) noexcept {
+bool awh::IO::sctpAuthenticateSupportAlgorithms(const event::id_t id, [[maybe_unused]] const vector <net::sctp::auth_type_t> & types) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -28705,7 +28705,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
  */
-bool awh::IO::connect(initializer_list <event::id_t> ids) noexcept {
+bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -28713,7 +28713,7 @@ bool awh::IO::connect(initializer_list <event::id_t> ids) noexcept {
 	 */
 	try {
 		// Если список идентификаторов событий для подключения не пустой
-		if(!std::empty(ids)){
+		if(!ids.empty()){
 			// Выполняем перебор всех идентификаторов
 			for(auto & id : ids){
 				// Выполняем поиск идентификатора события
@@ -30449,7 +30449,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Если мы отправили не все данные
 														} else if(bytes == -1) {
 															// Если нам нужно повторить попытку позже
-															if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+															if((result = (errno == EAGAIN))){
 																{
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(ipc->transfer.mtx);
@@ -30708,7 +30708,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+													if((result = (errno == EAGAIN))){
 														{
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(ipc->transfer.mtx);
@@ -30951,7 +30951,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+													if((result = (errno == EAGAIN))){
 														{
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(ipc->transfer.mtx);
@@ -31230,7 +31230,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+													if((result = (errno == EAGAIN))){
 														{
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(peer->transfer.mtx);
@@ -31572,7 +31572,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+													if((result = (errno == EAGAIN))){
 														{
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(peer->transfer.mtx);
@@ -31932,7 +31932,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK)){
+												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32148,7 +32148,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+													if((result = (errno == EAGAIN))){
 														{
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(origin->transfer.mtx);
@@ -32470,7 +32470,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
-													if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+													if((result = (errno == EAGAIN))){
 														{
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(client->transfer.mtx);
@@ -32816,7 +32816,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если мы отправили не все данные
 													} else if(bytes == -1) {
 														// Если нам нужно повторить попытку позже
-														if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+														if((result = (errno == EAGAIN))){
 															{
 																// Выполняем блокировку уникальным мютексом
 																const locker_t <> lock(client->transfer.mtx);
@@ -33163,7 +33163,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если мы отправили не все данные
 													} else if(bytes == -1) {
 														// Если нам нужно повторить попытку позже
-														if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+														if((result = (errno == EAGAIN))){
 															{
 																// Выполняем блокировку уникальным мютексом
 																const locker_t <> lock(client->transfer.mtx);
@@ -33543,7 +33543,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK)){
+												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33785,7 +33785,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если мы отправили не все данные
 													} else if(bytes == -1) {
 														// Если нам нужно повторить попытку позже
-														if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+														if((result = (errno == EAGAIN))){
 															{
 																// Выполняем блокировку уникальным мютексом
 																const locker_t <> lock(client->transfer.mtx);
@@ -34051,7 +34051,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если мы отправили не все данные
 													} else if(bytes == -1) {
 														// Если нам нужно повторить попытку позже
-														if((result = ((errno == EAGAIN) || (errno == EWOULDBLOCK)))){
+														if((result = (errno == EAGAIN))){
 															{
 																// Выполняем блокировку уникальным мютексом
 																const locker_t <> lock(client->transfer.mtx);
@@ -34361,7 +34361,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK)){
+												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34579,7 +34579,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если мы отправили не все данные
 											} else if(bytes == -1) {
 												// Если нам нужно повторить попытку позже
-												if((errno == EAGAIN) || (errno == EWOULDBLOCK)){
+												if(errno == EAGAIN){
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
