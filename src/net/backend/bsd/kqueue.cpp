@@ -12731,7 +12731,7 @@ bool awh::IO::ControlList::clear(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
