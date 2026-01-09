@@ -166,8 +166,10 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
+		// Создаём объект SCTP протокола
+		sctp_t sctp(&fmk, &log);
 		// Выполняем подписку на SCTP события
-		io.sctpEventsSubscribe(eid, {
+		sctp.eventsSubscribe(eid, {
 			net::sctp::event_type_t::ASSOC_CHANGE,
 			net::sctp::event_type_t::SHUTDOWN_EVENT,
 			net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -256,7 +258,7 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				io.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+				sctp.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					log.print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -264,7 +266,7 @@ int32_t main(int32_t argc, char * argv[]){
 					);
 				}));
 				// Устанавливаем функцию обратного вызова на создание события
-				io.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
+				sctp.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
 					// Выводим сообщение с идентификатором событий SCTP
 					cout << " SCTP EVENT ID: " << event->id << endl;
 					/**
@@ -329,9 +331,9 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [tid, &tls, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(eid, [tid, &sctp, &tls, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем информацию о сообщении SCTP-сокета
-					const net::sctp::minfo_t & minfo = io.sctpMessageInfo(eid);
+					const net::sctp::minfo_t & minfo = sctp.messageInfo(eid);
 					// Выводим информацию о сообщении SCTP-сокета
 					cout << " SCTP Message Info2: " << endl;
 					cout << "  - Stream Number: " << minfo.num << endl;
@@ -340,7 +342,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Time to Live: " << minfo.ttl << endl;
 					cout << "  - Flags: " << minfo.flags.size() << endl;
 					// Получаем статус SCTP-сокета
-					const net::sctp::status_t & status = io.sctpStatus(eid);
+					const net::sctp::status_t & status = sctp.status(eid);
 					// Выводим статус SCTP-сокета
 					cout << " SCTP Status: " << endl;
 					cout << "  - ID: " << status.id << endl;

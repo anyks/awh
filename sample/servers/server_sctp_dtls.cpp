@@ -135,8 +135,10 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
+		// Создаём объект SCTP протокола
+		sctp_t sctp(&fmk, &log);
 		// Выполняем подписку на SCTP события
-		io.sctpEventsSubscribe(eid, {
+		sctp.eventsSubscribe(eid, {
 			net::sctp::event_type_t::ASSOC_CHANGE,
 			net::sctp::event_type_t::SHUTDOWN_EVENT,
 			net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -218,9 +220,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
-			io.on(eid, static_cast <event::callback::accept_t> ([tid, &tls, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
+			io.on(eid, static_cast <event::callback::accept_t> ([tid, &sctp, &tls, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
-				const net::sctp::minfo_t & minfo = io.sctpMessageInfo(cid);
+				const net::sctp::minfo_t & minfo = sctp.messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
 				cout << " SCTP Message Info1: " << endl;
 				cout << "  - Stream Number: " << minfo.num << endl;
@@ -229,7 +231,7 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Time to Live: " << minfo.ttl << endl;
 				cout << "  - Flags: " << minfo.flags.size() << endl;
 				// Получаем статус SCTP-сокета
-				const net::sctp::status_t & status = io.sctpStatus(cid);
+				const net::sctp::status_t & status = sctp.status(cid);
 				// Выводим статус SCTP-сокета
 				cout << " SCTP Status: " << endl;
 				cout << "  - ID: " << status.id << endl;
@@ -245,7 +247,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устанавливаем клиента DTLS для события
 				tls.peer(tid, io.address(cid, event::address_t::IPV4), io.port(cid));
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				io.on(cid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+				sctp.on(cid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					log.print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -253,7 +255,7 @@ int32_t main(int32_t argc, char * argv[]){
 					);
 				}));
 				// Устанавливаем функцию обратного вызова на создание события
-				io.on(cid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
+				sctp.on(cid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
 					// Выводим сообщение с идентификатором событий SCTP
 					cout << " SCTP EVENT ID: " << event->id << endl;
 					/**
@@ -655,7 +657,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устанавливаем количество входящих потоков SCTP
 				initmsg.istreams = 5;
 				// Инициализируем сообщения SCTP
-				io.sctpInitMessages(eid, initmsg);
+				sctp.initMessages(eid, initmsg);
 				// Если прослушивание события успешно
 				if(io.listen(eid, 100)){
 					// Выполняем запуск события
