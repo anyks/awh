@@ -1533,6 +1533,9 @@ namespace cookie {
 	static int32_t generateStateless(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
 		// Размер буфера с печенками
 		uint32_t length = 0;
+
+		cout << " ==================stateless 1 " << endl;
+
 		// Выполняем генерацию cookie
 		const int32_t result = ::cookie::generate(ssl, cookie, &length);
 		// Получаем размер буфера с печенками
@@ -1633,6 +1636,9 @@ namespace cookie {
 	 * @return       результат проверки
 	 */
 	static int32_t verifyStateless(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
+
+		cout << " ^^================== VERIFY STATELESS " << endl;
+
 		// Выполняем проверку cookie
 		return ::cookie::verify(ssl, cookie, static_cast <uint32_t> (size));
 	}
