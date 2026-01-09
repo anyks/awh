@@ -6193,18 +6193,13 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::create(const even
 				 */
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP): {
+					case static_cast <uint8_t> (event::protocol_t::UDP):
+					// Если протокол подключения SCTP
+					case static_cast <uint8_t> (event::protocol_t::SCTP): {
 						// Выполняем проверку файлов cookie
 						::SSL_CTX_set_cookie_verify_cb((* ret.first)->ctx, &::cookie::verify);
 						// Выполняем генерацию файлов cookie
 						::SSL_CTX_set_cookie_generate_cb((* ret.first)->ctx, &::cookie::generate);
-					} break;
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP): {
-						// Выполняем проверку файлов cookie
-						::SSL_CTX_set_stateless_cookie_verify_cb((* ret.first)->ctx, &::cookie::verifyStateless);
-						// Выполняем генерацию файлов cookie
-						::SSL_CTX_set_stateless_cookie_generate_cb((* ret.first)->ctx, &::cookie::generateStateless);
 					} break;
 				}
 				/**
