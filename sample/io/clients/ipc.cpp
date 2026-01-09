@@ -79,13 +79,13 @@ int32_t main(int32_t argc, char * argv[]){
 				// Уничтожаем событие дочернего процесса для записи
 				io.destroy(cfds[1]);
 				// Устананавливаем опции события
-				if(io.options(cfds[0], event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
+				if(io.options(cfds[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события на чтение!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события на чтение!" << endl;
 				// Устананавливаем опции события
-				if(io.options(mfds[1], event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
+				if(io.options(mfds[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события на запись!" << endl;
 				// Выводим сообщение об ошибке установки опций события
@@ -325,13 +325,13 @@ int32_t main(int32_t argc, char * argv[]){
 				// Уничтожаем событие дочернего процесса для чтения
 				io.destroy(cfds[0]);
 				// Устананавливаем опции события
-				if(io.options(mfds[0], event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
+				if(io.options(mfds[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события на чтение!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события на чтение!" << endl;
 				// Устананавливаем опции события
-				if(io.options(cfds[1], event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::NOIOBLOCK | event::options::CLOSEONEXEC))
+				if(io.options(cfds[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события на запись!" << endl;
 				// Выводим сообщение об ошибке установки опций события

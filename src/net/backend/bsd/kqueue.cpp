@@ -3915,7 +3915,7 @@ namespace io {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
-								if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
+								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем событие на чтение и активируем его
 									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, peer);
 								// Устанавливаем событие на чтение и активируем его
@@ -3929,7 +3929,7 @@ namespace io {
 								// Если таймаут на получение данных найден
 								if((i != peer->timeouts.end()) && (i->second > 0)){
 									// Если сокет является неблокирующим
-									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 										// Активируем таймаут события
 										peer->timeout = i->first;
 										// Добавляем новое событие в список изменений
@@ -4016,7 +4016,7 @@ namespace io {
 					// Деактивируем событие на запись данных
 					EV_SET(&::local::change.back(), node->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, node);
 					// Если сокет является неблокирующим
-					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+					if((node->state.options & event::options::NO_IO_BLOCK) || (node->state.options & event::options::SM_IO_BLOCK)){
 						// Выполняем проверку на наличие таймаута для подключения к серверу
 						auto i = node->timeouts.find(node->timeout);
 						// Если нужный нам таймаут найден
@@ -4039,7 +4039,7 @@ namespace io {
 				// Если таймаут на подключение найден
 				if((i != node->timeouts.end()) && (i->second > 0)){
 					// Если сокет является неблокирующим
-					if((node->state.options & event::options::NOIOBLOCK) || (node->state.options & event::options::SMIOBLOCK)){
+					if((node->state.options & event::options::NO_IO_BLOCK) || (node->state.options & event::options::SM_IO_BLOCK)){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(::local::mtx);
 						// Активируем таймаут события
@@ -4266,7 +4266,7 @@ namespace io {
 											// Буфер для временного хранения данных
 											char buffer[0x1000];
 											// Если событие является неблокирующим
-											if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
+											if((ipc->state.options & event::options::NO_IO_BLOCK) || (ipc->state.options & event::options::SM_IO_BLOCK)){
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												/**
@@ -4447,7 +4447,7 @@ namespace io {
 									// Буфер для временного хранения данных
 									char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 									// Если событие является неблокирующим
-									if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
+									if((ipc->state.options & event::options::NO_IO_BLOCK) || (ipc->state.options & event::options::SM_IO_BLOCK)){
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										/**
@@ -4599,7 +4599,7 @@ namespace io {
 									// Буфер для временного хранения данных
 									char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 									// Если событие является неблокирующим
-									if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK)){
+									if((ipc->state.options & event::options::NO_IO_BLOCK) || (ipc->state.options & event::options::SM_IO_BLOCK)){
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										/**
@@ -4765,7 +4765,7 @@ namespace io {
 								// Если сокет принадлежит к типу STREAM
 								case static_cast <uint8_t> (event::type_t::STREAM): {
 									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 										// Количество прочитанных байт
 										ssize_t bytes = 0, offset = 0;
 										/**
@@ -5013,7 +5013,7 @@ namespace io {
 								// Если сокет принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										/**
@@ -5286,7 +5286,7 @@ namespace io {
 								// Если сокет принадлежит к типу STREAM
 								case static_cast <uint8_t> (event::type_t::STREAM): {
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 										// Количество прочитанных байт
 										ssize_t bytes = 0, offset = 0;
 										/**
@@ -5536,7 +5536,7 @@ namespace io {
 									// Если клиент находится в состоянии подключено
 									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 										// Если событие является неблокирующим
-										if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											/**
@@ -5779,7 +5779,7 @@ namespace io {
 									// Если клиент находится в запущенном состоянии
 									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
 										// Если событие является неблокирующим
-										if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											/**
@@ -6046,7 +6046,7 @@ namespace io {
 								// Если сокет принадлежит к типу RAW
 								case static_cast <uint8_t> (event::type_t::RAW): {
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										/**
@@ -6206,7 +6206,7 @@ namespace io {
 									// Если клиент находится в состоянии подключено
 									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
 										// Если событие является неблокирующим
-										if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											/**
@@ -6353,7 +6353,7 @@ namespace io {
 									// Если клиент находится в запущенном состоянии
 									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
 										// Если событие является неблокирующим
-										if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											/**
@@ -6598,7 +6598,7 @@ namespace io {
 									// Буфер для временного хранения данных
 									char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 									// Если событие является неблокирующим
-									if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
+									if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 										/**
 										 * Выполняем получение данных пока их не получим
 										 */
@@ -8750,7 +8750,7 @@ namespace io {
 					// Формируем отрицательный результат
 					return false;
 				// Если сокет является неблокирующим
-				if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
+				if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 					// Если необходимо установить таймаут на чтение данных
 					auto j= i->second->timeouts.find(event::action_t::READ);
 					// Если таймаут на подключение найден
@@ -9232,7 +9232,7 @@ namespace io {
 						// Устанавливаем статус события в состояние успешного подключения
 						origin->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
 						// Если сокет является неблокирующим
-						if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+						if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 							// Если необходимо установить таймаут на получение данных
 							auto i = origin->timeouts.find(event::action_t::READ);
 							// Если таймаут на получение данных найден
@@ -13709,7 +13709,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Если сокет является неблокирующим
-									if((ipc->state.options & event::options::NOIOBLOCK) || (ipc->state.options & event::options::SMIOBLOCK))
+									if((ipc->state.options & event::options::NO_IO_BLOCK) || (ipc->state.options & event::options::SM_IO_BLOCK))
 										// Устанавливаем событие на чтение и активируем его
 										EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 									// Устанавливаем событие на чтение и активируем его
@@ -13844,7 +13844,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
-												if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+												if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 													// Устанавливаем событие на чтение но отключаем его
 													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Устанавливаем событие на чтение но отключаем его
@@ -13928,7 +13928,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
-												if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+												if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 													// Устанавливаем событие на чтение но отключаем его
 													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 												// Устанавливаем событие на чтение но отключаем его
@@ -14232,7 +14232,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Если сокет является неблокирующим
-														if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+														if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 															// Устанавливаем событие на чтение но отключаем его
 															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 														// Устанавливаем событие на чтение но отключаем его
@@ -14417,7 +14417,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
-															if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+															if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 																// Устанавливаем событие на чтение но отключаем его
 																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Устанавливаем событие на чтение но отключаем его
@@ -14927,7 +14927,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
-															if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+															if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 																// Устанавливаем событие на чтение но отключаем его
 																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 															// Устанавливаем событие на чтение но отключаем его
@@ -15449,7 +15449,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
-												if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+												if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 													// Устанавливаем событие на чтение но отключаем его
 													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Устанавливаем событие на чтение но отключаем его
@@ -15527,7 +15527,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если сокет является неблокирующим
-												if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+												if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 													// Устанавливаем событие на чтение но отключаем его
 													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 												// Устанавливаем событие на чтение но отключаем его
@@ -15757,7 +15757,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Если сокет является неблокирующим
-														if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+														if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 															// Устанавливаем событие на чтение но отключаем его
 															EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 														// Устанавливаем событие на чтение но отключаем его
@@ -15940,7 +15940,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
-															if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+															if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 																// Устанавливаем событие на чтение но отключаем его
 																EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															// Устанавливаем событие на чтение но отключаем его
@@ -16124,7 +16124,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
 															// Если сокет является неблокирующим
-															if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+															if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 																// Устанавливаем событие на чтение но отключаем его
 																EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 															// Устанавливаем событие на чтение но отключаем его
@@ -23416,17 +23416,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Если опция передана как IPV6_V6ONLY
-							if(event::options::IPV6ONLY & options){
+							if(event::options::IPV6_ONLY & options){
 								// Устанавливаем режим отображения IPv4 => IPv6
 								if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::ENABLED)))
 									// Устанавливаем опцию события
-									i->second->state.options |= event::options::IPV6ONLY;
+									i->second->state.options |= event::options::IPV6_ONLY;
 							// Если опция не передана как IPV6_V6ONLY
 							} else {
 								// Снимаем режим отображения IPv4 => IPv6
 								if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::DISABLED)))
 									// Снимаем опцию события
-									i->second->state.options &= ~event::options::IPV6ONLY;
+									i->second->state.options &= ~event::options::IPV6_ONLY;
 							}
 							// Если опция не установлена
 							if(result && !isSetup)
@@ -23436,17 +23436,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					}
 				}
 				// Если опция передана как NO_SIGILL
-				if(event::options::NOSIGILL & options){
+				if(event::options::NO_SIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
 					if((isSetup = this->_eth.nosigill()))
 						// Устанавливаем опцию события
-						i->second->state.options |= event::options::NOSIGILL;
-				// Если опция не передана как NOSIGILL
+						i->second->state.options |= event::options::NO_SIGILL;
+				// Если опция не передана как NO_SIGILL
 				} else {
 					// Устанавливаем результат установки опции
 					isSetup = true;
 					// Снимаем игнорирование сигнала SIGILL
-					i->second->state.options &= ~event::options::NOSIGILL;
+					i->second->state.options &= ~event::options::NO_SIGILL;
 				}
 				// Если опция не установлена
 				if(result && !isSetup)
@@ -23456,37 +23456,37 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				if((i->second->state.family != event::family_t::FSYS) &&
 				   (i->second->state.family != event::family_t::PIPE)){
 					// Если опция передана как NO_SIGPIPE
-					if(event::options::NOSIGPIPE & options){
+					if(event::options::NO_SIGPIPE & options){
 						// Устанавливаем игнорирование сигнала SIGPIPE
 						if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::ENABLED)))
 							// Устанавливаем опцию события
-							i->second->state.options |= event::options::NOSIGPIPE;
+							i->second->state.options |= event::options::NO_SIGPIPE;
 					// Если опция не передана как NO_SIGPIPE
 					} else {
 						// Снимаем игнорирование сигнала SIGPIPE
 						if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::DISABLED)))
 							// Снимаем опцию события
-							i->second->state.options &= ~event::options::NOSIGPIPE;
+							i->second->state.options &= ~event::options::NO_SIGPIPE;
 					}
 					// Если опция не установлена
 					if(result && !isSetup)
 						// Устанавливаем результат работы функции как ложь
 						result = isSetup;
 				}
-				// Если опция передана как NOIOBLOCK или SMIOBLOCK
-				if((event::options::NOIOBLOCK & options) || (event::options::SMIOBLOCK & options)){
+				// Если опция передана как NO_IO_BLOCK или SM_IO_BLOCK
+				if((event::options::NO_IO_BLOCK & options) || (event::options::SM_IO_BLOCK & options)){
 					// Если событие установлено как блокирующее
-					if(!(i->second->state.options & event::options::NOIOBLOCK) && !(i->second->state.options & event::options::SMIOBLOCK)){
+					if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Устанавливаем неблокирующий режим ввода/вывода
 						if((isSetup = this->_eth.noblocking(fd, net::socket_mode_t::ENABLED))){
-							// Если установлена опция SMIOBLOCK
-							if(event::options::SMIOBLOCK & options)
+							// Если установлена опция SM_IO_BLOCK
+							if(event::options::SM_IO_BLOCK & options)
 								// Устанавливаем опцию события
-								i->second->state.options |= event::options::SMIOBLOCK;
-							// Если установлена опция NOIOBLOCK
-							else if(event::options::NOIOBLOCK & options)
+								i->second->state.options |= event::options::SM_IO_BLOCK;
+							// Если установлена опция NO_IO_BLOCK
+							else if(event::options::NO_IO_BLOCK & options)
 								// Устанавливаем опцию события
-								i->second->state.options |= event::options::NOIOBLOCK;
+								i->second->state.options |= event::options::NO_IO_BLOCK;
 							// Если событие уже создано и не подлежит уничтожению
 							if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 								/**
@@ -23565,20 +23565,20 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 							}
 						}
 					}
-				// Если опция не передана как NOIOBLOCK
+				// Если опция не передана как NO_IO_BLOCK
 				} else {
 					// Если событие установлено как неблокирующее
-					if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
+					if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Снимаем неблокирующий режим ввода/вывода
 						if((isSetup = this->_eth.noblocking(fd, net::socket_mode_t::DISABLED))){
-							// Если установлена опция SMIOBLOCK
-							if(i->second->state.options & event::options::SMIOBLOCK)
+							// Если установлена опция SM_IO_BLOCK
+							if(i->second->state.options & event::options::SM_IO_BLOCK)
 								// Снимаем опцию события
-								i->second->state.options &= ~event::options::SMIOBLOCK;
-							// Если установлена опция NOIOBLOCK
-							else if(i->second->state.options & event::options::NOIOBLOCK)
+								i->second->state.options &= ~event::options::SM_IO_BLOCK;
+							// Если установлена опция NO_IO_BLOCK
+							else if(i->second->state.options & event::options::NO_IO_BLOCK)
 								// Снимаем опцию события
-								i->second->state.options &= ~event::options::NOIOBLOCK;
+								i->second->state.options &= ~event::options::NO_IO_BLOCK;
 							// Если событие уже создано и не подлежит уничтожению
 							if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 								/**
@@ -23673,35 +23673,35 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если узел не является файловой системой и не является межпроцессным взаимодействием
 				if((i->second->state.node != event::node_t::IPC) &&
 				   (i->second->state.family != event::family_t::FSYS)){
-					// Если опция передана как REUSEADDR
-					if(event::options::REUSEADDR & options){
+					// Если опция передана как REUSE_ADDR
+					if(event::options::REUSE_ADDR & options){
 						// Устанавливаем режим повторного использования адреса
 						if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::ENABLED)))
 							// Устанавливаем опцию события
-							i->second->state.options |= event::options::REUSEADDR;
-					// Если опция не передана как REUSEADDR
+							i->second->state.options |= event::options::REUSE_ADDR;
+					// Если опция не передана как REUSE_ADDR
 					} else {
 						// Снимаем режим повторного использования адреса
 						if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::DISABLED)))
 							// Снимаем опцию события
-							i->second->state.options &= ~event::options::REUSEADDR;
+							i->second->state.options &= ~event::options::REUSE_ADDR;
 					}
 					// Если опция не установлена
 					if(result && !isSetup)
 						// Устанавливаем результат работы функции как ложь
 						result = isSetup;
-					// Если опция передана как REUSEPORT
-					if(event::options::REUSEPORT & options){
+					// Если опция передана как REUSE_PORT
+					if(event::options::REUSE_PORT & options){
 						// Устанавливаем режим повторного использования порта
 						if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::ENABLED)))
 							// Устанавливаем опцию события
-							i->second->state.options |= event::options::REUSEPORT;
-					// Если опция не передана как REUSEPORT
+							i->second->state.options |= event::options::REUSE_PORT;
+					// Если опция не передана как REUSE_PORT
 					} else {
 						// Снимаем режим повторного использования порта
 						if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::DISABLED)))
 							// Снимаем опцию события
-							i->second->state.options &= ~event::options::REUSEPORT;
+							i->second->state.options &= ~event::options::REUSE_PORT;
 					}
 					// Если опция не установлена
 					if(result && !isSetup)
@@ -23797,34 +23797,34 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Если опция передана как TCP_CORK
-										if(event::options::TCPCORK & options){
+										if(event::options::TCP_CORK & options){
 											// Активируем алгоритм TCP/CORK
 											if((isSetup = this->_eth.cork(fd, net::socket_mode_t::ENABLED)))
 												// Устанавливаем опцию события
-												i->second->state.options |= event::options::TCPCORK;
+												i->second->state.options |= event::options::TCP_CORK;
 										// Если опция не передана как TCP_CORK
 										} else {
 											// Деактивируем алгоритм TCP/CORK
 											if((isSetup = this->_eth.cork(fd, net::socket_mode_t::DISABLED)))
 												// Снимаем опцию события
-												i->second->state.options &= ~event::options::TCPCORK;
+												i->second->state.options &= ~event::options::TCP_CORK;
 										}
 										// Если опция не установлена
 										if(!isSetup)
 											// Устанавливаем результат работы функции как ложь
 											result = isSetup;
 										// Если опция передана как TCP_NODELAY
-										if(event::options::TCPNODELAY & options){
+										if(event::options::TCP_NO_DELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
 											if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::ENABLED)))
 												// Устанавливаем опцию события
-												i->second->state.options |= event::options::TCPNODELAY;
+												i->second->state.options |= event::options::TCP_NO_DELAY;
 										// Если опция не передана как TCP_NODELAY
 										} else {
 											// Снимаем режим отключения алгоритма Нейгла
 											if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::DISABLED)))
 												// Снимаем опцию события
-												i->second->state.options &= ~event::options::TCPNODELAY;
+												i->second->state.options &= ~event::options::TCP_NO_DELAY;
 										}
 										// Если опция не установлена
 										if(result && !isSetup)
@@ -23843,17 +23843,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 								 */
 								#if __FreeBSD__
 									// Если опция передана как TCP_CORK
-									if(event::options::TCPCORK & options){
+									if(event::options::TCP_CORK & options){
 										// Активируем алгоритм TCP/CORK
 										if((isSetup = this->_eth.cork(fd, net::socket_mode_t::ENABLED)))
 											// Устанавливаем опцию события
-											i->second->state.options |= event::options::TCPCORK;
+											i->second->state.options |= event::options::TCP_CORK;
 									// Если опция не передана как TCP_CORK
 									} else {
 										// Деактивируем алгоритм TCP/CORK
 										if((isSetup = this->_eth.cork(fd, net::socket_mode_t::DISABLED)))
 											// Снимаем опцию события
-											i->second->state.options &= ~event::options::TCPCORK;
+											i->second->state.options &= ~event::options::TCP_CORK;
 									}
 									// Если опция не установлена
 									if(!isSetup)
@@ -23861,17 +23861,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 										result = isSetup;
 								#endif
 								// Если опция передана как TCP_NODELAY
-								if(event::options::TCPNODELAY & options){
+								if(event::options::TCP_NO_DELAY & options){
 									// Устанавливаем режим отключения алгоритма Нейгла
 									if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::ENABLED)))
 										// Устанавливаем опцию события
-										i->second->state.options |= event::options::TCPNODELAY;
+										i->second->state.options |= event::options::TCP_NO_DELAY;
 								// Если опция не передана как TCP_NODELAY
 								} else {
 									// Снимаем режим отключения алгоритма Нейгла
 									if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::DISABLED)))
 										// Снимаем опцию события
-										i->second->state.options &= ~event::options::TCPNODELAY;
+										i->second->state.options &= ~event::options::TCP_NO_DELAY;
 								}
 								// Если опция не установлена
 								if(result && !isSetup)
@@ -23890,17 +23890,17 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если необходимо деактивировать параметры keep-alive для сокета события
 					i->second->state.options &= ~event::options::KEEPALIVE;
 				// Если опция передана как CLOSE_ON_EXEC
-				if(event::options::CLOSEONEXEC & options){
+				if(event::options::CLOSE_ON_EXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
 					if((isSetup = this->_eth.closeonexec(fd, net::socket_mode_t::ENABLED)))
 						// Устанавливаем опцию события
-						i->second->state.options |= event::options::CLOSEONEXEC;
+						i->second->state.options |= event::options::CLOSE_ON_EXEC;
 				// Если опция не передана как CLOSE_ON_EXEC
 				} else {
 					// Снимаем режим закрытия дескриптора при выполнении exec
 					if((isSetup = this->_eth.closeonexec(fd, net::socket_mode_t::DISABLED)))
 						// Снимаем опцию события
-						i->second->state.options &= ~event::options::CLOSEONEXEC;
+						i->second->state.options &= ~event::options::CLOSE_ON_EXEC;
 				}
 				// Если опция не установлена
 				if(result && !isSetup)
@@ -23998,7 +23998,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 				 */
 				switch(option){
 					// Если опция передана как IPV6_V6ONLY
-					case event::options::IPV6ONLY: {
+					case event::options::IPV6_ONLY: {
 						// Если узел не является файловой системой и не является каналом
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
@@ -24013,28 +24013,28 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 										// Если необходимо активировать режим отображения IPv4 => IPv6
 										if(mode)
 											// Устанавливаем опцию события
-											i->second->state.options |= event::options::IPV6ONLY;
+											i->second->state.options |= event::options::IPV6_ONLY;
 										// Если необходимо деактивировать режим отображения IPv4 => IPv6
-										else i->second->state.options ^= event::options::IPV6ONLY;
+										else i->second->state.options ^= event::options::IPV6_ONLY;
 									}
 								} break;
 							}
 						}
 					} break;
 					// Если опция передана как NO_SIGILL
-					case event::options::NOSIGILL: {
+					case event::options::NO_SIGILL: {
 						// Отключаем или включаем генерацию сигнала SIGILL при записи в закрытый сокет
 						if((result = this->_eth.nosigill())){
 							// Если необходимо отключить генерацию сигнала SIGILL
 							if(mode)
 								// Устанавливаем опцию события
-								i->second->state.options |= event::options::NOSIGILL;
+								i->second->state.options |= event::options::NO_SIGILL;
 							// Если необходимо включить генерацию сигнала SIGILL
-							else i->second->state.options ^= event::options::NOSIGILL;
+							else i->second->state.options ^= event::options::NO_SIGILL;
 						}
 					} break;
 					// Если опция передана как NO_SIGPIPE
-					case event::options::NOSIGPIPE: {
+					case event::options::NO_SIGPIPE: {
 						// Если узел не является файловой системой и не является каналом
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
@@ -24043,30 +24043,30 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 								// Если необходимо отключить генерацию сигнала SIGPIPE
 								if(mode)
 									// Устанавливаем опцию события
-									i->second->state.options |= event::options::NOSIGPIPE;
+									i->second->state.options |= event::options::NO_SIGPIPE;
 								// Если необходимо включить генерацию сигнала SIGPIPE
-								else i->second->state.options ^= event::options::NOSIGPIPE;
+								else i->second->state.options ^= event::options::NO_SIGPIPE;
 							}
 						}
 					} break;
-					// Если опция передана как NOIOBLOCK
-					case event::options::NOIOBLOCK:
-					// Если опция передана как SMIOBLOCK
-					case event::options::SMIOBLOCK: {
+					// Если опция передана как NO_IO_BLOCK
+					case event::options::NO_IO_BLOCK:
+					// Если опция передана как SM_IO_BLOCK
+					case event::options::SM_IO_BLOCK: {
 						// Если необходимо активировать опцию события
 						if(mode){
 							// Если событие установлено как блокирующее
-							if(!(i->second->state.options & event::options::NOIOBLOCK) && !(i->second->state.options & event::options::SMIOBLOCK)){
+							if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем неблокирующий режим ввода/вывода
 								if((result = this->_eth.noblocking(fd, net::socket_mode_t::ENABLED))){
-									// Если установлена опция SMIOBLOCK
-									if(option == event::options::SMIOBLOCK)
+									// Если установлена опция SM_IO_BLOCK
+									if(option == event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
-										i->second->state.options |= event::options::SMIOBLOCK;
-									// Если установлена опция NOIOBLOCK
-									else if(option == event::options::NOIOBLOCK)
+										i->second->state.options |= event::options::SM_IO_BLOCK;
+									// Если установлена опция NO_IO_BLOCK
+									else if(option == event::options::NO_IO_BLOCK)
 										// Устанавливаем опцию события
-										i->second->state.options |= event::options::NOIOBLOCK;
+										i->second->state.options |= event::options::NO_IO_BLOCK;
 									// Если событие уже создано и не подлежит уничтожению
 									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 										/**
@@ -24148,17 +24148,17 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						// Если необходимо деактивировать опцию события
 						} else {
 							// Если событие установлено как неблокирующее
-							if((i->second->state.options & event::options::NOIOBLOCK) || (i->second->state.options & event::options::SMIOBLOCK)){
+							if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем блокирующий режим ввода/вывода
 								if((result = this->_eth.noblocking(fd, net::socket_mode_t::DISABLED))){
-									// Если установлена опция SMIOBLOCK
-									if(i->second->state.options & event::options::SMIOBLOCK)
+									// Если установлена опция SM_IO_BLOCK
+									if(i->second->state.options & event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
-										i->second->state.options ^= event::options::SMIOBLOCK;
-									// Если установлена опция NOIOBLOCK
-									else if(i->second->state.options & event::options::NOIOBLOCK)
+										i->second->state.options ^= event::options::SM_IO_BLOCK;
+									// Если установлена опция NO_IO_BLOCK
+									else if(i->second->state.options & event::options::NO_IO_BLOCK)
 										// Устанавливаем опцию события
-										i->second->state.options ^= event::options::NOIOBLOCK;
+										i->second->state.options ^= event::options::NO_IO_BLOCK;
 									// Если событие уже создано и не подлежит уничтожению
 									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
 										/**
@@ -24243,8 +24243,8 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							}
 						}
 					} break;
-					// Если опция передана как REUSEADDR
-					case event::options::REUSEADDR: {
+					// Если опция передана как REUSE_ADDR
+					case event::options::REUSE_ADDR: {
 						// Если узел не является файловой системой и не является каналом
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
@@ -24253,14 +24253,14 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 								// Если необходимо активировать режим повторного использования адреса сокета
 								if(mode)
 									// Устанавливаем опцию события
-									i->second->state.options |= event::options::REUSEADDR;
+									i->second->state.options |= event::options::REUSE_ADDR;
 								// Если необходимо деактивировать режим повторного использования адреса сокета
-								else i->second->state.options ^= event::options::REUSEADDR;
+								else i->second->state.options ^= event::options::REUSE_ADDR;
 							}
 						}
 					} break;
-					// Если опция передана как REUSEPORT
-					case event::options::REUSEPORT: {
+					// Если опция передана как REUSE_PORT
+					case event::options::REUSE_PORT: {
 						// Если узел не является файловой системой и не является каналом
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
@@ -24269,9 +24269,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 								// Если необходимо активировать режим повторного использования порта сокета
 								if(mode)
 									// Устанавливаем опцию события
-									i->second->state.options |= event::options::REUSEPORT;
+									i->second->state.options |= event::options::REUSE_PORT;
 								// Если необходимо деактивировать режим повторного использования порта сокета
-								else i->second->state.options ^= event::options::REUSEPORT;
+								else i->second->state.options ^= event::options::REUSE_PORT;
 							}
 						}
 					} break;
@@ -24353,7 +24353,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						}
 					} break;
 					// Если опция передана как TCP_CORK
-					case event::options::TCPCORK: {
+					case event::options::TCP_CORK: {
 						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
@@ -24378,9 +24378,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 													// Если необходимо активировать режим алгоритма TCP/CORK
 													if(mode)
 														// Устанавливаем опцию события
-														i->second->state.options |= event::options::TCPCORK;
+														i->second->state.options |= event::options::TCP_CORK;
 													// Если необходимо деактивировать режим алгоритма TCP/CORK
-													else i->second->state.options ^= event::options::TCPCORK;
+													else i->second->state.options ^= event::options::TCP_CORK;
 												}
 											} break;
 											/**
@@ -24394,9 +24394,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 														// Если необходимо активировать режим алгоритма TCP/CORK
 														if(mode)
 															// Устанавливаем опцию события
-															i->second->state.options |= event::options::TCPCORK;
+															i->second->state.options |= event::options::TCP_CORK;
 														// Если необходимо деактивировать режим алгоритма TCP/CORK
-														else i->second->state.options ^= event::options::TCPCORK;
+														else i->second->state.options ^= event::options::TCP_CORK;
 													}
 												} break;
 											#endif
@@ -24407,7 +24407,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						}
 					} break;
 					// Если опция передана как TCP_NODELAY
-					case event::options::TCPNODELAY: {
+					case event::options::TCP_NO_DELAY: {
 						// Если узел не является файловой системой и не является межпроцессным взаимодействием
 						if((i->second->state.node != event::node_t::IPC) &&
 						   (i->second->state.family != event::family_t::FSYS)){
@@ -24430,9 +24430,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 												// Если необходимо активировать алгоритм Нейгла для TCP сокета
 												if(mode)
 													// Устанавливаем опцию события
-													i->second->state.options |= event::options::TCPNODELAY;
+													i->second->state.options |= event::options::TCP_NO_DELAY;
 												// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-												else i->second->state.options ^= event::options::TCPNODELAY;
+												else i->second->state.options ^= event::options::TCP_NO_DELAY;
 											}
 										} break;
 										// Если сокет принадлежит к типу SEQPACKET
@@ -24442,9 +24442,9 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 												// Если необходимо активировать алгоритм Нейгла для TCP сокета
 												if(mode)
 													// Устанавливаем опцию события
-													i->second->state.options |= event::options::TCPNODELAY;
+													i->second->state.options |= event::options::TCP_NO_DELAY;
 												// Если необходимо деактивировать алгоритм Нейгла для TCP сокета
-												else i->second->state.options ^= event::options::TCPNODELAY;
+												else i->second->state.options ^= event::options::TCP_NO_DELAY;
 											}
 										} break;
 									}
@@ -24464,15 +24464,15 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						return true;
 					}
 					// Если опция передана как CLOSE_ON_EXEC
-					case event::options::CLOSEONEXEC: {
+					case event::options::CLOSE_ON_EXEC: {
 						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
 						if((result = this->_eth.closeonexec(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
 							// Если необходимо активировать режим закрытия сокета при выполнении exec()
 							if(mode)
 								// Устанавливаем опцию события
-								i->second->state.options |= event::options::CLOSEONEXEC;
+								i->second->state.options |= event::options::CLOSE_ON_EXEC;
 							// Если необходимо деактивировать режим закрытия сокета при выполнении exec()
-							else i->second->state.options ^= event::options::CLOSEONEXEC;
+							else i->second->state.options ^= event::options::CLOSE_ON_EXEC;
 						}
 					} break;
 				}
@@ -25336,7 +25336,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 										// Если таймаут на чтение данных найден
 										if((j != client->timeouts.end()) && (j->second > 0)){
 											// Если сокет является неблокирующим
-											if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+											if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 												// Активируем таймаут события
 												client->timeout = j->first;
 												// Добавляем новое событие в список изменений
@@ -25466,7 +25466,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
 										// Если таймаут на подключение найден
 										if((j != client->timeouts.end()) && (j->second > 0)){
 											// Если сокет является неблокирующим
-											if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+											if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 												// Активируем таймаут события
 												client->timeout = j->first;
 												// Добавляем новое событие в список изменений
@@ -27316,8 +27316,8 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 								// Выполняем запись данных в файл
 								::memcpy(buffer + (fs->offset - static_cast <size_t> (offset)), data, size);
 								// Если сокет является неблокирующим
-								if((fs->state.options & event::options::NOIOBLOCK) ||
-								   (fs->state.options & event::options::SMIOBLOCK))
+								if((fs->state.options & event::options::NO_IO_BLOCK) ||
+								   (fs->state.options & event::options::SM_IO_BLOCK))
 									// Выполняем синхронизацию данных в файл
 									::msync(buffer, fs->size, MS_ASYNC);
 								// Выполняем синхронизацию данных в файл
@@ -27391,7 +27391,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Для семейства межпроцессных соединений
 											case static_cast <uint8_t> (event::family_t::PIPE): {
 												// Если сокет является неблокирующим
-												if(ipc->state.options & event::options::NOIOBLOCK){
+												if(ipc->state.options & event::options::NO_IO_BLOCK){
 													// Если очередь передачи данных пустая
 													if(ipc->transfer.queue.empty()){
 														// Выполняем отправку данных в TCP/IP сокет
@@ -27509,7 +27509,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														return true;
 													}
 												// Если сокет является полублокирующим
-												} else if(ipc->state.options & event::options::SMIOBLOCK) {
+												} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 													// Переводим сокет в блокирующий режим
 													if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
 														// Выполняем отправку данных в TCP/IP сокет
@@ -27650,7 +27650,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет принадлежит к типу STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM): {
 										// Если сокет является неблокирующим
-										if(ipc->state.options & event::options::NOIOBLOCK){
+										if(ipc->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
@@ -27768,7 +27768,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return true;
 											}
 										// Если сокет является полублокирующим
-										} else if(ipc->state.options & event::options::SMIOBLOCK) {
+										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в TCP/IP сокет
@@ -27908,7 +27908,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(ipc->state.options & event::options::NOIOBLOCK){
+										if(ipc->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
@@ -28011,7 +28011,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return true;
 											}
 										// Если сокет является полублокирующим
-										} else if(ipc->state.options & event::options::SMIOBLOCK) {
+										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в TCP/IP сокет
@@ -28132,7 +28132,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет принадлежит к типу STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM): {
 										// Если сокет является неблокирующим
-										if(peer->state.options & event::options::NOIOBLOCK){
+										if(peer->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(peer->transfer.queue.empty()){
 												/**
@@ -28304,7 +28304,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return true;
 											}
 										// Если сокет является полублокирующим
-										} else if(peer->state.options & event::options::SMIOBLOCK) {
+										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Если необходимо установить таймаут на отправку данных
@@ -28504,7 +28504,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(peer->state.options & event::options::NOIOBLOCK){
+										if(peer->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(peer->transfer.queue.empty()){
 												/**
@@ -28646,7 +28646,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return true;
 											}
 										// Если сокет является полублокирующим
-										} else if(peer->state.options & event::options::SMIOBLOCK) {
+										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Если необходимо установить таймаут на отправку данных
@@ -28862,7 +28862,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(origin->state.options & event::options::NOIOBLOCK){
+										if(origin->state.options & event::options::NO_IO_BLOCK){
 											// Если необходимо установить таймаут на чтение данных
 											auto i = origin->timeouts.find(event::action_t::READ);
 											// Если таймаут на подключение найден
@@ -28967,7 +28967,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 										// Если сокет является полублокирующим
-										} else if(origin->state.options & event::options::SMIOBLOCK) {
+										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в RAW-сокет
@@ -29105,7 +29105,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(origin->state.options & event::options::NOIOBLOCK){
+										if(origin->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(origin->transfer.queue.empty()){
 												// Выполняем отправку данных в UDP-сокет
@@ -29222,7 +29222,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return true;
 											}
 										// Если сокет является полублокирующим
-										} else if(origin->state.options & event::options::SMIOBLOCK) {
+										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Выполняем отправку данных в UDP-сокет
@@ -29372,7 +29372,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 									// Если сокет принадлежит к типу STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM): {
 										// Если сокет является неблокирующим
-										if(client->state.options & event::options::NOIOBLOCK){
+										if(client->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(client->transfer.queue.empty()){
 												/**
@@ -29544,7 +29544,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return true;
 											}
 										// Если сокет является полублокирующим
-										} else if(client->state.options & event::options::SMIOBLOCK) {
+										} else if(client->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Если необходимо установить таймаут на отправку данных
@@ -29746,7 +29746,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 											// Если сокет является неблокирующим
-											if(client->state.options & event::options::NOIOBLOCK){
+											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													/**
@@ -29890,7 +29890,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													return true;
 												}
 											// Если сокет является полублокирующим
-											} else if(client->state.options & event::options::SMIOBLOCK) {
+											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
 												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 													// Если необходимо установить таймаут на отправку данных
@@ -30093,7 +30093,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 											// Если сокет является неблокирующим
-											if(client->state.options & event::options::NOIOBLOCK){
+											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													/**
@@ -30237,7 +30237,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													return true;
 												}
 											// Если сокет является полублокирующим
-											} else if(client->state.options & event::options::SMIOBLOCK) {
+											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
 												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 													// Если необходимо установить таймаут на отправку данных
@@ -30470,7 +30470,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(client->state.options & event::options::NOIOBLOCK){
+										if(client->state.options & event::options::NO_IO_BLOCK){
 											// Если таймаут не установлен
 											if(client->timeout == event::action_t::NONE){
 												// Если необходимо установить таймаут на чтение данных
@@ -30578,7 +30578,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 										// Если сокет является полублокирующим
-										} else if(client->state.options & event::options::SMIOBLOCK) {
+										} else if(client->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 												// Если необходимо установить таймаут на чтение данных
@@ -30742,7 +30742,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 											// Если сокет является неблокирующим
-											if(client->state.options & event::options::NOIOBLOCK){
+											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
@@ -30859,7 +30859,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													return true;
 												}
 											// Если сокет является полублокирующим
-											} else if(client->state.options & event::options::SMIOBLOCK) {
+											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
 												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 													// Если необходимо установить таймаут на отправку данных
@@ -31008,7 +31008,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 											// Если сокет является неблокирующим
-											if(client->state.options & event::options::NOIOBLOCK){
+											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													// Выполняем отправку данных в UDP-сокет
@@ -31125,7 +31125,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													return true;
 												}
 											// Если сокет является полублокирующим
-											} else if(client->state.options & event::options::SMIOBLOCK) {
+											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
 												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
 													// Если необходимо установить таймаут на отправку данных
@@ -31320,7 +31320,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(server->state.options & event::options::NOIOBLOCK){
+										if(server->state.options & event::options::NO_IO_BLOCK){
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
@@ -31393,7 +31393,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 										// Если сокет является полублокирующим
-										} else if(server->state.options & event::options::SMIOBLOCK) {
+										} else if(server->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(server->fd, net::socket_mode_t::DISABLED)){
 												// Если необходимо установить таймаут на отправку данных
@@ -31543,7 +31543,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											return result;
 										}
 										// Если сокет является неблокирующим
-										if(server->state.options & event::options::NOIOBLOCK){
+										if(server->state.options & event::options::NO_IO_BLOCK){
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
@@ -31609,7 +31609,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												return result;
 											}
 										// Если сокет является полублокирующим
-										} else if(server->state.options & event::options::SMIOBLOCK) {
+										} else if(server->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.noblocking(server->fd, net::socket_mode_t::DISABLED)){
 												// Если необходимо установить таймаут на отправку данных
@@ -35389,7 +35389,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Деактивируем событие на запись данных
 						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Если сокет является неблокирующим
-						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+						if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 							// Событие для получения таймаутов
 							event::action_t action = event::action_t::NONE;
 							// Выполняем проверку на доступные таймауты
@@ -35437,7 +35437,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Устанавливаем статус события в состояние паузы
 						origin->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						// Если сокет является неблокирующим
-						if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+						if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 							// Событие для получения таймаутов
 							event::action_t action = event::action_t::NONE;
 							// Выполняем проверку на доступные таймауты
@@ -35498,7 +35498,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
 						// Деактивируем событие на запись данных
 						EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 						// Если сокет является неблокирующим
-						if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Событие для получения таймаутов
 							event::action_t action = event::action_t::NONE;
 							// Выполняем проверку на доступные таймауты
@@ -35743,7 +35743,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Если нужный нам таймаут найден
 							if((j != peer->timeouts.end()) && (j->second > 0)){
 								// Если сокет является неблокирующим
-								if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 									// Активируем таймаут события
 									peer->timeout = j->first;
 									// Добавляем новое событие в список изменений
@@ -35770,7 +35770,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Если нужный нам таймаут найден
 							if((j != origin->timeouts.end()) && (j->second > 0)){
 								// Если сокет является неблокирующим
-								if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+								if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 									// Выполняем блокировку потоков
 									const locker_t <> lock(::local::mtx);
 									// Активируем таймаут события
@@ -35804,7 +35804,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
 							// Если нужный нам таймаут найден
 							if((j != client->timeouts.end()) && (j->second > 0)){
 								// Если сокет является неблокирующим
-								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK)){
+								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 									// Активируем таймаут события
 									client->timeout = j->first;
 									// Добавляем новое событие в список изменений
@@ -36539,7 +36539,7 @@ bool awh::IO::reinitialize() noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
-						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
+						if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
 							// Устанавливаем событие на чтение и активируем его
 							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, peer);
 						// Устанавливаем событие на чтение и активируем его
@@ -36553,7 +36553,7 @@ bool awh::IO::reinitialize() noexcept {
 						// Если таймаут на получение данных найден
 						if((j != peer->timeouts.end()) && (j->second > 0)){
 							// Если сокет является неблокирующим
-							if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK)){
+							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 								// Активируем таймаут события
 								peer->timeout = j->first;
 								// Добавляем новое событие в список изменений
@@ -36572,7 +36572,7 @@ bool awh::IO::reinitialize() noexcept {
 						// Добавляем новое событие в список изменений
 						::local::change.push_back((struct kevent){});
 						// Если сокет является неблокирующим
-						if((peer->state.options & event::options::NOIOBLOCK) || (peer->state.options & event::options::SMIOBLOCK))
+						if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
 							// Устанавливаем событие на чтение но отключаем его
 							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Устанавливаем событие на чтение но отключаем его
@@ -36603,7 +36603,7 @@ bool awh::IO::reinitialize() noexcept {
 						// Если таймаут на получение данных найден
 						if((j != origin->timeouts.end()) && (j->second > 0)){
 							// Если сокет является неблокирующим
-							if((origin->state.options & event::options::NOIOBLOCK) || (origin->state.options & event::options::SMIOBLOCK)){
+							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Активируем таймаут события
@@ -36645,7 +36645,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
-								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем событие на чтение но отключаем его
 									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
@@ -36662,7 +36662,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
-								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем событие на чтение но отключаем его
 									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
@@ -36679,7 +36679,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
-								if((client->state.options & event::options::NOIOBLOCK) || (client->state.options & event::options::SMIOBLOCK))
+								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем событие на чтение но отключаем его
 									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, client);
 								// Устанавливаем событие на чтение но отключаем его
@@ -36732,7 +36732,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Если сокет является неблокирующим
-								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK)){
+								if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Устанавливаем событие на чтение но отключаем его
@@ -36759,7 +36759,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
-								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+								if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем событие на чтение но отключаем его
 									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его
@@ -36784,7 +36784,7 @@ bool awh::IO::reinitialize() noexcept {
 								// Добавляем новое событие в список изменений
 								::local::change.push_back((struct kevent){});
 								// Если сокет является неблокирующим
-								if((server->state.options & event::options::NOIOBLOCK) || (server->state.options & event::options::SMIOBLOCK))
+								if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем событие на чтение но отключаем его
 									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, server);
 								// Устанавливаем событие на чтение но отключаем его

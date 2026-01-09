@@ -61,18 +61,17 @@ namespace awh {
 		 *
 		 */
 		enum class node_t : uint8_t {
-			NONE      = 0x00, // Узел не определён
-			IPC       = 0x01, // Узел межпроцессного взаимодействия
-			DIR       = 0x02, // Узел директории в файловой системе
-			FILE      = 0x03, // Узел файла в файловой системе
-			PEER      = 0x04, // Одноранговый узел
-			ORIGIN    = 0x05, // Исходящий узел
-			NOTIFY    = 0x06, // Узел уведомления
-			CLIENT    = 0x07, // Узел клиента
-			SERVER    = 0x08, // Узел сервера
-			TIMEOUT   = 0x09, // Узел таймаута времени
-			INTERVAL  = 0x0A, // Узел интервала времени
-			MULTICAST = 0x0B  // Узел multicast группы
+			NONE     = 0x00, // Узел не определён
+			IPC      = 0x01, // Узел межпроцессного взаимодействия
+			DIR      = 0x02, // Узел директории в файловой системе
+			FILE     = 0x03, // Узел файла в файловой системе
+			PEER     = 0x04, // Одноранговый узел
+			ORIGIN   = 0x05, // Исходящий узел
+			NOTIFY   = 0x06, // Узел уведомления
+			CLIENT   = 0x07, // Узел клиента
+			SERVER   = 0x08, // Узел сервера
+			TIMEOUT  = 0x09, // Узел таймаута времени
+			INTERVAL = 0x0A // Узел интервала времени
 		};
 		/**
 		 * @brief Типы виртуальных узлов
@@ -245,65 +244,61 @@ namespace awh {
 			 */
 			static constexpr uint16_t NONE = 0x00;
 			/**
-			 * Опция одиночного использования сокета
+			 * Опция ручной установки заголовков IP пакетов
 			 */
-			static constexpr uint16_t ONSHOT = 0x01;
+			static constexpr uint16_t HDRINCL = 0x01;
 			/**
 			 * Опция отложенной отправки TCP пакетов
 			 */
-			static constexpr uint16_t TCPCORK = 0x02;
-			/**
-			 * Опция ручной установки заголовков IP пакетов
-			 */
-			static constexpr uint16_t HDRINCL = 0x04;
+			static constexpr uint16_t TCP_CORK = 0x02;
 			/**
 			 * Опция только IPv6 для сокета
 			 */
-			static constexpr uint16_t IPV6ONLY = 0x08;
+			static constexpr uint16_t IPV6_ONLY = 0x04;
 			/**
 			 * Опция отключения сигнала SIGILL
 			 */
-			static constexpr uint16_t NOSIGILL = 0x10;
-			/**
-			 * Опция отключения сигнала SIGPIPE
-			 */
-			static constexpr uint16_t NOSIGPIPE = 0x20;
-			/**
-			 * Опция неблокирующего ввода-вывода
-			 */
-			static constexpr uint16_t NOIOBLOCK = 0x40;
-			/**
-			 * Опция умного неблокирующего ввода-вывода
-			 */
-			static constexpr uint16_t SMIOBLOCK = 0x80;
+			static constexpr uint16_t NO_SIGILL = 0x08;
 			/**
 			 * Опция широковещательного адреса
 			 */
-			static constexpr uint16_t BROADCAST = 0x100;
-			/**
-			 * Опция повторного использования адреса
-			 */
-			static constexpr uint16_t REUSEADDR = 0x200;
-			/**
-			 * Опция повторного использования порта
-			 */
-			static constexpr uint16_t REUSEPORT = 0x400;
-			/**
-			 * Опция отключения алгоритма Нейгла
-			 */
-			static constexpr uint16_t TCPNODELAY = 0x800;
+			static constexpr uint16_t BROADCAST = 0x10;
 			/**
 			 * Опция включения TCP keepalive
 			 */
-			static constexpr uint16_t KEEPALIVE = 0x1000;
+			static constexpr uint16_t KEEPALIVE = 0x20;
+			/**
+			 * Опция отключения сигнала SIGPIPE
+			 */
+			static constexpr uint16_t NO_SIGPIPE = 0x40;
+			/**
+			 * Опция неблокирующего ввода-вывода
+			 */
+			static constexpr uint16_t NO_IO_BLOCK = 0x80;
+			/**
+			 * Опция повторного использования адреса
+			 */
+			static constexpr uint16_t REUSE_ADDR = 0x100;
+			/**
+			 * Опция повторного использования порта
+			 */
+			static constexpr uint16_t REUSE_PORT = 0x200;
+			/**
+			 * Опция умного неблокирующего ввода-вывода
+			 */
+			static constexpr uint16_t SM_IO_BLOCK = 0x400;
+			/**
+			 * Опция отключения алгоритма Нейгла
+			 */
+			static constexpr uint16_t TCP_NO_DELAY = 0x800;
 			/**
 			 * Опция закрытия сокета при выполнении exec
 			 */
-			static constexpr uint16_t CLOSEONEXEC = 0x2000;
+			static constexpr uint16_t CLOSE_ON_EXEC = 0x1000;
 			/**
 			 * Опция включения мультикастовой петли
 			 */
-			static constexpr uint16_t MULTICAST_LOOPBACK = 0x4000;
+			static constexpr uint16_t MULTICAST_LOOPBACK = 0x2000;
 		};
 		/**
 		 * @brief пространство имён работы с обратными вызовами

@@ -85,8 +85,8 @@ int32_t main(int32_t argc, char * argv[]){
 				/**
 				 * event::options::MULTICAST_LOOPBACK разрешает или запрещает отправку сообщений в локальный порт 127.0.0.1 если клиент висит на 0.0.0.0 то он получит две копии сообщений
 				 */
-				// if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | event::options::MULTICAST_LOOPBACK))
-				if(io.options(eid, event::options::NOSIGILL | event::options::NOSIGPIPE | event::options::REUSEADDR | event::options::REUSEPORT | awh::event::options::MULTICAST_LOOPBACK))
+				// if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::MULTICAST_LOOPBACK))
+				if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | awh::event::options::MULTICAST_LOOPBACK))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
