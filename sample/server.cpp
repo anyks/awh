@@ -48,7 +48,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
+	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -59,7 +59,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
-		// Создаём объект работы с SCTP протоколом
+		// Создаём объект управления SCTP протоколом
 		sctp_t sctp(&fmk, &log);
 		// Выполняем подписку на SCTP события
 		sctp.eventsSubscribe(eid, {
@@ -461,16 +461,6 @@ int32_t main(int32_t argc, char * argv[]){
 			io.timeout(eid, event::action_t::WRITE, 7000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
-				// Текст инициализационных сообщений SCTP
-				net::sctp::initmsg_t initmsg;
-				// Устанавливаем количество попыток подключения SCTP
-				initmsg.attempts = 4;
-				// Устанавливаем количество исходящих потоков SCTP
-				initmsg.ostreams = 5;
-				// Устанавливаем количество входящих потоков SCTP
-				initmsg.istreams = 5;
-				// Инициализируем сообщения SCTP
-				sctp.initMessages(eid, initmsg);
 				// Если прослушивание события успешно
 				if(io.listen(eid, 100)){
 					// Выполняем запуск события

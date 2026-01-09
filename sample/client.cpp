@@ -1382,7 +1382,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -1393,7 +1393,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
-		// Создаём объект работы с SCTP протоколом
+		// Создаём объект управления SCTP протоколом
 		sctp_t sctp(&fmk, &log);
 		// Выполняем подписку на SCTP события
 		sctp.eventsSubscribe(eid, {
@@ -1406,18 +1406,6 @@ int32_t main(int32_t argc, char * argv[]){
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
 			if(io.target(eid, "127.0.0.1")){
-				// Устанавливаем функцию обратного вызова на возрождение события
-				io.on(eid, [&io, &sctp, &log](const event::id_t eid) noexcept -> void {
-					// Выводим сообщение об возрождении события
-					log.print("Событие возрождено: ID=%u", log_t::flag_t::INFO, eid);
-					// Выполняем подписку на SCTP события
-					sctp.eventsSubscribe(eid, {
-						net::sctp::event_type_t::ASSOC_CHANGE,
-						net::sctp::event_type_t::SHUTDOWN_EVENT,
-						net::sctp::event_type_t::SEND_FAILED_EVENT,
-						net::sctp::event_type_t::REMOTE_ERROR
-					});
-				});
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -1570,7 +1558,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [&sctp, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				sctp.on(eid, [&sctp, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем информацию о сообщении SCTP-сокета
 					const net::sctp::minfo_t & minfo = sctp.messageInfo(eid);
 					// Выводим информацию о сообщении SCTP-сокета
@@ -1753,16 +1741,6 @@ int32_t main(int32_t argc, char * argv[]){
 						if(io.launch(eid)){
 							// Выводим сообщение об успешном запуске события
 							cout << " Событие успешно запущено!" << endl;
-							/*
-							// Текст исходящего сообщения
-							const string message("Hello from async client!");
-							// Отправляем данные обратно клиенту
-							if(io.send(eid, message.c_str(), message.size()))
-								// Если данные успешно отправлены
-								log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
-							// Если данные не отправлены
-							else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
-							*/
 							/**
 							 * Запускаем опрос событий
 							 */
