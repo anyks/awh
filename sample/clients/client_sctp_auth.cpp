@@ -1393,16 +1393,18 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
+		// Создаём объект управления SCTP-протоколом
+		sctp_t sctp(&fmk, &log);
 		// Устанавливаем ключ аутентификации SCTP-сокета
-		io.sctpAuthenticateKey(eid, 1, "0123456789abcdef0123456789abcdef");
+		sctp.authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef");
 		// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-		io.sctpAuthenticateKey(eid, event::mode_t::ENABLED, 1);
+		sctp.authenticateKey(eid, event::mode_t::ENABLED, 1);
 		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-		io.sctpAuthenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
+		sctp.authenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
 		// Устанавливаем чанки аутентификации SCTP-сокета
-		io.sctpAuthenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
+		sctp.authenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
 		// Выполняем подписку на SCTP события
-		io.sctpEventsSubscribe(eid, {
+		sctp.eventsSubscribe(eid, {
 			net::sctp::event_type_t::ASSOC_CHANGE,
 			net::sctp::event_type_t::SHUTDOWN_EVENT,
 			net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -1412,31 +1414,31 @@ int32_t main(int32_t argc, char * argv[]){
 		// Извлекаем чанки аутентификации SCTP-сокета
 		vector <net::sctp::auth_chunk_t> chunks;
 		// Выполняем извлечение чанков аутентификации SCTP-сокета
-		io.sctpAuthenticateChunks(eid, event::origin_t::LOCAL, chunks);
+		sctp.authenticateChunks(eid, event::origin_t::LOCAL, chunks);
 		// Перебираем все извлечённые чанки
 		for(auto & chunk : chunks)
 			// Выводим информацию о чанках аутентификации SCTP-сокета
 			cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 		// Устанавливаем таймаут heartbeat SCTP-сокета
-		io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
+		sctp.timeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
 			if(io.target(eid, "127.0.0.1")){
 				// Устанавливаем функцию обратного вызова на возрождение события
-				io.on(eid, [&io, &log](const event::id_t eid) noexcept -> void {
+				io.on(eid, [&io, &sctp, &log](const event::id_t eid) noexcept -> void {
 					// Выводим сообщение об возрождении события
 					log.print("Событие возрождено: ID=%u", log_t::flag_t::INFO, eid);
 					// Устанавливаем ключ аутентификации SCTP-сокета
-					io.sctpAuthenticateKey(eid, 1, "0123456789abcdef0123456789abcdef");
+					sctp.authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef");
 					// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-					io.sctpAuthenticateKey(eid, event::mode_t::ENABLED, 1);
+					sctp.authenticateKey(eid, event::mode_t::ENABLED, 1);
 					// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-					io.sctpAuthenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
+					sctp.authenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
 					// Устанавливаем чанки аутентификации SCTP-сокета
-					io.sctpAuthenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
+					sctp.authenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
 					// Выполняем подписку на SCTP события
-					io.sctpEventsSubscribe(eid, {
+					sctp.eventsSubscribe(eid, {
 						net::sctp::event_type_t::ASSOC_CHANGE,
 						net::sctp::event_type_t::SHUTDOWN_EVENT,
 						net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -1446,13 +1448,13 @@ int32_t main(int32_t argc, char * argv[]){
 					// Извлекаем чанки аутентификации SCTP-сокета
 					vector <net::sctp::auth_chunk_t> chunks;
 					// Выполняем извлечение чанков аутентификации SCTP-сокета
-					io.sctpAuthenticateChunks(eid, event::origin_t::LOCAL, chunks);
+					sctp.authenticateChunks(eid, event::origin_t::LOCAL, chunks);
 					// Перебираем все извлечённые чанки
 					for(auto & chunk : chunks)
 						// Выводим информацию о чанках аутентификации SCTP-сокета
 						cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 					// Устанавливаем таймаут heartbeat SCTP-сокета
-					io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
+					sctp.timeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
 				});
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
@@ -1533,7 +1535,7 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				io.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+				sctp.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					log.print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -1541,7 +1543,7 @@ int32_t main(int32_t argc, char * argv[]){
 					);
 				}));
 				// Устанавливаем функцию обратного вызова на создание события
-				io.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
+				sctp.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
 					// Выводим сообщение с идентификатором событий SCTP
 					cout << " SCTP EVENT ID: " << event->id << endl;
 					/**
@@ -1606,9 +1608,9 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [&chunks, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(eid, [&chunks, &io, &sctp, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем информацию о сообщении SCTP-сокета
-					const net::sctp::minfo_t & minfo = io.sctpMessageInfo(eid);
+					const net::sctp::minfo_t & minfo = sctp.messageInfo(eid);
 					// Выводим информацию о сообщении SCTP-сокета
 					cout << " SCTP Message Info2: " << endl;
 					cout << "  - Stream Number: " << minfo.num << endl;
@@ -1617,7 +1619,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Time to Live: " << minfo.ttl << endl;
 					cout << "  - Flags: " << minfo.flags.size() << endl;
 					// Получаем статус SCTP-сокета
-					const net::sctp::status_t & status = io.sctpStatus(eid);
+					const net::sctp::status_t & status = sctp.status(eid);
 					// Выводим статус SCTP-сокета
 					cout << " SCTP Status: " << endl;
 					cout << "  - ID: " << status.id << endl;
@@ -1629,13 +1631,13 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Unpack Data: " << status.unackdata << endl;
 					cout << "  - Pending Data: " << status.penddata << endl;
 					// Выполняем извлечение чанков аутентификации SCTP-сокета
-					io.sctpAuthenticateChunks(eid, event::origin_t::REMOTE, chunks);
+					sctp.authenticateChunks(eid, event::origin_t::REMOTE, chunks);
 					// Перебираем все извлечённые чанки
 					for(auto & chunk : chunks)
 						// Выводим информацию о чанках аутентификации SCTP-сокета
 						cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 					// Выводим heartbeat timeout SCTP-сокета
-					cout << " HEARTBEAT TIMEOUT: " << io.sctpTimeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+					cout << " HEARTBEAT TIMEOUT: " << sctp.timeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Выводим сообщение о переподключении события
