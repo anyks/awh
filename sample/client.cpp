@@ -1558,7 +1558,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на чтение из события
-				sctp.on(eid, [&sctp, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(eid, [&sctp, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем информацию о сообщении SCTP-сокета
 					const net::sctp::minfo_t & minfo = sctp.messageInfo(eid);
 					// Выводим информацию о сообщении SCTP-сокета
