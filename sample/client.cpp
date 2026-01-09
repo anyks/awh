@@ -1535,7 +1535,7 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				io.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+				sctp.on(eid, static_cast <net::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					log.print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -1543,7 +1543,7 @@ int32_t main(int32_t argc, char * argv[]){
 					);
 				}));
 				// Устанавливаем функцию обратного вызова на создание события
-				io.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
+				sctp.on(eid, [&log](const event::id_t eid, net::sctp_event_t event) noexcept -> void {
 					// Выводим сообщение с идентификатором событий SCTP
 					cout << " SCTP EVENT ID: " << event->id << endl;
 					/**
