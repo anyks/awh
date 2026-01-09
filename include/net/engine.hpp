@@ -220,115 +220,6 @@ namespace awh {
 			virtual bool splice(const event::id_t eid, const event::id_t dest) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения информационных метаданных SCTP сообщения
-			 *
-			 * @param id идентификатор события
-			 * @return   информационные метаданные SCTP сообщения
-			 */
-			virtual net::sctp::minfo_t sctpMessageInfo(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки информационных метаданных SCTP сообщения
-			 *
-			 * @param id   идентификатор события
-			 * @param info информационные метаданные SCTP сообщения
-			 */
-			virtual void sctpMessageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения параметров статуса инициализации SCTP
-			 *
-			 * @param id идентификатор события
-			 * @return   параметры статуса инициализации SCTP
-			 */
-			virtual net::sctp::status_t sctpStatus(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки параметров инициализации SCTP
-			 *
-			 * @param id      идентификатор события
-			 * @param initmsg параметры инициализации SCTP события
-			 */
-			virtual void sctpInitMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения опций подписки SCTP событий
-			 *
-			 * @param id идентификатор события
-			 * @return   список событий SCTP на которые выполнена подписка
-			 */
-			virtual const net::sctp::event_types_t & sctpEventsSubscribed(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки опций подписки SCTP событий
-			 *
-			 * @param id     идентификатор события
-			 * @param events список событий SCTP для подписки
-			 */
-			virtual void sctpEventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения таймаута SCTP события
-			 *
-			 * @param id   идентификатор события
-			 * @param type тип таймаута
-			 * @return     значение таймаута в миллисекундах
-			 */
-			virtual uint32_t sctpTimeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept = 0;
-			/**
-			 * @brief Метод установки таймаута SCTP события
-			 *
-			 * @param id      идентификатор события
-			 * @param type    тип таймаута
-			 * @param timeout значение таймаута в миллисекундах
-			 * @return        результат работы функции
-			 */
-			virtual bool sctpTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод установки ключа аутентификации SCTP сокета
-			 *
-			 * @param id  идентификатор события
-			 * @param num номер ключа аутентификации
-			 * @param key ключ аутентификации
-			 * @return    результат работы функции
-			 */
-			virtual bool sctpAuthenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept = 0;
-			/**
-			 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
-			 *
-			 * @param id   идентификатор события
-			 * @param mode режим установки действия события
-			 * @param num  номер ключа аутентификации
-			 * @return     результат работы функции
-			 */
-			virtual bool sctpAuthenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод установки чанков аутентификации SCTP сокета
-			 *
-			 * @param id     идентификатор события
-			 * @param chunks список чанков подлежащих аутентификации
-			 * @return       результат работы функции
-			 */
-			virtual bool sctpAuthenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept = 0;
-			/**
-			 * @brief Метод извлечения чанков аутентификации SCTP сокета
-			 *
-			 * @param id     идентификатор события
-			 * @param origin источник события
-			 * @param chunks список чанков подлежащих аутентификации
-			 * @return       результат работы функции
-			 */
-			virtual bool sctpAuthenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
-			 *
-			 * @param id    идентификатор события
-			 * @param types список поддерживаемых алгоритмов аутентификации
-			 * @return      результат работы функции
-			 */
-			virtual bool sctpAuthenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept = 0;
-		public:
-			/**
 			 * @brief Метод запуска события
 			 *
 			 * @param id идентификатор события
@@ -376,68 +267,6 @@ namespace awh {
 			 * @return     результат выполнения отправки
 			 */
 			virtual bool send(const event::id_t id, const char * data, const size_t size) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод очистки чёрного списка события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения очистки
-			 */
-			virtual bool clearBlacklist(const event::id_t id) noexcept = 0;
-			/**
-			 * @brief Метод добавления адреса в чёрный список события
-			 *
-			 * @param id    идентификатор события
-			 * @param value значение адреса события
-			 * @return      результат выполнения установки
-			 */
-			virtual bool addToBlacklist(const event::id_t id, const string & value) noexcept = 0;
-			/**
-			 * @brief Метод удаления адреса из чёрного списка события
-			 *
-			 * @param id    идентификатор события
-			 * @param value адрес для удаления из чёрного списка
-			 * @return      результат выполнения удаления
-			 */
-			virtual bool removeFromBlacklist(const event::id_t id, const string & value) noexcept = 0;
-			/**
-			 * @brief Метод получения чёрного списка события
-			 *
-			 * @param id идентификатор события
-			 * @return   чёрный список события
-			 */
-			virtual const std::unordered_map <string, event::address_t> & blacklist(const event::id_t id) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод очистки белого списка события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения очистки
-			 */
-			virtual bool clearWhitelist(const event::id_t id) noexcept = 0;
-			/**
-			 * @brief Метод добавления адреса в белый список события
-			 *
-			 * @param id    идентификатор события
-			 * @param value значение адреса события
-			 * @return      результат выполнения установки
-			 */
-			virtual bool addToWhitelist(const event::id_t id, const string & value) noexcept = 0;
-			/**
-			 * @brief Метод удаления адреса из белого списка события
-			 *
-			 * @param id    идентификатор события
-			 * @param value адрес для удаления из белого списка
-			 * @return      результат выполнения удаления
-			 */
-			virtual bool removeFromWhitelist(const event::id_t id, const string & value) noexcept = 0;
-			/**
-			 * @brief Метод получения белого списка события
-			 *
-			 * @param id идентификатор события
-			 * @return   белый список события
-			 */
-			virtual const std::unordered_map <string, event::address_t> & whitelist(const event::id_t id) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -735,20 +564,6 @@ namespace awh {
 			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::rebirth_t & cb) noexcept = 0;
-			/**
-			 * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			virtual void on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept = 0;
-			/**
-			 * @brief Методы установки функции обратного вызова на получение SCTP событий
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			virtual void on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept = 0;
 		public:
 			/**
 			 * @brief Конструктор

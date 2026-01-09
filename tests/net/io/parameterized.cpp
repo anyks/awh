@@ -1026,7 +1026,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 		// Если семейство события является сокетом UDS
 		case static_cast <uint8_t> (awh::event::family_t::UDS): {
 			// Добавляем новое пользовательское событие
-			const auto & events = this->_io->events(awh::event::family_t::UDS, awh::event::type_t::STREAM);
+			const auto & events = this->_io->events(awh::event::family_t::UDS, this->_parameter.type);
 			// Проверяем, что идентификаторы событий больше нуля
 			ASSERT_GT(events[0], 0);
 			ASSERT_GT(events[1], 0);

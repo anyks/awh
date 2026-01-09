@@ -572,10 +572,6 @@ namespace awh {
 			unique_ptr <attr_t> host;
 			// Обратные вызовы события
 			server_callbacks_t callbacks;
-			// Чёрный список пиров которым запрещён доступ
-			unordered_map <string, event::address_t> blacklist;
-			// Белый список пиров которым разрешён доступ
-			unordered_map <string, event::address_t> whitelist;
 			// Активные таймауты события
 			unordered_map <event::action_t, uint32_t> timeouts;
 			/**

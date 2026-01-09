@@ -58,7 +58,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Регистрируем объект транспортного уровня безопасности
-		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::UDP);
+		tls_t::id_t tid = tls.create(event::node_t::CLIENT, event::protocol_t::SCTP);
 		// Устанавливаем ALPN протоколы TLS
 		tls.alpn(tid, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации DTLS
