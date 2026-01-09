@@ -1398,14 +1398,23 @@ namespace cookie {
 	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::member_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		
+		cout << " ==================1 " << endl;
+
 		// Если cookie еще не проинициализированы
 		if(!member->cookie.initialized){
+			
+			cout << " ==================2 " << endl;
+
 			// Выполняем произвольно генерацию байт в буфере cookie
 			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
 				// Выполняем получение идентификатора контекста TLS
 				const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
 				// Получаем текст ошибки
 				const string error = ::ssl::error(id, "Setting random cookie secret");
+				
+				cout << " ==================3 " << id << endl;
+				
 				// Если функция обратного вызова ошибки установлена
 				if(member->callback.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
@@ -1432,12 +1441,18 @@ namespace cookie {
 				return 0;
 			}
 		}
+		
+		cout << " ==================4 " << endl;
+		
 		// Получаем объект хоста IPv4-адреса
 		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
 		// Размер буфера и длина сгенерированных cookie
 		uint32_t bytes = (address->ip->size + 2), length = 0;
 		// Выполняем выделение память для буфера данных
 		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
+		
+		cout << " ==================5 " << endl;
+		
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
@@ -1469,6 +1484,9 @@ namespace cookie {
 			// Выходим и сообщаем, что генерация куков не удалась
 			return 0;
 		}
+		
+		cout << " ==================6 " << endl;
+		
 		// Выполняем чтение в буфер данных данные порта
 		::memcpy(buffer, &address->port, 2);
 		/**
@@ -1498,6 +1516,9 @@ namespace cookie {
 		::memcpy(cookie, result, length);
 		// Устанавливаем размер буфера cookie
 		(* size) = length;
+
+		cout << " ==================7 " << endl;
+
 		// Выводим положительный ответ
 		return 1;
 	}
