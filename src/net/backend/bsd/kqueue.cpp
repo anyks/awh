@@ -3677,7 +3677,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
-										eth->sctpEventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
+										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
 								#endif
 							} break;
 							// Для семейства IPv6
@@ -3853,7 +3853,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
-										eth->sctpEventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
+										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
 								#endif
 							} break;
 						}
