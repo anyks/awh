@@ -23418,13 +23418,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 							// Если опция передана как IPV6_V6ONLY
 							if(event::options::IPV6_ONLY & options){
 								// Устанавливаем режим отображения IPv4 => IPv6
-								if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::ENABLED)))
+								if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
 									// Устанавливаем опцию события
 									i->second->state.options |= event::options::IPV6_ONLY;
 							// Если опция не передана как IPV6_V6ONLY
 							} else {
 								// Снимаем режим отображения IPv4 => IPv6
-								if((isSetup = this->_eth.ipv6only(fd, net::socket_mode_t::DISABLED)))
+								if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::IPV6_ONLY)))
 									// Снимаем опцию события
 									i->second->state.options &= ~event::options::IPV6_ONLY;
 							}
@@ -23438,15 +23438,15 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если опция передана как NO_SIGILL
 				if(event::options::NO_SIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.nosigill()))
+					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NO_SIGILL;
 				// Если опция не передана как NO_SIGILL
 				} else {
-					// Устанавливаем результат установки опции
-					isSetup = true;
 					// Снимаем игнорирование сигнала SIGILL
-					i->second->state.options &= ~event::options::NO_SIGILL;
+					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGILL)))
+						// Снимаем игнорирование сигнала SIGILL
+						i->second->state.options &= ~event::options::NO_SIGILL;
 				}
 				// Если опция не установлена
 				if(result && !isSetup)
@@ -23458,13 +23458,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция передана как NO_SIGPIPE
 					if(event::options::NO_SIGPIPE & options){
 						// Устанавливаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::ENABLED)))
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::NO_SIGPIPE;
 					// Если опция не передана как NO_SIGPIPE
 					} else {
 						// Снимаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.nosigpipe(fd, net::socket_mode_t::DISABLED)))
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGPIPE)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::NO_SIGPIPE;
 					}
@@ -23478,7 +23478,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если событие установлено как блокирующее
 					if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Устанавливаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.noblocking(fd, net::socket_mode_t::ENABLED))){
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
 							// Если установлена опция SM_IO_BLOCK
 							if(event::options::SM_IO_BLOCK & options)
 								// Устанавливаем опцию события
@@ -23570,7 +23570,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если событие установлено как неблокирующее
 					if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Снимаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.noblocking(fd, net::socket_mode_t::DISABLED))){
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
 							// Если установлена опция SM_IO_BLOCK
 							if(i->second->state.options & event::options::SM_IO_BLOCK)
 								// Снимаем опцию события
@@ -23676,13 +23676,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция передана как REUSE_ADDR
 					if(event::options::REUSE_ADDR & options){
 						// Устанавливаем режим повторного использования адреса
-						if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::ENABLED)))
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::REUSE_ADDR;
 					// Если опция не передана как REUSE_ADDR
 					} else {
 						// Снимаем режим повторного использования адреса
-						if((isSetup = this->_eth.reuseaddr(fd, net::socket_mode_t::DISABLED)))
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_ADDR)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::REUSE_ADDR;
 					}
@@ -23693,13 +23693,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 					// Если опция передана как REUSE_PORT
 					if(event::options::REUSE_PORT & options){
 						// Устанавливаем режим повторного использования порта
-						if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::ENABLED)))
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::REUSE_PORT;
 					// Если опция не передана как REUSE_PORT
 					} else {
 						// Снимаем режим повторного использования порта
-						if((isSetup = this->_eth.reuseport(fd, net::socket_mode_t::DISABLED)))
+						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_PORT)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::REUSE_PORT;
 					}
@@ -23712,13 +23712,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 						// Если опция передана как MULTICAST_LOOPBACK
 						if(event::options::MULTICAST_LOOPBACK & options){
 							// Устанавливаем режим обратной связи многоадресной передачи
-							if((isSetup = this->_eth.multicastLoopback(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
+							if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::MULTICAST_LOOPBACK;
 						// Если опция не передана как MULTICAST_LOOPBACK
 						} else {
 							// Снимаем режим обратной связи многоадресной передачи
-							if((isSetup = this->_eth.multicastLoopback(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
+							if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::MULTICAST_LOOPBACK)))
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::MULTICAST_LOOPBACK;
 						}
@@ -23744,13 +23744,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									// Если опция передана как HDRINCL
 									if(event::options::HDRINCL & options){
 										// Устанавливаем режим широковещательной передачи
-										if((isSetup = this->_eth.hdrinclude(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
+										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::HDRINCL;
 									// Если опция не передана как HDRINCL
 									} else {
 										// Снимаем режим широковещательной передачи
-										if((isSetup = this->_eth.hdrinclude(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
+										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HDRINCL)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::HDRINCL;
 									}
@@ -23768,13 +23768,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 								// Если опция передана как BROADCAST
 								if(event::options::BROADCAST & options){
 									// Устанавливаем режим широковещательной передачи
-									if((isSetup = this->_eth.broadcast(fd, net::socket_mode_t::ENABLED)))
+									if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::BROADCAST;
 								// Если опция не передана как BROADCAST
 								} else {
 									// Снимаем режим широковещательной передачи
-									if((isSetup = this->_eth.broadcast(fd, net::socket_mode_t::DISABLED)))
+									if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::BROADCAST)))
 										// Снимаем опцию события
 										i->second->state.options &= ~event::options::BROADCAST;
 								}
@@ -23799,13 +23799,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 										// Если опция передана как TCP_CORK
 										if(event::options::TCP_CORK & options){
 											// Активируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.cork(fd, net::socket_mode_t::ENABLED)))
+											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_CORK;
 										// Если опция не передана как TCP_CORK
 										} else {
 											// Деактивируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.cork(fd, net::socket_mode_t::DISABLED)))
+											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_CORK;
 										}
@@ -23816,13 +23816,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 										// Если опция передана как TCP_NODELAY
 										if(event::options::TCP_NO_DELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::ENABLED)))
+											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_NO_DELAY;
 										// Если опция не передана как TCP_NODELAY
 										} else {
 											// Снимаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::DISABLED)))
+											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_NO_DELAY;
 										}
@@ -23845,13 +23845,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 									// Если опция передана как TCP_CORK
 									if(event::options::TCP_CORK & options){
 										// Активируем алгоритм TCP/CORK
-										if((isSetup = this->_eth.cork(fd, net::socket_mode_t::ENABLED)))
+										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::TCP_CORK;
 									// Если опция не передана как TCP_CORK
 									} else {
 										// Деактивируем алгоритм TCP/CORK
-										if((isSetup = this->_eth.cork(fd, net::socket_mode_t::DISABLED)))
+										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::TCP_CORK;
 									}
@@ -23863,13 +23863,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 								// Если опция передана как TCP_NODELAY
 								if(event::options::TCP_NO_DELAY & options){
 									// Устанавливаем режим отключения алгоритма Нейгла
-									if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::ENABLED)))
+									if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::TCP_NO_DELAY;
 								// Если опция не передана как TCP_NODELAY
 								} else {
 									// Снимаем режим отключения алгоритма Нейгла
-									if((isSetup = this->_eth.nodelay(fd, net::socket_mode_t::DISABLED)))
+									if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 										// Снимаем опцию события
 										i->second->state.options &= ~event::options::TCP_NO_DELAY;
 								}
@@ -23892,13 +23892,13 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
 				// Если опция передана как CLOSE_ON_EXEC
 				if(event::options::CLOSE_ON_EXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.closeonexec(fd, net::socket_mode_t::ENABLED)))
+					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::CLOSE_ON_EXEC;
 				// Если опция не передана как CLOSE_ON_EXEC
 				} else {
 					// Снимаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.closeonexec(fd, net::socket_mode_t::DISABLED)))
+					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::CLOSE_ON_EXEC)))
 						// Снимаем опцию события
 						i->second->state.options &= ~event::options::CLOSE_ON_EXEC;
 				}
@@ -24009,7 +24009,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									// Устанавливаем или снимаем режим отображения IPv4 => IPv6
-									if((result = this->_eth.ipv6only(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+									if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::IPV6_ONLY))){
 										// Если необходимо активировать режим отображения IPv4 => IPv6
 										if(mode)
 											// Устанавливаем опцию события
@@ -24024,7 +24024,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					// Если опция передана как NO_SIGILL
 					case event::options::NO_SIGILL: {
 						// Отключаем или включаем генерацию сигнала SIGILL при записи в закрытый сокет
-						if((result = this->_eth.nosigill())){
+						if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGILL))){
 							// Если необходимо отключить генерацию сигнала SIGILL
 							if(mode)
 								// Устанавливаем опцию события
@@ -24039,7 +24039,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
-							if((result = this->_eth.nosigpipe(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+							if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGPIPE))){
 								// Если необходимо отключить генерацию сигнала SIGPIPE
 								if(mode)
 									// Устанавливаем опцию события
@@ -24058,7 +24058,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							// Если событие установлено как блокирующее
 							if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем неблокирующий режим ввода/вывода
-								if((result = this->_eth.noblocking(fd, net::socket_mode_t::ENABLED))){
+								if((result = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
 									// Если установлена опция SM_IO_BLOCK
 									if(option == event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
@@ -24150,7 +24150,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							// Если событие установлено как неблокирующее
 							if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем блокирующий режим ввода/вывода
-								if((result = this->_eth.noblocking(fd, net::socket_mode_t::DISABLED))){
+								if((result = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
 									// Если установлена опция SM_IO_BLOCK
 									if(i->second->state.options & event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
@@ -24249,7 +24249,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Устанавливаем или снимаем режим повторного использования адреса сокета
-							if((result = this->_eth.reuseaddr(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+							if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_ADDR))){
 								// Если необходимо активировать режим повторного использования адреса сокета
 								if(mode)
 									// Устанавливаем опцию события
@@ -24265,7 +24265,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Устанавливаем или снимаем режим повторного использования порта сокета
-							if((result = this->_eth.reuseport(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+							if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_PORT))){
 								// Если необходимо активировать режим повторного использования порта сокета
 								if(mode)
 									// Устанавливаем опцию события
@@ -24291,7 +24291,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Устанавливаем или снимаем режим обратной петли для мультикаст-сообщений сокета
-										if((result = this->_eth.multicastLoopback(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+										if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::MULTICAST_LOOPBACK))){
 											// Если необходимо активировать режим обратной петли для мультикаст-сообщений сокета
 											if(mode)
 												// Устанавливаем опцию события
@@ -24320,7 +24320,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Устанавливаем или снимаем режим включения заголовков для сокета
-										if((result = this->_eth.hdrinclude(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+										if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::HDRINCL))){
 											// Если необходимо активировать режим включения заголовков для сокета
 											if(mode)
 												// Устанавливаем опцию события
@@ -24341,7 +24341,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 							// Если семейство событий принадлежит к IPv4 и тип сокета является DATAGRAM
 							if((i->second->state.family == event::family_t::IPV4) && (i->second->state.type == event::type_t::DATAGRAM)){
 								// Устанавливаем или снимаем режим широковещательной передачи для сокета
-								if((result = this->_eth.broadcast(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+								if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::BROADCAST))){
 									// Если необходимо активировать режим широковещательной передачи для сокета
 									if(mode)
 										// Устанавливаем опцию события
@@ -24374,7 +24374,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 											// Если сокет принадлежит к типу STREAM
 											case static_cast <uint8_t> (event::type_t::STREAM): {
 												// Устанавливаем или снимаем режим алгоритма TCP/CORK
-												if((result = this->_eth.cork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+												if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
 													// Если необходимо активировать режим алгоритма TCP/CORK
 													if(mode)
 														// Устанавливаем опцию события
@@ -24390,7 +24390,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 												// Если сокет принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Устанавливаем или снимаем режим алгоритма TCP/CORK
-													if((result = this->_eth.cork(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+													if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
 														// Если необходимо активировать режим алгоритма TCP/CORK
 														if(mode)
 															// Устанавливаем опцию события
@@ -24426,7 +24426,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 										// Если сокет принадлежит к типу STREAM
 										case static_cast <uint8_t> (event::type_t::STREAM): {
 											// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-											if((result = this->_eth.nodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+											if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
 												// Если необходимо активировать алгоритм Нейгла для TCP сокета
 												if(mode)
 													// Устанавливаем опцию события
@@ -24438,7 +24438,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 										// Если сокет принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-											if((result = this->_eth.nodelay(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+											if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
 												// Если необходимо активировать алгоритм Нейгла для TCP сокета
 												if(mode)
 													// Устанавливаем опцию события
@@ -24466,7 +24466,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
 					// Если опция передана как CLOSE_ON_EXEC
 					case event::options::CLOSE_ON_EXEC: {
 						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
-						if((result = this->_eth.closeonexec(fd, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED)))){
+						if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::CLOSE_ON_EXEC))){
 							// Если необходимо активировать режим закрытия сокета при выполнении exec()
 							if(mode)
 								// Устанавливаем опцию события
@@ -27511,7 +27511,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если сокет является полублокирующим
 												} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 													// Переводим сокет в блокирующий режим
-													if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
+													if(this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
@@ -27525,7 +27525,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Если произошла какая-то ошибка при отправке данных
 														} else if(bytes == -1) {
 															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
+															this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 															// Если установлена функция обратного вызова
 															if(ipc->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -27565,7 +27565,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 																return result;
 														}
 														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
+														result = this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													}
 												// Если сокет является блокирующим
 												} else {
@@ -27770,7 +27770,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
@@ -27784,7 +27784,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -27819,7 +27819,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28013,7 +28013,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
@@ -28027,7 +28027,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -28062,7 +28062,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(ipc->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28306,7 +28306,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = peer->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
@@ -28351,7 +28351,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(peer->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -28386,7 +28386,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28648,7 +28648,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = peer->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
@@ -28693,7 +28693,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(peer->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -28728,7 +28728,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(peer->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28969,7 +28969,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
@@ -28983,7 +28983,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -29018,7 +29018,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -29224,7 +29224,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
@@ -29238,7 +29238,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -29273,7 +29273,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(origin->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -29546,7 +29546,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = client->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
@@ -29591,7 +29591,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -29626,7 +29626,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -29892,7 +29892,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
@@ -29939,7 +29939,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -29974,7 +29974,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -30239,7 +30239,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
@@ -30286,7 +30286,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -30321,7 +30321,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -30580,7 +30580,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на чтение данных
 												auto i = client->timeouts.find(event::action_t::READ);
 												// Если таймаут на подключение найден
@@ -30606,7 +30606,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -30641,7 +30641,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -30861,7 +30861,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
@@ -30881,7 +30881,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -30916,7 +30916,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -31127,7 +31127,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::DISABLED)){
+												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
@@ -31147,7 +31147,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -31182,7 +31182,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.noblocking(client->transfer.fd, net::socket_mode_t::ENABLED);
+													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -31395,7 +31395,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(server->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(server->fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = server->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
@@ -31415,7 +31415,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -31450,7 +31450,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -31611,7 +31611,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 										// Если сокет является полублокирующим
 										} else if(server->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.noblocking(server->fd, net::socket_mode_t::DISABLED)){
+											if(this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = server->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
@@ -31631,7 +31631,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
+													this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -31666,7 +31666,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.noblocking(server->fd, net::socket_mode_t::ENABLED);
+												result = this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {

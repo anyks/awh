@@ -1687,41 +1687,6 @@ int32_t awh::Ethernet::bufferSize(const net::socket_t sock, const net::socket_ev
 	return result;
 }
 /**
- * @brief Метод блокировки сигнала SIGILL
- *
- * @return результат работы функции
- */
-bool awh::Ethernet::nosigill() const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Создаем структуру активации сигнала
-	struct sigaction act;
-	// Зануляем структуру
-	::memset(&act, 0, sizeof(act));
-	// Устанавливаем макрос игнорирования сигнала
-	act.sa_handler = SIG_IGN;
-	// Устанавливаем флаги перезагрузки
-	act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
-	// Устанавливаем блокировку сигнала
-	if(!(result = !static_cast <bool> (::sigaction(SIGILL, &act, nullptr)))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Все удачно
-	return result;
-}
-/**
  * @brief Метод получения кода ошибки
  *
  * @param sock сетевой сокет
@@ -2883,524 +2848,6 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 	return result;
 }
 /**
- * @brief Метод активации TCP/CORK
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::cork(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать алгоритм TCP/CORK
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать алгоритм TCP/CORK
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Включаем/отключаем или отключаем алгоритм TCP/CORK
-	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NOPUSH, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Все удачно
-	return result;
-}
-/**
- * @brief Метод отключения алгоритма Нейгла
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::nodelay(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать алгоритм Нейгла
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать алгоритм Нейгла
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Переменная для хранения протокола сокета
-		int32_t protocol = 0;
-		// Длина протокола сокета
-		socklen_t length = sizeof(protocol);
-		// Получаем протокол сокета
-		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-			/**
-			 * Определяем протокол сокета
-			 */
-			switch(protocol){
-				// Если протокол TCP
-				case IPPROTO_TCP: {
-					// Активируем/деактивируем алгоритм Нейгла
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
-					}
-				} break;
-				// Если протокол SCTP
-				case IPPROTO_SCTP: {
-					// Активируем/деактивируем алгоритм Нейгла
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_NODELAY, &on, sizeof(on))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	/**
-	 * Для остальных операционных систем
-	 */
-	#else
-		// Активируем/деактивируем алгоритм Нейгла
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on))))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод включающий или отключающий режим отображения IPv4 => IPv6
- *
- * @param sock сетевой сокет
- * @param mode режим активации или деактивации
- * @return     результат работы функции
- */
-bool awh::Ethernet::ipv6only(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо включить режим отображения IPv4 => IPv6
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо отключить режим отображения IPv4 => IPv6
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Разрешаем/запрещаем отображение IPv4 => IPv6
-	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод разрешающий повторно использовать сокет после его удаления
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::reuseaddr(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать использовать тот же сокет после его удаления
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать использовать тот же сокет после его удаления
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
-	if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод разрешающий повторно использовать один и тот же порт для нескольких сокетов
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::reuseport(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать использование одного и того же порта для нескольких сокетов
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать использование одного и того же порта для нескольких сокетов
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
-	if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод игнорирования отключения сигнала записи в убитый сокет
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::nosigpipe(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо игнорировать отключение сигнала записи в убитый сокет
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать игнорирование отключения сигнала записи в убитый сокет
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Устанавливаем/снимаем игнорирование отключения сигнала записи в убитый сокет
-	if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод разрешения широковещательного адреса
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::broadcast(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать широковещательный адрес
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать широковещательный адрес
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	// Активируем/деактивируем широковещательный адрес
-	if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки блокирующего сокета
- *
- * @param sock сетевого сокета
- * @param mode режим установки типа сокета
- * @return     результат работы функции
- */
-bool awh::Ethernet::noblocking(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Флаги сетевого сокета
-	int32_t flags = 0;
-	// Результат работы функции
-	bool result = false;
-	// Получаем флаги сетевого сокета
-	if(!(result = ((flags = ::fcntl(sock, F_GETFL, nullptr)) >= 0))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-		// Выходим из функции
-		return result;
-	}
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо перевести сокет в блокирующий режим
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
-			// Если флаг ещё не установлен
-			if(!(result = (flags & O_NONBLOCK))){
-				// Устанавливаем неблокирующий режим
-				if(!(result = (::fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			}
-		} break;
-		// Если необходимо перевести сокет в неблокирующий режим
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
-			// Если флаг уже установлен
-			if(!(result = !(flags & O_NONBLOCK))){
-				// Снимаем неблокирующий режим
-				if(!(result = (::fcntl(sock, F_SETFL, flags ^ O_NONBLOCK) >= 0))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			}
-		} break;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки режима автоматического закрытия файлового дескриптора при вызове exec
- *
- * @param sock сетевой сокет
- * @param mode режим активации или деактивации
- * @return     результат работы функции
- */
-bool awh::Ethernet::closeonexec(const net::socket_t sock, const net::socket_mode_t mode) const noexcept {
-	// Флаги сетевого сокета
-	int32_t flags = 0;
-	// Результат работы функции
-	bool result = false;
-	// Получаем флаги сетевого сокета
-	if(!(result = ((flags = ::fcntl(sock, F_GETFD, nullptr)) >= 0))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-		// Выходим из функции
-		return result;
-	}
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать режим закрытия сокета после запуска
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
-			// Если флаг ещё не установлен
-			if(!(result = (flags & FD_CLOEXEC))){
-				// Устанавливаем режим закрытия сокета после запуска
-				if(!(result = (::fcntl(sock, F_SETFD, flags | FD_CLOEXEC) >= 0))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			}
-		} break;
-		// Если необходимо деактивировать режим закрытия сокета после запуска
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
-			// Если флаг уже установлен
-			if(!(result = !(flags & FD_CLOEXEC))){
-				// Снимаем режим закрытия сокета после запуска
-				if(!(result = (::fcntl(sock, F_SETFD, flags ^ FD_CLOEXEC) >= 0))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			}
-		} break;
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод устанавливает постоянное подключение на сокет
  *
  * @param sock  сетевой сокет
@@ -3527,74 +2974,6 @@ bool awh::Ethernet::keepalive(const net::socket_t sock, const int32_t cnt, const
 	return result;
 }
 /**
- * @brief Метод установки включения/отключения заголовков в сокете
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param mode   режим активации или деактивации
- * @return       результат работы функции
- */
-bool awh::Ethernet::hdrinclude(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать заголовки в сокете
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать заголовки в сокете
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Определяем семейство события
-	 */
-	switch(static_cast <uint8_t> (family)){
-		// Для семейства IPv4
-		case static_cast <uint8_t> (event::family_t::IPV4): {
-			// Активируем/деактивируем заголовки в сокете
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
-		// Для семейства IPv6
-		case static_cast <uint8_t> (event::family_t::IPV6): {
-			// Активируем/деактивируем заголовки в сокете (В Linux нужно использовать IPV6_HDRINCL)
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IP_HDRINCL, &on, sizeof(on))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод установки сетевого интерфейса для multicast пакетов
  *
  * @param sock   сетевой сокет
@@ -3716,69 +3095,832 @@ bool awh::Ethernet::multicastIface(const net::socket_t sock, const event::family
 	return result;
 }
 /**
- * @brief Метод установки режима обратной петли для multicast пакетов
+ * @brief Метод установки опций сокета
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
  * @param mode   режим активации или деактивации
+ * @param option опция сокета
  * @return       результат работы функции
  */
-bool awh::Ethernet::multicastLoopback(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
-	// Параметр установки типа сокета
-	int32_t on = 0;
-	/**
-	 * Определяем режим блокировки
-	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать режим обратной петли для multicast пакетов
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): on = 1; break;
-		// Если необходимо деактивировать режим обратной петли для multicast пакетов
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): on = 0; break;
-	}
+bool awh::Ethernet::setoption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Определяем семейство события
-	 */
-	switch(static_cast <uint8_t> (family)){
-		// Для семейства IPv4
-		case static_cast <uint8_t> (event::family_t::IPV4): {
-			// Активируем/деактивируем режим обратной петли для multicast пакетов
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &on, sizeof(on))))){
+	// Если сокет корректен
+	if(sock != net::invalid_socket_t){
+		/**
+		 * Определяем опции сокета которые необходимо установить
+		 */
+		switch(option){
+			// Если необходимо установить опцию HDRINCL
+			case event::options::HDRINCL: {
+				// Флаги установки опции
+				int32_t flags = 0;
 				/**
-				 * Если включён режим отладки
+				 * Определяем режим блокировки
 				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
 				/**
-				 * Если режим отладки не включён
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (family)){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4): {
+						// Активируем/деактивируем заголовки в сокете
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &flags, sizeof(flags))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), awh::log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Активируем/деактивируем заголовки в сокете (В Linux нужно использовать IPV6_HDRINCL)
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IP_HDRINCL, &flags, sizeof(flags))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), awh::log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
+				}
+			} break;
+			// Если необходимо установить опцию TCP CORK
+			case event::options::TCP_CORK: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				// Включаем/отключаем или отключаем алгоритм TCP/CORK
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NOPUSH, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо отключить алгоритм Нейгла
+			case event::options::TCP_NO_DELAY: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				/**
+				 * Если операционной системой является FreeBSD
+				 */
+				#if __FreeBSD__
+					// Переменная для хранения протокола сокета
+					int32_t protocol = 0;
+					// Длина протокола сокета
+					socklen_t length = sizeof(protocol);
+					// Получаем протокол сокета
+					if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+						/**
+						 * Определяем протокол сокета
+						 */
+						switch(protocol){
+							// Если протокол TCP
+							case IPPROTO_TCP: {
+								// Активируем/деактивируем алгоритм Нейгла
+								if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags))))){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), awh::log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
+							} break;
+							// Если протокол SCTP
+							case IPPROTO_SCTP: {
+								// Активируем/деактивируем алгоритм Нейгла
+								if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_NODELAY, &flags, sizeof(flags))))){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), awh::log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
+							} break;
+						}
+					// Если возникает ошибка получения протокола сокета
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), awh::log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				/**
+				 * Для остальных операционных систем
 				 */
 				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					// Активируем/деактивируем алгоритм Нейгла
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), awh::log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
 				#endif
-			}
-		} break;
-		// Для семейства IPv6
-		case static_cast <uint8_t> (event::family_t::IPV6): {
-			// Активируем/деактивируем режим обратной петли для multicast пакетов
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &on, sizeof(on))))){
+			} break;
+			// Если необходимо установить опцию IPV6 ONLY
+			case event::options::IPV6_ONLY: {
+				// Флаги установки опции
+				int32_t flags = 0;
 				/**
-				 * Если включён режим отладки
+				 * Определяем режим блокировки
 				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				// Разрешаем/запрещаем отображение IPv4 => IPv6
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо отключить сигнал SIGILL
+			case event::options::NO_SIGILL: {
+				// Создаем структуру активации сигнала
+				struct sigaction act;
+				// Зануляем структуру
+				::memset(&act, 0, sizeof(act));
+				// Устанавливаем флаги перезагрузки
+				act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
 				/**
-				 * Если режим отладки не включён
+				 * Определяем режим блокировки
 				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
+						// Устанавливаем макрос игнорирования сигнала
+						act.sa_handler = SIG_IGN;
+						// Устанавливаем блокировку сигнала
+						if(!(result = !static_cast <bool> (::sigaction(SIGILL, &act, nullptr)))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), awh::log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
+						// Устанавливаем макрос по умолчанию для сигнала
+						act.sa_handler = SIG_DFL;
+						// Снимаем блокировку сигнала
+						if(!(result = !static_cast <bool> (::sigaction(SIGILL, &act, nullptr)))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), awh::log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
+				}
+			} break;
+			// Если необходимо установить опцию BROADCAST
+			case event::options::BROADCAST: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				// Активируем/деактивируем широковещательный адрес
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо отключить сигнал SIGPIPE
+			case event::options::NO_SIGPIPE: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				// Устанавливаем/снимаем игнорирование отключения сигнала записи в убитый сокет
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо перевести сокет в неблокирующий режим
+			case event::options::NO_IO_BLOCK:
+			// Если необходимо перевести сокет в полублокирующий режим
+			case event::options::SM_IO_BLOCK: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				// Получаем флаги сетевого сокета
+				if(!(result = ((flags = ::fcntl(sock, F_GETFL, nullptr)) >= 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+					// Выходим из функции
+					return result;
+				}
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо перевести сокет в блокирующий режим
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
+						// Если флаг ещё не установлен
+						if(!(result = (flags & O_NONBLOCK))){
+							// Устанавливаем неблокирующий режим
+							if(!(result = (::fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), awh::log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						}
+					} break;
+					// Если необходимо перевести сокет в неблокирующий режим
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
+						// Если флаг уже установлен
+						if(!(result = !(flags & O_NONBLOCK))){
+							// Снимаем неблокирующий режим
+							if(!(result = (::fcntl(sock, F_SETFL, flags ^ O_NONBLOCK) >= 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), awh::log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						}
+					} break;
+				}
+			} break;
+			// Если необходимо установить опцию переиспользования адреса
+			case event::options::REUSE_ADDR: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо установить опцию переиспользования порта
+			case event::options::REUSE_PORT: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо установить опцию CLOSE ON EXEC
+			case event::options::CLOSE_ON_EXEC: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				// Получаем флаги сетевого сокета
+				if(!(result = ((flags = ::fcntl(sock, F_GETFD, nullptr)) >= 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option
+						), awh::log_t::flag_t::WARNING,
+						::strerror(errno)
+					);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+					// Выходим из функции
+					return result;
+				}
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать режим закрытия сокета после запуска
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
+						// Если флаг ещё не установлен
+						if(!(result = (flags & FD_CLOEXEC))){
+							// Устанавливаем режим закрытия сокета после запуска
+							if(!(result = (::fcntl(sock, F_SETFD, flags | FD_CLOEXEC) >= 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), awh::log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						}
+					} break;
+					// Если необходимо деактивировать режим закрытия сокета после запуска
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
+						// Если флаг уже установлен
+						if(!(result = !(flags & FD_CLOEXEC))){
+							// Снимаем режим закрытия сокета после запуска
+							if(!(result = (::fcntl(sock, F_SETFD, flags ^ FD_CLOEXEC) >= 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), awh::log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						}
+					} break;
+				}
+			} break;
+			// Если необходимо установить опцию MULTICAST LOOPBACK
+			case event::options::MULTICAST_LOOPBACK: {
+				// Флаги установки опции
+				int32_t flags = 0;
+				/**
+				 * Определяем режим блокировки
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+						// Устанавливаем флаг активации
+						flags = 1;
+					break;
+					// Если необходимо деактивировать заголовки в сокете
+					case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+						// Устанавливаем флаг деактивации
+						flags = 0;
+					break;
+				}
+				/**
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (family)){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4): {
+						// Активируем/деактивируем режим обратной петли для multicast пакетов
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &flags, sizeof(flags))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), awh::log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Активируем/деактивируем режим обратной петли для multicast пакетов
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &flags, sizeof(flags))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), awh::log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
+					} break;
+				}
+			} break;
+		}
 	}
 	// Выводим результат
 	return result;

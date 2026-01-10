@@ -252,29 +252,29 @@ namespace awh {
 			 */
 			static constexpr uint16_t TCP_CORK = 0x02;
 			/**
-			 * Опция только IPv6 для сокета
+			 * Опция отключения алгоритма Нейгла
 			 */
-			static constexpr uint16_t IPV6_ONLY = 0x04;
-			/**
-			 * Опция отключения сигнала SIGILL
-			 */
-			static constexpr uint16_t NO_SIGILL = 0x08;
+			static constexpr uint16_t TCP_NO_DELAY = 0x04;
 			/**
 			 * Опция широковещательного адреса
 			 */
-			static constexpr uint16_t BROADCAST = 0x10;
+			static constexpr uint16_t BROADCAST = 0x08;
 			/**
 			 * Опция включения TCP keepalive
 			 */
-			static constexpr uint16_t KEEPALIVE = 0x20;
+			static constexpr uint16_t KEEPALIVE = 0x10;
+			/**
+			 * Опция только IPv6 для сокета
+			 */
+			static constexpr uint16_t IPV6_ONLY = 0x20;
+			/**
+			 * Опция отключения сигнала SIGILL
+			 */
+			static constexpr uint16_t NO_SIGILL = 0x40;
 			/**
 			 * Опция отключения сигнала SIGPIPE
 			 */
-			static constexpr uint16_t NO_SIGPIPE = 0x40;
-			/**
-			 * Опция неблокирующего ввода-вывода
-			 */
-			static constexpr uint16_t NO_IO_BLOCK = 0x80;
+			static constexpr uint16_t NO_SIGPIPE = 0x80;
 			/**
 			 * Опция повторного использования адреса
 			 */
@@ -284,13 +284,13 @@ namespace awh {
 			 */
 			static constexpr uint16_t REUSE_PORT = 0x200;
 			/**
+			 * Опция неблокирующего ввода-вывода
+			 */
+			static constexpr uint16_t NO_IO_BLOCK = 0x400;
+			/**
 			 * Опция умного неблокирующего ввода-вывода
 			 */
-			static constexpr uint16_t SM_IO_BLOCK = 0x400;
-			/**
-			 * Опция отключения алгоритма Нейгла
-			 */
-			static constexpr uint16_t TCP_NO_DELAY = 0x800;
+			static constexpr uint16_t SM_IO_BLOCK = 0x800;
 			/**
 			 * Опция закрытия сокета при выполнении exec
 			 */

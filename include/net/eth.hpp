@@ -124,12 +124,6 @@ namespace awh {
 			int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
 		public:
 			/**
-			 * @brief Метод блокировки сигнала SIGILL
-			 *
-			 * @return результат работы функции
-			 */
-			bool nosigill() const noexcept;
-			/**
 			 * @brief Метод получения кода ошибки
 			 *
 			 * @param sock сетевой сокет
@@ -233,79 +227,6 @@ namespace awh {
 			bool sctpAuthenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept;
 		public:
 			/**
-			 * @brief Метод активации TCP/CORK
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool cork(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод отключения алгоритма Нейгла
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool nodelay(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-		public:
-			/**
-			 * @brief Метод включающий или отключающий режим отображения IPv4 => IPv6
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим активации или деактивации
-			 * @return     результат работы функции
-			 */
-			bool ipv6only(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод разрешающий повторно использовать сокет после его удаления
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool reuseaddr(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод разрешающий повторно использовать один и тот же порт для нескольких сокетов
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool reuseport(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод игнорирования отключения сигнала записи в убитый сокет
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool nosigpipe(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод разрешения широковещательного адреса
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool broadcast(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод установки блокирующего сокета
-			 *
-			 * @param sock сетевого сокета
-			 * @param mode режим установки типа сокета
-			 * @return     результат работы функции
-			 */
-			bool noblocking(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
-			 * @brief Метод установки режима автоматического закрытия файлового дескриптора при вызове exec
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим активации или деактивации
-			 * @return     результат работы функции
-			 */
-			bool closeonexec(const net::socket_t sock, const net::socket_mode_t mode) const noexcept;
-			/**
 			 * @brief Метод устанавливает постоянное подключение на сокет
 			 *
 			 * @param sock  сетевой сокет
@@ -315,15 +236,6 @@ namespace awh {
 			 * @return      результат работы функции
 			 */
 			bool keepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
-			/**
-			 * @brief Метод установки включения/отключения заголовков в сокете
-			 *
-			 * @param sock   сетевой сокет
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param mode   режим активации или деактивации
-			 * @return       результат работы функции
-			 */
-			bool hdrinclude(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки сетевого интерфейса для multicast пакетов
@@ -334,15 +246,17 @@ namespace awh {
 			 * @return       результат работы функции
 			 */
 			bool multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept;
+		public:
 			/**
-			 * @brief Метод установки режима обратной петли для multicast пакетов
+			 * @brief Метод установки опций сокета
 			 *
 			 * @param sock   сетевой сокет
 			 * @param family семейство протоколов (IPv4 или IPv6)
 			 * @param mode   режим активации или деактивации
+			 * @param option опция сокета
 			 * @return       результат работы функции
 			 */
-			bool multicastLoopback(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
+			bool setoption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
