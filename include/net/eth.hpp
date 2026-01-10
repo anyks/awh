@@ -41,10 +41,10 @@ namespace awh {
 		#if __linux__ || __FreeBSD__
 			public:
 				/**
-				 * @brief Структура управления протоколом передачи с управлением потоком
+				 * @brief Класс управления протоколом передачи с управлением потоком
 				 *
 				 */
-				union StreamControlTransmissionProtocol  {
+				class StreamControlTransmissionProtocol  {
 					private:
 						// Объект фреймворка
 						const fmk_t * _fmk;

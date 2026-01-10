@@ -981,7 +981,7 @@ namespace {
 	 * @param ctx  контекст установки таймаута
 	 * @return     значение таймаута в миллисекундах
 	 */
-	uint32_t awh::Ethernet::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx = nullptr) const noexcept {
+	uint32_t awh::Ethernet::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx) const noexcept {
 		// Результат работы функции
 		uint32_t result = 0;
 		/**
@@ -1112,7 +1112,7 @@ namespace {
 	 * @param ctx     контекст установки таймаута
 	 * @return        результат работы функции
 	 */
-	bool awh::Ethernet::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept {
+	bool awh::Ethernet::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx) const noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**

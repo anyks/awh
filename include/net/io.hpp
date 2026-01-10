@@ -34,7 +34,7 @@ namespace awh {
 	 */
 	#if __linux__ || __FreeBSD__
 		/**
-		 * @brief Структура управления протоколом передачи с управлением потоком
+		 * @brief Класс управления протоколом передачи с управлением потоком
 		 *
 		 */
 		typedef class StreamControlTransmissionProtocol  {
