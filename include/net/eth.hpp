@@ -44,7 +44,7 @@ namespace awh {
 				 * @brief Класс управления протоколом передачи с управлением потоком
 				 *
 				 */
-				class StreamControlTransmissionProtocol  {
+				class AWH_SHARED_EXPORT StreamControlTransmissionProtocol  {
 					private:
 						// Объект фреймворка
 						const fmk_t * _fmk;

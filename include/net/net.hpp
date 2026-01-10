@@ -586,524 +586,529 @@ namespace awh {
 			virtual ~Server() = default;
 		} server_t;
 		/**
-		 * @brief Пространство имён для работы с SCTP
-		 *
+		 * Для операционной системы Linux или FreeBSD
 		 */
-		namespace sctp {
+		#if __linux__ || __FreeBSD__
 			/**
-			 * Идентификатор полезной нагрузки SCTP
-			 */
-			enum class ppid_t : uint8_t {
-				DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
-				WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
-				WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
-			};
-			/**
-			 * Статусы таймаутов SCTP
-			 */
-			enum class timeout_t : uint8_t {
-				NONE        = 0x00, // Таймаут отсутствует
-				INIT        = 0x01, // Таймаут INIT
-				DATA        = 0x02, // Таймаут DATA
-				SACK        = 0x03, // Таймаут SACK
-				SHUTDOWN    = 0x04, // Таймаут SHUTDOWN
-				HEARTBEAT   = 0x05, // Таймаут HEARTBEAT
-				COOKIE      = 0x06, // Таймаут COOKIE-ECHO
-				SHUTDOWNACK = 0x07  // Таймаут SHUTDOWN-ACK
-			};
-			/**
-			 * Типы аутентификации события SCTP
-			 */
-			enum class auth_type_t : uint8_t {
-				HMAC_RSVD    = 0x00, // ЗаSCTPрезервировано
-				HMAC_SHA1    = 0x01, // HMAC-SHA1 аутентификация
-				HMAC_SHA256  = 0x02  // HMAC-SHA256 аутентификация
-			};
-			/**
-			 * Типы чанков попадающие под аутентификацию SCTP
-			 */
-			enum class auth_chunk_t : uint8_t {
-				DATA              = 0x00, // Чанк DATA подлежит аутентификации
-				INIT              = 0x01, // Чанк INIT подлежит аутентификации
-				INIT_ACK          = 0x02, // Чанк INIT-ACK подлежит аутентификации
-				SACK              = 0x03, // Чанк SACK подлежит аутентификации
-				HEARTBEAT         = 0x04, // Чанк HEARTBEAT подлежит аутентификации
-				HEARTBEAT_ACK     = 0x05, // Чанк HEARTBEAT-ACK подлежит аутентификации
-				ABORT             = 0x06, // Чанк ABORT подлежит аутентификации
-				SHUTDOWN          = 0x07, // Чанк SHUTDOWN подлежит аутентификации
-				SHUTDOWN_ACK      = 0x08, // Чанк SHUTDOWN-ACK подлежит аутентификации
-				ERROR             = 0x09, // Чанк ERROR подлежит аутентификации
-				COOKIE_ECHO       = 0x0A, // Чанк COOKIE-ECHO подлежит аутентификации
-				COOKIE_ACK        = 0x0B, // Чанк COOKIE-ACK подлежит аутентификации
-				ECNE              = 0x0C, // Чанк ECNE подлежит аутентификации
-				CWR               = 0x0D, // Чанк CWR подлежит аутентификации
-				SHUTDOWN_COMPLETE = 0x0E, // Чанк SHUTDOWN-COMPLETE подлежит аутентификации
-				AUTH              = 0x0F, // Чанк AUTH подлежит аутентификации
-				FORWARD_TSN       = 0x10, // Чанк FORWARD-TSN подлежит аутентификации
-				RE_CONFIG         = 0x11  // Чанк RE-CONFIG подлежит аутентификации
-			};
-			/**
-			 * Типы индикаторов события аутентификации 
-			 */
-			enum class auth_indics_t : uint8_t {
-				NONE     = 0x00, // Тип аутентификации отсутствует
-				NEW_KEY  = 0x01, // Событие нового ключа
-				NO_AUTH  = 0x02, // Событие отсутствия аутентификации
-				FREE_KEY = 0x03  // Событие освобождения ключа
-			};
-			/**
-			 * Флаги отправки сообщения SCTP
-			 */
-			enum class send_failed_t : uint8_t {
-				NONE   = 0x00, // Флаг отсутствует
-				SENT   = 0x01, // Сообщение отправлено
-				UNSENT = 0x02  // Сообщение не отправлено
-			};
-			/**
-			 * Индикаторы доставки SCTP
-			 */
-			enum class pdapi_indics_t : uint8_t {
-				NONE                     = 0x00, // Индикатор отсутствует
-				PARTIAL_DELIVERY_ABORTED = 0x01  // Частичная доставка прервана
-			};
-			/**
-			 * Типы сброса потоков SCTP
-			 */
-			enum class stream_reset_t : uint8_t {
-				NONE         = 0x00, // Тип сброса отсутствует
-				DENIED       = 0x01, // Сброс отклонён
-				FAILED       = 0x02, // Сброс не выполнен
-				OUTGOING_SSN = 0x03, // Сброс исходящих потоков
-				INCOMING_SSN = 0x04  // Сброс входящих потоков
-			};
-			/**
-			 * Типы изменения потоков SCTP
-			 */
-			enum class stream_change_t : uint8_t {
-				NONE   = 0x00, // Тип изменения отсутствует
-				FAILED = 0x01, // Изменение не выполнено
-				DENIED = 0x02  // Изменение отклонено
-			};
-			/**
-			 * Статусы состояния сокета SCTP
-			 */
-			enum class state_status_t : uint8_t {
-				NONE              = 0x00, // Статус отсутствует
-				BOUND             = 0x01, // Вызван bind(), но ассоциация не установлена
-				CLOSED            = 0x02, // Ассоциация не существует (сокет создан, но не привязан/не использован)
-				LISTEN            = 0x03, // Сервер вызвал listen() и ждёт входящих INIT (только для STREAM)
-				ESTABLISHED       = 0x04, // Ассоциация установлена, можно передавать данные
-				COOKIE_WAIT       = 0x05, // Клиент отправил INIT, ждёт INIT-ACK
-				COOKIE_ECHOED     = 0x06, // Клиент получил INIT-ACK, отправил COOKIE-ECHO, ждёт COOKIE-ACK
-				SHUTDOWN_SENT     = 0x07, // Отправлен SHUTDOWN, ждём SHUTDOWN-ACK
-				SHUTDOWN_PENDING  = 0x08, // Приложение вызвало shutdown(), но есть неподтверждённые данные
-				SHUTDOWN_RECEIVED = 0x09, // Получен SHUTDOWN от пираа, ждём
-				SHUTDOWN_ACK_SENT = 0x0A  // Отправлен SHUTDOWN-ACK, ждём SHUTDOWN-COMPLETE
-			};
-			/**
-			 * Типы событий SCTP
-			 */
-			enum class event_type_t : uint8_t {
-				NONE                   = 0x00, // Тип события отсутствует
-				DATA_IO                = 0x01, // Присылать уведомление о каждом входящем DATA-пакете
-				SEND_FAILED            = 0x02, // Ошибка отправки сообщения
-				REMOTE_ERROR           = 0x03, // Ошибка удалённого узла
-				ASSOC_CHANGE           = 0x04, // Изменение ассоциации
-				SHUTDOWN_EVENT         = 0x05, // Событие завершения работы
-				SENDER_DRY_EVENT       = 0x06, // Событие "отправитель сухой"
-				PEER_ADDR_CHANGE       = 0x07, // Изменение адреса однорангового узла
-				ASSOC_RESET_EVENT      = 0x08, // Сброс ассоциации
-				SEND_FAILED_EVENT      = 0x09, // Событие ошибки отправки
-				STREAM_RESET_EVENT     = 0x0A, // Сброс потока
-				STREAM_CHANGE_EVENT    = 0x0B, // Изменение потоков
-				AUTHENTICATION_EVENT   = 0x0C, // Событие аутентификации
-				ADAPTATION_INDICATION  = 0x0D, // Адаптационное указание
-				PARTIAL_DELIVERY_EVENT = 0x0E  // Частичная доставка
-			};
-			/**
-			 * Типы сброса ассоциации SCTP
-			 */
-			enum class assoc_reset_t : uint8_t {
-				NONE   = 0x00, // Тип сброса отсутствует
-				FAILED = 0x01, // Сброс не выполнен
-				DENIED = 0x02  // Сброс отклонён
-			};
-			/**
-			 * Информация об ассоциации SCTP
-			 */
-			enum class assoc_info_t : uint8_t {
-				NONE                = 0x00, // Информация об ассоциации отсутствует
-				SUPPORTS_PR         = 0x01, // Поддерживается частичное надёжное сообщение
-				SUPPORTS_MAX        = 0x02, // Поддерживается максимальное количество сообщений
-				SUPPORTS_AUTH       = 0x03, // Поддерживается аутентификация сообщений
-				SUPPORTS_ASCONF     = 0x04, // Поддерживается динамическая конфигурация адресов
-				SUPPORTS_MULTIBUF   = 0x05, // Поддерживается мультибуферизация сообщений
-				SUPPORTS_RE_CONFIG  = 0x06, // Поддерживается повторная конфигурация ассоциации
-				SUPPORTS_INTERLEAVE = 0x07  // Поддерживается перемежение сообщений
-			};
-			/**
-			 * Состояния ассоциации SCTP
-			 */
-			enum class assoc_state_t : uint8_t {
-				NONE 	      = 0x00, // Состояние ассоциации отсутствует
-				COMM_UP       = 0x01, // Связь установлена
-				COMM_LOST     = 0x02, // Связь потеряна
-				RESTARTED     = 0x03, // Связь перезапущена
-				SHUTDOWN_COMP = 0x04, // Завершение работы выполнено
-				CANT_START    = 0x05  // Не удалось запустить связь
-			};
-			/**
-			 * Состояния адреса однорангового узла SCTP
-			 */
-			enum class paddr_state_t : uint8_t {
-				NONE        = 0x00, // Состояние адреса отсутствует
-				ADDED       = 0x01, // Адрес был добавлен в ассоциацию
-				REMOVED     = 0x02, // Адрес был удалён из ассоциации
-				MADE_PRIM   = 0x03, // Адрес был установлен как основной
-				CONFIRMED   = 0x04, // Адрес подтверждён одноранговым узлом
-				AVAILABLE   = 0x05, // Адрес стал доступен
-				UNREACHABLE = 0x06  // Адрес стал недоступен
-			};
-			/**
-			 * Флаги информации о сообщении SCTP
-			 */
-			enum class info_t : uint8_t {
-				NONE               = 0x00, // Флаг отсутствует
-				PR_TTL             = 0x01, // Сообщение имеет ограничение по времени жизни
-				PR_RTX             = 0x02, // Сообщение имеет ограничение по количеству повторных попыток
-				PR_PRIO            = 0x03, // Сообщение имеет приоритет
-				SEND_ALL           = 0x04, // Отправка сообщения всем ассоциациям
-				ADDR_OVER          = 0x05, // Использовать адрес из to, даже если сокет подключён
-				STATUS_EOF 	       = 0x06, // Сообщение содержит признак грациозного завершения
-				STATUS_ABORT       = 0x07, // Сообщение содержит признак аварийного завершения
-				SACK_IMMEDIATELY   = 0x08, // Установка бита последнего фрагмента DATA, для мгновенной отправки
-				DELIVERY_UNORDERED = 0x09  // Сообщение доставляется без учёта порядка в потоке
-			};
-			/**
-			 * @brief Множество типов событий SCTP
+			 * @brief Пространство имён для работы с SCTP
 			 *
 			 */
-			using event_types_t = unordered_set <event_type_t>;
-			/**
-			 * @brief Структура метаданных сообщения SCTP
-			 *
-			 */
-			typedef struct MessageInfo {
-				ppid_t ppid;                  // Идентификатор полезной нагрузки
-				uint16_t num;                 // Номер потока
-				uint32_t ttl;                 // Время жизни (в миллисекундах)
-				uint32_t ctx;                 // Контекст для уведомлений об ошибках
-				unordered_set <info_t> flags; // Флаги сообщения
+			namespace sctp {
 				/**
-				 * @brief Конструктор
+				 * Идентификатор полезной нагрузки SCTP
+				 */
+				enum class ppid_t : uint8_t {
+					DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
+					WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
+					WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
+				};
+				/**
+				 * Статусы таймаутов SCTP
+				 */
+				enum class timeout_t : uint8_t {
+					NONE        = 0x00, // Таймаут отсутствует
+					INIT        = 0x01, // Таймаут INIT
+					DATA        = 0x02, // Таймаут DATA
+					SACK        = 0x03, // Таймаут SACK
+					SHUTDOWN    = 0x04, // Таймаут SHUTDOWN
+					HEARTBEAT   = 0x05, // Таймаут HEARTBEAT
+					COOKIE      = 0x06, // Таймаут COOKIE-ECHO
+					SHUTDOWNACK = 0x07  // Таймаут SHUTDOWN-ACK
+				};
+				/**
+				 * Типы аутентификации события SCTP
+				 */
+				enum class auth_type_t : uint8_t {
+					HMAC_RSVD    = 0x00, // ЗаSCTPрезервировано
+					HMAC_SHA1    = 0x01, // HMAC-SHA1 аутентификация
+					HMAC_SHA256  = 0x02  // HMAC-SHA256 аутентификация
+				};
+				/**
+				 * Типы чанков попадающие под аутентификацию SCTP
+				 */
+				enum class auth_chunk_t : uint8_t {
+					DATA              = 0x00, // Чанк DATA подлежит аутентификации
+					INIT              = 0x01, // Чанк INIT подлежит аутентификации
+					INIT_ACK          = 0x02, // Чанк INIT-ACK подлежит аутентификации
+					SACK              = 0x03, // Чанк SACK подлежит аутентификации
+					HEARTBEAT         = 0x04, // Чанк HEARTBEAT подлежит аутентификации
+					HEARTBEAT_ACK     = 0x05, // Чанк HEARTBEAT-ACK подлежит аутентификации
+					ABORT             = 0x06, // Чанк ABORT подлежит аутентификации
+					SHUTDOWN          = 0x07, // Чанк SHUTDOWN подлежит аутентификации
+					SHUTDOWN_ACK      = 0x08, // Чанк SHUTDOWN-ACK подлежит аутентификации
+					ERROR             = 0x09, // Чанк ERROR подлежит аутентификации
+					COOKIE_ECHO       = 0x0A, // Чанк COOKIE-ECHO подлежит аутентификации
+					COOKIE_ACK        = 0x0B, // Чанк COOKIE-ACK подлежит аутентификации
+					ECNE              = 0x0C, // Чанк ECNE подлежит аутентификации
+					CWR               = 0x0D, // Чанк CWR подлежит аутентификации
+					SHUTDOWN_COMPLETE = 0x0E, // Чанк SHUTDOWN-COMPLETE подлежит аутентификации
+					AUTH              = 0x0F, // Чанк AUTH подлежит аутентификации
+					FORWARD_TSN       = 0x10, // Чанк FORWARD-TSN подлежит аутентификации
+					RE_CONFIG         = 0x11  // Чанк RE-CONFIG подлежит аутентификации
+				};
+				/**
+				 * Типы индикаторов события аутентификации 
+				 */
+				enum class auth_indics_t : uint8_t {
+					NONE     = 0x00, // Тип аутентификации отсутствует
+					NEW_KEY  = 0x01, // Событие нового ключа
+					NO_AUTH  = 0x02, // Событие отсутствия аутентификации
+					FREE_KEY = 0x03  // Событие освобождения ключа
+				};
+				/**
+				 * Флаги отправки сообщения SCTP
+				 */
+				enum class send_failed_t : uint8_t {
+					NONE   = 0x00, // Флаг отсутствует
+					SENT   = 0x01, // Сообщение отправлено
+					UNSENT = 0x02  // Сообщение не отправлено
+				};
+				/**
+				 * Индикаторы доставки SCTP
+				 */
+				enum class pdapi_indics_t : uint8_t {
+					NONE                     = 0x00, // Индикатор отсутствует
+					PARTIAL_DELIVERY_ABORTED = 0x01  // Частичная доставка прервана
+				};
+				/**
+				 * Типы сброса потоков SCTP
+				 */
+				enum class stream_reset_t : uint8_t {
+					NONE         = 0x00, // Тип сброса отсутствует
+					DENIED       = 0x01, // Сброс отклонён
+					FAILED       = 0x02, // Сброс не выполнен
+					OUTGOING_SSN = 0x03, // Сброс исходящих потоков
+					INCOMING_SSN = 0x04  // Сброс входящих потоков
+				};
+				/**
+				 * Типы изменения потоков SCTP
+				 */
+				enum class stream_change_t : uint8_t {
+					NONE   = 0x00, // Тип изменения отсутствует
+					FAILED = 0x01, // Изменение не выполнено
+					DENIED = 0x02  // Изменение отклонено
+				};
+				/**
+				 * Статусы состояния сокета SCTP
+				 */
+				enum class state_status_t : uint8_t {
+					NONE              = 0x00, // Статус отсутствует
+					BOUND             = 0x01, // Вызван bind(), но ассоциация не установлена
+					CLOSED            = 0x02, // Ассоциация не существует (сокет создан, но не привязан/не использован)
+					LISTEN            = 0x03, // Сервер вызвал listen() и ждёт входящих INIT (только для STREAM)
+					ESTABLISHED       = 0x04, // Ассоциация установлена, можно передавать данные
+					COOKIE_WAIT       = 0x05, // Клиент отправил INIT, ждёт INIT-ACK
+					COOKIE_ECHOED     = 0x06, // Клиент получил INIT-ACK, отправил COOKIE-ECHO, ждёт COOKIE-ACK
+					SHUTDOWN_SENT     = 0x07, // Отправлен SHUTDOWN, ждём SHUTDOWN-ACK
+					SHUTDOWN_PENDING  = 0x08, // Приложение вызвало shutdown(), но есть неподтверждённые данные
+					SHUTDOWN_RECEIVED = 0x09, // Получен SHUTDOWN от пираа, ждём
+					SHUTDOWN_ACK_SENT = 0x0A  // Отправлен SHUTDOWN-ACK, ждём SHUTDOWN-COMPLETE
+				};
+				/**
+				 * Типы событий SCTP
+				 */
+				enum class event_type_t : uint8_t {
+					NONE                   = 0x00, // Тип события отсутствует
+					DATA_IO                = 0x01, // Присылать уведомление о каждом входящем DATA-пакете
+					SEND_FAILED            = 0x02, // Ошибка отправки сообщения
+					REMOTE_ERROR           = 0x03, // Ошибка удалённого узла
+					ASSOC_CHANGE           = 0x04, // Изменение ассоциации
+					SHUTDOWN_EVENT         = 0x05, // Событие завершения работы
+					SENDER_DRY_EVENT       = 0x06, // Событие "отправитель сухой"
+					PEER_ADDR_CHANGE       = 0x07, // Изменение адреса однорангового узла
+					ASSOC_RESET_EVENT      = 0x08, // Сброс ассоциации
+					SEND_FAILED_EVENT      = 0x09, // Событие ошибки отправки
+					STREAM_RESET_EVENT     = 0x0A, // Сброс потока
+					STREAM_CHANGE_EVENT    = 0x0B, // Изменение потоков
+					AUTHENTICATION_EVENT   = 0x0C, // Событие аутентификации
+					ADAPTATION_INDICATION  = 0x0D, // Адаптационное указание
+					PARTIAL_DELIVERY_EVENT = 0x0E  // Частичная доставка
+				};
+				/**
+				 * Типы сброса ассоциации SCTP
+				 */
+				enum class assoc_reset_t : uint8_t {
+					NONE   = 0x00, // Тип сброса отсутствует
+					FAILED = 0x01, // Сброс не выполнен
+					DENIED = 0x02  // Сброс отклонён
+				};
+				/**
+				 * Информация об ассоциации SCTP
+				 */
+				enum class assoc_info_t : uint8_t {
+					NONE                = 0x00, // Информация об ассоциации отсутствует
+					SUPPORTS_PR         = 0x01, // Поддерживается частичное надёжное сообщение
+					SUPPORTS_MAX        = 0x02, // Поддерживается максимальное количество сообщений
+					SUPPORTS_AUTH       = 0x03, // Поддерживается аутентификация сообщений
+					SUPPORTS_ASCONF     = 0x04, // Поддерживается динамическая конфигурация адресов
+					SUPPORTS_MULTIBUF   = 0x05, // Поддерживается мультибуферизация сообщений
+					SUPPORTS_RE_CONFIG  = 0x06, // Поддерживается повторная конфигурация ассоциации
+					SUPPORTS_INTERLEAVE = 0x07  // Поддерживается перемежение сообщений
+				};
+				/**
+				 * Состояния ассоциации SCTP
+				 */
+				enum class assoc_state_t : uint8_t {
+					NONE 	      = 0x00, // Состояние ассоциации отсутствует
+					COMM_UP       = 0x01, // Связь установлена
+					COMM_LOST     = 0x02, // Связь потеряна
+					RESTARTED     = 0x03, // Связь перезапущена
+					SHUTDOWN_COMP = 0x04, // Завершение работы выполнено
+					CANT_START    = 0x05  // Не удалось запустить связь
+				};
+				/**
+				 * Состояния адреса однорангового узла SCTP
+				 */
+				enum class paddr_state_t : uint8_t {
+					NONE        = 0x00, // Состояние адреса отсутствует
+					ADDED       = 0x01, // Адрес был добавлен в ассоциацию
+					REMOVED     = 0x02, // Адрес был удалён из ассоциации
+					MADE_PRIM   = 0x03, // Адрес был установлен как основной
+					CONFIRMED   = 0x04, // Адрес подтверждён одноранговым узлом
+					AVAILABLE   = 0x05, // Адрес стал доступен
+					UNREACHABLE = 0x06  // Адрес стал недоступен
+				};
+				/**
+				 * Флаги информации о сообщении SCTP
+				 */
+				enum class info_t : uint8_t {
+					NONE               = 0x00, // Флаг отсутствует
+					PR_TTL             = 0x01, // Сообщение имеет ограничение по времени жизни
+					PR_RTX             = 0x02, // Сообщение имеет ограничение по количеству повторных попыток
+					PR_PRIO            = 0x03, // Сообщение имеет приоритет
+					SEND_ALL           = 0x04, // Отправка сообщения всем ассоциациям
+					ADDR_OVER          = 0x05, // Использовать адрес из to, даже если сокет подключён
+					STATUS_EOF 	       = 0x06, // Сообщение содержит признак грациозного завершения
+					STATUS_ABORT       = 0x07, // Сообщение содержит признак аварийного завершения
+					SACK_IMMEDIATELY   = 0x08, // Установка бита последнего фрагмента DATA, для мгновенной отправки
+					DELIVERY_UNORDERED = 0x09  // Сообщение доставляется без учёта порядка в потоке
+				};
+				/**
+				 * @brief Множество типов событий SCTP
 				 *
 				 */
-				explicit MessageInfo() noexcept :
-				 ppid(ppid_t::DTLS),
-				 num(0), ttl(0), ctx(0) {}
-			} __attribute__((packed)) minfo_t;
-			/**
-			 * @brief Структура параметров рукопожатия SCTP
-			 *
-			 */
-			typedef struct InitMessage {
-				// Максимальное время инициализации SCTP
-				uint16_t timeout;
-				// Максимальное количество попыток подключения
-				uint16_t attempts;
-				// Максимальное количество исходящих потоков
-				uint16_t ostreams;
-				// Максимальное количество входящих потоков
-				uint16_t istreams;
+				using event_types_t = unordered_set <event_type_t>;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура метаданных сообщения SCTP
 				 *
 				 */
-				explicit InitMessage() noexcept :
-				 timeout(0), attempts(4),
-				 ostreams(5), istreams(5) {}
-			} __attribute__((packed)) initmsg_t;
-			/**
-			 * @brief Структура статуса SCTP подключения
-			 *
-			 */
-			typedef struct Status {
-				uint32_t id;          // ID ассоциации
-				uint32_t ratewind;    // Размер окна скорости передачи
-				uint16_t penddata;    // Количество ожидающих данных
-				uint16_t ostreams;    // Количество исходящих потоков
-				uint16_t istreams;    // Количество входящих потоков
-				uint16_t unackdata;   // Количество неподтверждённых DATA чанков
-				uint32_t fragpoint;   // Точка фрагментации в байтах
-				state_status_t state; // Текущее состояние ассоциации
+				typedef struct MessageInfo {
+					ppid_t ppid;                  // Идентификатор полезной нагрузки
+					uint16_t num;                 // Номер потока
+					uint32_t ttl;                 // Время жизни (в миллисекундах)
+					uint32_t ctx;                 // Контекст для уведомлений об ошибках
+					unordered_set <info_t> flags; // Флаги сообщения
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit MessageInfo() noexcept :
+					ppid(ppid_t::DTLS),
+					num(0), ttl(0), ctx(0) {}
+				} __attribute__((packed)) minfo_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура параметров рукопожатия SCTP
 				 *
 				 */
-				explicit Status() noexcept :
-				 id(0),
-				 ratewind(0), penddata(0),
-				 ostreams(0), istreams(0),
-				 unackdata(0), fragpoint(0),
-				 state(state_status_t::NONE) {}
-			} __attribute__((packed)) status_t;
-			/**
-			 * @brief Структура ошибки события SCTP
-			 *
-			 */
-			typedef struct Error {
-				int32_t code;   // Код ошибки события
-				string message; // Сообщение ошибки события
+				typedef struct InitMessage {
+					// Максимальное время инициализации SCTP
+					uint16_t timeout;
+					// Максимальное количество попыток подключения
+					uint16_t attempts;
+					// Максимальное количество исходящих потоков
+					uint16_t ostreams;
+					// Максимальное количество входящих потоков
+					uint16_t istreams;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit InitMessage() noexcept :
+					timeout(0), attempts(4),
+					ostreams(5), istreams(5) {}
+				} __attribute__((packed)) initmsg_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура статуса SCTP подключения
 				 *
 				 */
-				explicit Error() noexcept :
-				 code(0), message{""} {}
-			} error_t;
-			/**
-			 * @brief Структура события SCTP
-			 *
-			 */
-			typedef struct Event {
-				// Идентификатор события
-				uint32_t id;
-				// Тип события
-				event_type_t type;
+				typedef struct Status {
+					uint32_t id;          // ID ассоциации
+					uint32_t ratewind;    // Размер окна скорости передачи
+					uint16_t penddata;    // Количество ожидающих данных
+					uint16_t ostreams;    // Количество исходящих потоков
+					uint16_t istreams;    // Количество входящих потоков
+					uint16_t unackdata;   // Количество неподтверждённых DATA чанков
+					uint32_t fragpoint;   // Точка фрагментации в байтах
+					state_status_t state; // Текущее состояние ассоциации
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Status() noexcept :
+					id(0),
+					ratewind(0), penddata(0),
+					ostreams(0), istreams(0),
+					unackdata(0), fragpoint(0),
+					state(state_status_t::NONE) {}
+				} __attribute__((packed)) status_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура ошибки события SCTP
 				 *
 				 */
-				explicit Event() noexcept :
-				 id(0), type(event_type_t::NONE) {}
+				typedef struct Error {
+					int32_t code;   // Код ошибки события
+					string message; // Сообщение ошибки события
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Error() noexcept :
+					code(0), message{""} {}
+				} error_t;
 				/**
-				 * @brief Деструктор
+				 * @brief Структура события SCTP
 				 *
 				 */
-				virtual ~Event() = default;
-			} event_t;
-			/**
-			 * @brief Структура адаптационного указания SCTP
-			 *
-			 */
-			typedef struct EventAdaptation : public event_t {
-				// Адаптационное указание
-				uint32_t indication;
+				typedef struct Event {
+					// Идентификатор события
+					uint32_t id;
+					// Тип события
+					event_type_t type;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Event() noexcept :
+					id(0), type(event_type_t::NONE) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~Event() = default;
+				} event_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура адаптационного указания SCTP
 				 *
 				 */
-				explicit EventAdaptation() noexcept : indication(0) {}
+				typedef struct EventAdaptation : public event_t {
+					// Адаптационное указание
+					uint32_t indication;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventAdaptation() noexcept : indication(0) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventAdaptation() = default;
+				} event_adaptation_t;
 				/**
-				 * @brief Деструктор
+				 * @brief Структура изменения ассоциации события SCTP
 				 *
 				 */
-				virtual ~EventAdaptation() = default;
-			} event_adaptation_t;
-			/**
-			 * @brief Структура изменения ассоциации события SCTP
-			 *
-			 */
-			typedef struct EventAssocChange : public event_t {
-				error_t error;              // Ошибка события
-				uint16_t ostreams;          // Максимальное количество исходящих потоков
-				uint16_t istreams;          // Максимальное количество входящих потоков
-				assoc_state_t state;        // Состояние события
-				vector <assoc_info_t> info; // Дополнительная информация события
+				typedef struct EventAssocChange : public event_t {
+					error_t error;              // Ошибка события
+					uint16_t ostreams;          // Максимальное количество исходящих потоков
+					uint16_t istreams;          // Максимальное количество входящих потоков
+					assoc_state_t state;        // Состояние события
+					vector <assoc_info_t> info; // Дополнительная информация события
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventAssocChange() noexcept :
+					ostreams(0), istreams(0),
+					state(assoc_state_t::NONE) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventAssocChange() = default;
+				} event_assoc_change_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура сброса ассоциации SCTP
 				 *
 				 */
-				explicit EventAssocChange() noexcept :
-				 ostreams(0), istreams(0),
-				 state(assoc_state_t::NONE) {}
+				typedef struct EventAssocReset : public event_t {
+					// Последний TSN (Transmission Sequence Number), подтверждённый вами (вы получили его от пира)
+					uint32_t localTSN;
+					// Последний TSN (Transmission Sequence Number), подтверждённый пиром (он получил его от вас)
+					uint32_t remoteTSN;
+					// Флаги сброса ассоциации
+					unordered_set <assoc_reset_t> flags;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventAssocReset() noexcept :
+					localTSN(0), remoteTSN(0) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventAssocReset() = default;
+				} event_assoc_reset_t;
 				/**
-				 * @brief Деструктор
+				 * @brief Структура ошибки удалённого узла SCTP
 				 *
 				 */
-				virtual ~EventAssocChange() = default;
-			} event_assoc_change_t;
-			/**
-			 * @brief Структура сброса ассоциации SCTP
-			 *
-			 */
-			typedef struct EventAssocReset : public event_t {
-				// Последний TSN (Transmission Sequence Number), подтверждённый вами (вы получили его от пира)
-				uint32_t localTSN;
-				// Последний TSN (Transmission Sequence Number), подтверждённый пиром (он получил его от вас)
-				uint32_t remoteTSN;
-				// Флаги сброса ассоциации
-				unordered_set <assoc_reset_t> flags;
+				typedef struct EventRemoteError : public event_t {
+					error_t error;         // Ошибка события
+					vector <uint8_t> data; // Дополнительная информация события
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventRemoteError() noexcept = default;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventRemoteError() = default;
+				} event_remote_error_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура изменения адреса однорангового узла SCTP
 				 *
 				 */
-				explicit EventAssocReset() noexcept :
-				 localTSN(0), remoteTSN(0) {}
+				typedef struct EventAddrChange : public event_t {
+					error_t error;            // Ошибка события
+					paddr_state_t state;      // Состояние события
+					unique_ptr <addr_t> addr; // Адрес однорангового узла
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventAddrChange() noexcept :
+					state(paddr_state_t::NONE), addr(nullptr) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventAddrChange() = default;
+				} event_addr_change_t;
 				/**
-				 * @brief Деструктор
+				 * @brief Структура частичной доставки SCTP
 				 *
 				 */
-				virtual ~EventAssocReset() = default;
-			} event_assoc_reset_t;
-			/**
-			 * @brief Структура ошибки удалённого узла SCTP
-			 *
-			 */
-			typedef struct EventRemoteError : public event_t {
-				error_t error;         // Ошибка события
-				vector <uint8_t> data; // Дополнительная информация события
+				typedef struct PartialDeliveryEvent : public event_t {
+					uint16_t stream;           // Номер потока
+					uint16_t sequence;         // Последовательный номер сообщения
+					pdapi_indics_t indication; // Индикатор частичной доставки
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit PartialDeliveryEvent() noexcept :
+					stream(0), sequence(0),
+					indication(pdapi_indics_t::NONE) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~PartialDeliveryEvent() = default;
+				} event_pdapi_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура аутентификации SCTP
 				 *
 				 */
-				explicit EventRemoteError() noexcept = default;
+				typedef struct EventAuth : public event_t {
+					uint16_t key;             // Номер ключа
+					auth_indics_t indication; // Индикатор аутентификации
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventAuth() noexcept :
+					key(0), indication(auth_indics_t::NONE) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventAuth() = default;
+				} event_auth_t;
 				/**
-				 * @brief Деструктор
+				 * @brief Структура ошибки отправки SCTP
 				 *
 				 */
-				virtual ~EventRemoteError() = default;
-			} event_remote_error_t;
-			/**
-			 * @brief Структура изменения адреса однорангового узла SCTP
-			 *
-			 */
-			typedef struct EventAddrChange : public event_t {
-				error_t error;            // Ошибка события
-				paddr_state_t state;      // Состояние события
-				unique_ptr <addr_t> addr; // Адрес однорангового узла
+				typedef struct EventSendFailed : public event_t {
+					error_t error;         // Ошибка события
+					send_failed_t status;  // Статус отправки сообщения
+					vector <uint8_t> data; // Дополнительная информация события
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventSendFailed() noexcept : status(send_failed_t::NONE) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventSendFailed() = default;
+				} event_send_failed_t;
 				/**
-				 * @brief Конструктор
+				 * @brief Структура сброса потоков SCTP
 				 *
 				 */
-				explicit EventAddrChange() noexcept :
-				 state(paddr_state_t::NONE), addr(nullptr) {}
+				typedef struct EventStreamReset : public event_t {
+					vector <uint16_t> streams;            // Номера сброшенных потоков
+					unordered_set <stream_reset_t> flags; // Типы сброса потоков
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventStreamReset() noexcept {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventStreamReset() = default;
+				} event_stream_reset_t;
 				/**
-				 * @brief Деструктор
+				 * @brief Структура изменения потоков SCTP
 				 *
 				 */
-				virtual ~EventAddrChange() = default;
-			} event_addr_change_t;
-			/**
-			 * @brief Структура частичной доставки SCTP
-			 *
-			 */
-			typedef struct PartialDeliveryEvent : public event_t {
-				uint16_t stream;           // Номер потока
-				uint16_t sequence;         // Последовательный номер сообщения
-				pdapi_indics_t indication; // Индикатор частичной доставки
+				typedef struct EventStreamChange : public event_t {
+					// Максимальное количество исходящих потоков
+					uint16_t ostreams;
+					// Максимальное количество входящих потоков
+					uint16_t istreams;
+					// Флаги сброса ассоциации
+					unordered_set <stream_change_t> flags;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit EventStreamChange() noexcept :
+					ostreams(0), istreams(0) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~EventStreamChange() = default;
+				} event_stream_change_t;
 				/**
-				 * @brief Конструктор
+				 * @brief пространство имён работы с обратными вызовами
 				 *
 				 */
-				explicit PartialDeliveryEvent() noexcept :
-				 stream(0), sequence(0),
-				 indication(pdapi_indics_t::NONE) {}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				virtual ~PartialDeliveryEvent() = default;
-			} event_pdapi_t;
-			/**
-			 * @brief Структура аутентификации SCTP
-			 *
-			 */
-			typedef struct EventAuth : public event_t {
-				uint16_t key;             // Номер ключа
-				auth_indics_t indication; // Индикатор аутентификации
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit EventAuth() noexcept :
-				 key(0), indication(auth_indics_t::NONE) {}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				virtual ~EventAuth() = default;
-			} event_auth_t;
-			/**
-			 * @brief Структура ошибки отправки SCTP
-			 *
-			 */
-			typedef struct EventSendFailed : public event_t {
-				error_t error;         // Ошибка события
-				send_failed_t status;  // Статус отправки сообщения
-				vector <uint8_t> data; // Дополнительная информация события
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit EventSendFailed() noexcept : status(send_failed_t::NONE) {}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				virtual ~EventSendFailed() = default;
-			} event_send_failed_t;
-			/**
-			 * @brief Структура сброса потоков SCTP
-			 *
-			 */
-			typedef struct EventStreamReset : public event_t {
-				vector <uint16_t> streams;            // Номера сброшенных потоков
-				unordered_set <stream_reset_t> flags; // Типы сброса потоков
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit EventStreamReset() noexcept {}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				virtual ~EventStreamReset() = default;
-			} event_stream_reset_t;
-			/**
-			 * @brief Структура изменения потоков SCTP
-			 *
-			 */
-			typedef struct EventStreamChange : public event_t {
-				// Максимальное количество исходящих потоков
-				uint16_t ostreams;
-				// Максимальное количество входящих потоков
-				uint16_t istreams;
-				// Флаги сброса ассоциации
-				unordered_set <stream_change_t> flags;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit EventStreamChange() noexcept :
-				 ostreams(0), istreams(0) {}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				virtual ~EventStreamChange() = default;
-			} event_stream_change_t;
-			/**
-			 * @brief пространство имён работы с обратными вызовами
-			 *
-			 */
-			namespace callback {
-				/**
-				 * Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
-				 */
-				using info_t = std::function <void (const event::id_t, const minfo_t &)>;
-				/**
-				 * Функция обратного вызова срабатывающая при получении событий SCTP
-				 */
-				using events_t = std::function <void (const event::id_t, unique_ptr <event_t>)>;
+				namespace callback {
+					/**
+					 * Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
+					 */
+					using info_t = std::function <void (const event::id_t, const minfo_t &)>;
+					/**
+					 * Функция обратного вызова срабатывающая при получении событий SCTP
+					 */
+					using events_t = std::function <void (const event::id_t, unique_ptr <event_t>)>;
+				};
 			};
-		};
-		/**
-		 * @brief Создаём тип данных SCTP события
-		 *
-		 */
-		using sctp_event_t = unique_ptr <sctp::event_t>;
+			/**
+			 * @brief Создаём тип данных SCTP события
+			 *
+			 */
+			using sctp_event_t = unique_ptr <sctp::event_t>;
+		#endif
 	};
 };
 

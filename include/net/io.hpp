@@ -37,7 +37,7 @@ namespace awh {
 		 * @brief Класс управления протоколом передачи с управлением потоком
 		 *
 		 */
-		typedef class StreamControlTransmissionProtocol  {
+		typedef class AWH_SHARED_EXPORT StreamControlTransmissionProtocol {
 			private:
 				// Объект работы с сетью
 				eth_t _eth;
@@ -189,13 +189,13 @@ namespace awh {
 	 * @brief Тип асинхронного движка ввода-вывода
 	 *
 	 */
-	typedef class IO : public engine_t {
+	typedef class AWH_SHARED_EXPORT IO : public engine_t {
 		public:
 			/**
 			 * @brief Структура управления списками контроля доступа
 			 *
 			 */
-			typedef class ControlList {
+			typedef class AWH_SHARED_EXPORT ControlList {
 				private:
 					// Тип списка контрольного списка
 					event::control_list_t _type;
@@ -249,6 +249,11 @@ namespace awh {
 					 */
 					virtual ~ControlList() noexcept {}
 			} control_list_t;
+		public:
+			// Объект управления белым списком
+			control_list_t whitelist;
+			// Объект управления чёрным списком
+			control_list_t blacklist;
 		public:
 			/**
 			 * @brief Метод фиксации настроек события

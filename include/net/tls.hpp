@@ -36,7 +36,7 @@ namespace awh {
 	 * @brief Структура транспортного уровня безопасности
 	 *
 	 */
-	typedef class TransportLayerSecurity {
+	typedef class AWH_SHARED_EXPORT TransportLayerSecurity {
 		public:
 			/**
 			 * Режимы работы TLS
