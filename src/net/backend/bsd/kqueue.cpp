@@ -10894,7 +10894,7 @@ namespace sctp {
 									// Устанавливаем идентификатор ассоциации SCTP
 									result.id = peer->transfer.sctp.id;
 									// Инициализируем рукопожатие SCTP для клиента
-									this->_eth.sctpStatus(peer->transfer.fd, result);
+									this->_eth.sctp.status(peer->transfer.fd, result);
 								} break;
 								// Если сокет принадлежит к другому типу
 								default: {
@@ -10973,7 +10973,7 @@ namespace sctp {
 									// Устанавливаем идентификатор ассоциации SCTP
 									result.id = client->transfer.sctp.id;
 									// Инициализируем рукопожатие SCTP для клиента
-									this->_eth.sctpStatus(client->transfer.fd, result);
+									this->_eth.sctp.status(client->transfer.fd, result);
 								} break;
 								// Если сокет принадлежит к другому типу
 								default: {
@@ -11088,7 +11088,7 @@ namespace sctp {
 							// Если тип однорангового узла установлен как SEQPACKET
 							if(client->state.type == event::type_t::SEQPACKET)
 								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpInitMessages(client->transfer.fd, initmsg);
+								this->_eth.sctp.initMessages(client->transfer.fd, initmsg);
 							// Если тип однорангового узла не установлен как SEQPACKET
 							else {
 								// Если установлена функция обратного вызова
@@ -11157,7 +11157,7 @@ namespace sctp {
 							// Если тип однорангового узла установлен как SEQPACKET
 							if(server->state.type == event::type_t::SEQPACKET)
 								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctpInitMessages(server->fd, initmsg);
+								this->_eth.sctp.initMessages(server->fd, initmsg);
 							// Если тип однорангового узла не установлен как SEQPACKET
 							else {
 								// Если установлена функция обратного вызова
@@ -11464,9 +11464,9 @@ namespace sctp {
 									break;
 								}
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, &endpoint);
+								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type, &endpoint);
 							// Получаем значение таймаута SCTP события
-							} else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type);
+							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -11506,9 +11506,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type, &client->endpoint.server);
+								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type, &client->endpoint.server);
 							// Получаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type);
+							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -11548,9 +11548,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, &server->endpoint.server);
+								return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, &server->endpoint.server);
 							// Получаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(server->fd, server->sctp.id, type);
+							else return this->_eth.sctp.timeout(server->fd, server->sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -11655,9 +11655,9 @@ namespace sctp {
 									break;
 								}
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &endpoint);
+								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &endpoint);
 							// Устанавливаем значение таймаута SCTP события
-							} else return this->_eth.sctpTimeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
+							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -11697,9 +11697,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type, timeout, &client->endpoint.server);
+								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type, timeout, &client->endpoint.server);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(client->transfer.fd, client->transfer.sctp.id, type, timeout);
+							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -11739,9 +11739,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout, &server->endpoint.server);
+								return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout, &server->endpoint.server);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctpTimeout(server->fd, server->sctp.id, type, timeout);
+							else return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -11825,7 +11825,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем ключ аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateKey(client->transfer.fd, num, key);
+							return this->_eth.sctp.authenticateKey(client->transfer.fd, num, key);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -11863,7 +11863,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(server->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем ключ аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateKey(server->fd, num, key);
+							return this->_eth.sctp.authenticateKey(server->fd, num, key);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -11953,11 +11953,11 @@ namespace sctp {
 								// Если необходимо активировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::ENABLED):
 									// Активируем ключ аутентификации SCTP сокета
-									return this->_eth.sctpAuthenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctp.id, num);
+									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctp.id, num);
 								// Если необходимо деактивировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::DISABLED):
 									// Деактивируем ключ аутентификации SCTP сокета
-									return this->_eth.sctpAuthenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctp.id, num);
+									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctp.id, num);
 							}
 						// Если протокол интернета не установлен как SCTP
 						} else {
@@ -12002,11 +12002,11 @@ namespace sctp {
 								// Если необходимо активировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::ENABLED):
 									// Активируем ключ аутентификации SCTP сокета
-									return this->_eth.sctpAuthenticateKey(server->fd, net::socket_mode_t::ENABLED, server->sctp.id, num);
+									return this->_eth.sctp.authenticateKey(server->fd, net::socket_mode_t::ENABLED, server->sctp.id, num);
 								// Если необходимо деактивировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::DISABLED):
 									// Деактивируем ключ аутентификации SCTP сокета
-									return this->_eth.sctpAuthenticateKey(server->fd, net::socket_mode_t::DISABLED, server->sctp.id, num);
+									return this->_eth.sctp.authenticateKey(server->fd, net::socket_mode_t::DISABLED, server->sctp.id, num);
 							}
 						// Если протокол интернета не установлен как SCTP
 						} else {
@@ -12092,7 +12092,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем чанки аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateChunks(client->transfer.fd, chunks);
+							return this->_eth.sctp.authenticateChunks(client->transfer.fd, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12130,7 +12130,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(server->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем чанки аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateChunks(server->fd, chunks);
+							return this->_eth.sctp.authenticateChunks(server->fd, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12218,7 +12218,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateChunks(peer->transfer.fd, origin, peer->transfer.sctp.id, chunks);
+							return this->_eth.sctp.authenticateChunks(peer->transfer.fd, origin, peer->transfer.sctp.id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12256,7 +12256,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateChunks(client->transfer.fd, origin, client->transfer.sctp.id, chunks);
+							return this->_eth.sctp.authenticateChunks(client->transfer.fd, origin, client->transfer.sctp.id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12294,7 +12294,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(server->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateChunks(server->fd, origin, server->sctp.id, chunks);
+							return this->_eth.sctp.authenticateChunks(server->fd, origin, server->sctp.id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12379,7 +12379,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateSupportAlgorithms(peer->transfer.fd, types);
+							return this->_eth.sctp.authenticateSupportAlgorithms(peer->transfer.fd, types);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12417,7 +12417,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateSupportAlgorithms(client->transfer.fd, types);
+							return this->_eth.sctp.authenticateSupportAlgorithms(client->transfer.fd, types);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -12455,7 +12455,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(server->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
-							return this->_eth.sctpAuthenticateSupportAlgorithms(server->fd, types);
+							return this->_eth.sctp.authenticateSupportAlgorithms(server->fd, types);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -14335,7 +14335,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Если сокет принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctpEventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
 															break;
 														}
 													}
@@ -14847,7 +14847,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Если сокет принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctpEventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
 															break;
 														}
 													}
@@ -15866,7 +15866,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Если сокет принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctpEventsSubscribe(server->fd, server->sctp.events);
+																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
 															break;
 														}
 													}
@@ -16052,7 +16052,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 															// Если сокет принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctpEventsSubscribe(server->fd, server->sctp.events);
+																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
 															break;
 														}
 													}

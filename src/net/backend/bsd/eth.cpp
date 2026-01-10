@@ -148,6 +148,1093 @@ namespace {
 };
 
 /**
+ * Если операционной системой является FreeBSD
+ */
+#if __FreeBSD__
+	/**
+	 * @brief Метод получения статуса SCTP сокета
+	 *
+	 * @param sock   сетевой сокет
+	 * @param status объект для извлечения статуса инициализации SCTP сокета
+	 * @return       результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::status(const net::socket_t sock, net::sctp::status_t & status) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Переменная для хранения протокола сокета
+		int32_t protocol = 0;
+		// Длина протокола сокета
+		socklen_t length = sizeof(protocol);
+		// Получаем протокол сокета
+		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+			/**
+			 * Определяем протокол сокета
+			 */
+			switch(protocol){
+				// Если протокол SCTP
+				case IPPROTO_SCTP: {
+					// Создаём объект статуса SCTP сокета
+					struct sctp_status data = {};
+					// Устанавливаем идентификатор ассоциации
+					data.sstat_assoc_id = status.id;
+					// Размер структуры статуса SCTP сокета
+					socklen_t length = sizeof(data);
+					// Выполняем инициализацию SCTP сокета
+					if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &data, &length)))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					// Заполняем объект ответа
+					} else {
+						// Извлекаем идентификатор ассоциации SCTP сокета
+						status.id = data.sstat_assoc_id;
+						// Извлекаем количество входящих окон SCTP сокета
+						status.ratewind = data.sstat_rwnd;
+						// Извлекаем количество отправленных SCTP пакетов
+						status.unackdata = data.sstat_unackdata;
+						// Извлекаем количество ожидающих подтверждений SCTP сокета
+						status.penddata = data.sstat_penddata;
+						// Извлекаем количество входящих стримов SCTP сокета
+						status.istreams = data.sstat_instrms;
+						// Извлекаем количество выходящих стримов SCTP сокета
+						status.ostreams = data.sstat_outstrms;
+						// Извлекаем точку фрагментации SCTP сокета
+						status.fragpoint = data.sstat_fragmentation_point;
+						/**
+						 * Обрабатываем состояние SCTP сокета
+						 */
+						switch(data.sstat_state){
+							// Если состояние SCTP сокета - привязан
+							case SCTP_BOUND:
+								// Устанавливаем состояние SCTP сокета - привязан
+								status.state = net::sctp::state_status_t::BOUND;
+							break;
+							// Если состояние SCTP сокета - закрытие
+							case SCTP_CLOSED:
+								// Устанавливаем состояние SCTP сокета - закрыт
+								status.state = net::sctp::state_status_t::CLOSED;
+							break;
+							// Если состояние SCTP сокета - прослушивание
+							case SCTP_LISTEN:
+								// Устанавливаем состояние SCTP сокета - прослушивание
+								status.state = net::sctp::state_status_t::LISTEN;
+							break;
+							// Если состояние SCTP сокета - установлено
+							case SCTP_ESTABLISHED:
+								// Устанавливаем состояние SCTP сокета - установлено
+								status.state = net::sctp::state_status_t::ESTABLISHED;
+							break;
+							// Если состояние SCTP сокета - в процессе установления
+							case SCTP_COOKIE_WAIT:
+								// Устанавливаем состояние SCTP сокета - в процессе установления
+								status.state = net::sctp::state_status_t::COOKIE_WAIT;
+							break;
+							// Если состояние SCTP сокета - ожидание подтверждения cookie
+							case SCTP_COOKIE_ECHOED:
+								// Устанавливаем состояние SCTP сокета - ожидание подтверждения cookie
+								status.state = net::sctp::state_status_t::COOKIE_ECHOED;
+							break;
+							// Если состояние SCTP сокета - в процессе завершения
+							case SCTP_SHUTDOWN_SENT:
+								// Устанавливаем состояние SCTP сокета - в процессе завершения
+								status.state = net::sctp::state_status_t::SHUTDOWN_SENT;
+							break;
+							// Если состояние SCTP сокета - завершение
+							case SCTP_SHUTDOWN_PENDING:
+								// Устанавливаем состояние SCTP сокета - завершение
+								status.state = net::sctp::state_status_t::SHUTDOWN_PENDING;
+							break;
+							// Если состояние SCTP сокета - ожидание завершения
+							case SCTP_SHUTDOWN_RECEIVED:
+								// Устанавливаем состояние SCTP сокета - ожидание завершения
+								status.state = net::sctp::state_status_t::SHUTDOWN_RECEIVED;
+							break;
+							// Если состояние SCTP сокета - ожидание завершения
+							case SCTP_SHUTDOWN_ACK_SENT:
+								// Устанавливаем состояние SCTP сокета - ожидание завершения
+								status.state = net::sctp::state_status_t::SHUTDOWN_ACK_SENT;
+							break;
+						}
+					}
+				} break;
+			}
+		// Если возникает ошибка получения протокола сокета
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод инициализации SCTP сокета
+	 *
+	 * @param sock    сетевой сокет
+	 * @param initmsg параметры инициализации SCTP сокета
+	 * @return        результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Переменная для хранения протокола сокета
+		int32_t protocol = 0;
+		// Длина протокола сокета
+		socklen_t length = sizeof(protocol);
+		// Получаем протокол сокета
+		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+			/**
+			 * Определяем протокол сокета
+			 */
+			switch(protocol){
+				// Если протокол SCTP
+				case IPPROTO_SCTP: {
+					// Создаём объект инициализации SCTP сокета
+					struct sctp_initmsg init;
+					// Зануляем объект инициализации SCTP сокета
+					::memset(&init, 0, sizeof(init));
+					// Устанавливаем количество попыток инициализации
+					init.sinit_max_attempts = initmsg.attempts;
+					// Устанавливаем таймаут инициализации
+					init.sinit_max_init_timeo = initmsg.timeout;
+					// Устанавливаем количество выходящих стримов
+					init.sinit_num_ostreams = initmsg.ostreams;
+					// Устанавливаем количество входящих стримов
+					init.sinit_max_instreams = initmsg.istreams;
+					// Выполняем инициализацию SCTP сокета
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				} break;
+			}
+		// Если возникает ошибка получения протокола сокета
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод подписки на SCTP события
+	 *
+	 * @param sock   сетевой сокет
+	 * @param events список событий SCTP для активации
+	 * @return       результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Переменная для хранения протокола сокета
+		int32_t protocol = 0;
+		// Длина протокола сокета
+		socklen_t length = sizeof(protocol);
+		// Получаем протокол сокета
+		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+			/**
+			 * Определяем протокол сокета
+			 */
+			switch(protocol){
+				// Если протокол SCTP
+				case IPPROTO_SCTP: {
+					/**
+					 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
+					 */
+					#ifdef __AWH_DISABLED__
+						// Создаём объект подписки на события
+						struct sctp_event event;
+						// Зануляем объект события
+						::memset(&event, 0, sizeof(event));
+						// Активируем получение входящих событий
+						event.se_on = 1;
+						// Устанавливаем тип события
+						event.se_type = SCTP_ASSOC_CHANGE;
+						// Устанавливаем идентификатор ассоциации
+						event.se_assoc_id = SCTP_FUTURE_ASSOC;
+						// Выполняем активацию получения событий SCTP для сокета
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					#endif
+					// Создаём объект подписки на события
+					struct sctp_event_subscribe subscribe;
+					// Зануляем объект события
+					::memset(&subscribe, 0, sizeof(subscribe));
+					// Выполняем перебор всех возможных событий SCTP
+					for(auto & event : events){
+						/**
+						 * Определяем тип события SCTP
+						 */
+						switch(static_cast <uint8_t> (event)){
+							// Если требуется уведомление о каждом входящем DATA-пакете
+							case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
+								// Устанавливаем уведомления о каждом входящем DATA-пакете
+								subscribe.sctp_data_io_event = 1;
+							break;
+							// Если ошибка удалённого узла
+							case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
+								// Устанавливаем события SCTP_PEER_ERROR_EVENT
+								subscribe.sctp_peer_error_event = 1;
+							break;
+							// Если изменение ассоциации
+							case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
+								// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+								subscribe.sctp_association_event = 1;
+							break;
+							// Если событие завершения работы
+							case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
+								// Устанавливаем события SCTP_SHUTDOWN_EVENT
+								subscribe.sctp_shutdown_event = 1;
+							break;
+							// Если событие "отправитель сухой"
+							case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
+								// Устанавливаем события SCTP_SENDER_DRY_EVENT
+								subscribe.sctp_sender_dry_event = 1;
+							break;
+							// Если изменение адреса однорангового узла
+							case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
+								// Устанавливаем события SCTP_ADDR_CHANGE
+								subscribe.sctp_address_event = 1;
+							break;
+							// Если событие ошибки отправки
+							case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
+								// Устанавливаем события SCTP_SEND_FAILED_EVENT
+								subscribe.sctp_send_failure_event = 1;
+							break;
+							// Если событие сброса потока
+							case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
+								// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+								subscribe.sctp_stream_reset_event = 1;
+							break;
+							// Если событие аутентификации
+							case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
+								// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
+								subscribe.sctp_authentication_event = 1;
+							break;
+							// Если событие адаптационное указание
+							case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
+								// Устанавливаем события SCTP_ADAPTATION_INDICATION
+								subscribe.sctp_adaptation_layer_event = 1;
+							break;
+							// Если событие частичной доставки
+							case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+								// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
+								subscribe.sctp_partial_delivery_event = 1;
+							break;
+						}
+					}
+					// Выполняем активацию получения событий SCTP для сокета
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				} break;
+			}
+		// Если возникает ошибка получения протокола сокета
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+	 *
+	 * @param sock  сетевой сокет
+	 * @param types список поддерживаемых алгоритмов аутентификации
+	 * @return      результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Если количество поддерживаемых алгоритмов аутентификации передано
+		if(!types.empty()){
+			// Объект поддерживаемых алгоритмов аутентификации SCTP сокета
+			struct sctp_hmacalgo * hmac = nullptr;
+			// Вычисляем длину структуры поддерживаемых алгоритмов аутентификации SCTP сокета
+			const size_t length = (offsetof(struct sctp_hmacalgo, shmac_idents) + types.size() * sizeof(uint16_t));
+			// Выделяем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
+			hmac = reinterpret_cast <struct sctp_hmacalgo *> (::calloc(1, length));
+			// Устанавливаем количество поддерживаемых алгоритмов аутентификации SCTP сокета
+			hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
+			// Индекс для записи поддерживаемых алгоритмов аутентификации SCTP сокета
+			uint32_t index = 0;
+			// Выполняем перебор всех переданных типов алгоритмов аутентификации
+			for(auto & type : types){
+				/**
+				 * Определяем тип аутентификации
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Если тип аутентификации - HMAC-SHA1
+					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA1):
+						// Устанавливаем номер ключа аутентификации для HMAC-SHA1
+						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA1; // = 1
+					break;
+					// Если тип аутентификации - HMAC-SHA256
+					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA256):
+						// Устанавливаем номер ключа аутентификации для HMAC-SHA256
+						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA256; // = 3
+					break;
+				}
+			}
+			// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_HMAC_IDENT, hmac, length)))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, types.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+			// Очищаем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
+			::free(hmac);
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод установки ключа аутентификации SCTP сокета
+	 *
+	 * @param sock сетевой сокет
+	 * @param num  номер ключа аутентификации
+	 * @param key  ключ аутентификации
+	 * @return     результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::authenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Если ключ аутентификации передан
+		if(!key.empty()){
+			// Получаем размер ключа аутентификации
+			const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.length());
+			// Выделяем память под ключ аутентификации
+			struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
+			// Устанавливаем идентификатор ассоциации
+			authkey->sca_assoc_id = 0;
+			// Устанавливаем номер ключа аутентификации
+			authkey->sca_keynumber = num;
+			// Устанавливаем размер ключа аутентификации
+			authkey->sca_keylength = static_cast <uint16_t> (key.length());
+			// Копируем ключ аутентификации в структуру
+			::memcpy(authkey->sca_key, key.c_str(), key.length());
+			// Устанавливаем ключ аутентификации SCTP сокета
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+			// Очищаем память под ключ аутентификации
+			::free(authkey);
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+	 *
+	 * @param sock сетевой сокет
+	 * @param mode режим установки типа сокета
+	 * @param id   идентификатор ассоциации
+	 * @param num  номер ключа аутентификации
+	 * @return     результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Создаём объект идентификатора ключа аутентификации
+		struct sctp_authkeyid authkeyid;
+		// Зануляем объект идентификатора ключа аутентификации
+		::memset(&authkeyid, 0, sizeof(authkeyid));
+		// Устанавливаем идентификатор ассоциации
+		authkeyid.scact_assoc_id = id;
+		// Устанавливаем номер ключа аутентификации
+		authkeyid.scact_keynumber = num;
+		/**
+		 * Определяем режим активации/деактивации ключа аутентификации SCTP сокета
+		 */
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо активировать ключ аутентификации SCTP сокета
+			case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
+				// Активируем ключ аутентификации SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &authkeyid, sizeof(authkeyid))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо деактивировать ключ аутентификации SCTP сокета
+			case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
+				// Деактивируем ключ аутентификации SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, &authkeyid, sizeof(authkeyid))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод установки чанков аутентификации SCTP сокета
+	 *
+	 * @param sock   сетевой сокет
+	 * @param chunks список чанков подлежащих аутентификации
+	 * @return       результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Если количество чанков аутентификации передано
+		if(!chunks.empty()){
+			// Создаём объект чанка аутентификации SCTP сокета
+			struct sctp_authchunk authchunk;
+			// Зануляем объект чанка аутентификации SCTP сокета
+			::memset(&authchunk, 0, sizeof(authchunk));
+			// Выполняем перебор всех переданных чанков аутентификации
+			for(auto & chunk : chunks){
+				/**
+				 * Определяем тип чанка аутентификации
+				 */
+				switch(static_cast <uint8_t> (chunk)){
+					// Если чанк аутентификации - DATA
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::DATA):
+						// Устанавливаем чанк аутентификации DATA
+						authchunk.sauth_chunk = 0x00;
+					break;
+					// Если чанк аутентификации - INIT
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::INIT):
+						// Устанавливаем чанк аутентификации INIT
+						authchunk.sauth_chunk = 0x01;
+					break;
+					// Если чанк аутентификации - INIT_ACK
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::INIT_ACK):
+						// Устанавливаем чанк аутентификации INIT_ACK
+						authchunk.sauth_chunk = 0x02;
+					break;
+					// Если чанк аутентификации - SACK
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SACK):
+						// Устанавливаем чанк аутентификации SACK
+						authchunk.sauth_chunk = 0x03;
+					break;
+					// Если чанк аутентификации - HEARTBEAT
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::HEARTBEAT):
+						// Устанавливаем чанк аутентификации HEARTBEAT
+						authchunk.sauth_chunk = 0x04;
+					break;
+					// Если чанк аутентификации - HEARTBEAT_ACK
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::HEARTBEAT_ACK):
+						// Устанавливаем чанк аутентификации HEARTBEAT_ACK
+						authchunk.sauth_chunk = 0x05;
+					break;
+					// Если чанк аутентификации - ABORT
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::ABORT):
+						// Устанавливаем чанк аутентификации ABORT
+						authchunk.sauth_chunk = 0x06;
+					break;
+					// Если чанк аутентификации - SHUTDOWN
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN):
+						// Устанавливаем чанк аутентификации SHUTDOWN
+						authchunk.sauth_chunk = 0x07;
+					break;
+					// Если чанк аутентификации - SHUTDOWN_ACK
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN_ACK):
+						// Устанавливаем чанк аутентификации SHUTDOWN_ACK
+						authchunk.sauth_chunk = 0x08;
+					break;
+					// Если чанк аутентификации - ERROR
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::ERROR):
+						// Устанавливаем чанк аутентификации ERROR
+						authchunk.sauth_chunk = 0x09;
+					break;
+					// Если чанк аутентификации - COOKIE_ECHO
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::COOKIE_ECHO):
+						// Устанавливаем чанк аутентификации COOKIE_ECHO
+						authchunk.sauth_chunk = 0x0A;
+					break;
+					// Если чанк аутентификации - COOKIE_ACK
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::COOKIE_ACK):
+						// Устанавливаем чанк аутентификации COOKIE_ACK
+						authchunk.sauth_chunk = 0x0B;
+					break;
+					// Если чанк аутентификации - ECNE
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::ECNE):
+						// Устанавливаем чанк аутентификации ECNE
+						authchunk.sauth_chunk = 0x0C;
+					break;
+					// Если чанк аутентификации - CWR
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::CWR):
+						// Устанавливаем чанк аутентификации CWR
+						authchunk.sauth_chunk = 0x0D;
+					break;
+					// Если чанк аутентификации - SHUTDOWN_COMPLETE
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN_COMPLETE):
+						// Устанавливаем чанк аутентификации SHUTDOWN_COMPLETE
+						authchunk.sauth_chunk = 0x0E;
+					break;
+					// Если чанк аутентификации - AUTH
+					case static_cast <uint8_t> (net::sctp::auth_chunk_t::AUTH):
+						// Устанавливаем чанк аутентификации AUTH
+						authchunk.sauth_chunk = 0x0F;
+					break;
+				}
+				// Активируем чанк аутентификации SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_CHUNK, &authchunk, sizeof(authchunk))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, chunks.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+					// Прекращаем дальнейшую обработку чанков аутентификации
+					break;
+				}
+			}
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод извлечения чанков аутентификации SCTP сокета
+	 *
+	 * @param sock   сетевой сокет
+	 * @param origin источник события
+	 * @param id     идентификатор ассоциации
+	 * @param chunks список чанков подлежащих аутентификации
+	 * @return       результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Объект чанков аутентификации SCTP сокета
+		struct sctp_authchunks authchunks;
+		// Зануляем объект чанков аутентификации SCTP сокета
+		::memset(&authchunks, 0, sizeof(authchunks));
+		// Устанавливаем идентификатор ассоциации
+		authchunks.gauth_assoc_id = id;
+		// Максимум 256 типов чанков — более чем достаточно
+		socklen_t length = (sizeof(authchunks) + 256);
+		// Переменная для хранения типа опции
+		int32_t optname = 0;
+		/**
+		 * Определяем источник события
+		 */
+		switch(static_cast <uint8_t> (origin)){
+			// Если источник события - локальный
+			case static_cast <uint8_t> (event::origin_t::LOCAL):
+				// Устанавливаем тип опции - локальные чанки аутентификации
+				optname = SCTP_LOCAL_AUTH_CHUNKS;
+			break;
+			// Если источник события - удалённый
+			case static_cast <uint8_t> (event::origin_t::REMOTE):
+				// Устанавливаем тип опции - удалённые чанки аутентификации
+				optname = SCTP_PEER_AUTH_CHUNKS;
+			break;
+		}
+		// Получаем протокол сокета
+		if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, &authchunks, &length) == 0))){
+			// Перебираем все полученные чанки аутентификации
+			for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
+				/**
+				 * Определяем тип чанка аутентификации
+				 */
+				switch(authchunks.gauth_chunks[i]){
+					// Если чанк аутентификации - DATA
+					case 0x00:
+						// Добавляем чанк аутентификации DATA
+						chunks.push_back(net::sctp::auth_chunk_t::DATA);
+					break;
+					// Если чанк аутентификации - INIT
+					case 0x01:
+						// Добавляем чанк аутентификации INIT
+						chunks.push_back(net::sctp::auth_chunk_t::INIT);
+					break;
+					// Если чанк аутентификации - INIT_ACK
+					case 0x02:
+						// Добавляем чанк аутентификации INIT_ACK
+						chunks.push_back(net::sctp::auth_chunk_t::INIT_ACK);
+					break;
+					// Если чанк аутентификации - SACK
+					case 0x03:
+						// Добавляем чанк аутентификации SACK
+						chunks.push_back(net::sctp::auth_chunk_t::SACK);
+					break;
+					// Если чанк аутентификации - HEARTBEAT
+					case 0x04:
+						// Добавляем чанк аутентификации HEARTBEAT
+						chunks.push_back(net::sctp::auth_chunk_t::HEARTBEAT);
+					break;
+					// Если чанк аутентификации - HEARTBEAT_ACK
+					case 0x05:
+						// Добавляем чанк аутентификации HEARTBEAT_ACK
+						chunks.push_back(net::sctp::auth_chunk_t::HEARTBEAT_ACK);
+					break;
+					// Если чанк аутентификации - ABORT
+					case 0x06:
+						// Добавляем чанк аутентификации ABORT
+						chunks.push_back(net::sctp::auth_chunk_t::ABORT);
+					break;
+					// Если чанк аутентификации - SHUTDOWN
+					case 0x07:
+						// Добавляем чанк аутентификации SHUTDOWN
+						chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN);
+					break;
+					// Если чанк аутентификации - SHUTDOWN_ACK
+					case 0x08:
+						// Добавляем чанк аутентификации SHUTDOWN_ACK
+						chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN_ACK);
+					break;
+					// Если чанк аутентификации - ERROR
+					case 0x09:
+						// Добавляем чанк аутентификации ERROR
+						chunks.push_back(net::sctp::auth_chunk_t::ERROR);
+					break;
+					// Если чанк аутентификации - COOKIE_ECHO
+					case 0x0A:
+						// Добавляем чанк аутентификации COOKIE_ECHO
+						chunks.push_back(net::sctp::auth_chunk_t::COOKIE_ECHO);
+					break;
+					// Если чанк аутентификации - COOKIE_ACK
+					case 0x0B:
+						// Добавляем чанк аутентификации COOKIE_ACK
+						chunks.push_back(net::sctp::auth_chunk_t::COOKIE_ACK);
+					break;
+					// Если чанк аутентификации - ECNE
+					case 0x0C:
+						// Добавляем чанк аутентификации ECNE
+						chunks.push_back(net::sctp::auth_chunk_t::ECNE);
+					break;
+					// Если чанк аутентификации - CWR
+					case 0x0D:
+						// Добавляем чанк аутентификации CWR
+						chunks.push_back(net::sctp::auth_chunk_t::CWR);
+					break;
+					// Если чанк аутентификации - SHUTDOWN_COMPLETE
+					case 0x0E:
+						// Добавляем чанк аутентификации SHUTDOWN_COMPLETE
+						chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN_COMPLETE);
+					break;
+					// Если чанк аутентификации - AUTH
+					case 0x0F:
+						// Добавляем чанк аутентификации AUTH
+						chunks.push_back(net::sctp::auth_chunk_t::AUTH);
+					break;
+					// Если чанк аутентификации - FORWARD_TSN
+					case 0x80:
+						// Добавляем чанк аутентификации FORWARD_TSN
+						chunks.push_back(net::sctp::auth_chunk_t::FORWARD_TSN);
+					break;
+					// Если чанк аутентификации - RE_CONFIG
+					case 0xC1:
+						// Добавляем чанк аутентификации RE_CONFIG
+						chunks.push_back(net::sctp::auth_chunk_t::RE_CONFIG);
+					break;
+				}
+			}
+		// Если возникает ошибка получения протокола сокета
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод получения таймаута SCTP сокета
+	 *
+	 * @param sock сетевой сокет
+	 * @param id   идентификатор ассоциации
+	 * @param type тип таймаута
+	 * @param ctx  контекст установки таймаута
+	 * @return     значение таймаута в миллисекундах
+	 */
+	uint32_t awh::Ethernet::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx = nullptr) const noexcept {
+		// Результат работы функции
+		uint32_t result = 0;
+		/**
+		 * Определяем тип таймаута
+		 */
+		switch(static_cast <uint8_t> (type)){
+			// Если тип таймаута - INIT
+			case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
+			// Если тип таймаута - DATA
+			case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_rtoinfo params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем длину объекта параметров таймаута
+				socklen_t length = sizeof(params);
+				// Устанавливаем идентификатор ассоциации
+				params.srto_assoc_id = id;
+				// Извлекаем параметры таймаута SCTP сокета
+				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_RTOINFO, &params, &length)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				// Устанавливаем значение таймаута
+				} else result = params.srto_initial;
+			} break;
+			// Если тип таймаута - SACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
+			// Если тип таймаута - SHUTDOWN
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN):
+			// Если тип таймаута - SHUTDOWNACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				#endif
+			} break;
+			// Если тип таймаута - COOKIE
+			case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_paddrparams params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем длину объекта параметров таймаута
+				socklen_t length = sizeof(params);
+				// Устанавливаем идентификатор ассоциации
+				params.spp_assoc_id = id;
+				// Если передан контекст установки таймаута
+				if(ctx != nullptr)
+					// Устанавливаем адрес удалённой стороны из контекста
+					::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
+				// Извлекаем параметры таймаута SCTP сокета
+				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &length)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				// Устанавливаем значение таймаута
+				} else result = params.spp_hbinterval;
+			} break;
+			// Если тип таймаута - COOKIE
+			case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_assocparams params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем длину объекта параметров таймаута
+				socklen_t length = sizeof(params);
+				// Устанавливаем идентификатор ассоциации
+				params.sasoc_assoc_id = id;
+				// Извлекаем параметры таймаута SCTP сокета
+				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_ASSOCINFO, &params, &length)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				// Устанавливаем значение таймаута
+				} else result = params.sasoc_cookie_life;
+			} break;
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод установки таймаута SCTP сокета
+	 *
+	 * @param sock    сетевой сокет
+	 * @param id      идентификатор ассоциации
+	 * @param type    тип таймаута
+	 * @param timeout значение таймаута в миллисекундах
+	 * @param ctx     контекст установки таймаута
+	 * @return        результат работы функции
+	 */
+	bool awh::Ethernet::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Определяем тип таймаута
+		 */
+		switch(static_cast <uint8_t> (type)){
+			// Если тип таймаута - INIT
+			case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
+			// Если тип таймаута - DATA
+			case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_rtoinfo params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.srto_assoc_id = id;
+				// Устанавливаем новое значение таймаута
+				params.srto_initial = timeout;
+				// Активируем новые таймауты SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_RTOINFO, &params, sizeof(params))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если тип таймаута - SACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
+			// Если тип таймаута - SHUTDOWN
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN):
+			// Если тип таймаута - SHUTDOWNACK
+			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				#endif
+			} break;
+			// Если тип таймаута - COOKIE
+			case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_paddrparams params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.spp_assoc_id = id;
+				// Устанавливаем новое значение таймаута
+				params.spp_hbinterval = timeout;
+				// Если передан контекст установки таймаута
+				if(ctx != nullptr)
+					// Устанавливаем адрес удалённой стороны из контекста
+					::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
+				// Устанавливаем флаг принудительного включения HB с новым интервалом
+				params.spp_flags = SPP_HB_ENABLE;
+				// Активируем новые таймауты SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если тип таймаута - COOKIE
+			case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
+				// Создаём объект параметров таймаута SCTP сокета
+				struct sctp_assocparams params;
+				// Зануляем объект параметров таймаута
+				::memset(&params, 0, sizeof(params));
+				// Устанавливаем идентификатор ассоциации
+				params.sasoc_assoc_id = id;
+				// Устанавливаем новое значение таймаута
+				params.sasoc_cookie_life = timeout;
+				// Активируем новые таймауты SCTP сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_ASSOCINFO, &params, sizeof(params))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+		// Выводим результат
+		return result;
+	}
+#endif
+
+/**
  * @brief Метод применения сетевой оптимизации операционной системы
  *
  */
@@ -1467,6 +2554,36 @@ bool awh::Ethernet::ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const 
 	return false;
 }
 /**
+ * @brief Метод получения кода ошибки
+ *
+ * @param sock сетевой сокет
+ * @return     код ошибки на сокете если присутствует
+ */
+int32_t awh::Ethernet::error(const net::socket_t sock) const noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Размер кода ошибки
+	socklen_t size = sizeof(result);
+	// Если мы получили ошибку, выходим сообщение
+	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &result, &size) != 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод установки таймаута сокета
  *
  * @param sock  сетевой сокет
@@ -1687,1152 +2804,97 @@ int32_t awh::Ethernet::bufferSize(const net::socket_t sock, const net::socket_ev
 	return result;
 }
 /**
- * @brief Метод получения кода ошибки
- *
- * @param sock сетевой сокет
- * @return     код ошибки на сокете если присутствует
- */
-int32_t awh::Ethernet::error(const net::socket_t sock) const noexcept {
-	// Результат работы функции
-	int32_t result = -1;
-	// Размер кода ошибки
-	socklen_t size = sizeof(result);
-	// Если мы получили ошибку, выходим сообщение
-	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &result, &size) != 0){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод получения таймаута SCTP сокета
- *
- * @param sock сетевой сокет
- * @param id   идентификатор ассоциации
- * @param type тип таймаута
- * @param ctx  контекст установки таймаута
- * @return     значение таймаута в миллисекундах
- */
-uint32_t awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] void * ctx) const noexcept {
-	// Результат работы функции
-	uint32_t result = 0;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		/**
-		 * Определяем тип таймаута
-		 */
-		switch(static_cast <uint8_t> (type)){
-			// Если тип таймаута - INIT
-			case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
-			// Если тип таймаута - DATA
-			case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
-				// Создаём объект параметров таймаута SCTP сокета
-				struct sctp_rtoinfo params;
-				// Зануляем объект параметров таймаута
-				::memset(&params, 0, sizeof(params));
-				// Устанавливаем длину объекта параметров таймаута
-				socklen_t length = sizeof(params);
-				// Устанавливаем идентификатор ассоциации
-				params.srto_assoc_id = id;
-				// Извлекаем параметры таймаута SCTP сокета
-				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_RTOINFO, &params, &length)))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				// Устанавливаем значение таймаута
-				} else result = params.srto_initial;
-			} break;
-			// Если тип таймаута - SACK
-			case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
-			// Если тип таймаута - SHUTDOWN
-			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN):
-			// Если тип таймаута - SHUTDOWNACK
-			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK): {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
-				#endif
-			} break;
-			// Если тип таймаута - COOKIE
-			case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
-				// Создаём объект параметров таймаута SCTP сокета
-				struct sctp_paddrparams params;
-				// Зануляем объект параметров таймаута
-				::memset(&params, 0, sizeof(params));
-				// Устанавливаем длину объекта параметров таймаута
-				socklen_t length = sizeof(params);
-				// Устанавливаем идентификатор ассоциации
-				params.spp_assoc_id = id;
-				// Если передан контекст установки таймаута
-				if(ctx != nullptr)
-					// Устанавливаем адрес удалённой стороны из контекста
-					::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
-				// Извлекаем параметры таймаута SCTP сокета
-				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &length)))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				// Устанавливаем значение таймаута
-				} else result = params.spp_hbinterval;
-			} break;
-			// Если тип таймаута - COOKIE
-			case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
-				// Создаём объект параметров таймаута SCTP сокета
-				struct sctp_assocparams params;
-				// Зануляем объект параметров таймаута
-				::memset(&params, 0, sizeof(params));
-				// Устанавливаем длину объекта параметров таймаута
-				socklen_t length = sizeof(params);
-				// Устанавливаем идентификатор ассоциации
-				params.sasoc_assoc_id = id;
-				// Извлекаем параметры таймаута SCTP сокета
-				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_ASSOCINFO, &params, &length)))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				// Устанавливаем значение таймаута
-				} else result = params.sasoc_cookie_life;
-			} break;
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки таймаута SCTP сокета
- *
- * @param sock    сетевой сокет
- * @param id      идентификатор ассоциации
- * @param type    тип таймаута
- * @param timeout значение таймаута в миллисекундах
- * @param ctx     контекст установки таймаута
- * @return        результат работы функции
- */
-bool awh::Ethernet::sctpTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const net::sctp::timeout_t type, [[maybe_unused]] const uint32_t timeout, [[maybe_unused]] void * ctx) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		/**
-		 * Определяем тип таймаута
-		 */
-		switch(static_cast <uint8_t> (type)){
-			// Если тип таймаута - INIT
-			case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
-			// Если тип таймаута - DATA
-			case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
-				// Создаём объект параметров таймаута SCTP сокета
-				struct sctp_rtoinfo params;
-				// Зануляем объект параметров таймаута
-				::memset(&params, 0, sizeof(params));
-				// Устанавливаем идентификатор ассоциации
-				params.srto_assoc_id = id;
-				// Устанавливаем новое значение таймаута
-				params.srto_initial = timeout;
-				// Активируем новые таймауты SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_RTOINFO, &params, sizeof(params))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			} break;
-			// Если тип таймаута - SACK
-			case static_cast <uint8_t> (net::sctp::timeout_t::SACK):
-			// Если тип таймаута - SHUTDOWN
-			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWN):
-			// Если тип таймаута - SHUTDOWNACK
-			case static_cast <uint8_t> (net::sctp::timeout_t::SHUTDOWNACK): {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
-				#endif
-			} break;
-			// Если тип таймаута - COOKIE
-			case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
-				// Создаём объект параметров таймаута SCTP сокета
-				struct sctp_paddrparams params;
-				// Зануляем объект параметров таймаута
-				::memset(&params, 0, sizeof(params));
-				// Устанавливаем идентификатор ассоциации
-				params.spp_assoc_id = id;
-				// Устанавливаем новое значение таймаута
-				params.spp_hbinterval = timeout;
-				// Если передан контекст установки таймаута
-				if(ctx != nullptr)
-					// Устанавливаем адрес удалённой стороны из контекста
-					::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
-				// Устанавливаем флаг принудительного включения HB с новым интервалом
-				params.spp_flags = SPP_HB_ENABLE;
-				// Активируем новые таймауты SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			} break;
-			// Если тип таймаута - COOKIE
-			case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
-				// Создаём объект параметров таймаута SCTP сокета
-				struct sctp_assocparams params;
-				// Зануляем объект параметров таймаута
-				::memset(&params, 0, sizeof(params));
-				// Устанавливаем идентификатор ассоциации
-				params.sasoc_assoc_id = id;
-				// Устанавливаем новое значение таймаута
-				params.sasoc_cookie_life = timeout;
-				// Активируем новые таймауты SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_ASSOCINFO, &params, sizeof(params))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			} break;
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод получения статуса SCTP сокета
+ * @brief Метод установки сетевого интерфейса для multicast пакетов
  *
  * @param sock   сетевой сокет
- * @param status объект для извлечения статуса инициализации SCTP сокета
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param name   имя сетевого интерфейса
  * @return       результат работы функции
  */
-bool awh::Ethernet::sctpStatus([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] net::sctp::status_t & status) const noexcept {
+bool awh::Ethernet::multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Переменная для хранения протокола сокета
-		int32_t protocol = 0;
-		// Длина протокола сокета
-		socklen_t length = sizeof(protocol);
-		// Получаем протокол сокета
-		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-			/**
-			 * Определяем протокол сокета
-			 */
-			switch(protocol){
-				// Если протокол SCTP
-				case IPPROTO_SCTP: {
-					// Создаём объект статуса SCTP сокета
-					struct sctp_status data = {};
-					// Устанавливаем идентификатор ассоциации
-					data.sstat_assoc_id = status.id;
-					// Размер структуры статуса SCTP сокета
-					socklen_t length = sizeof(data);
-					// Выполняем инициализацию SCTP сокета
-					if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &data, &length)))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					// Заполняем объект ответа
-					} else {
-						// Извлекаем идентификатор ассоциации SCTP сокета
-						status.id = data.sstat_assoc_id;
-						// Извлекаем количество входящих окон SCTP сокета
-						status.ratewind = data.sstat_rwnd;
-						// Извлекаем количество отправленных SCTP пакетов
-						status.unackdata = data.sstat_unackdata;
-						// Извлекаем количество ожидающих подтверждений SCTP сокета
-						status.penddata = data.sstat_penddata;
-						// Извлекаем количество входящих стримов SCTP сокета
-						status.istreams = data.sstat_instrms;
-						// Извлекаем количество выходящих стримов SCTP сокета
-						status.ostreams = data.sstat_outstrms;
-						// Извлекаем точку фрагментации SCTP сокета
-						status.fragpoint = data.sstat_fragmentation_point;
-						/**
-						 * Обрабатываем состояние SCTP сокета
-						 */
-						switch(data.sstat_state){
-							// Если состояние SCTP сокета - привязан
-							case SCTP_BOUND:
-								// Устанавливаем состояние SCTP сокета - привязан
-								status.state = net::sctp::state_status_t::BOUND;
-							break;
-							// Если состояние SCTP сокета - закрытие
-							case SCTP_CLOSED:
-								// Устанавливаем состояние SCTP сокета - закрыт
-								status.state = net::sctp::state_status_t::CLOSED;
-							break;
-							// Если состояние SCTP сокета - прослушивание
-							case SCTP_LISTEN:
-								// Устанавливаем состояние SCTP сокета - прослушивание
-								status.state = net::sctp::state_status_t::LISTEN;
-							break;
-							// Если состояние SCTP сокета - установлено
-							case SCTP_ESTABLISHED:
-								// Устанавливаем состояние SCTP сокета - установлено
-								status.state = net::sctp::state_status_t::ESTABLISHED;
-							break;
-							// Если состояние SCTP сокета - в процессе установления
-							case SCTP_COOKIE_WAIT:
-								// Устанавливаем состояние SCTP сокета - в процессе установления
-								status.state = net::sctp::state_status_t::COOKIE_WAIT;
-							break;
-							// Если состояние SCTP сокета - ожидание подтверждения cookie
-							case SCTP_COOKIE_ECHOED:
-								// Устанавливаем состояние SCTP сокета - ожидание подтверждения cookie
-								status.state = net::sctp::state_status_t::COOKIE_ECHOED;
-							break;
-							// Если состояние SCTP сокета - в процессе завершения
-							case SCTP_SHUTDOWN_SENT:
-								// Устанавливаем состояние SCTP сокета - в процессе завершения
-								status.state = net::sctp::state_status_t::SHUTDOWN_SENT;
-							break;
-							// Если состояние SCTP сокета - завершение
-							case SCTP_SHUTDOWN_PENDING:
-								// Устанавливаем состояние SCTP сокета - завершение
-								status.state = net::sctp::state_status_t::SHUTDOWN_PENDING;
-							break;
-							// Если состояние SCTP сокета - ожидание завершения
-							case SCTP_SHUTDOWN_RECEIVED:
-								// Устанавливаем состояние SCTP сокета - ожидание завершения
-								status.state = net::sctp::state_status_t::SHUTDOWN_RECEIVED;
-							break;
-							// Если состояние SCTP сокета - ожидание завершения
-							case SCTP_SHUTDOWN_ACK_SENT:
-								// Устанавливаем состояние SCTP сокета - ожидание завершения
-								status.state = net::sctp::state_status_t::SHUTDOWN_ACK_SENT;
-							break;
-						}
-					}
-				} break;
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод инициализации SCTP сокета
- *
- * @param sock    сетевой сокет
- * @param initmsg параметры инициализации SCTP сокета
- * @return        результат работы функции
- */
-bool awh::Ethernet::sctpInitMessages([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp::initmsg_t & initmsg) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Переменная для хранения протокола сокета
-		int32_t protocol = 0;
-		// Длина протокола сокета
-		socklen_t length = sizeof(protocol);
-		// Получаем протокол сокета
-		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-			/**
-			 * Определяем протокол сокета
-			 */
-			switch(protocol){
-				// Если протокол SCTP
-				case IPPROTO_SCTP: {
-					// Создаём объект инициализации SCTP сокета
-					struct sctp_initmsg init;
-					// Зануляем объект инициализации SCTP сокета
-					::memset(&init, 0, sizeof(init));
-					// Устанавливаем количество попыток инициализации
-					init.sinit_max_attempts = initmsg.attempts;
-					// Устанавливаем таймаут инициализации
-					init.sinit_max_init_timeo = initmsg.timeout;
-					// Устанавливаем количество выходящих стримов
-					init.sinit_num_ostreams = initmsg.ostreams;
-					// Устанавливаем количество входящих стримов
-					init.sinit_max_instreams = initmsg.istreams;
-					// Выполняем инициализацию SCTP сокета
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
-* @brief Метод подписки на SCTP события
-*
-* @param sock   сетевой сокет
-* @param events список событий SCTP для активации
-* @return       результат работы функции
-*/
-bool awh::Ethernet::sctpEventsSubscribe([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::sctp::event_types_t & events) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Переменная для хранения протокола сокета
-		int32_t protocol = 0;
-		// Длина протокола сокета
-		socklen_t length = sizeof(protocol);
-		// Получаем протокол сокета
-		if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-			/**
-			 * Определяем протокол сокета
-			 */
-			switch(protocol){
-				// Если протокол SCTP
-				case IPPROTO_SCTP: {
+	// Если название сетевого интерфейса не пустое
+	if(!name.empty()){
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Получаем список сетевых интерфейсов
+				struct ifaddrs * ptr = nullptr;
+				// Выполняем получение списка сетевых интерфейсов
+				if(::getifaddrs(&ptr) != 0){
 					/**
-					 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
+					 * Если включён режим отладки
 					 */
-					#ifdef __AWH_DISABLED__
-						// Создаём объект подписки на события
-						struct sctp_event event;
-						// Зануляем объект события
-						::memset(&event, 0, sizeof(event));
-						// Активируем получение входящих событий
-						event.se_on = 1;
-						// Устанавливаем тип события
-						event.se_type = SCTP_ASSOC_CHANGE;
-						// Устанавливаем идентификатор ассоциации
-						event.se_assoc_id = SCTP_FUTURE_ASSOC;
-						// Выполняем активацию получения событий SCTP для сокета
-						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event))))){
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+					#endif
+					// Выводим пустой результат
+					return result;
+				}
+				// Перебираем все сетевые интерфейсы
+				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+					// Пропускаем не IPv4-интерфейсы
+					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
+						// Пропускаем интерфейсы, которые не являются IPv4
+						continue;
+					// Если интерфейс не активен
+					if(!(ifa->ifa_flags & IFF_UP))
+						// Пропускаем неактивные интерфейсы
+						continue;
+					// Получаем IP-адрес интерфейса
+					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
+					// Если имя интерфейса совпадает
+					if(this->_fmk->compare(ifa->ifa_name, name)){
+						// Создаём объект сетевого интерфейса
+						struct in_addr iface = {};
+						// Присваиваем найденный IP-адрес
+						iface.s_addr = sin->sin_addr.s_addr;
+						// Устанавливаем сетевой интерфейс для multicast пакетов
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &iface, sizeof(iface))))){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
-					#endif
-					// Создаём объект подписки на события
-					struct sctp_event_subscribe subscribe;
-					// Зануляем объект события
-					::memset(&subscribe, 0, sizeof(subscribe));
-					// Выполняем перебор всех возможных событий SCTP
-					for(auto & event : events){
-						/**
-						 * Определяем тип события SCTP
-						 */
-						switch(static_cast <uint8_t> (event)){
-							// Если требуется уведомление о каждом входящем DATA-пакете
-							case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
-								// Устанавливаем уведомления о каждом входящем DATA-пакете
-								subscribe.sctp_data_io_event = 1;
-							break;
-							// Если ошибка удалённого узла
-							case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
-								// Устанавливаем события SCTP_PEER_ERROR_EVENT
-								subscribe.sctp_peer_error_event = 1;
-							break;
-							// Если изменение ассоциации
-							case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
-								// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-								subscribe.sctp_association_event = 1;
-							break;
-							// Если событие завершения работы
-							case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
-								// Устанавливаем события SCTP_SHUTDOWN_EVENT
-								subscribe.sctp_shutdown_event = 1;
-							break;
-							// Если событие "отправитель сухой"
-							case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
-								// Устанавливаем события SCTP_SENDER_DRY_EVENT
-								subscribe.sctp_sender_dry_event = 1;
-							break;
-							// Если изменение адреса однорангового узла
-							case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
-								// Устанавливаем события SCTP_ADDR_CHANGE
-								subscribe.sctp_address_event = 1;
-							break;
-							// Если событие ошибки отправки
-							case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
-								// Устанавливаем события SCTP_SEND_FAILED_EVENT
-								subscribe.sctp_send_failure_event = 1;
-							break;
-							// Если событие сброса потока
-							case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
-								// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-								subscribe.sctp_stream_reset_event = 1;
-							break;
-							// Если событие аутентификации
-							case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
-								// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
-								subscribe.sctp_authentication_event = 1;
-							break;
-							// Если событие адаптационное указание
-							case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
-								// Устанавливаем события SCTP_ADAPTATION_INDICATION
-								subscribe.sctp_adaptation_layer_event = 1;
-							break;
-							// Если событие частичной доставки
-							case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
-								// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
-								subscribe.sctp_partial_delivery_event = 1;
-							break;
-						}
+						// Выходим из цикла
+						break;
 					}
-					// Выполняем активацию получения событий SCTP для сокета
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки чанков аутентификации SCTP сокета
- *
- * @param sock   сетевой сокет
- * @param chunks список чанков подлежащих аутентификации
- * @return       результат работы функции
- */
-bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Если количество чанков аутентификации передано
-		if(!chunks.empty()){
-			// Создаём объект чанка аутентификации SCTP сокета
-			struct sctp_authchunk authchunk;
-			// Зануляем объект чанка аутентификации SCTP сокета
-			::memset(&authchunk, 0, sizeof(authchunk));
-			// Выполняем перебор всех переданных чанков аутентификации
-			for(auto & chunk : chunks){
-				/**
-				 * Определяем тип чанка аутентификации
-				 */
-				switch(static_cast <uint8_t> (chunk)){
-					// Если чанк аутентификации - DATA
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::DATA):
-						// Устанавливаем чанк аутентификации DATA
-						authchunk.sauth_chunk = 0x00;
-					break;
-					// Если чанк аутентификации - INIT
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::INIT):
-						// Устанавливаем чанк аутентификации INIT
-						authchunk.sauth_chunk = 0x01;
-					break;
-					// Если чанк аутентификации - INIT_ACK
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::INIT_ACK):
-						// Устанавливаем чанк аутентификации INIT_ACK
-						authchunk.sauth_chunk = 0x02;
-					break;
-					// Если чанк аутентификации - SACK
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SACK):
-						// Устанавливаем чанк аутентификации SACK
-						authchunk.sauth_chunk = 0x03;
-					break;
-					// Если чанк аутентификации - HEARTBEAT
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::HEARTBEAT):
-						// Устанавливаем чанк аутентификации HEARTBEAT
-						authchunk.sauth_chunk = 0x04;
-					break;
-					// Если чанк аутентификации - HEARTBEAT_ACK
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::HEARTBEAT_ACK):
-						// Устанавливаем чанк аутентификации HEARTBEAT_ACK
-						authchunk.sauth_chunk = 0x05;
-					break;
-					// Если чанк аутентификации - ABORT
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::ABORT):
-						// Устанавливаем чанк аутентификации ABORT
-						authchunk.sauth_chunk = 0x06;
-					break;
-					// Если чанк аутентификации - SHUTDOWN
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN):
-						// Устанавливаем чанк аутентификации SHUTDOWN
-						authchunk.sauth_chunk = 0x07;
-					break;
-					// Если чанк аутентификации - SHUTDOWN_ACK
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN_ACK):
-						// Устанавливаем чанк аутентификации SHUTDOWN_ACK
-						authchunk.sauth_chunk = 0x08;
-					break;
-					// Если чанк аутентификации - ERROR
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::ERROR):
-						// Устанавливаем чанк аутентификации ERROR
-						authchunk.sauth_chunk = 0x09;
-					break;
-					// Если чанк аутентификации - COOKIE_ECHO
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::COOKIE_ECHO):
-						// Устанавливаем чанк аутентификации COOKIE_ECHO
-						authchunk.sauth_chunk = 0x0A;
-					break;
-					// Если чанк аутентификации - COOKIE_ACK
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::COOKIE_ACK):
-						// Устанавливаем чанк аутентификации COOKIE_ACK
-						authchunk.sauth_chunk = 0x0B;
-					break;
-					// Если чанк аутентификации - ECNE
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::ECNE):
-						// Устанавливаем чанк аутентификации ECNE
-						authchunk.sauth_chunk = 0x0C;
-					break;
-					// Если чанк аутентификации - CWR
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::CWR):
-						// Устанавливаем чанк аутентификации CWR
-						authchunk.sauth_chunk = 0x0D;
-					break;
-					// Если чанк аутентификации - SHUTDOWN_COMPLETE
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN_COMPLETE):
-						// Устанавливаем чанк аутентификации SHUTDOWN_COMPLETE
-						authchunk.sauth_chunk = 0x0E;
-					break;
-					// Если чанк аутентификации - AUTH
-					case static_cast <uint8_t> (net::sctp::auth_chunk_t::AUTH):
-						// Устанавливаем чанк аутентификации AUTH
-						authchunk.sauth_chunk = 0x0F;
-					break;
 				}
-				// Активируем чанк аутентификации SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_CHUNK, &authchunk, sizeof(authchunk))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, chunks.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-					// Прекращаем дальнейшую обработку чанков аутентификации
-					break;
-				}
-			}
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод извлечения чанков аутентификации SCTP сокета
- *
- * @param sock   сетевой сокет
- * @param origin источник события
- * @param id     идентификатор ассоциации
- * @param chunks список чанков подлежащих аутентификации
- * @return       результат работы функции
- */
-bool awh::Ethernet::sctpAuthenticateChunks([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::origin_t origin, [[maybe_unused]] const uint32_t id, [[maybe_unused]] vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Объект чанков аутентификации SCTP сокета
-		struct sctp_authchunks authchunks;
-		// Зануляем объект чанков аутентификации SCTP сокета
-		::memset(&authchunks, 0, sizeof(authchunks));
-		// Устанавливаем идентификатор ассоциации
-		authchunks.gauth_assoc_id = id;
-		// Максимум 256 типов чанков — более чем достаточно
-		socklen_t length = (sizeof(authchunks) + 256);
-		// Переменная для хранения типа опции
-		int32_t optname = 0;
-		/**
-		 * Определяем источник события
-		 */
-		switch(static_cast <uint8_t> (origin)){
-			// Если источник события - локальный
-			case static_cast <uint8_t> (event::origin_t::LOCAL):
-				// Устанавливаем тип опции - локальные чанки аутентификации
-				optname = SCTP_LOCAL_AUTH_CHUNKS;
-			break;
-			// Если источник события - удалённый
-			case static_cast <uint8_t> (event::origin_t::REMOTE):
-				// Устанавливаем тип опции - удалённые чанки аутентификации
-				optname = SCTP_PEER_AUTH_CHUNKS;
-			break;
-		}
-		// Получаем протокол сокета
-		if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, &authchunks, &length) == 0))){
-			// Перебираем все полученные чанки аутентификации
-			for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
-				/**
-				 * Определяем тип чанка аутентификации
-				 */
-				switch(authchunks.gauth_chunks[i]){
-					// Если чанк аутентификации - DATA
-					case 0x00:
-						// Добавляем чанк аутентификации DATA
-						chunks.push_back(net::sctp::auth_chunk_t::DATA);
-					break;
-					// Если чанк аутентификации - INIT
-					case 0x01:
-						// Добавляем чанк аутентификации INIT
-						chunks.push_back(net::sctp::auth_chunk_t::INIT);
-					break;
-					// Если чанк аутентификации - INIT_ACK
-					case 0x02:
-						// Добавляем чанк аутентификации INIT_ACK
-						chunks.push_back(net::sctp::auth_chunk_t::INIT_ACK);
-					break;
-					// Если чанк аутентификации - SACK
-					case 0x03:
-						// Добавляем чанк аутентификации SACK
-						chunks.push_back(net::sctp::auth_chunk_t::SACK);
-					break;
-					// Если чанк аутентификации - HEARTBEAT
-					case 0x04:
-						// Добавляем чанк аутентификации HEARTBEAT
-						chunks.push_back(net::sctp::auth_chunk_t::HEARTBEAT);
-					break;
-					// Если чанк аутентификации - HEARTBEAT_ACK
-					case 0x05:
-						// Добавляем чанк аутентификации HEARTBEAT_ACK
-						chunks.push_back(net::sctp::auth_chunk_t::HEARTBEAT_ACK);
-					break;
-					// Если чанк аутентификации - ABORT
-					case 0x06:
-						// Добавляем чанк аутентификации ABORT
-						chunks.push_back(net::sctp::auth_chunk_t::ABORT);
-					break;
-					// Если чанк аутентификации - SHUTDOWN
-					case 0x07:
-						// Добавляем чанк аутентификации SHUTDOWN
-						chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN);
-					break;
-					// Если чанк аутентификации - SHUTDOWN_ACK
-					case 0x08:
-						// Добавляем чанк аутентификации SHUTDOWN_ACK
-						chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN_ACK);
-					break;
-					// Если чанк аутентификации - ERROR
-					case 0x09:
-						// Добавляем чанк аутентификации ERROR
-						chunks.push_back(net::sctp::auth_chunk_t::ERROR);
-					break;
-					// Если чанк аутентификации - COOKIE_ECHO
-					case 0x0A:
-						// Добавляем чанк аутентификации COOKIE_ECHO
-						chunks.push_back(net::sctp::auth_chunk_t::COOKIE_ECHO);
-					break;
-					// Если чанк аутентификации - COOKIE_ACK
-					case 0x0B:
-						// Добавляем чанк аутентификации COOKIE_ACK
-						chunks.push_back(net::sctp::auth_chunk_t::COOKIE_ACK);
-					break;
-					// Если чанк аутентификации - ECNE
-					case 0x0C:
-						// Добавляем чанк аутентификации ECNE
-						chunks.push_back(net::sctp::auth_chunk_t::ECNE);
-					break;
-					// Если чанк аутентификации - CWR
-					case 0x0D:
-						// Добавляем чанк аутентификации CWR
-						chunks.push_back(net::sctp::auth_chunk_t::CWR);
-					break;
-					// Если чанк аутентификации - SHUTDOWN_COMPLETE
-					case 0x0E:
-						// Добавляем чанк аутентификации SHUTDOWN_COMPLETE
-						chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN_COMPLETE);
-					break;
-					// Если чанк аутентификации - AUTH
-					case 0x0F:
-						// Добавляем чанк аутентификации AUTH
-						chunks.push_back(net::sctp::auth_chunk_t::AUTH);
-					break;
-					// Если чанк аутентификации - FORWARD_TSN
-					case 0x80:
-						// Добавляем чанк аутентификации FORWARD_TSN
-						chunks.push_back(net::sctp::auth_chunk_t::FORWARD_TSN);
-					break;
-					// Если чанк аутентификации - RE_CONFIG
-					case 0xC1:
-						// Добавляем чанк аутентификации RE_CONFIG
-						chunks.push_back(net::sctp::auth_chunk_t::RE_CONFIG);
-					break;
-				}
-			}
-		// Если возникает ошибка получения протокола сокета
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), awh::log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
- *
- * @param sock  сетевой сокет
- * @param types список поддерживаемых алгоритмов аутентификации
- * @return      результат работы функции
- */
-bool awh::Ethernet::sctpAuthenticateSupportAlgorithms([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const vector <net::sctp::auth_type_t> & types) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Если количество поддерживаемых алгоритмов аутентификации передано
-		if(!types.empty()){
-			// Объект поддерживаемых алгоритмов аутентификации SCTP сокета
-			struct sctp_hmacalgo * hmac = nullptr;
-			// Вычисляем длину структуры поддерживаемых алгоритмов аутентификации SCTP сокета
-			const size_t length = (offsetof(struct sctp_hmacalgo, shmac_idents) + types.size() * sizeof(uint16_t));
-			// Выделяем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
-			hmac = reinterpret_cast <struct sctp_hmacalgo *> (::calloc(1, length));
-			// Устанавливаем количество поддерживаемых алгоритмов аутентификации SCTP сокета
-			hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
-			// Индекс для записи поддерживаемых алгоритмов аутентификации SCTP сокета
-			uint32_t index = 0;
-			// Выполняем перебор всех переданных типов алгоритмов аутентификации
-			for(auto & type : types){
-				/**
-				 * Определяем тип аутентификации
-				 */
-				switch(static_cast <uint8_t> (type)){
-					// Если тип аутентификации - HMAC-SHA1
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA1):
-						// Устанавливаем номер ключа аутентификации для HMAC-SHA1
-						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA1; // = 1
-					break;
-					// Если тип аутентификации - HMAC-SHA256
-					case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA256):
-						// Устанавливаем номер ключа аутентификации для HMAC-SHA256
-						hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA256; // = 3
-					break;
-				}
-			}
-			// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_HMAC_IDENT, hmac, length)))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, types.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-			// Очищаем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
-			::free(hmac);
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки ключа аутентификации SCTP сокета
- *
- * @param sock сетевой сокет
- * @param num  номер ключа аутентификации
- * @param key  ключ аутентификации
- * @return     результат работы функции
- */
-bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const uint16_t num, [[maybe_unused]] const string & key) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Если ключ аутентификации передан
-		if(!key.empty()){
-			// Получаем размер ключа аутентификации
-			const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.length());
-			// Выделяем память под ключ аутентификации
-			struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
-			// Устанавливаем идентификатор ассоциации
-			authkey->sca_assoc_id = 0;
-			// Устанавливаем номер ключа аутентификации
-			authkey->sca_keynumber = num;
-			// Устанавливаем размер ключа аутентификации
-			authkey->sca_keylength = static_cast <uint16_t> (key.length());
-			// Копируем ключ аутентификации в структуру
-			::memcpy(authkey->sca_key, key.c_str(), key.length());
-			// Устанавливаем ключ аутентификации SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-			// Очищаем память под ключ аутентификации
-			::free(authkey);
-		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
- *
- * @param sock сетевой сокет
- * @param mode режим установки типа сокета
- * @param id   идентификатор ассоциации
- * @param num  номер ключа аутентификации
- * @return     результат работы функции
- */
-bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_mode_t mode, [[maybe_unused]] const uint32_t id, [[maybe_unused]] const uint16_t num) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__
-		// Создаём объект идентификатора ключа аутентификации
-		struct sctp_authkeyid authkeyid;
-		// Зануляем объект идентификатора ключа аутентификации
-		::memset(&authkeyid, 0, sizeof(authkeyid));
-		// Устанавливаем идентификатор ассоциации
-		authkeyid.scact_assoc_id = id;
-		// Устанавливаем номер ключа аутентификации
-		authkeyid.scact_keynumber = num;
-		/**
-		 * Определяем режим активации/деактивации ключа аутентификации SCTP сокета
-		 */
-		switch(static_cast <uint8_t> (mode)){
-			// Если необходимо активировать ключ аутентификации SCTP сокета
-			case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
-				// Активируем ключ аутентификации SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &authkeyid, sizeof(authkeyid))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
+				// Освобождаем память от списка сетевых интерфейсов
+				::freeifaddrs(ptr);
 			} break;
-			// Если необходимо деактивировать ключ аутентификации SCTP сокета
-			case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
-				// Деактивируем ключ аутентификации SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, &authkeyid, sizeof(authkeyid))))){
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Получаем индекс сетевого интерфейса по его имени
+				const uint32_t index = ::if_nametoindex(name.c_str());
+				// Устанавливаем сетевой интерфейс для multicast пакетов
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &index, sizeof(index))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2843,7 +2905,22 @@ bool awh::Ethernet::sctpAuthenticateKey([[maybe_unused]] const net::socket_t soc
 				}
 			} break;
 		}
-	#endif
+	// Если название сетевого интерфейса пустое
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Interface name is empty", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Interface name is empty", awh::log_t::flag_t::WARNING);
+		#endif
+	}
 	// Выводим результат
 	return result;
 }
@@ -2968,127 +3045,6 @@ bool awh::Ethernet::keepalive(const net::socket_t sock, const int32_t cnt, const
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки сетевого интерфейса для multicast пакетов
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param name   имя сетевого интерфейса
- * @return       результат работы функции
- */
-bool awh::Ethernet::multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если название сетевого интерфейса не пустое
-	if(!name.empty()){
-		/**
-		 * Определяем семейство события
-		 */
-		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Получаем список сетевых интерфейсов
-				struct ifaddrs * ptr = nullptr;
-				// Выполняем получение списка сетевых интерфейсов
-				if(::getifaddrs(&ptr) != 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
-					#endif
-					// Выводим пустой результат
-					return result;
-				}
-				// Перебираем все сетевые интерфейсы
-				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-					// Пропускаем не IPv4-интерфейсы
-					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
-						// Пропускаем интерфейсы, которые не являются IPv4
-						continue;
-					// Если интерфейс не активен
-					if(!(ifa->ifa_flags & IFF_UP))
-						// Пропускаем неактивные интерфейсы
-						continue;
-					// Получаем IP-адрес интерфейса
-					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
-					// Если имя интерфейса совпадает
-					if(this->_fmk->compare(ifa->ifa_name, name)){
-						// Создаём объект сетевого интерфейса
-						struct in_addr iface = {};
-						// Присваиваем найденный IP-адрес
-						iface.s_addr = sin->sin_addr.s_addr;
-						// Устанавливаем сетевой интерфейс для multicast пакетов
-						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &iface, sizeof(iface))))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
-						}
-						// Выходим из цикла
-						break;
-					}
-				}
-				// Освобождаем память от списка сетевых интерфейсов
-				::freeifaddrs(ptr);
-			} break;
-			// Для семейства IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// Получаем индекс сетевого интерфейса по его имени
-				const uint32_t index = ::if_nametoindex(name.c_str());
-				// Устанавливаем сетевой интерфейс для multicast пакетов
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &index, sizeof(index))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			} break;
-		}
-	// Если название сетевого интерфейса пустое
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Interface name is empty", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), name), awh::log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Interface name is empty", awh::log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат
@@ -4408,17 +4364,38 @@ uint16_t awh::Ethernet::checksum(const event::family_t family, const event::prot
 	return result;
 }
 /**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
+ * Если операционной системой является FreeBSD
  */
-awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+#if __FreeBSD__
 	/**
-	 * Выполняем настройку сетевых параметров
+	 * @brief Конструктор
+	 *
+	 * @param fmk объект фреймворка
+	 * @param log объект работы с логами
 	 */
-	this->netboost();
-}
+	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept : sctp(fmk, log), _fmk(fmk), _log(log) {
+		/**
+		 * Выполняем настройку сетевых параметров
+		 */
+		this->netboost();
+	}
+/**
+ * Для остальных операционных систем
+ */
+#else
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param fmk объект фреймворка
+	 * @param log объект работы с логами
+	 */
+	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+		/**
+		 * Выполняем настройку сетевых параметров
+		 */
+		this->netboost();
+	}
+#endif
 /**
  * @brief Деструктор
  *

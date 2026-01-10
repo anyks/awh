@@ -35,6 +35,128 @@ namespace awh {
 	 * @brief Класс для работы с сетевым уровнем Ethernet
 	 */
 	typedef class AWH_SHARED_EXPORT Ethernet {
+		/**
+		 * Для операционной системы Linux или FreeBSD
+		 */
+		#if __linux__ || __FreeBSD__
+			public:
+				/**
+				 * @brief Структура управления протоколом передачи с управлением потоком
+				 *
+				 */
+				union StreamControlTransmissionProtocol  {
+					private:
+						// Объект фреймворка
+						const fmk_t * _fmk;
+						// Объект работы с логами
+						const log_t * _log;
+					public:
+						/**
+						 * @brief Метод получения статуса SCTP сокета
+						 *
+						 * @param sock   сетевой сокет
+						 * @param status объект для извлечения статуса инициализации SCTP сокета
+						 * @return       результат работы функции
+						 */
+						bool status(const net::socket_t sock, net::sctp::status_t & status) const noexcept;
+					public:
+						/**
+						 * @brief Метод инициализации SCTP сокета
+						 *
+						 * @param sock    сетевой сокет
+						 * @param initmsg параметры инициализации SCTP сокета
+						 * @return        результат работы функции
+						 */
+						bool initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
+					public:
+						/**
+						 * @brief Метод подписки на SCTP события
+						 *
+						 * @param sock   сетевой сокет
+						 * @param events список событий SCTP для активации
+						 * @return       результат работы функции
+						 */
+						bool eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
+					public:
+						/**
+						 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+						 *
+						 * @param sock  сетевой сокет
+						 * @param types список поддерживаемых алгоритмов аутентификации
+						 * @return      результат работы функции
+						 */
+						bool authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept;
+					public:
+						/**
+						 * @brief Метод установки ключа аутентификации SCTP сокета
+						 *
+						 * @param sock сетевой сокет
+						 * @param num  номер ключа аутентификации
+						 * @param key  ключ аутентификации
+						 * @return     результат работы функции
+						 */
+						bool authenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept;
+						/**
+						 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+						 *
+						 * @param sock сетевой сокет
+						 * @param mode режим установки типа сокета
+						 * @param id   идентификатор ассоциации
+						 * @param num  номер ключа аутентификации
+						 * @return     результат работы функции
+						 */
+						bool authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept;
+					public:
+						/**
+						 * @brief Метод установки чанков аутентификации SCTP сокета
+						 *
+						 * @param sock   сетевой сокет
+						 * @param chunks список чанков подлежащих аутентификации
+						 * @return       результат работы функции
+						 */
+						bool authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+						/**
+						 * @brief Метод извлечения чанков аутентификации SCTP сокета
+						 *
+						 * @param sock   сетевой сокет
+						 * @param origin источник события
+						 * @param id     идентификатор ассоциации
+						 * @param chunks список чанков подлежащих аутентификации
+						 * @return       результат работы функции
+						 */
+						bool authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+					public:
+						/**
+						 * @brief Метод получения таймаута SCTP сокета
+						 *
+						 * @param sock сетевой сокет
+						 * @param id   идентификатор ассоциации
+						 * @param type тип таймаута
+						 * @param ctx  контекст установки таймаута
+						 * @return     значение таймаута в миллисекундах
+						 */
+						uint32_t timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx = nullptr) const noexcept;
+						/**
+						 * @brief Метод установки таймаута SCTP сокета
+						 *
+						 * @param sock    сетевой сокет
+						 * @param id      идентификатор ассоциации
+						 * @param type    тип таймаута
+						 * @param timeout значение таймаута в миллисекундах
+						 * @param ctx     контекст установки таймаута
+						 * @return        результат работы функции
+						 */
+						bool timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param fmk объект фреймворка
+						 * @param log объект работы с логами
+						 */
+						StreamControlTransmissionProtocol(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+				} sctp;
+		#endif
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -96,6 +218,14 @@ namespace awh {
 			bool ipv6PrefixEqual(const uint8_t * a, const uint8_t * b, const uint8_t length) const noexcept;
 		public:
 			/**
+			 * @brief Метод получения кода ошибки
+			 *
+			 * @param sock сетевой сокет
+			 * @return     код ошибки на сокете если присутствует
+			 */
+			int32_t error(const net::socket_t sock) const noexcept;
+		public:
+			/**
 			 * @brief Метод установки таймаута сокета
 			 *
 			 * @param sock  сетевой сокет
@@ -124,107 +254,14 @@ namespace awh {
 			int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения кода ошибки
-			 *
-			 * @param sock сетевой сокет
-			 * @return     код ошибки на сокете если присутствует
-			 */
-			int32_t error(const net::socket_t sock) const noexcept;
-		public:
-			/**
-			 * @brief Метод получения таймаута SCTP сокета
-			 *
-			 * @param sock сетевой сокет
-			 * @param id   идентификатор ассоциации
-			 * @param type тип таймаута
-			 * @param ctx  контекст установки таймаута
-			 * @return     значение таймаута в миллисекундах
-			 */
-			uint32_t sctpTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx = nullptr) const noexcept;
-			/**
-			 * @brief Метод установки таймаута SCTP сокета
-			 *
-			 * @param sock    сетевой сокет
-			 * @param id      идентификатор ассоциации
-			 * @param type    тип таймаута
-			 * @param timeout значение таймаута в миллисекундах
-			 * @param ctx     контекст установки таймаута
-			 * @return        результат работы функции
-			 */
-			bool sctpTimeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept;
-		public:
-			/**
-			 * @brief Метод получения статуса SCTP сокета
+			 * @brief Метод установки сетевого интерфейса для multicast пакетов
 			 *
 			 * @param sock   сетевой сокет
-			 * @param status объект для извлечения статуса инициализации SCTP сокета
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param name   имя сетевого интерфейса
 			 * @return       результат работы функции
 			 */
-			bool sctpStatus(const net::socket_t sock, net::sctp::status_t & status) const noexcept;
-			/**
-			 * @brief Метод инициализации SCTP сокета
-			 *
-			 * @param sock    сетевой сокет
-			 * @param initmsg параметры инициализации SCTP сокета
-			 * @return        результат работы функции
-			 */
-			bool sctpInitMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
-			/**
-			 * @brief Метод подписки на SCTP события
-			 *
-			 * @param sock   сетевой сокет
-			 * @param events список событий SCTP для активации
-			 * @return       результат работы функции
-			 */
-			bool sctpEventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
-		public:
-			/**
-			 * @brief Метод установки чанков аутентификации SCTP сокета
-			 *
-			 * @param sock   сетевой сокет
-			 * @param chunks список чанков подлежащих аутентификации
-			 * @return       результат работы функции
-			 */
-			bool sctpAuthenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
-			/**
-			 * @brief Метод извлечения чанков аутентификации SCTP сокета
-			 *
-			 * @param sock   сетевой сокет
-			 * @param origin источник события
-			 * @param id     идентификатор ассоциации
-			 * @param chunks список чанков подлежащих аутентификации
-			 * @return       результат работы функции
-			 */
-			bool sctpAuthenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
-		public:
-			/**
-			 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
-			 *
-			 * @param sock  сетевой сокет
-			 * @param types список поддерживаемых алгоритмов аутентификации
-			 * @return      результат работы функции
-			 */
-			bool sctpAuthenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept;
-		public:
-			/**
-			 * @brief Метод установки ключа аутентификации SCTP сокета
-			 *
-			 * @param sock сетевой сокет
-			 * @param num  номер ключа аутентификации
-			 * @param key  ключ аутентификации
-			 * @return     результат работы функции
-			 */
-			bool sctpAuthenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept;
-			/**
-			 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
-			 *
-			 * @param sock сетевой сокет
-			 * @param mode режим установки типа сокета
-			 * @param id   идентификатор ассоциации
-			 * @param num  номер ключа аутентификации
-			 * @return     результат работы функции
-			 */
-			bool sctpAuthenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept;
+			bool multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Метод устанавливает постоянное подключение на сокет
@@ -236,16 +273,6 @@ namespace awh {
 			 * @return      результат работы функции
 			 */
 			bool keepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
-		public:
-			/**
-			 * @brief Метод установки сетевого интерфейса для multicast пакетов
-			 *
-			 * @param sock   сетевой сокет
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param name   имя сетевого интерфейса
-			 * @return       результат работы функции
-			 */
-			bool multicastIface(const net::socket_t sock, const event::family_t family, const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки опций сокета
