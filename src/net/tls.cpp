@@ -4442,7 +4442,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 							if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
+									// Вызываем функцию обратного вызова на получение ошибки рукопожатия
 									member->callback.state(id, tls_t::state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Handshake failed");
@@ -4467,9 +4467,12 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 									#endif
 								}
 								// Если функция обратного вызова состояния установлена
-								if(member->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
+								if(member->callback.state != nullptr){
+									// Вызываем функцию обратного вызова на неудачу рукопожатия
+									member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
+									// Вызываем функцию обратного вызова на уничтожение контекста TLS
 									member->callback.state(id, tls_t::state_t::DESTROYED);
+								}
 								// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
 								::__awh_ssl_ids__.erase(id);
 								// Удаляем контекст TLS из контейнера уровней защищённых сокетов
