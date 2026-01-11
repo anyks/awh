@@ -1266,13 +1266,13 @@ namespace ssl {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "Create X509 is failed");
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "X509 creation failed");
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							log->print("%s", log_t::flag_t::CRITICAL, "Create X509 is failed");
+							log->print("%s", log_t::flag_t::CRITICAL, "X509 creation failed");
 						#endif
 						// Выходим из цикла
 						break;
@@ -5652,7 +5652,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::context(const eve
 				// Устанавливаем поддерживаемые кривые
 				if(SSL_CTX_set_ecdh_auto(member->ctx, 1) != 1){
 					// Получаем текст ошибки
-					const string error = ::ssl::error(result, "Set ECDH is failed");
+					const string error = ::ssl::error(result, "Setting ECDH failed");
 					/**
 					 * Если включён режим отладки
 					 */
@@ -6114,11 +6114,42 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 								// Читаем данные из защищённого сокета
 								bytes = ::SSL_read(member->ssl, buffer, AWH_MAX_SSL_BUFFER_SIZE);
 								// Если данные не прочитаны
-								if(bytes <= 0)
+								if(bytes <= 0){
+									// Получаем код ошибки
+									const int32_t error = ::SSL_get_error(member->ssl, bytes);
+									// Если ошибка не связана с необходимостью повторного чтения или записи
+									if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова состояния
+											member->callback.state(id, tls_t::state_t::FAILED);
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Read is failed");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::CRITICAL, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
 									// Выходим из цикла
 									break;
 								// Если функция обратного вызова чтения данных установлена
-								else if(member->callback.read != nullptr)
+								} else if(member->callback.read != nullptr)
 									// Вызываем функцию обратного вызова чтения данных
 									member->callback.read(id, event_t::DECRYPTION, buffer, static_cast <size_t> (bytes));
 							}
@@ -6130,7 +6161,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 							// Вызываем функцию обратного вызова состояния
 							member->callback.state(id, tls_t::state_t::FAILED);
 						// Получаем текст ошибки
-						const string error = ::ssl::error(id, "BIO write is failed");
+						const string error = ::ssl::error(id, "BIO write failed");
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
@@ -6600,9 +6631,43 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							return;
 						}
 						// Если узел является сервером
-						if(member->node == event::node_t::SERVER)
-							// Выполняем установку CRL-файла сертификата
-							::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.c_str()));
+						if(member->node == event::node_t::SERVER){
+							// Загружаем список сертификатов центра сертификации
+							STACK_OF(X509_NAME) * cert = ::SSL_load_client_CA_file(filename.c_str());
+							// Если список сертификатов загружен успешно
+							if(cert != nullptr)
+								// Выполняем установку CRL-файла сертификата
+								::SSL_CTX_set_client_CA_list(member->ctx, cert);
+							// Если список сертификатов не загружен
+							else {
+								// Если функция обратного вызова состояния установлена
+								if(member->callback.state != nullptr)
+									// Вызываем функцию обратного вызова состояния
+									member->callback.state(id, tls_t::state_t::FAILED);
+								// Получаем текст ошибки
+								const string error = "Load client CA file is failed";
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, error_t::CRITICAL, error);
+								// Если функция обратного вызова ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							}
+						}
 					}
 				} break;
 				// Если уровень является транспортной передачей данных
@@ -8106,13 +8171,13 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Failed to ignoring signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				this->_log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Failed to ignoring signal SIGPIPE", log_t::flag_t::CRITICAL);
+				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
 			#endif
 		}
 		// Выполняем установку алгоритмов шифрования
@@ -8236,13 +8301,13 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Rand poll is not allow", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				this->_log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Rand poll is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
