@@ -39,6 +39,15 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT TransportLayerSecurity {
 		public:
 			/**
+			 * Состояния TLS работы
+			 */
+			enum class state_t : uint8_t {
+				NONE       = 0x00, // Состояние не установлено
+				FAILED     = 0x01, // Состояние ошибки
+				DESTROYED  = 0x02, // Состояние разрушения
+				HANDSHAKED = 0x03  // Состояние рукопожатия
+			};
+			/**
 			 * Режимы работы TLS
 			 */
 			enum class mode_t : uint8_t {
@@ -90,9 +99,9 @@ namespace awh {
 			using id_t = uint64_t;
 		public:
 			/**
-			 * Функция обратного вызова срабатывающая при успешном завершении рукопожатия
+			 * Функция обратного вызова срабатывающая при изменении состояния
 			 */
-			using handshake_callback_t = std::function <void (const id_t)>;
+			using state_callback_t = std::function <void (const id_t, const state_t)>;
 			/**
 			 * Функция обратного вызова срабатывающая при ошибке события
 			 */
@@ -238,14 +247,6 @@ namespace awh {
 			bool shutdown(const id_t id) noexcept;
 		public:
 			/**
-			 * @brief Метод проверки статeless режима TLS
-			 *
-			 * @param id идентификатор транспортного уровня
-			 * @return   результат выполнения проверки
-			 */
-			bool stateless(const id_t id) noexcept;
-		public:
-			/**
 			 * @brief Метод выполнения TLS рукопожатия
 			 *
 			 * @param id идентификатор события
@@ -368,37 +369,37 @@ namespace awh {
 			void certificate(const id_t id, const string & filename, const type_t type = type_t::PEM) noexcept;
 		public:
 			/**
-			 * @brief Метод установки функции обратного вывода получения данных
+			 * @brief Метод установки функции обратного вызова получения данных
 			 *
 			 * @param id       идентификатор транспортного уровня
-			 * @param callback объект функции обратного вызова
+			 * @param callback функция обратного вызова для установки
 			 * @return         результат установки функции обратного вызова
 			 */
 			bool on(const id_t id, read_callback_t callback) noexcept;
 			/**
-			 * @brief Метод установки функции обратного вывода передачи данных
+			 * @brief Метод установки функции обратного вызова передачи данных
 			 *
 			 * @param id       идентификатор транспортного уровня
-			 * @param callback объект функции обратного вызова
+			 * @param callback функция обратного вызова для установки
 			 * @return         результат установки функции обратного вызова
 			 */
 			bool on(const id_t id, write_callback_t callback) noexcept;
 			/**
-			 * @brief Метод установки функции обратного вывода получения ошибок
+			 * @brief Метод установки функции обратного вызова получения ошибок
 			 *
 			 * @param id       идентификатор транспортного уровня
-			 * @param callback объект функции обратного вызова
+			 * @param callback функция обратного вызова для установки
 			 * @return         результат установки функции обратного вызова
 			 */
 			bool on(const id_t id, error_callback_t callback) noexcept;
 			/**
-			 * @brief Метод установки функции обратного вывода выполнения рукопожатия
+			 * @brief Метод установки функции обратного вызова изменения состояния
 			 *
 			 * @param id       идентификатор транспортного уровня
-			 * @param callback объект функции обратного вызова
+			 * @param callback функция обратного вызова для установки
 			 * @return         результат установки функции обратного вызова
 			 */
-			bool on(const id_t id, handshake_callback_t callback) noexcept;
+			bool on(const id_t id, state_callback_t callback) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
