@@ -1793,7 +1793,7 @@ namespace verify {
 						// Сохраняем полученное имя хоста
 						member->host.name = sni;
 						// Выполняем подмену сертификата на основной
-						::SSL_set_SSL_CTX(ssl, reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (i->second))->ctx);
+						::SSL_set_SSL_CTX(ssl, reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (i->second))->ctx);
 						// Устанавливаем результат обработки
 						result = SSL_TLSEXT_ERR_OK;
 					}
@@ -4806,7 +4806,7 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
  * @param id идентификатор шаблона контекста безопасности
  * @return   идентификатор транспортного уровня
  */
-awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::ctl(const id_t id) noexcept {
+awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const id_t id) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**
@@ -5239,7 +5239,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::ctl(const id_t id
  * @param proto тип протокола события
  * @return      идентификатор шаблона контекста безопасности
  */
-awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::cts(const event::node_t node, const event::protocol_t proto) noexcept {
+awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::context(const event::node_t node, const event::protocol_t proto) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**

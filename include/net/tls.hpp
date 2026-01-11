@@ -268,7 +268,7 @@ namespace awh {
 			 * @param id идентификатор шаблона контекста безопасности
 			 * @return   идентификатор транспортного уровня
 			 */
-			id_t ctl(const id_t id) noexcept;
+			id_t transport(const id_t id) noexcept;
 			/**
 			 * @brief Метод создания идентификатора шаблона контекста безопасности
 			 *
@@ -276,7 +276,7 @@ namespace awh {
 			 * @param proto тип протокола события
 			 * @return      идентификатор шаблона контекста безопасности
 			 */
-			id_t cts(const event::node_t node, const event::protocol_t proto) noexcept;
+			id_t context(const event::node_t node, const event::protocol_t proto) noexcept;
 		public:
 			/**
 			 * @brief Метод шифрования данных
